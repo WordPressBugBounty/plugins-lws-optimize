@@ -1,0 +1,1394 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.4.3\n"
+
+#: lws-optimize.php:
+msgid "Activate LWS Optimize"
+msgstr "Activer LWS Optimize"
+
+#: lws-optimize.php:
+msgid "There is at least one other cache plugin active. LWS Optimize cannot be activated for incompatibility reasons."
+msgstr "Au moins un autre plugin de cache est actif. LWS Optimize ne peut pas être activé pour des raisons d'incompatibilitées."
+
+#: lws-optimize.php:
+msgid "You already have another cache plugin installed on your website. LWS-Optimize will be inactive as long as those below are not deactivated to prevent incompatibilities: "
+msgstr "Vous avez déjà une autre extension de cache installé sur votre site. LWS Optimize sera inactif aussi longtemps que celles ci-dessous seront actives pour éviter des incompatibilités : "
+
+#: lws-optimize.php:
+msgid "Rate"
+msgstr "Noter"
+
+#: lws-optimize.php:
+msgid "Refresh"
+msgstr "Rafraichir"
+
+#: lws-optimize.php:
+msgid "Remind me later"
+msgstr "Me le rappeler plus tard"
+
+#: lws-optimize.php:
+msgid "Do not ask again"
+msgstr "Ne plus demander"
+
+#: lws-optimize.php:
+msgid "Thank you for using LWS Optimize!"
+msgstr "Merci d'utiliser LWS Optimize !"
+
+#: lws-optimize.php:
+msgid "Evaluate our plugin to help others optimize and boost the performances of their WordPress website!"
+msgstr "Evaluez notre extension pour aider d'autres personnes à optimiser et booster les performances de leur site WordPress !"
+
+#: lws-optimize.php:
+msgid "<a href=\"https://wordpress.org/support/plugin/lws-optimize/reviews/\" target=\"_blank\">Evaluate our plugin</a> to help others optimize and boost the performances of their WordPress website"
+msgstr "<a href=\"https://wordpress.org/support/plugin/lws-optimize/reviews/\" target=\"_blank\">Evaluez notre plugin</a> pour aider d'autres personnes à optimiser et booster les performances de leur site WordPress"
+
+#: lws-optimize.php:
+msgid "Manage active plugins"
+msgstr "Gérer les extensions actives"
+
+# #LWS Optimize##
+#: lws-optimize.php:
+msgid "LWS Optimize"
+msgstr "LWS Optimize"
+
+#: lws-optimize.php:
+msgid "Frontend"
+msgstr "Front-end"
+
+#: lws-optimize.php:
+msgid "Medias"
+msgstr "Médias"
+
+#: lws-optimize.php:
+msgid "Caching"
+msgstr "Mise en cache"
+
+#: lws-optimize.php:
+msgid "Compress (Minify + Combine) all JS files for faster performances"
+msgstr "Compresser (Minifier + Combiner) tous les fichiers JS pour de meilleures performances"
+
+#: lws-optimize.php:
+msgid "Compress your JS files for better performances and faster page load"
+msgstr "Compressez vos fichiers pour obtenir de meilleures perfomances tout en réduisant le temps de chargement des pages"
+
+#: lws-optimize.php:
+msgid "Compress (Minify + Combine) all CSS files for faster performances"
+msgstr "Compresser (Minifier + Combiner) tous les fichiers CSS pour un chargement plus rapide"
+
+#: lws-optimize.php:
+msgid "Compress you CSS files for faster loading and smaller files"
+msgstr "Compressez vos fichiers CSS pour de meilleurs temps de chargements et de plus petits fichiers"
+
+#: lws-optimize.php:
+msgid "Our others plugins"
+msgstr "Nos autres extensions"
+
+#: lws-optimize.php:
+msgid "Minify your CSS files"
+msgstr "Minifier vos fichiers CSS"
+
+#: lws-optimize.php:
+msgid "Minify your CSS files to gain performances by reducing their size"
+msgstr "Minifiez vos fichiers CSS pour gagner en performances en réduisant leur taille"
+
+#: lws-optimize.php:
+msgid "Choose which files to exclude when minifying CSS files"
+msgstr "Choisir quels fichiers exclure de la minification des fichiers CSS"
+
+#: lws-optimize.php:
+msgid "Combine CSS files"
+msgstr "Combiner vos fichiers CSS"
+
+#: lws-optimize.php:
+msgid "Combine CSS files together to reduce HTML queries and gain in performances"
+msgstr "Combiner vos fichiers CSS pour réduire le nombre de requêtes HTML et gagner en performances"
+
+#: lws-optimize.php:
+msgid "Choose which files to ignore when combining CSS files"
+msgstr "Choisir quels fichiers exclure exclure de la combinaison des fichiers CSS"
+
+#: lws-optimize.php:
+msgid "Preload CSS files"
+msgstr "Précharger les fichiers CSS"
+
+#: lws-optimize.php:
+msgid "Preload CSS files for a faster loading time"
+msgstr "Préchargez les fichiers CSS pour un chargement plus rapide"
+
+#: lws-optimize.php:
+msgid "Minify your JS files"
+msgstr "Minifier vos fichiers JS"
+
+#: lws-optimize.php:
+msgid "Minify your JS files to gain performances and reduce their size"
+msgstr "Minifiez vos fichiers JS pour gagner en performances en réduisant leur taille"
+
+#: lws-optimize.php:
+msgid "Choose which files to exclude when minifying JS files"
+msgstr "Choisissez quels fichiers exclure de la minification des fichiers JS"
+
+#: lws-optimize.php:
+msgid "Combine JS files"
+msgstr "Combiner vos fichiers JS"
+
+#: lws-optimize.php:
+msgid "Combine JS files to reduce the amount of HTML queries and gain better performances"
+msgstr "Combinez vos fichiers JS pour réduire le nombre de requêtes HTML et gagner en performances"
+
+#: lws-optimize.php:
+msgid "Choose which files to ignore when combining JS files"
+msgstr "Choisissez quels fichiers exclure exclure de la combinaison des fichiers JS"
+
+#: lws-optimize.php:
+msgid "Defer loading of JavaScript files"
+msgstr "Reporter le chargement des fichiers JavaScript"
+
+#: lws-optimize.php:
+msgid "Defer loading of JavaScript files for faster loading times"
+msgstr "Reportez le chargement des fichiers JavaScript pour un chargement plus rapide"
+
+#: lws-optimize.php:
+msgid "Choose which files to ignore when defering JS files"
+msgstr "Choisissez quels fichiers exclure exclure du report des fichiers JS"
+
+#: lws-optimize.php:
+msgid "Minify your HTML files"
+msgstr "Minifier vos fichiers HTML"
+
+#: lws-optimize.php:
+msgid "Minify your HTML files to gain performances and reduce their size"
+msgstr "Minifiez vos fichiers HTML pour gagner en performances en réduisant leur taille"
+
+#: lws-optimize.php:
+msgid "Choose which files to exclude when minifying HTML files"
+msgstr "Choisissez quels fichiers exclure de la minification des fichiers HTML"
+
+#: lws-optimize.php:
+msgid "Remove Wordpress emoji support from your site"
+msgstr "Désactiver le support des emojis de WordPress de votre site"
+
+#: lws-optimize.php:
+msgid "Remove Wordpress emoji loading to speed up the loading of your website"
+msgstr "Désactivez le support des emojis de WordPress de votre site pour accélérer son chargement"
+
+#: lws-optimize.php:
+msgid "Remove useless queries"
+msgstr "Retirer les requêtes inutiles"
+
+#: lws-optimize.php:
+msgid "Remove useless queries from static files (CSS, JS...), especially  \"?ver\" queries"
+msgstr "Retirez les requêtes inutiles des fichiers statiques (CSS, JS...), plus particulièrement les requêtes '?ver'"
+
+#: lws-optimize.php:
+msgid "Compressing all images"
+msgstr "Compresser toutes les images"
+
+#: lws-optimize.php:
+msgid "Compress all images without quality loss to reduce sizes."
+msgstr "Compressez toutes les images sans perte de qualité pour réduire leur taille."
+
+#: lws-optimize.php:
+msgid "Converting all images to the WEBP extension"
+msgstr "Convertir toutes les images en images WEBP"
+
+#: lws-optimize.php:
+msgid "Convert all images to the lightweight WEBP extension to get better loading times. Depending on the amount of files to convert, it may take a while. Restoring the files will re-convert those. You can leave the page will the action in ongoing."
+msgstr "Convertissez toutes les images en images WEBP, une extension plus légère, pour de meilleurs temps de chargement. En fonction de la quantité de fichier à convertir, cela peut prendre du temps. Restaurer les fichiers les reconvertira. Vous pouvez quitter la page pendant le processus."
+
+#: lws-optimize.php:
+msgid "Reducing the maximum width of an image"
+msgstr "Réduire la taille maximale d'une image"
+
+#: lws-optimize.php:
+msgid "Reduce the maximum width of an image on this website. By default at 2560px, you may want to reduce it, allowing for smaller files, or rise it as you wish."
+msgstr "Réduisez la taille maximale d'une image sur ce site. Par défaut à 2560px, vous pouvez la réduire, réduisant la taille des fichiers, ou l'agrandir comme vous le souhaitez."
+
+#: lws-optimize.php:
+msgid "Lazy loading for all iframe elements"
+msgstr "Lazy Loading pour tous les éléments iframe"
+
+#: lws-optimize.php:
+msgid "Lazy loading for all image elements"
+msgstr "Lazy Loading pour toutes les images"
+
+#: lws-optimize.php:
+msgid "Forcing preloading of all video and audio elements"
+msgstr "Forcer le pré-chargement de tous les éléments audio et vidéo"
+
+#: lws-optimize.php:
+msgid "Forcing no preloading of all video and audio elements"
+msgstr "Forcer aucun pré-chargement de tous les éléments audio et vidéo"
+
+#: lws-optimize.php:
+msgid "Lazy loading on the website"
+msgstr "Lazy Loading sur le site"
+
+#: lws-optimize.php:
+msgid "Disabled"
+msgstr "Désactivé"
+
+# #LWS Medias##
+#: medias.php:
+msgid "This option will make it so every videos or audio files on this website are lazy loaded, even if it was deactivated."
+msgstr "Cette option fera en sorte que toute vidéo ou fichier audio sur ce site soit chargé de façon paresseuse, même si le fichier ne l'était explicitement pas."
+
+#: medias.php:
+msgid "This option will make it so there is no lazy loading on any videos or audio files on this website, even if it was activated beforehand."
+msgstr "Cette option fera en sorte qu'aucune vidéo ou fichier audio sur ce site ne soient chargé de façon paresseuse, même si le fichier l'était explicitement."
+
+#: medias.php:
+msgid "Compress"
+msgstr "Compresser"
+
+#: medias.php:
+msgid "Compressed"
+msgstr "Compressé"
+
+#: medias.php:
+msgid "Uncompress"
+msgstr "Décompresser"
+
+#: medias.php:
+msgid "Uncompressed"
+msgstr "Décompressé"
+
+#: medias.php:
+msgid "Convert"
+msgstr "Convertir"
+
+#: medias.php:
+msgid "Unconvert"
+msgstr "Déconvertir"
+
+#: medias.php:
+msgid "Converted"
+msgstr "Converti"
+
+#: medias.php:
+msgid "Unconverted"
+msgstr "Déconverti"
+
+#: medias.php:
+msgid "Modify"
+msgstr "Modifier"
+
+#: medias.php:
+msgid "Deactivate"
+msgstr "Désactiver"
+
+#: medias.php:
+msgid "Deactivate lazy loading"
+msgstr "Désactiver le lazy loading"
+
+#: medias.php:
+msgid "Activate lazy loading"
+msgstr "Activer le lazy loading"
+
+#: medias.php:
+msgid "Deactivated"
+msgstr "Désactivé"
+
+#: medias.php:
+msgid "Force"
+msgstr "Forcer"
+
+#: medias.php:
+msgid "Force preloading"
+msgstr "Forcer le pré-chargement"
+
+#: medias.php:
+msgid "Force the deactivation"
+msgstr "Forcer la désactivation"
+
+#: medias.php:
+msgid "Forced"
+msgstr "Forcé"
+
+#: medias.php:
+msgid "Unforce"
+msgstr "Déforcer"
+
+#: medias.php:
+msgid "Unforce preloading"
+msgstr "Déforcer le pré-chargement"
+
+#: medias.php:
+msgid "Unforce the deactivation"
+msgstr "Déforcer la désactivation"
+
+#: medias.php:
+msgid "Unforced"
+msgstr "Déforcé"
+
+#: medias.php:
+msgid "Modified"
+msgstr "Modifié"
+
+#: medias.php:
+msgid "Restore"
+msgstr "Restaurer"
+
+#: medias.php:
+msgid "Restoring..."
+msgstr "Restauration..."
+
+# #LWS Frontend##
+#: frontend.php:
+msgid "Frontend optimizations"
+msgstr "Optimisations Front-end"
+
+#: frontend.php:
+msgid "Apply modifications"
+msgstr "Appliquer les modifications"
+
+#: lws_op_frontend.php:
+msgid "<strong>Add CSS files to exclude from this action. Enter each path to the file, separated by commas.</strong>"
+msgstr "<strong>Ajoutez des fichiers CSS à exclure de cette action. Entrez chaque chemin d'accès, séparés par des virgules.</strong>"
+
+#: lws_op_frontend.php:
+msgid "Example: wp-content/plugins/my-plugin/css/my-css.css, wp-content/plugins/my-other-plugin/css/my-other-css.css"
+msgstr "Exemple : wp-content/plugins/mon-plugin/css/mon-css.css, wp-content/plugins/mon-autre-plugin/css/mon-autre-css.css"
+
+#: lws_op_frontend.php:
+msgid "<strong>Add JS files to exclude from this action. Enter each path to the file, separated by commas.</strong>"
+msgstr "<strong>Ajoutez des fichiers JS à exclure de cette action. Entrez chaque chemin d'accès, séparés par des virgules.</strong>"
+
+#: lws_op_frontend.php:
+msgid "Example: wp-content/plugins/my-plugin/js/my-js-file.js, wp-content/plugins/my-other-plugin/js/my-other-js-file.js"
+msgstr "Exemple : wp-content/plugins/mon-plugin/js/mon-fichier-js.js, wp-content/plugins/mon-autre-plugin/js/mon-autre-fichier-js.js"
+
+#: lws_op_frontend.php:
+msgid "<strong>Add HTML files to exclude from this action. Enter each URL, separated by commas.</strong>"
+msgstr "<strong>Ajoutez des fichiers HTML à exclure de cette action. Entrez chaque URL, séparées par des virgules.</strong>"
+
+#: lws_op_frontend.php:
+msgid "Example: https://my-website.com/some-page, https://my-website.com/contact-me"
+msgstr "Exemple : https://mon-site.fr/ma-page, https://mon-site.fr/contactez-moi"
+
+# #PLUGINS##
+#: plugins.php:
+msgid "Discover our plugins"
+msgstr "Découvrez nos extensions"
+
+#: plugins.php:
+msgid "We, at LWS, have developped a few different plugins for WordPress that you may find below."
+msgstr "Chez LWS, nous avons développé différentes extensions pour WordPress que vous pouvez trouver ci-dessous."
+
+#: plugins.php:
+msgid "You just have to click on the \"Install now\" button to get them for free."
+msgstr "Vous avez juste à cliquer sur le bouton \"Installer maintenant\" pour les obtenir gratuitement."
+
+#: plugins.php:
+msgid "This plugin, designed especially for WooCommerce, allows you to <b>send SMS to your customers automatically.</b>"
+msgstr "Ce plugin, désigné spécifiquement pour WooCommerce, vous permet d'<b>envoyer des SMS à vos clients automatiquement.</b>"
+
+#: plugins.php:
+msgid "You will need an account at LWS and enough balance to actually send SMS."
+msgstr "Vous aurez besoin d'un compte chez LWS et suffisamment de crédits SMS pour pouvoir envoyer des SMS."
+
+#: plugins.php:
+msgid "You can create personnalized templates, manage your SMS and sender IDs and more!"
+msgstr "Vous pouvez créer des templates personnalisés, gérer vos SMS et identifiants d'expéditeurs et plus encore !"
+
+#: plugins.php:
+msgid "This plugin lets you boost your website's <strong>loading times</strong> thanks to our tools: caching, media optimisation, files minification and concatenation..."
+msgstr "Ce plugin vous permet d'obtenir d'améliorer les <strong>temps de chargement</strong> de votre site grâce aux outils disponibles : mise en cache, optimisation des médias, minification et concaténation des fichiers..."
+
+#: plugins.php:
+msgid "Install now"
+msgstr "Installer maintenant"
+
+#: plugins.php:
+msgid "Activate"
+msgstr "Activer"
+
+#: plugins.php:
+msgid "Activated"
+msgstr "Activé"
+
+#: plugins.php:
+msgid "Install in progress..."
+msgstr "Installation en cours..."
+
+#: plugins.php:
+msgid "Activation in progress..."
+msgstr "Activation en cours..."
+
+#: plugins.php:
+msgid "Failed to download"
+msgstr "Echec du téléchargement"
+
+#: plugins.php:
+msgid "This plugin <strong>hide your administration page</strong> (wp-admin) and lets you <strong>change your login page</strong> (wp-login). It offers better security as hackers will have more trouble finding the page."
+msgstr "Ce plugin <strong>cache votre page d'administration</strong> (wp-admin) et vous laisse <strong>changer votre page de connexion</strong> (wp-login). Il vous offre une meilleure sécurité car les pirates auront plus de mal à trouver la bonne page."
+
+#: plugins.php:
+msgid "This plugin lets you <strong>clean your WordPress website</strong> in a few clics to gain speed: posts, comments, terms, users, settings, plugins, medias, files."
+msgstr "Ce plugin vous permet de <strong>nettoyer votre site WordPress</strong> en quelques clics afin de gagner en rapidité : articles, commentaires, termes, utilisateurs, paramètres, extensions, médias, fichiers."
+
+#: plugins.php:
+msgid "This plugin, designed specifically for WooCommerce, lets you <strong>send SMS automatically to your customers</strong>. You will need an account at LWS and enough credits to send SMS. Create personnalized templates, manage your SMS and sender IDs and more!"
+msgstr "Ce plugin, désigné spécifiquement pour WooCommerce, vous permet d'<strong>envoyer des SMS à vos clients automatiquement</strong>. Vous aurez besoin d'un compte LWS et suffisamment de crédits SMS pour envoyer des SMS. Créez des templates personnalisés, gérez vos SMS et identifiants d'expéditeurs et plus encore !"
+
+#: plugins.php:
+msgid "With this plugin, you can add banners and widgets on your website and use those with your <strong>affiliate account LWS</strong>. Earn money and follow the evolution of your gains on your website."
+msgstr "Avec ce plugin, vous pouvez ajouter des bannières et widgets sur votre site pour les utiliser avec votre <strong>compte affilié LWS</strong>. Gagnez de l'argent et suivez l'évolution de vos gains sur votre site."
+
+#: plugins.php:
+msgid "Based on the Varnich cache technology and NGINX, LWSCache let you <strong>speed up the loading of your pages</strong>. This plugin helps you automatically manage your LWSCache when editing pages, posts... and purging all your cache. Works only if your server use this cache."
+msgstr "Basé sur la technologie Varnish cache et NGINX, LWScache permet d’<strong>accélérer la vitesse de chargement de vos pages Web</strong>. Ce plugin vous aide à gérer automatiquement votre cache LWSCache lorsque vous éditez vos pages, articles… et purger tout votre cache. Fonctionne si votre serveur utilise aussi ce cache."
+
+#: plugins.php:
+msgid "This plugin provides you with several tools and shortcuts to manage, secure and optimise your WordPress website. Updating plugins and themes, accessing informations about your server, managing your website parameters, etc... Personnalize every aspect of your website!"
+msgstr "Ce plugin offre plusieurs outils et raccourcis pour gérer, sécuriser et optimiser votre site WordPress. Mettre à jour les extensions et thèmes, accéder aux informations sur votre serveur, gérer les paramètres de votre site, etc... Personnalisez chaque aspect de votre site web !"
+
+#: plugins.php:
+msgid "At LWS, we have developped several plugins for WordPress that you may find below. Click on the \"Install\" button to get those freely."
+msgstr "Chez LWS, nous avons développé différentes extensions pour WordPress que vous pouvez trouver ci-dessous. Cliquez sur le bouton \"Installer\" pour les obtenir gratuitement."
+
+#: plugins.php:
+msgid "Failed"
+msgstr "Echec"
+
+#: plugins.php:
+msgid "With this plugin, you can add banners and widgets on your website to use with your <b>LWS affiliate account</b>."
+msgstr "Avec ce plugin, vous pouvez ajouter des bannières et widgets sur votre site pour les utiliser avec votre <b>compte affilié LWS</b>."
+
+#: plugins.php:
+msgid "Earn money and keep track of your gains directly on your website."
+msgstr "Gagnez de l'argent et suivez l'évolution de vos gains sur votre site."
+
+#: plugins.php:
+msgid "Based on Varnish cache and Nginx, LWSCache speed up the loading of your webpages. This plugin help you automatically manage your LWSCache when you edit your pages, posts, messages..."
+msgstr "Basé sur la technologie Varnish cache et Nginx, LWScache permet d’accélérer la vitesse de chargement de vos pages Web. Ce plugin vous aide à gérer automatiquement votre cache LWSCache lorsque vous éditez vos pages, articles, messages…"
+
+#: plugins.php:
+msgid "It provide a way to purge all your cache but will only work on server using this system."
+msgstr "Cela vous permet de purger tout votre cache mais cela ne fonctionne que si votre serveur utilise aussi ce système de cache."
+
+# #TABS##
+#: tabs.php:
+msgid "Clean your WordPress website in a few clics to gain in speed: posts, medias..."
+msgstr "Nettoyez votre site WordPress en quelques clics afin de gagner en rapidité : articles, médias..."
+
+#: tabs.php:
+msgid "LWS Tools offer toolkits and shortcuts to manage your WordPress website. It lets you secure and optimize  your websites easily and visualize several useful informations about your server, website and database."
+msgstr "Le plugin LWS Tools propose un ensemble d'outils et raccourcis pour la gestion de votre site WordPress. Il vous permet notamment de sécuriser et optimiser vos sites Wordpress facilement et visualiser divers informations utiles sur votre serveur, site et bases de données."
+
+#: tabs.php:
+msgid "Manage your WordPress website now!"
+msgstr "Gérez votre site WordPress maintenant !"
+
+#: tabs.php:
+msgid "Discover LWS efficient, fast and secure web hosting!"
+msgstr "Découvrez les hébergements web performants, rapides et sécurisés de LWS !"
+
+#: tabs.php:
+msgid "15% off your WordPress-optimized hosting with the code: "
+msgstr "15% de remise sur votre hébergement optimisé WordPress avec le code promo : "
+
+#: tabs.php:
+msgid "Let's go!"
+msgstr "J'en profite !"
+
+#: tabs.php:
+msgid "by"
+msgstr "par"
+
+#: tabs.php:
+msgid "Copied!"
+msgstr "Copié !"
+
+#: tabs.php:
+msgid "recommended"
+msgstr "recommandé"
+
+#: tabs.php:
+msgid "Boost your website easily!"
+msgstr "Boostez votre site web facilement !"
+
+#: tabs.php:
+msgid "LWS Optimize lets you get better performances on your WordPress website. Improve your loading times thanks to our tools: caching, media optimisation, files minification and concatenation..."
+msgstr "Le plugin LWS Optimize vous permet d'obtenir de meilleures performances sur votre site WordPress. Améliorez vos temps de chargement grâce aux outils disponibles : mise en cache, optimisation des médias, minification et concaténation des fichiers..."
+
+#: tabs.php:
+msgid "Toolkits and shortcuts to manage, secure and optimise your WordPress website."
+msgstr "Ensemble d'outils et raccourcis pour gérer, sécuriser et optimiser votre site WordPress."
+
+#: tabs.php:
+msgid "Install"
+msgstr "Installer"
+
+#: tabs.php:
+msgid "Hide your administration page (wp-admin) and change your login page's URL (wp-login)"
+msgstr "Cachez votre page d'administration (wp-admin) et changer l'URL de votre page de connexion (wp-login)."
+
+#: tabs.php:
+msgid "Automatically manage your LWSCache when editing pages, posts, ... and purge it."
+msgstr "Gérez automatiquement votre cache LWS Cache lorsque vous éditez vos pages, articles,… et purgez-le."
+
+#: tabs.php:
+msgid "A set of tools and shortcuts to manage your WordPress website"
+msgstr "Un ensemble d'outils et raccourcis pour la gestion de votre site WordPress"
+
+# # CACHING
+#: caching.php:
+msgid "File-based caching"
+msgstr "Cache de fichiers"
+
+#: caching.php:
+msgid "Clear the cache"
+msgstr "Vider le cache"
+
+#: caching.php:
+msgid "Cleared"
+msgstr "Vidé"
+
+#: caching.php:
+msgid "Activate file-based caching to create static HTML versions of your website, which will be served to future visitors. This speed up loading times while avoiding repeated executions of dynamic PHP code. This option is necessary for the front-end options to work."
+msgstr "Activer le cache de fichiers permet de créer une version HTML statique de votre site, qui sera servie à vos visiteurs. Cela accélère le chargement des pages du site tout en évitant une exécution répétée du code PHP dynamique. Cette option est nécessaire pour utiliser les options de Front-End."
+
+#: caching.php:
+msgid "Cleanup interval for the cache: "
+msgstr "Durée de vie du cache : "
+
+#: caching.php:
+msgid "Clear"
+msgstr "Vider"
+
+#: caching.php:
+msgid "Once a day"
+msgstr "Une fois par jour"
+
+#: caching.php:
+msgid "Once a week"
+msgstr "Une fois par semaine"
+
+#: caching.php:
+msgid "Once a month"
+msgstr "Une fois par mois"
+
+#: caching.php:
+msgid "Once every 3 months"
+msgstr "Une fois tout les 3 mois"
+
+#: caching.php:
+msgid "Once every 6 months"
+msgstr "Une fois tout les 6 mois"
+
+#: caching.php:
+msgid "Once a year"
+msgstr "Une fois par an"
+
+#: caching.php:
+msgid "Once every 2 years"
+msgstr "Une fois tout les 2 ans"
+
+#: caching.php:
+msgid "Memcached is not active on your server. Your website is compatible with Memcached but is not configurated to use it. If your website is hosted at LWS or on a cPanel, please refer to the documentation below for help."
+msgstr "Memcached n'est pas activé sur votre serveur. Votre site est compatible avec Memcached mais n'est pas configuré. Si votre site est hébergé chez LWS ou sur un cPanel, veuillez vous référer aux documentations ci-dessous."
+
+#: caching.php:
+msgid "Memcached is currently activated and working on your website."
+msgstr "Memcached est actuellement activé et fonctionnel sur votre site."
+
+#: caching.php:
+msgid "Memcached is currently activated on your server but not working on your website."
+msgstr "Memcached est actuellement activé sur votre serveur mais non fonctionnel sur votre site."
+
+#: caching.php:
+msgid "Memcached is not active on your server. It may not be compatible with this service or need to be activated manually. Please contact your hosting provider for more help."
+msgstr "Memcached n'est pas activé sur votre serveur. Il peut ne pas être compatible avec ce service ou doit être activé manuellement. Veuillez vous rapprocher de votre hébergeur pour plus d'informations."
+
+#: caching.php:
+msgid "Memcached is a powerful caching solution for your website. It stores frequently used queries to your database. It helps reducing the number of calls to the database, effectively bettering your website's performances."
+msgstr "Memcached est une solution de cache puissante et performante pour votre site. Elle stocke les requêtes fréquentes vers la base de données. Cela réduit le nombre d'appels à la base de données nécessaire, améliorant activement les performances de votre site."
+
+#: caching.php:
+msgid "Activating Memcached on a cPanel"
+msgstr "Activer Memcached sur un cPanel"
+
+#: caching.php:
+msgid "Activating Memcached with LWS Panel"
+msgstr "Activer Memcached avec le LWS Panel"
+
+#  New texts
+msgid "Exclusive: "
+msgstr "Exclusif : "
+
+msgid "-15% on your WordPress hosting"
+msgstr "-15% sur les hébergements WordPress"
+
+msgid "Rate this plugin!"
+msgstr "Notez cette extension !"
+
+msgid "Support us and help other users choisir the right plugin."
+msgstr "Supportez-nous et aidez d'autres utilisateurs à choisir la bonne extension."
+
+msgid "Leave a review"
+msgstr "Donner mon avis"
+
+msgid "Exclude URLs from file-based caching"
+msgstr "Exclure des URLs du cache de fichiers"
+
+msgid "Option to exclude URLs from caching."
+msgstr "Option pour exclure certaines URLs de la mise en cache."
+
+msgid "Exclude"
+msgstr "Exclure"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Bad data returned. Cannot change cache timer."
+msgstr "Données incorrectes reçues. Impossible de changer la durée de vie du cache."
+
+msgid "File-based cache timer changed."
+msgstr "Durée de vie du cache de fichiers changée."
+
+msgid "File-based cache timer was not changed as the cache failed to activate."
+msgstr "La durée de vie du cache de fichiers n'a pas changé car le cache n'a pas pu s'activer."
+
+msgid "Unknown data returned. Cache timer cannot be changed."
+msgstr "Données inconnues reçues. La durée de vie du cache n'a pas pu être modifiée."
+
+msgid "Unknown error. Cannot change cache timer."
+msgstr "Erreur inconnue. Impossible de changer la durée de vie du cache."
+
+msgid "Bad data returned. Cannot activate cache."
+msgstr "Données incorrectes reçues. Impossible d'activer le cache."
+
+msgid "File-based cache deactivated"
+msgstr "Le cache de fichier est désactivé"
+
+msgid "File-based cache activated"
+msgstr "Le cache de fichier est activé"
+
+msgid "File-based cache could not be activated."
+msgstr "Le cache de fichier n'a pas pu être activé."
+
+msgid "File-based cache could not be deactivated. It may still be activated."
+msgstr "Le cache de fichiers n'a pas pu être désactivé. Il pourrait être encore activé."
+
+msgid "Unknown data returned. Cache state cannot be checked."
+msgstr "Données inconnues reçues. L'état du cache ne peut être vérifié."
+
+msgid "Unknown error. Cannot change cache."
+msgstr "Erreur inconnue. Impossible de changer l'état du cache."
+
+msgid "Bad data returned. Cannot empty cache."
+msgstr "Mauvaises données reçues. Impossible de vider le cache."
+
+msgid "File-based cache has been emptied."
+msgstr "Le cache de fichiers a été vidé."
+
+msgid "Unknown data returned. Cache cannot be emptied."
+msgstr "Données inconnues reçues. Le cache ne peut pas être vidé."
+
+msgid "Unknown error. Cannot empty cache."
+msgstr "Erreur inconnue. Impossible de vider le cache."
+
+msgid "Minify CSS files"
+msgstr "Minification des Fichiers CSS"
+
+msgid "Compress your CSS files to reduce their size and accelerate their loading."
+msgstr "Compresse vos fichiers CSS pour réduire leur taille et accélérer le chargement."
+
+msgid "Fuse multiple CSS files into one to reduce server requests."
+msgstr "Fusionne plusieurs fichiers CSS en un seul pour diminuer les requêtes serveur."
+
+msgid "Preload CSS files to accelerate page rendering."
+msgstr "Précharge les fichiers CSS pour accélérer le rendu de la page."
+
+msgid "CSS Files"
+msgstr "Fichiers CSS"
+
+msgid "JavaScript Files"
+msgstr "Fichiers JavaScript"
+
+msgid "General Optimisations"
+msgstr "Optimisations Générales"
+
+msgid "Minify JS files"
+msgstr "Minification des Fichiers JS"
+
+msgid "Reduce JS files size to boost loading performances."
+msgstr "Réduit la taille de vos fichiers JS pour améliorer les performances de chargement."
+
+msgid "Fuse multiple JS files into one to reduce server requests."
+msgstr "Combine plusieurs fichiers JS en un seul pour réduire le nombre de requêtes serveur."
+
+msgid "Report loading JavaScript blocking rendering"
+msgstr "Report du chargement du JavaScript bloquant le rendu"
+
+msgid "Delay JS files loading blocking rendering for a faster initial loading."
+msgstr "Retarde le chargement des fichiers JS bloquant le rendu pour un chargement initial plus rapide."
+
+msgid "HTML Minification"
+msgstr "Minification du HTML"
+
+msgid "Reduce your HTML file size by deleting useless characters."
+msgstr "Réduit la taille de votre HTML en supprimant les caractères inutiles."
+
+msgid "Webfont preloading"
+msgstr "Préchargement des Polices"
+
+msgid "Preload used fonts to improve rendering speed."
+msgstr "Précharge les polices utilisées pour améliorer la vitesse de rendu."
+
+msgid "Webfont optimization"
+msgstr "Optimisation des Polices Web"
+
+msgid "Modify the Google webfont loading to save HTTP requests and preload all other fonts."
+msgstr "Modifie le chargement des polices Google pour économiser les requêtes HTTP et précharge toutes les autres polices."
+
+msgid "Preload fonts"
+msgstr "Précharger des Polices"
+
+msgid "fonts"
+msgstr "polices"
+
+msgid "Deactivate WordPress Emojis"
+msgstr "Désactivation des Emojis WordPress"
+
+msgid "Deactivate the WordPress automatic emoji functionnality."
+msgstr "Désactive la fonctionnalité d'emojis automatique de WordPress."
+
+msgid "Remove query strings from static resources"
+msgstr "Retrait des chaînes de requête des ressources statiques"
+
+msgid "Remove query strings (?ver=) from your static resources, improving caching of those resources."
+msgstr "Supprime les chaînes de requête de version (?ver=) de vos ressources statiques, améliorant la mise en cache de ces ressources."
+
+msgid "exclusions"
+msgstr "exclusions"
+
+msgid "Exclude files"
+msgstr "Exclure des fichiers"
+
+msgid "LWS Media Optimize plugin"
+msgstr "Extension LWS Media Optimizer"
+
+msgid "This plugin lets you optimize and convert images (JPEG, PNG, WEBP, AVIF), reduce their size and maximum dimensions to speed up the website all the while assuring an universal browser compatibility."
+msgstr "Cette extension vous permet d'optimiser et convertir les images (JPEG, PNG, WEBP, AVIF), réduire leur poids et dimensions maximales pour accélérer le site, tout en assurant une compatibilité universelle de navigateur."
+
+msgid "Image Lazy Loading"
+msgstr "Lazy Loading pour Images"
+
+msgid "Load images only when they appear on screen, speeding up pages loading."
+msgstr "Charge les images uniquement à leur apparition à l'écran, accélérant le chargement des pages."
+
+msgid "CSS Background Image Lazy Loading"
+msgstr "Lazy Loading pour Images d'Arrière-plan CSS"
+
+msgid "Load CSS background images only when they appear on screen, speeding up loading time."
+msgstr "Charge les images de fond CSS à leur apparition à l'écran,, optimisant la vitesse de chargement."
+
+msgid "Iframes and videos Lazy Loading"
+msgstr "Lazy Loading pour Iframes et vidéos"
+
+msgid "Load integrated widgets and videos only when they appear on screen, boosting loading speed for pages rich in content."
+msgstr "Charge les widgets intégrés et vidéos à leur apparition à l'écran, boostant la vitesse de chargement des pages riches en contenu."
+
+msgid "Exclude from Lazy Loading"
+msgstr "Exclusions du Lazy Loading"
+
+msgid "Exclude CSS classes, media types or specific images, videos and iframes."
+msgstr "Excluez des classes CSS, types de médias ou spécifiquement certaines images, vidéos, iframes."
+
+msgid "Gravatars"
+msgstr "Gravatars"
+
+msgid "Thumbnails"
+msgstr "Miniatures"
+
+msgid "Responsive"
+msgstr "Responsive"
+
+msgid "Iframes"
+msgstr "Iframes"
+
+msgid "Mobile"
+msgstr "Mobile"
+
+msgid "Videos"
+msgstr "Vidéos"
+
+msgid "Coming soon"
+msgstr "Disponible prochainement"
+
+msgid "Exclude from Lazy Loading "
+msgstr "Exclure du Lazy Loading "
+
+msgid "Exclude from: "
+msgstr "Exclure de : "
+
+msgid "Here, you can exclude URLs you do not want minified. Example : \"my-site.fr/holidays/*\" will exclude all subpages of \"holidays\" from the minification."
+msgstr "Vous pouvez exclure des URL spécifiques des processus de mise en cache. Exemple : \"www.site.com/pages/*\" exclura toutes les sous-pages de \"pages\" de la minification."
+
+msgid "Here, you can exclude URLs you do not want modified. Example : \"/wp-includes/*\" will exclude all files in the directory \"wp-includes\"."
+msgstr "Vous pouvez exclure des URL spécifiques des processus de mise en cache. Exemple : \"/wp-includes/*\" exclura tous les fichiers dans le dossier \"wp-includes\"."
+
+msgid "Exclusions have been successfully saved."
+msgstr "Les exclusions ont bien été sauvegardées."
+
+msgid "CSS Classes exclusion"
+msgstr "Exclusion de Classes CSS"
+
+msgid "Media Types exclusion"
+msgstr "Exclusion de Types de Médias"
+
+msgid "Images or Iframes excluded"
+msgstr "Images ou Iframes Exclues"
+
+msgid "Exclude specific images or iframes by typing filenames or urls. One element per line."
+msgstr "Excluez des images ou iframes spécifiques en indiquant des noms de fichier ou urls. Un élément par ligne."
+
+msgid "necessary"
+msgstr "nécessaire"
+
+msgid "deactivated"
+msgstr "désactivée"
+
+msgid "activated"
+msgstr "activée"
+
+msgid "The action has been "
+msgstr "L'action a été "
+
+msgid "Created with ❤️ by LWS.fr"
+msgstr "Crée avec ❤️ par LWS.fr"
+
+msgid "Cache types"
+msgstr "Types de cache"
+
+msgid "Activate file-based caching to create static HTML versions of your website, which will be served to future visitors. This speed up loading times while avoiding repeated executions of dynamic PHP code."
+msgstr "Active le cache de fichiers pour créer des versions HTML statiques de votre site, qui seront servies aux visiteurs ultérieurs. Cela accélère l'affichage des pages en évitant l'exécution répétée du code PHP dynamique."
+
+msgid "Memcached optimize the cache by stocking frequent requests in a database, improving the global performances."
+msgstr "Memcached optimise le cache en stockant les requêtes fréquentes vers la base de données, améliorant les performances globales."
+
+msgid "Server Cache"
+msgstr "Cache serveur"
+
+msgid "LWS dynamic cache, accessible to all clients, speed up websites by storing content on the server memory. While a manual purge is available, an autopurge is activated by default, making this option often redundant."
+msgstr "Le Cache dynamique de LWS, accessible à ses clients, accélère les sites en stockant le contenu en mémoire serveur. Bien que le vidage manuel soit possible ci-contre, une purge automatique est déjà activée par défaut, rendant cette option souvent superflue."
+
+msgid "Force dump"
+msgstr "Forcer le vidage"
+
+msgid "File-based cache settings"
+msgstr "Paramètres du cache de fichiers"
+
+msgid "Automatic Purge"
+msgstr "Purge Automatique"
+
+msgid "Cache is emptied smartly and automatically based on events on your WordPress website (page updated, ...)"
+msgstr "Le cache de fichiers se vide intelligemment automatiquement en se basant sur les événements de votre WordPress (maj de page...)."
+
+msgid " URLs specifications currently defined, those pages will get purged with every purge"
+msgstr " spécifications d'URL sont actuellement définies, ces pages concernées seront purgées à chaque purge"
+
+msgid "Exclude URLs"
+msgstr "Exclure des URL"
+
+msgid "Specify URLs"
+msgstr "Spécifier des URL"
+
+msgid "Manual cache purge"
+msgstr "Purge Manuelle"
+
+msgid "Purge manually every cache to eliminate obsolete cache immediately."
+msgstr "Purge manuellement tout le cache de fichiers de votre site pour éliminer le cache obsolète immédiatement."
+
+msgid "Preloading"
+msgstr "Préchargement"
+
+msgid "Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while."
+msgstr "Démarre automatiquement le préchargement du cache de fichiers de votre site et le maintient à jour. Garantit que les pages sont mises en cache avant la première visite d'un utilisateur. Selon la quantité de pages à mettre en cache, cela peut prendre du temps."
+
+msgid "Exclude URLs from the cache"
+msgstr "Exclure des URLs de la mise en cache"
+
+msgid "Specify URLs to purge along with the cache"
+msgstr "Spécifier des URL à Purger Automatiquement"
+
+msgid "Available only on LWS hosting"
+msgstr "Disponible uniquement sur les hébergements LWS"
+
+msgid "This action is available only on LWS-hosted websites and is not supported in your current environment."
+msgstr "Cette action n'est disponible que sur les sites hébergés chez LWS et n'est pas supportée dans votre environnement actuel."
+
+msgid "You can exclude specifics URLs from the caching process. Example on the usage of \"*\": \"products/*\" will exclude all sub-pages of \"products\". To exclude the homepage, exclude \"/\"."
+msgstr "Vous pouvez exclure des URL spécifiques des processus de mise en cache. Exemple d'utilisation de \"*\" : www.site.com/pages/* exclura toutes les sous-pages de \"pages\". Pour exclure la page d'accueil, excluez \"/\"."
+
+msgid "Configurate rules to realize an automatic cache purge of some pages on top of the normal purge."
+msgstr "Configurez des règles pour réaliser la purge automatique du cache de certaines pages en plus de la purge normale."
+
+msgid "Cache stats"
+msgstr "Statistiques de cache"
+
+msgid "CSS Cache"
+msgstr "Cache CSS"
+
+msgid "Computer Cache"
+msgstr "Cache Ordinateur"
+
+msgid "Mobile Cache"
+msgstr "Cache Mobile"
+
+msgid "JS Cache"
+msgstr "Cache JS"
+
+msgid "See logs"
+msgstr "Voir les Logs"
+
+msgid "elements"
+msgstr "éléments"
+
+msgid "Cloudflare integration with LWS Optimize"
+msgstr "Intégration Cloudflare avec LWS Optimize"
+
+msgid "LWS Optimize is fully compatible with Cloudflare CDN. This integration prevent incompatibilities by modifying Cloudflare settings. Furthermore, it purges Cloudflare cache at the same time as LWS Optimize."
+msgstr "LWS Optimize est totalement compatible avec le CDN Cloudflare. Cette intégration prévient les incompatibilités en modifiant certains paramètres de Cloudflare. De plus, elle purge le cache de Cloudflare en même temps que celui de LWS Optimize."
+
+msgid "Cloudflare settings : Insert API Keys"
+msgstr "Paramètres Cloudflare : Saisie des Clés API"
+
+msgid "Fill in your API Token and API Key below to access Cloudflare APIs."
+msgstr "Entrez votre Jeton API et Clé API ci-dessous pour accéder aux API Cloudflare."
+
+msgid "An unknown error occured"
+msgstr "Une erreur inconnue est survenue"
+
+msgid "API Token"
+msgstr "Jeton API"
+
+msgid "API Key"
+msgstr "Clé API"
+
+msgid "Help: how to include Cloudflare in LWS Optimize"
+msgstr "Aide : comment intégrer Cloudflare dans LWS Optimize"
+
+msgid "Abort"
+msgstr "Annuler"
+
+msgid "Next"
+msgstr "Suivant"
+
+msgid "Cloudflare settings: Tools deactivation"
+msgstr "Paramètres Cloudflare : Désactivation d'outils"
+
+msgid "Previous"
+msgstr "Précédent"
+
+msgid "Deactivate CSS Files Minification"
+msgstr "Désactiver la Minification des Fichiers CSS"
+
+msgid "Avoid conflicts and redundancies with Cloudflare, which already optimizes CSS files."
+msgstr "Évite les conflits et redondances avec Cloudflare, qui optimise déjà les fichiers CSS."
+
+msgid "Deactivate JS Files Minification"
+msgstr "Désactiver la Minification des Fichiers JavaScript"
+
+msgid "Avoid multiples processing and errors, Cloudflare already manage JS minification."
+msgstr "Évite les traitements multiples et erreurs, Cloudflare gère déjà la minification JS."
+
+msgid "Deactivate Dynamic Cache"
+msgstr "Désactiver le Cache Dynamique"
+
+msgid "Prevents caching overlaps, as Cloudflare already performs cache optimization efficiently."
+msgstr "Prévient les superpositions de mises en cache, car Cloudflare assure déjà l'optimisation du cache de manière efficace."
+
+msgid "The Browser Cache Expiration option has been set to 6 months. This is the period when Cloudflare tells browsers to keep files cached."
+msgstr "L'option d'Expiration du Cache Navigateur a été réglée sur 6 mois. C'est la période pendant laquelle Cloudflare indique aux navigateurs de conserver les fichiers en cache."
+
+msgid "Cloudflare settings: Browser Cache Expiration"
+msgstr "Paramètres Cloudflare : Expiration du Cache Navigateur"
+
+msgid "Browser cache lifespan:"
+msgstr "Durée de vie du cache navigateur :"
+
+msgid "Please enter a valid API Token in the field and try again"
+msgstr "Entrez un jeton API valid puis réessayez"
+
+msgid "The request failed to proceed"
+msgstr "La requête n'a pas pu aboutir"
+
+msgid "Could not decode the Cloudflare response. Please try again"
+msgstr "Impossible de décoder la réponse de Cloudflare. Veuillez ressayer"
+
+msgid "The API Token could not be saved. Please try again"
+msgstr "Le Jeton API n'a pas pu être sauvegardé. Veuillez ressayer"
+
+msgid "This API Token is not active and cannot be used"
+msgstr "Ce jeton API n'est pâs actif et ne peut  pas être utilisé"
+
+msgid "The verification request failed. Make sure the API Token is valid"
+msgstr "La requête de vérification a échouée. Assurez-vous que le jeton API soit valide"
+
+msgid "Could not verify the zones"
+msgstr "Impossible de vérifier les zones"
+
+msgid "Could not parse the zones data"
+msgstr "Impossible de traiter les données des zones"
+
+msgid "No zones found with this API Token."
+msgstr "Aucune zone trouvée avec ce jeton API."
+
+msgid "No zones found for this domain with this API Token."
+msgstr "Aucune zone trouvée pour ce domain avec ce jeton API."
+
+msgid "Could not get any zones from Cloudflare. Please try again"
+msgstr "Impossible de récupérer les zones depuis Cloudflare. Veuillez réessayer"
+
+msgid "The tools to be deactivated could not be saved. Please try again"
+msgstr "Les outils à désactiver n'ont pas pu être sauvegardés. Veuillez réessayer"
+
+msgid "Everything is configurated! Click on the finish button below and that is it."
+msgstr "Tout est configuré ! Cliquez sur le bouton terminer ci-dessous et c'est tout."
+
+msgid "Cloudflare settings: Ready to go!"
+msgstr "Paramètres Cloudflare : Prêt à l'emploi !"
+
+msgid "Finish"
+msgstr "Terminer"
+
+msgid "The cache lifetime could not be saved. Please try again"
+msgstr "La durée de vie du cache n'a pas pu être sauvegardée. Veuillez ressayer"
+
+msgid "The Cloudflare integration was successfully activated"
+msgstr "L'intégration Cloudflare a bien été activée"
+
+msgid "The Cloudflare integration failed"
+msgstr "L'intégration Cloudflare a échouée"
+
+msgid "Database Maintenance Options"
+msgstr "Options de Maintenance de la Base de Données"
+
+msgid "Manage"
+msgstr "Gérer"
+
+msgid "An error occured: could not set maintenance options"
+msgstr "Une erreur est survenue : impossible de mettre à jour les options de maintenance"
+
+msgid "An error occured: no data sent"
+msgstr "Une erreur est survenue : pas de données recues"
+
+msgid "Programmed Database Maintenance"
+msgstr "Maintenance Programmée de la Base de Données"
+
+msgid "Enable this option to clean and optimize your database automatically each week."
+msgstr "Activez cette fonction pour nettoyer et optimiser automatiquement votre base de données chaque semaine."
+
+msgid "LWS Cleaner Plugin"
+msgstr "Plugin LWS Cleaner"
+
+msgid "This plugin lets you <b>clean your WordPress</b> website, notably its database, in a few clicks to improve speed: posts, comments, terms, users, parameters, plugins, medias, files."
+msgstr "Ce plugin vous permet de <b>nettoyer votre site WordPress</b> et notamment sa base de données en quelques clics afin de gagner en rapidité : articles, commentaires, termes, utilisateurs, paramètres, extensions, médias, fichiers."
+
+msgid "Database optimisation for MyISAM tables"
+msgstr "Optimisation de la Base de Données pour les Tables MyISAM"
+
+msgid "Automatically remove drafts from posts and pages"
+msgstr "Supprimer tous les brouillons de posts et pages créés automatiquement"
+
+msgid "Remove all revisions from posts and pages"
+msgstr "Supprimer toutes les révisions de pages et posts"
+
+msgid "Remove all trashed posts and pages"
+msgstr "Supprimer tous les posts et pages dans la Corbeille"
+
+msgid "Remove all spam comments"
+msgstr "Supprimer tous les commentaires marqués comme Spam"
+
+msgid "Remove all trashed comments"
+msgstr "Supprimer tous les commentaires dans la Corbeille"
+
+msgid "Remove all expired transients"
+msgstr "Supprimer tous les Transients expirés"
+
+msgid "Analyze Performances of Your Website with Google PageSpeed"
+msgstr "Analysez la Performance de Votre Site avec Google PageSpeed"
+
+msgid "This section lets you launch Google PageSpeed tests and follow the PageSpeed scores history."
+msgstr "Cette section vous permet de lancer des tests Google PageSpeed et de suivre l'historique de vos scores PageSpeed."
+
+msgid "Device type"
+msgstr "Type d'Appareil"
+
+msgid "Desktop"
+msgstr "Bureau (Desktop)"
+
+msgid "URL to Scan"
+msgstr "URL à Analyser"
+
+msgid "PageSpeed History"
+msgstr "Historique PageSpeed"
+
+msgid "No PageSpeed in history."
+msgstr "Pas d'historique PageSpeed."
+
+msgid "Please submit a valid URL"
+msgstr "Veuillez fournir une URL valide"
+
+msgid "Please submit a valid device type"
+msgstr "Veuillez fournir un type d'appareil valide"
+
+msgid "PageSpeed was executed successfully"
+msgstr "Le test PageSpeed a bien été exécuté"
+
+msgid "Google Score : Performances"
+msgstr "Score Google : Performances"
+
+msgid "Scale:"
+msgstr "Échelle :"
+
+msgid "Page Loading Time"
+msgstr "Temps de Chargement de la Page"
+
+msgid "Categories:"
+msgstr "Catégories :"
+
+msgid "More than 4s"
+msgstr "Plus de 4s"
+
+msgid "2s-4s"
+msgstr "2s-4s"
+
+msgid "0s-2s"
+msgstr "0s-2s"
+
+msgid "Please enter valid parameters and try again."
+msgstr "Veuillez entrer des paramètres valides et réessayer."
+
+msgid "PageSpeed returned an error. Please try again later."
+msgstr "Le test PageSpeed a retourné une erreur. Veuillez réessayer ultérieurement."
+
+msgid "Failed to process the PageSpeed."
+msgstr "Impossible de procéder au test PageSpeed."
+
+msgid "Database"
+msgstr "Base de données"
+
+msgid "Pagespeed test"
+msgstr "Test PageSpeed"
+
+msgid "PageSpeed Test from "
+msgstr "Test PageSpeed du "
+
+msgid "Scan"
+msgstr "Scan"
+
+msgid "LWSCache is not activated on this hosting. Please go to your LWSPanel and activate it."
+msgstr "LWSCache n'est pas activé sur cet hébergement. Veuillez vous rendre dans le LWSPanel pour l'activer."
+
+msgid "FastestCache is not activated on this cPanel. Please go to your cPanel and activate it."
+msgstr "FastestCache n'est pas activé sur cet hébergement cPanel. Veuillez vous rendre sur votre cPanel pour l'activer."
+
+msgid "LWSCache is not available on this hosting. Please migrate to a LWS hosting to use this action."
+msgstr "LWSCache n'est pas disponible sur cet hébergement. Veuillez migrer vers un hébergement LWS pour utiliser cette action."
+
+msgid "Available on LWS hosting"
+msgstr "Disponible avec les Hébergements LWS"
+
+msgid "This function is reserved for LWS hosting and is not supported in your current environment. The LWS infrastructure, built for speed, offers exclusive features to optimize your site:"
+msgstr "Cette fonction est réservée aux hébergements LWS et n'est pas supportée dans votre environnement actuel. L'infrastructure LWS, conçue pour la vitesse, offre des fonctionnalités exclusives pour optimiser votre site :"
+
+msgid "Images optimisation tool"
+msgstr "Outil d'optimisation d'images"
+
+msgid "Memcached and NGINX Dynamic cache"
+msgstr "Memcached et Cache dynamique NGINX"
+
+msgid "WordPress Manager: One-click connexion, clone, preproduction..."
+msgstr "WordPress Manager : connexion en 1 clic, clone, préproduction..."
+
+msgid "Ultra fast servers in France optimized for WordPress"
+msgstr "Serveurs en France ultra-rapides optimisés WordPress"
+
+msgid "Reactive 7d/7 support"
+msgstr "Support 7J/7 réactif"
+
+msgid "Check out our super-fast hosting and feel the difference for yourself. Take advantage of our exclusive offer: -15% additional on all our accommodation with the code WPEXT15 which can be combined with current offers. Site transfer to LWS is free!"
+msgstr "Découvrez notre hébergement ultra-rapide et ressentez la différence par vous-même. Profitez de notre offre exclusive : -15% supplémentaires sur tous nos hébergements avec le code WPEXT15 cumulable avec les offres en cours. Le transfert de site vers LWS est offert !"
+
+msgid "Learn more about LWS Offers"
+msgstr "En savoir plus sur les Offres LWS"
+
+msgid "This action is managed by LWSCache and cannot be activated. Deactivate LWSCache to manage the server cache from here."
+msgstr "Cette action est gérée par LWSCache et ne peut être activée. Désactivez LWSCache pour gérer le cache serveur d'ici."
+
+msgid "LWSCache, accessible to all clients, speed up websites by storing content on the server memory. While a manual purge is available, an autopurge is activated by default, making this option often redundant."
+msgstr "LWSCache, disponible pour tout les clients, accélère vos sites en stockant le contenu dans la mémoire serveur. Bien qu'une purge manuelle soit disponible, une purge automatique est activée par défaut, rendant cette option redondante."
+
+msgid "Clear cache"
+msgstr "Vider le cache"
+
+msgid "pages per minutes cached"
+msgstr "pages par minute mises en cache"
+
+msgid "Bad data returned. Cannot change pages amount."
+msgstr "Mauvaise données reçues. Impossible de changer le nombre de pages."
+
+msgid "Amount of pages cached at a time changed to "
+msgstr "Nombre de pages mises en cache à la fois passé à "
+
+msgid "Failed to changed page amount."
+msgstr "Echec du changement du nombre de pages."
+
+msgid "Unknown data returned. Failed to changed page amount."
+msgstr "Données inconnues reçues. Echec du changement du nombre de pages."
+
+msgid "Unknown error. Cannot change page amount."
+msgstr "Erreur inconnue. Impossible de changer le nombre de pages."
+
+msgid "Alternative cache for mobile devices"
+msgstr "Cache alternatif pour les utilisateurs mobile"
+
+msgid "Create a second cache that can only be accessed by mobile devices, allowing to cache two differents layouts for your website. Will increase the size of the cache."
+msgstr "Crée un deuxième cache accessible uniquement aux utilisateurs mobiles, permettant de mettre en cache deux versions de votre site. Cela augmentera la taille du cache."
+
+msgid "No cache for logged in users"
+msgstr "Pas de cache pour les utilisateurs connectés"
+
+msgid "All connected users will be shown the non-cached version of this website."
+msgstr "Tout les utilisateurs connectés verront une version non mise en cache du site web."
+
+msgid "No cache for mobile user"
+msgstr "Pas de cache pour les utilisateurs mobile"
+
+msgid "Show an uncached version of the website to user on mobile devices. No cache will be created for them."
+msgstr "Affiche une version non mise en cache du site aux utilisateurs sur des appareils mobile. Aucun cache ne sera crée pour eux."
+
+msgid "Clear all cache"
+msgstr "Vider le cache entièrement"
+
+msgid "Clear all HTML cache files"
+msgstr "Vider le cache HTML"
+
+msgid "Clear all JS and CSS cache files"
+msgstr "Vider le cache JS et CSS"
+
+msgid "Clear current page cache files"
+msgstr "Vider le cache de la page actuelle"
+
+msgid "Enter the full URL, or part of it, of the scripts/stylesheets you want to exclude from the process. Example : \"plugins/woocommerce/*\" will exclude all files in the directory \"woocommerce\" in plugins."
+msgstr "Entrez l'URL complète, ou une partie seulement, des scripts/feuilles de style que vous souhaitez exclure du processus. Exemple : \"plugins/woocommerce/*\" exclurera tout les fichiers du dossiers \"woocommerce\" des plugins."
+
+msgid "Cache deleted"
+msgstr "Cache supprimé"
+
+msgid "Cache not deleted"
+msgstr "Cache non supprimé"
+
+msgid "File-based cache is now preloading. Depending on the amount of URLs, it may take a few minutes for the process to be done."
+msgstr "Le cache de fichiers est en préchargement. Selon la quantité d'URLs, le processus pourrait prendre quelques minutes."
+
+msgid "Preloading is now deactivated."
+msgstr "Le préchargement a été désactivé."
+
+msgid "Preloading failed to be modified."
+msgstr "Le préchargement n'a pas pu être modifié."
+
+msgid "Unknown data returned. Preloading state cannot be verified."
+msgstr "Données inconnues reçues. L'état du préchargement ne peut être vérifié."
+
+msgid "Unknown error. Cannot change preloading state."
+msgstr "Erreur inconnue. Impossible de changer l'état du préchargement."
+
+msgid "Never expire"
+msgstr "N'expire jamais"
+
+msgid "New configuration applied."
+msgstr "Nouvelle configuration appliquée."
+
+msgid "Failed to configurate the plugin."
+msgstr "Echec de la configuration du plugin."
+
+msgid "Choose which configuration to apply"
+msgstr "Choisissez quelle configuration appliquer"
+
+msgid "Recommended configuration"
+msgstr "Configuration recommandée"
+
+msgid "Beginner-friendly! Activate recommended settings to optimize your website's speed fast and easily."
+msgstr "Adapté aux débutants ! Activez les paramètres recommandés pour optimiser la vitesse de votre site Web rapidement et facilement."
+
+msgid "Advanced configuration"
+msgstr "Configuration avancée"
+
+msgid "Activate all previous options and further optimize your website with CSS preloading, database optimisation and more."
+msgstr "Active toutes les options précédentes et optimise davantage votre site avec le préchargement CSS, l'optimisation de base de données et plus encore."
+
+msgid "Complete configuration"
+msgstr "Configuration complète"
+
+msgid "Activate every options to fully optimize your website. Not recommended to beginners, may needs tweakings to make it work on your website."
+msgstr "Active toutes les options pour optimiser votre site au maximum. Non recommandé aux débutants, peu nécessiter des ajustements pour fonctionner correctement sur votre site."
+
+msgid "Pre-configuration"
+msgstr "Pré-configuration"
+
+msgid "You can only ask for one PageSpeed test every three minutes. Please wait and try again in "
+msgstr "Vous ne pouvez demander qu'un seul test PageSpeed toutes les 3 minutes. Veuillez patienter et réessayer dans "
+
+msgid " seconds"
+msgstr " secondes"
+
+msgid "Please be aware that those tests are done using low-end devices, to simulate performances on sub-optimal devices. Performances on your own devices may differ from what is shown."
+msgstr "Veuillez noter que ces tests sont effectués sur des appareils bas de gamme, pour simuler les performances sur des appareils sous-optimaux. Les performances sur vos propres appareils peuvent différer de celles affichées."
+
+msgid "files"
+msgstr "fichiers"
+
+msgid "Add files"
+msgstr "Ajouter des fichiers"
+
+msgid "Add files to preload"
+msgstr "Ajouter des fichiers à précharger"
+
+msgid "Enter the complete URL to the file you wish to preload. The file can only be a CSS stylesheet. Example : \"https://example.fr/wp-content/plugins/myplugin/css/bootstrap.min.css?ver=6.5.3\" would preload a BootStrap stylesheet from the \"myplugin\" plugin"
+msgstr "Entrez l'URL complète vers le fichier que vous souhaitez précharger. Le fichier ne peut être qu'une feuille de style CSS. Exemple : \"https://example.fr/wp-content/plugins/monplugin/css/bootstrap.min.css?ver=6.5.3\" préchargera la feuille de style Bootstrap de l'extension \"monplugin\""
+
+msgid "Enter the complete URL of the font you wish to preload. Example : \"https://example.fr/wp-content/plugins/myplugin/css/myfont.woff2\" would preload a font from the \"myplugin\" plugin"
+msgstr "Entrez l'URL complète vers la police que vous souhaitez précharger. Exemple : \"https://example.fr/wp-content/plugins/monplugin/fonts/myfonts.woff2\" préchargera la police nommée myfonts de l'extension \"monplugin\""
+
+msgid "About Cloudflare Integration"
+msgstr "A propos de l'intégration Cloudflare"
+
+msgid "We detected that you are using Cloudflare on this website. Make sure to enable the CDN Integration in the CDN tab."
+msgstr "Nous avons détecté que vous utilisez Cloudflare sur ce site. Assurez-vous d'activer l'intégration CDN dans l'onglet CDN."
+
+msgid "Go to the option"
+msgstr "Aller vers l'option"
+
+msgid "This action is managed by CloudFlare and cannot be activated"
+msgstr "Cette action est gérée par Cloudflare et ne peut être activé"
+
+msgid "Learn more"
+msgstr "En apprendre plus"
+
+msgid "Check tasks you wish to <b>automatically execute each week</b> to optimise your database."
+msgstr "Cochez les tâches que vous souhaitez <b>exécuter automatiquement chaque semaine</b> pour optimiser votre base de données."
+
+msgid "You like this plugin ? "
+msgstr "Vous aimez le plugin ? "
+
+msgid "A <a href=\"https://wordpress.org/support/plugin/lws-optimize/reviews/#new-post\" target=\"_blank\" class=\"link_to_rating_with_stars\"><div class=\"lwsop_stars\">★★★★★</div> rating</a> will motivate us a lot."
+msgstr "Une <a href=\"https://wordpress.org/support/plugin/lws-optimize/reviews/#new-post\" target=\"_blank\" class=\"link_to_rating_with_stars\"> note <div class=\"lwsop_stars\">★★★★★</div></a> nous motivera beaucoup."
+
+msgid "<b>Exclusive</b>: Get <b>15%</b> off your WordPress hosting"
+msgstr "<b>Exclusif :</b> Obtenez <b>15%</b> de réduction sur les hébergements WordPress"

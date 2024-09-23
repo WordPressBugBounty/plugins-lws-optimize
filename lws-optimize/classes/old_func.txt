@@ -1,0 +1,808 @@
+// FUNCTIONS RELATED TO THE MEDIAS TAB ###
+// 
+// 
+/**
+ * Convert all images to JPEG for better size. Duplicate saved as .old to unconvert
+ */
+function lws_op_compress_all_to_jpeg(){
+    $args = array(
+        'numberposts' => -1,
+        'post_type' => 'attachment',
+    );
+    $attachments = get_posts($args);
+    foreach ($attachments as $a) {
+        if (explode('/', $a->post_mime_type)[0] == 'image') {
+            $metadata = wp_get_attachment_metadata($a->ID);
+            $path = get_attached_file($a->ID);
+            copy($path, $path . '.old');
+            lws_op_compress_to_jpeg($path, $path, 60);
+
+            foreach ($metadata['sizes'] as $size => $data) {
+                $size_path = explode('/', $path);
+                $size_path = implode('/', array_replace($size_path, [(count($size_path) -1) => $data['file']]));
+                copy($size_path, $size_path . '.old');
+                lws_op_compress_to_jpeg($path, $path, 60);
+            }
+        }
+    }
+}
+
+/**
+ * Unconvert all images from JPEG to their original type from the .old saved
+ * If there is no original file, do nothing
+ */
+function lws_op_uncompress_all_to_jpeg(){
+    $args = array(
+        'numberposts' => -1,
+        'post_type' => 'attachment',
+    );
+    $attachments = get_posts($args);
+    foreach ($attachments as $a) {
+        if (explode('/', $a->post_mime_type)[0] == 'image') {
+            $metadata = wp_get_attachment_metadata($a->ID);
+            $path = get_attached_file($a->ID);
+            if (file_exists($path . '.old')) {
+                @rename($path. '.old', $path);
+                // if ($a->post_mime_type == 'image/webp') {
+                //     $tmp = explode('.', $path);
+                //     array_pop($tmp);
+                //     $tmp = implode('.', $tmp);
+                //     @rename($tmp. '.old', $tmp);
+                // }
+
+                foreach ($metadata['sizes'] as $size => $data) {
+                    $size_path = explode('/', $path);
+                    $size_path = implode('/', array_replace($size_path, [(count($size_path) -1) => $data['file']]));
+                    @rename($size_path . '.old', $size_path);
+                    //if ($a->post_mime_type == 'image/webp') {
+                    //     $tmp = explode('.', $size_path);
+                    //     array_pop($tmp);
+                    //     $tmp = implode('.', $tmp);
+                    //     @rename($tmp. '.old', $tmp);
+                    // }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * In charge of converting all the files given to it by lws_op_compress_all_to_jpeg()
+ * The source will be used to create the destination
+ */
+function lws_op_compress_to_jpeg($source, $destination, $qualite = 75) {
+    $info = getimagesize($source);
+
+    switch($info['mime']) {
+    case 'image/jpeg':
+        $image = imagecreatefromjpeg($source);
+        break;
+    case 'image/gif':
+        $image = imagecreatefromgif($source);
+        break;
+    case 'image/png':
+        $image = imagecreatefrompng($source);
+        break;
+    case 'image/webp':
+        $image = imagecreatefromwebp($source);
+        break;
+    default:
+        $image = imagecreatefromjpeg($source);
+        break;
+    }
+
+    imagejpeg($image, $destination, $qualite);
+
+    return $destination;
+}
+
+/**
+ * Given a PATH, create a new WEBP file at the same place
+ * Original files will not be deleted to revert the changes later
+ */
+function lws_op_generate_webp_file($filepath) {
+    if (!file_exists($filepath)) {
+        return false;
+    }
+
+    // Get image type.
+    $image_type = exif_imagetype($filepath);
+
+    switch ($image_type) {
+    case IMAGETYPE_GIF:
+        $im = imagecreatefromgif($filepath);
+        break;
+    case IMAGETYPE_JPEG:
+        $im = imagecreatefromjpeg($filepath);
+        break;
+    case IMAGETYPE_PNG:
+        $im = imagecreatefrompng($filepath);
+        break;
+    default:
+        return false;
+    }
+
+    $newImagePath = $filepath . '.webp';
+    imagepalettetotruecolor($im);
+    imagealphablending($im, false);
+    imagesavealpha($im, true);
+    imagewebp($im, $newImagePath);
+
+    return $newImagePath;
+}
+
+// /**
+//  * Given a PATH, sizes a name and the original file sizes, create a new WEBP file with a specific size
+//  * Original files will not be deleted to revert the changes later
+//  */
+// function lws_op_generate_webp_file_sized($filepath, $width, $height, $bw, $bh, $name)
+// {
+//     if (!file_exists($filepath)) {
+//         return false;
+//     }
+
+//     // Get image type.
+//     $image_type = exif_imagetype($filepath);
+
+//     switch ($image_type) {
+//     case IMAGETYPE_GIF:
+//         $im = imagecreatefromgif($filepath);
+//         break;
+//     case IMAGETYPE_JPEG:
+//         $im = imagecreatefromjpeg($filepath);
+//         break;
+//     case IMAGETYPE_PNG:
+//         $im = imagecreatefrompng($filepath);
+//         break;
+//     default:
+//         return false;
+//     }
+    
+    
+//     $newImagePath = $filepath . '.webp';
+//     $new_image = imagecreatetruecolor($width, $height);
+
+//     imagepalettetotruecolor($im);
+//     imagealphablending($im, false);
+//     imagesavealpha($im, true);
+
+//     imagecopyresampled($new_image, $im, 0, 0, 0, 0, $width, $height, $bw, $bh);
+//     imagewebp($im, $newImagePath);
+//     return $newImagePath;
+// }
+
+
+add_action('lws_op_hook_convert_webp', 'lws_op_convert_all_to_webp', 15);
+add_action('lws_op_hook_unconvert_webp', 'lws_op_delete_webp_files', 8);
+
+
+/**
+ * Once activated, will convert all current images to WEBP
+ * Original files will not be deleted to revert the changes later
+ */
+function lws_op_convert_all_to_webp() {
+    global $wpdb;
+    $args = array(
+        'numberposts' => -1,
+        'post_type' => 'attachment',
+    );
+    $attachments = get_posts($args);
+    foreach ($attachments as $a) {
+        if (explode('/', $a->post_mime_type)[0] == 'image' && $a->post_mime_type != 'image/webp') {
+            $id = $a->ID;
+            $path = get_attached_file($id);
+            @rename($path. '.old', $path);        
+            lws_op_generate_webp_file($path);
+
+            $meta_value = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d",
+                    $id
+                )
+            );
+
+            wp_update_post(array('ID' => $id, 'post_mime_type' => 'image/webp'));
+            $wpdb->query(
+                $wpdb->prepare(
+                    "UPDATE {$wpdb->postmeta} SET meta_value = %s WHERE post_id = %d AND meta_key = '_wp_attached_file'",
+                    $meta_value . '.webp',
+                    $id
+                )
+            );
+
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+            $imagePath = $path . ".webp";
+
+            if ($imagePath && file_exists($imagePath)) {
+                wp_generate_attachment_metadata($id, $imagePath);
+            }
+        }
+    }
+    
+    lws_op_update_posts_webp("convert");
+}
+
+/**
+ * Once activated, will unconvert all current images to their orignal type
+ * If there is no original file, do nothing
+ */
+function lws_op_delete_webp_files() {
+    global $wpdb;
+    $args = array(
+        'numberposts' => -1,
+        'post_type' => 'attachment',
+    );
+    $attachments = get_posts($args);
+
+    foreach ($attachments as $a) {
+        if (explode('/', $a->post_mime_type)[0] == 'image' && $a->post_mime_type == 'image/webp') {            
+            $id = $a->ID;
+            $path = get_attached_file($id);
+            $filename = basename($path);
+            $extension = explode('.', $filename);
+            array_pop($extension);
+
+            $new_path = implode('.', $extension);
+            $extension = end($extension);
+            $dirname = dirname($path);
+            $new_path = $dirname . '/' . $new_path;
+
+            if (file_exists($new_path)) {
+                rename($path. '.old', $path);
+                unlink($path);
+
+                $meta_value = $wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d",
+                        $id
+                    )
+                );
+                $meta_value = explode('.', $meta_value);
+                array_pop($meta_value);
+                $meta_value = implode('.', $meta_value);
+                wp_update_post(array('ID' => $id, 'post_mime_type' => 'image/' . $extension));
+                $wpdb->query(
+                    $wpdb->prepare(
+                        "UPDATE {$wpdb->postmeta} SET meta_value = %s WHERE post_id = %d AND meta_key = '_wp_attached_file'",
+                        $meta_value,
+                        $id
+                    )
+                );
+            }
+
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+            if ($new_path && file_exists($new_path)) {
+                wp_generate_attachment_metadata($id, $new_path);
+            }
+        }
+    }
+
+    lws_op_update_posts_webp("restore");
+}
+
+/**
+ * When a new file is uploaded, if activated, will compress it (if is an image)
+ */
+if (get_option('lws_op_autoconvert_compression') && !get_option('lws_op_deactivated')) {
+    add_filter('wp_generate_attachment_metadata', 'lws_op_compress_to_jpeg_upload', 15, 2);
+    function lws_op_compress_to_jpeg_upload($metadata, $attachment_id) {
+        if (isset($metadata['sizes'])){
+            if (isset($metadata['sizes']['mime-type'])){
+                if (explode('/', reset($metadata['sizes'])['mime-type'])[0] == 'image') {
+                    $path = get_attached_file($attachment_id);
+
+                    copy($path, $path . '.old');
+                    lws_op_compress_to_jpeg($path, $path, 60);
+
+                    foreach ($metadata['sizes'] as $size => $data) {
+                        $path = explode('/', $path);
+                        array_pop($path);
+                        $path[] = $data['file'];
+                        $path = implode('/', $path);
+                        copy($path, $path . '.old');
+                        lws_op_compress_to_jpeg($path, $path, 60);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * When a new file is uploaded, if activated, will convert it to WEBP (if not already)
+ */
+if (get_option('lws_op_autoconvert_webp') && !get_option('lws_op_deactivated')) {
+    add_filter('wp_generate_attachment_metadata', 'lws_op_webp_upload', 10, 2);
+    function lws_op_webp_upload($metadata, $attachment_id) {
+        global $wpdb;
+        
+        if (isset($metadata['sizes'])){
+            if (isset($metadata['sizes']['mime-type'])){
+                if (explode('/', reset($metadata['sizes'])['mime-type'])[0] == 'image' && reset($metadata['sizes'])['mime-type'] != 'image/webp') {
+                    $meta = $metadata;
+                    $path = get_attached_file($attachment_id);
+                    lws_op_generate_webp_file($path);
+                    $meta['file'] .= '.webp';
+
+                    $meta_value = $wpdb->get_var(
+                        $wpdb->prepare(
+                            "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d",
+                            $attachment_id
+                        )
+                    );
+                    wp_update_post(array('ID' => $attachment_id, 'post_mime_type' => 'image/webp'));
+                    $wpdb->get_var(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->postmeta} SET meta_value = %s WHERE post_id = %d AND meta_key = '_wp_attached_file'",
+                            $meta_value . '.webp',
+                            $attachment_id
+                        )
+                    );
+
+                    require_once(ABSPATH . 'wp-admin/includes/image.php');
+                    wp_generate_attachment_metadata($attachment_id, $meta['file']);
+                    return $meta;
+                }
+            }
+        }
+    
+        return $metadata;
+    }
+}
+
+
+/**
+ * TODO
+ */
+//add_action('delete_attachment', 'lws_op_restore_file_to_default_before_delete');
+function lws_op_restore_file_to_default_before_delete($attachment_id, $post)
+{
+}
+
+function lws_op_update_posts_webp($usage) {
+    global $wpdb;
+    $args = array(
+        'numberposts' => -1,
+        'post_type' => 'attachment',
+    );
+    $attachments = get_posts($args);
+    foreach ($attachments as $a) {
+        if (explode('/', $a->post_mime_type)[0] == 'image') {
+            $id = $a->ID;
+            $url = wp_get_attachment_url($id);
+            if ($usage == "convert") {
+                $elements = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s)
+                        WHERE post_content LIKE %s
+                    ",
+                        $url . '"',
+                        $url . '.webp"',
+                        '%' . $url . '"%'
+                    )
+                );
+            } else {
+                $url = explode('.', $url);
+                array_pop($url);
+                $url = implode('.', $url);
+                $file = str_replace(get_site_url() . '/', ABSPATH, $url);
+                if (file_exists($file)) {
+                    $exists = true;
+                    $wpdb->get_results(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s)
+                            WHERE post_content LIKE %s
+                        ",
+                            $url . '.webp',
+                            $url,
+                            '%' . $url . '"%'
+                        )
+                    );
+                }
+            }
+
+            $meta = wp_get_attachment_metadata($id);
+            foreach ($meta['sizes'] as $key => $size) {
+                $name = $size['file'];
+                if ($usage == "convert") {
+                    $name = explode('.', $size['file']);
+                    array_pop($name);
+                    $name = implode('.', $name);
+                
+                    $url = explode('/', wp_get_attachment_url($id));
+                    array_pop($url);
+                    $url[] = $name;
+                    $url = implode('/', $url);
+
+                    $wpdb->get_results(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s)
+                            WHERE post_content LIKE %s
+                        ",
+                            $url . '"',
+                            $url . '.webp"',
+                            '%' . $url . '"%'
+                        )
+                    );
+                } else {
+                    $url = explode('/', wp_get_attachment_url($id));
+                    array_pop($url);
+                    $url[] = $name;
+                    $url = implode('/', $url);
+                    $file = str_replace(get_site_url() . '/', ABSPATH, $url);
+                    if (file_exists($file)) {
+                        $exists = true;
+                        $wpdb->get_results(
+                            $wpdb->prepare(
+                                "UPDATE {$wpdb->posts} SET post_content = REPLACE(post_content, %s, %s)
+                                WHERE post_content LIKE %s
+                            ",
+                                $url . '.webp',
+                                $url,
+                                '%' . $url . '"%'
+                            )
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+// 
+// 
+// END OF MEDIAS-RELATED FUNCTIONS ###
+
+
+add_action(
+    'wp', function () {
+        if (get_option('lws_op_force_no_lazyload_video') && !get_option('lws_op_deactivated')) {
+            function lws_op_disable_audio_video_lazy_loading() {
+                global $wpdb;
+    
+                $elements = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "SELECT post_content FROM {$wpdb->posts} WHERE post_content LIKE %s",
+                        '%<video%',
+                    )
+                );
+
+                foreach ($elements as $element) {
+                    $element = $element->post_content;
+                    if (str_contains($element, 'preload="none"')) {
+                        $element = str_replace('preload="none"', 'preload="auto"', $element);
+                    }
+
+                    $wpdb->get_results(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->posts} SET post_content = %s WHERE post_content LIKE %s",
+                            $element,
+                            '%<video%',
+                        )
+                    );
+                }
+
+                $elements = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "SELECT post_content FROM {$wpdb->posts} WHERE post_content LIKE %s",
+                        '%<audio%',
+                    )
+                );
+
+                foreach ($elements as $element) {
+                    $element = $element->post_content;
+                    if (str_contains($element, 'preload="none"')) {
+                        $element = str_replace('preload="none"', 'preload="auto"', $element);
+                    }
+
+                    $wpdb->get_results(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->posts} SET post_content = %s WHERE post_content LIKE %s",
+                            $element,
+                            '%<audio%',
+                        )
+                    );
+                }
+            }
+            lws_op_disable_audio_video_lazy_loading();
+        }
+
+        if (get_option('lws_op_force_lazyload_video') && !get_option('lws_op_deactivated')) {
+            function lws_op_force_audio_video_lazy_loading() {
+                global $wpdb;
+    
+                $elements = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "SELECT post_content FROM {$wpdb->posts} WHERE post_content LIKE %s",
+                        '%<video%'
+                    )
+                );
+        
+                foreach ($elements as $element) {
+                    $element = $element->post_content;
+                    if (str_contains($element, 'autoplay')) {
+                        $element = str_replace('autoplay', '', $element);
+                    }
+                    if (str_contains($element, 'preload="auto"')) {
+                        $element = str_replace('preload="auto"', 'preload="none"', $element);
+                    }
+                    if (str_contains($element, 'preload="metadata"')) {
+                        $element = str_replace('preload="metadata"', 'preload="none"', $element);
+                    }
+    
+                    $wpdb->get_results(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->posts} SET post_content = %s WHERE post_content LIKE %s",
+                            $element,
+                            '%<video%'
+                        )
+                    );
+                }
+    
+                $elements = $wpdb->get_results(
+                    $wpdb->prepare(
+                        "SELECT post_content FROM {$wpdb->posts} WHERE post_content LIKE %s",
+                        '%<audio%',
+                    )
+                );
+    
+                foreach ($elements as $element) {
+                    $element = $element->post_content;
+                    if (str_contains($element, 'autoplay')) {
+                        $element = str_replace('autoplay', '', $element);
+                    }
+                    if (str_contains($element, 'preload="auto"')) {
+                        $element = str_replace('preload="auto"', 'preload="none"', $element);
+                    }
+                    if (str_contains($element, 'preload="metadata"')) {
+                        $element = str_replace('preload="metadata"', 'preload="none"', $element);
+                    }
+    
+                    $wpdb->get_results(
+                        $wpdb->prepare(
+                            "UPDATE {$wpdb->posts} SET post_content = %s WHERE post_content LIKE %s",
+                            $element,
+                            '%<audio%',
+                        )
+                    );
+                }
+            }
+    
+            lws_op_force_audio_video_lazy_loading();
+        }
+    
+        if (get_option('lws_op_deactivate_lazyload')) {
+            add_filter( 'wp_lazy_loading_enabled', '__return_false' );
+        }
+    
+        if (get_option('lws_op_deactivate_lazyload_image')) {
+            add_filter('wp_lazy_loading_enabled', 'lws_op_disable_image_lazy_loading', 10, 3);
+            function lws_op_disable_image_lazy_loading($default, $tag_name, $context)
+            {
+                global $wp_query;
+                if ('img' === $tag_name && 'the_content' === $context) {
+                    return false;
+                }
+                return $default;
+            }
+        }
+    
+        if (get_option('lws_op_deactivate_lazyload_iframe')) {
+            add_filter('wp_lazy_loading_enabled', 'lws_op_disable_iframe_lazy_loading', 10, 3);
+            //Allows to disable lazy_load on every tags chosen ; here 'iframe' or 'img'
+            function lws_op_disable_iframe_lazy_loading($default, $tag_name, $context)
+            {
+                global $wp_query;
+                if ('iframe' === $tag_name && 'the_content' === $context) {
+                    return false;
+                }
+                return $default;
+            }
+        }
+    }
+);
+
+if (!get_option('lws_optimize_offline')){
+  add_action("wp_ajax_lws_option_media_checkbox", "lws_option_media_checkbox");
+    function lws_option_media_checkbox() {
+        check_ajax_referer('checkbox_update_option_to_change', '_ajax_nonce');
+        if(isset($_POST['action']) && isset($_POST['option']) && isset($_POST['checked'])) {
+            $media_to_webp = array(
+                'lws_op_autoconvert_compression',
+                'lws_op_autoconvert_webp',
+                'lws_op_deactivate_lazyload_iframe',
+                'lws_op_deactivate_lazyload_image',
+                'lws_op_deactivate_lazyload',
+                'lws_op_force_lazyload_video',
+                'lws_op_force_no_lazyload_video',
+            );
+            $option = sanitize_text_field($_POST['option']);
+            $is_checked = rest_sanitize_boolean($_POST['checked']);
+            if ($option == 'lws_op_deactivate_lazyload_iframe' || $option == 'lws_op_deactivate_lazyload_image' || $option == 'lws_op_deactivate_lazyload') :
+                if (!$is_checked) {
+                    if (in_array($option, $media_to_webp)) {
+                        update_option($option, true);
+                    }
+                    if ($option == 'lws_op_autoconvert_webp') {
+                        wp_unschedule_event(wp_next_scheduled('lws_op_hook_unconvert_webp'), 'lws_op_hook_unconvert_webp');
+                        if (! wp_next_scheduled('lws_op_hook_convert_webp')) {
+                            wp_schedule_event(time(), 'threeminutes', 'lws_op_hook_convert_webp');
+                        }
+                    } elseif ($option == 'lws_op_autoconvert_compression') {
+                        lws_op_compress_all_to_jpeg();
+                    }
+                }
+                else{
+                    if (in_array($option, $media_to_webp)) {
+                        delete_option($option);
+                    }
+                }
+            else :
+                if ($is_checked) {
+                    if (in_array($option, $media_to_webp)) {
+                        update_option($option, true);
+                    }
+                    if ($option == 'lws_op_autoconvert_webp') {
+                        wp_unschedule_event(wp_next_scheduled('lws_op_hook_unconvert_webp'), 'lws_op_hook_unconvert_webp');
+                        if (! wp_next_scheduled('lws_op_hook_convert_webp')) {
+                            wp_schedule_event(time(), 'threeminutes', 'lws_op_hook_convert_webp');
+                        }
+                    } elseif ($option == 'lws_op_autoconvert_compression') {
+                        lws_op_compress_all_to_jpeg();
+                    }
+                }
+                else{
+                    if (in_array($option, $media_to_webp)) {
+                        delete_option($option);
+                    }
+                    if ($option == 'lws_op_autoconvert_webp') {
+                        wp_unschedule_event(wp_next_scheduled('lws_op_hook_convert_webp'), 'lws_op_hook_convert_webp');
+                        if (! wp_next_scheduled('lws_op_hook_unconvert_webp')) {
+                            wp_schedule_event(time(), 'threeminutes', 'lws_op_hook_unconvert_webp');
+                        }
+                    } elseif ($option == 'lws_op_autoconvert_compression') {
+                        lws_op_uncompress_all_to_jpeg();
+                    }
+                }
+            endif;
+        }
+
+    }
+
+    add_action("wp_ajax_lws_add_option_media", "lws_op_add_option");
+    function lws_op_add_option()
+    {
+        check_ajax_referer('media_change_max_width', '_ajax_nonce');
+        if(isset($_POST['action'])) {
+            if (isset($_POST['value'])) {
+                $value = sanitize_text_field($_POST['value']);
+                update_option("lws_op_change_max_width_media", $value);
+            }
+        }
+        wp_die();
+    }
+
+    add_action("wp_ajax_lws_delete_option_media", "lws_op_delete_option");
+    function lws_op_delete_option()
+    {
+        check_ajax_referer('also_media_change_max_width', '_ajax_nonce');
+        if(isset($_POST['action'])) {
+            delete_option("lws_op_change_max_width_media");
+        }
+        wp_die();
+    }
+
+    if (get_option('lws_op_change_max_width_media')) {
+        $value = get_option('lws_op_change_max_width_media');
+        if ($value == 'disabled') {
+            add_filter('big_image_size_threshold', '__return_false');
+        } else {
+            add_filter('big_image_size_threshold', 'lws_op_image_size_threshold');
+            function lws_op_image_size_threshold($threshold)
+            {
+                $threshold = get_option('lws_op_change_max_width_media');
+                return $threshold;
+            }
+        }
+    }
+}
+
+/**
+ * Minify HTML files automatically
+ * at Zuziko.com
+ * March 5, 2021 by David Green
+ */
+class FLHM_HTML_Compression
+{
+    protected $flhm_compress_css = true;
+    protected $flhm_compress_js = true;
+    protected $flhm_info_comment = true;
+    protected $flhm_remove_comments = true;
+    protected $html;
+    public function __construct($html)
+    {
+        if (!empty($html)) {
+            $this->flhm_parseHTML($html);
+        }
+    }
+    public function __toString()
+    {
+        return $this->html;
+    }
+    protected function flhm_bottomComment($raw, $compressed)
+    {
+        $raw = strlen($raw);
+        $compressed = strlen($compressed);
+        $savings = ($raw-$compressed) / $raw * 100;
+        $savings = round($savings, 2);
+        return '<!--HTML compressed, size saved '.$savings.'%. From '.$raw.' bytes, now '.$compressed.' bytes-->';
+    }
+    protected function flhm_minifyHTML($html)
+    {
+        $pattern = '/<(?<script>script).*?<\/script\s*>|<(?<style>style).*?<\/style\s*>|<!(?<comment>--).*?-->|<(?<tag>[\/\w.:-]*)(?:".*?"|\'.*?\'|[^\'">]+)*>|(?<text>((<[^!\/\w.:-])?[^<]*)+)|/si';
+        preg_match_all($pattern, $html, $matches, PREG_SET_ORDER);
+        $overriding = false;
+        $raw_tag = false;
+        $html = '';
+        foreach ($matches as $token) {
+            $tag = (isset($token['tag'])) ? strtolower($token['tag']) : null;
+            $content = $token[0];
+            if (is_null($tag)) {
+                if (!empty($token['script'])) {
+                    $strip = $this->flhm_compress_js;
+                } elseif (!empty($token['style'])) {
+                    $strip = $this->flhm_compress_css;
+                } elseif ($content == '<!--wp-html-compression no compression-->') {
+                    $overriding = !$overriding;
+                    continue;
+                } elseif ($this->flhm_remove_comments) {
+                    if (!$overriding && $raw_tag != 'textarea') {
+                        $content = preg_replace('/<!--(?!\s*(?:\[if [^\]]+]|<!|>))(?:(?!-->).)*-->/s', '', $content);
+                    }
+                }
+            } else {
+                if ($tag == 'pre' || $tag == 'textarea') {
+                    $raw_tag = $tag;
+                } elseif ($tag == '/pre' || $tag == '/textarea') {
+                    $raw_tag = false;
+                } else {
+                    if ($raw_tag || $overriding) {
+                        $strip = false;
+                    } else {
+                        $strip = true;
+                        $content = preg_replace('/(\s+)(\w++(?<!\baction|\balt|\bcontent|\bsrc)="")/', '$1', $content);
+                        $content = str_replace(' />', '/>', $content);
+                    }
+                }
+            }
+            if ($strip) {
+                $content = $this->flhm_removeWhiteSpace($content);
+            }
+            $html .= $content;
+        }
+        return $html;
+    }
+    public function flhm_parseHTML($html)
+    {
+        $this->html = $this->flhm_minifyHTML($html);
+        if ($this->flhm_info_comment) {
+            $this->html .= "\n" . $this->flhm_bottomComment($html, $this->html);
+        }
+    }
+    protected function flhm_removeWhiteSpace($str)
+    {
+        $str = str_replace("\t", ' ', $str);
+        $str = str_replace("\n", '', $str);
+        $str = str_replace("\r", '', $str);
+        $str = str_replace("// The customizer requires postMessage and CORS (if the site is cross domain).", '', $str);
+        while (stristr($str, '  ')) {
+            $str = str_replace('  ', ' ', $str);
+        }
+        return $str;
+    }
+}
+function flhm_wp_html_compression_finish($html)
+{
+    return new FLHM_HTML_Compression($html);
+}
+
