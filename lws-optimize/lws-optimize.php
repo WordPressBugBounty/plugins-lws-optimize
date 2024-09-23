@@ -4,10 +4,10 @@
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media conversion... Everything you need for a better website
- * Version:           3.1.6.2
+ * Version:           3.1.6.3
  * Author:            LWS
  * Author URI:        https://www.lws.fr
- * Tested up to:      6.5
+ * Tested up to:      6.6
  * Domain Path:       /languages
  *
  * @link    https://sms.lws.fr/
@@ -40,6 +40,23 @@ if (!defined('LWS_OP_UPLOADS')) {
 // lws-optimize/lws-optimize.php
 if (!defined('LWS_OP_BASENAME')) {
     define('LWS_OP_BASENAME', plugin_basename(__FILE__));
+}
+
+/**
+ * Remove a directory and all its content
+ */
+function removeDir(string $dir): void {
+    $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+    $files = new RecursiveIteratorIterator($it,
+                 RecursiveIteratorIterator::CHILD_FIRST);
+    foreach($files as $file) {
+        if ($file->isDir()){
+            removeDir($file->getPathname());
+        } else {
+            unlink($file->getPathname());
+        }
+    }
+    rmdir($dir);
 }
 
 
@@ -116,6 +133,10 @@ function lws_optimize_on_upgrade_cleanup($upgrader_object, $options)
             }
         }
     }
+
+    if (is_dir(ABSPATH . 'wp-content/cache/lws-optimize/') && function_exists("removeDir")) {
+        removeDir(ABSPATH . 'wp-content/cache/lws-optimize/');
+    }
 }
 
 /**
@@ -126,7 +147,7 @@ function lws_op_scripts()
 {
     $versionning = "1.0";
     wp_enqueue_style('lws_top_css_out', LWS_OP_URL . "css/lws_op_stylesheet_out.css");
-    if (get_current_screen()->base == ('toplevel_page_lws-op-config')) {
+    if (get_current_screen()->base == ('toplevel_page_lws-op-config') || get_current_screen()->base == ('lws-optimize_page_lws-op-config-imageop')) {
 
         wp_enqueue_style('lws_op_css', LWS_OP_URL . "css/lws_op_stylesheet.css?v=" . $versionning);
         wp_enqueue_style('lws_cl-Poppins', 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
@@ -223,7 +244,10 @@ function lwsop_review_ad_plugin()
 add_action('admin_menu', 'lws_op_menu_admin');
 function lws_op_menu_admin()
 {
-    add_menu_page(__('LWS Optimize', 'lws-optimize'), 'LWS Optimize', 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
+    add_menu_page(__('LWS Optimize', 'lws-optimize'), __('LWS Optimize', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
+    
+    // add_submenu_page('lws-op-config', __('General', 'lws-optimize'), __('General options', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
+    // add_submenu_page('lws-op-config', __('Image Optimization', 'lws-optimize'), __('Image Optimization', 'lws-optimize'), 'manage_options', 'lws-op-config-imageop', 'lws_op_image_opti_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
 }
 
 
@@ -239,6 +263,10 @@ function lws_op_page()
         array('plugins', __('Our others plugins', 'lws-optimize')),
     );
     include __DIR__ . '/views/tabs.php';
+}
+
+function lws_op_image_opti_page() {
+    include __DIR__ . '/views/image_optimize.php';
 }
 
 
@@ -1008,6 +1036,9 @@ if (!isset($state)) {
     }
 
     add_action('init', function () {
+        if (is_dir(ABSPATH . 'wp-content/cache/lws-optimize/') && function_exists("removeDir")) {
+            removeDir(ABSPATH . 'wp-content/cache/lws-optimize/');
+        }
         if (!in_array('lwscache/lwscache.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             if (!class_exists("LWSCache")) {
                 require LWS_OP_DIR . 'classes/cache/class-lws-cache.php';
@@ -1146,3 +1177,4 @@ add_filter('cron_schedules', function () {
 
 include_once("classes/LwsOptimize.php");
 $GLOBALS['lws_optimize'] = $lwsop = new LwsOptimize();
+

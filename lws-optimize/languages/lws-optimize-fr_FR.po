@@ -1392,3 +1392,6 @@ msgstr "Une <a href=\"https://wordpress.org/support/plugin/lws-optimize/reviews/
 
 msgid "<b>Exclusive</b>: Get <b>15%</b> off your WordPress hosting"
 msgstr "<b>Exclusif :</b> Obtenez <b>15%</b> de réduction sur les hébergements WordPress"
+
+msgid "Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached."
+msgstr "Redis Cache est déjà activé sur ce site et pourrait provoquer des incompatibilitées avec Memcached. Veuillez désactiver Redis Cache afin d'utiliser Memcached."

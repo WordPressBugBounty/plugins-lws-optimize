@@ -22,6 +22,43 @@ class LwsOptimize
             update_option('lws_optimize_config_array', $this->optimize_options);
         }
 
+        // If Memcached is activated but there is no object-cache.php, add it back
+        if ($this->lwsop_check_option('memcached')['state'] === "true") {
+        if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
+            $this->optimize_options['memcached']['state'] = "false";
+        } else {
+            if (class_exists('Memcached')) {
+                $memcached = new Memcached();
+                if (empty($memcached->getServerList())) {
+                    $memcached->addServer('localhost', 11211);
+                }
+
+                if ($memcached->getVersion() === false) {
+                    $this->optimize_options['memcached']['state'] = "false";
+                    if (file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
+                        unlink(WP_CONTENT_DIR . '/object-cache.php');
+                    }
+                    // NO MEMCACHED
+                } else {
+                    if (!file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
+                        file_put_contents(WP_CONTENT_DIR . '/object-cache.php', file_get_contents(LWS_OP_DIR . '/views/object-cache.php'));
+                    }
+                }
+            } else {
+                $this->optimize_options['memcached']['state'] = "false";
+                if (file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
+                    var_dump("no_class");
+                    unlink(WP_CONTENT_DIR . '/object-cache.php');
+                }
+                // NO MEMCACHED
+            }
+        }
+    } else {
+        if (file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
+            unlink(WP_CONTENT_DIR . '/object-cache.php');
+        }
+    }
+
         // Whether the plugin should work or not. While deactivated, only PageSpeed works
         $this->state = get_option('lws_optimize_offline', false);
 
@@ -138,35 +175,8 @@ class LwsOptimize
     {
         load_plugin_textdomain('lws-optimize', false, dirname(LWS_OP_BASENAME) . '/languages');
 
-        // If Memcached is activated but there is no object-cache.php, add it back
-        if ($this->lwsop_check_option('memcached')['state'] === "true") {
-            if (class_exists('Memcached')) {
-                $memcached = new Memcached();
-                if (empty($memcached->getServerList())) {
-                    $memcached->addServer('localhost', 11211);
-                }
-
-                if ($memcached->getVersion() === false) {
-                    if (file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
-                        unlink(WP_CONTENT_DIR . '/object-cache.php');
-                    }
-                    // NO MEMCACHED
-                } else {
-                    if (!file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
-                        file_put_contents(WP_CONTENT_DIR . '/object-cache.php', file_get_contents(LWS_OP_DIR . '/views/object-cache.php'));
-                    }
-                }
-            } else {
-                if (file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
-                    unlink(WP_CONTENT_DIR . '/object-cache.php');
-                }
-                // NO MEMCACHED
-            }
-
-        } else {
-            if (file_exists(WP_CONTENT_DIR . '/object-cache.php')) {
-                unlink(WP_CONTENT_DIR . '/object-cache.php');
-            }
+        if ( ! function_exists( 'wp_crop_image' ) ) {
+            include( ABSPATH . 'wp-admin/includes/image.php' );
         }
 
         // TODO
@@ -840,6 +850,11 @@ class LwsOptimize
         }
 
         if ($element == "memcached") {
+            if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
+                $this->optimize_options[$element]['state'] = "false";
+                $return = update_option('lws_optimize_config_array', $this->optimize_options);
+                wp_die(json_encode(array('code' => "REDIS_ALREADY_HERE", 'data' => "FAILURE", 'state' => "unknown")));
+            }
             if (class_exists('Memcached')) {
                 $memcached = new Memcached();
                 if (empty($memcached->getServerList())) {
@@ -1819,5 +1834,44 @@ class LwsOptimize
         }
 
         apply_filters("lws_optimize_clear_filebased_cache", false);
+    }
+
+    public function manage_image_optimization() {
+        require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
+
+        // If the media optimisation is active, instantiate the class
+        if ($this->lwsop_check_option("media_optimize")['state'] == "true") {
+            $media_options = $this->lwsop_check_option("media_optimize")['data'] ?? [];
+
+            $auto_convert_on_upload = $media_options['convert_on_upload'] ?? false;
+            $auto_convert_on_cron = $media_options['convert_cron'] ?? false;
+
+            // If not found, add back the cron for the media conversion
+            // Executed every hour, it will convert all images to the selected mimetype
+            if ($auto_convert_on_cron) {
+                if (!wp_next_scheduled('lws_optimize_convert_media_cron')) {
+                    wp_schedule_event(time(), 'hourly', 'lws_optimize_convert_media_cron');
+                }
+                // $im_opt->convert_all_medias();
+            } else {
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+            }
+
+            if ($auto_convert_on_upload) {
+                $im_opt = new ImageOptimization($autoupdate = true);
+            }
+        }
+
+        // $im_opt->convert_all_medias();
+        // $im_opt->revertOptimization();
+
+        // TODO : Onglet dédié, si pas activé, rien disponible
+        // Si activé, propose les différentes actions
+    }
+
+    public function lws_optimize_convert_media_cron() {
+        require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
+        $im_opt = new ImageOptimization();
+        $im_opt->convert_all_medias();
     }
 }

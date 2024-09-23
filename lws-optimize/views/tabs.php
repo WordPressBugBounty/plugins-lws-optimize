@@ -605,6 +605,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
         document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checkbox) {
             checkbox.addEventListener('change', function(event) {
                 let element = this;
+                element.disabled = true;
                 let state = element.checked;
                 let type = element.getAttribute('id');
 
@@ -629,6 +630,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
                     },
 
                     success: function(data) {
+                        element.disabled = false;
                         document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
                             checks.disabled = false;
                         });
@@ -660,6 +662,10 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
                                 element.checked = !state;
                                 callPopup('error', "<?php esc_html_e("Memcached could not be found. Maybe your website is not compatible with it.", "lws-optimize"); ?>");
                                 break;
+                            case 'REDIS_ALREADY_HERE':
+                                element.checked = !state;
+                                callPopup('error', "<?php esc_html_e("Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached.", "lws-optimize"); ?>");
+                                break;
                             case 'PANEL_CACHE_OFF':
                                 element.checked = !state;
                                 callPopup('warning', "<?php esc_html_e('LWSCache is not activated on this hosting. Please go to your LWSPanel and activate it.', 'lws-optimize'); ?>");
@@ -690,6 +696,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
                         }
                     },
                     error: function(error) {
+                        element.disabled = false;
                         document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
                             checks.disabled = false;
                         });

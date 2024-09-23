@@ -3142,6 +3142,36 @@ a.link_to_rating_with_stars {
     cursor: pointer;
 }
 
+
+/* MEDIA OPTI */
+
+div.lwsop_converter_scrollblock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.lwsop_scrollblock_tophalf {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 15px;
+}
+
+.lwsop_scrollblock_bottomhalf {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.lwsop_scrollblock_bottomhalf > label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
 @media only screen and (max-width: 1280px) {
     .lwsoptimize_container_top {
         flex-direction: column;

@@ -2,8 +2,8 @@
 Contributors: aurelienlws
 Tags: LWS, Admin, Optimisation, Cache
 Requires at least: 6.0
-Tested up to: 6.5
-Stable tag: 3.1.6.2
+Tested up to: 6.6
+Stable tag: 3.1.6.3
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
