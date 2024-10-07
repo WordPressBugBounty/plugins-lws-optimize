@@ -4,7 +4,7 @@
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media conversion... Everything you need for a better website
- * Version:           3.1.6.3
+ * Version:           3.1.6.5
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.6
@@ -1177,4 +1177,3 @@ add_filter('cron_schedules', function () {
 
 include_once("classes/LwsOptimize.php");
 $GLOBALS['lws_optimize'] = $lwsop = new LwsOptimize();
-

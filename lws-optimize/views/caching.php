@@ -94,26 +94,30 @@ $caches = [
 ];
 ?>
 
-<div class="lwsop_bluebanner" style="justify-content: space-between;">
-    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
-    <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
-</div>
+<div class="lwsop_temporary_deactivated">
+    <div class="lwsop_temp_desactivated_sub"></div>
+    <div class="lwsop_bluebanner" style="justify-content: space-between;">
+        <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
+        <!-- Temporary deactivated -->
+        <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
+    </div>
 
-<div class="lwsop_contentblock_stats">
-    <?php foreach ($caches as $type => $cache) : ?>
-        <div class="lwsop_stat_block" id="<?php echo esc_attr($cache['id']); ?>">
-            <img src="<?php echo esc_url(plugins_url("images/{$cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($cache['image_alt']); ?>" width="<?php echo esc_attr($cache['width']); ?>" height="<?php echo esc_attr($cache['height']); ?>">
-            <span><?php echo esc_html__($cache["title"]); ?></span>
-            <div class="lwsop_stats_bold">
-                <span>
-                    <?php echo esc_html("{$cache['size']} / {$cache['amount']}"); ?>
-                </span>
-                <span>
-                    <?php esc_html_e('elements', 'lws-optimize'); ?>
-                </span>
+    <div class="lwsop_contentblock_stats">
+        <?php foreach ($caches as $type => $cache) : ?>
+            <div class="lwsop_stat_block" id="<?php echo esc_attr($cache['id']); ?>">
+                <img src="<?php echo esc_url(plugins_url("images/{$cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($cache['image_alt']); ?>" width="<?php echo esc_attr($cache['width']); ?>" height="<?php echo esc_attr($cache['height']); ?>">
+                <span><?php echo esc_html__($cache["title"]); ?></span>
+                <div class="lwsop_stats_bold">
+                    <span>
+                        <?php echo esc_html("{$cache['size']} / {$cache['amount']}"); ?>
+                    </span>
+                    <span>
+                        <?php esc_html_e('elements', 'lws-optimize'); ?>
+                    </span>
+                </div>
             </div>
-        </div>
-    <?php endforeach; ?>
+        <?php endforeach; ?>
+    </div>
 </div>
 
 <div class="lwsop_bluebanner">

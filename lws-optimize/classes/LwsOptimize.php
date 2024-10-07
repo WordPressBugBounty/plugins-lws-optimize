@@ -97,6 +97,20 @@ class LwsOptimize
                 }
             }
 
+            // Add new schedules time for crons
+            add_filter( 'cron_schedules', 'lws_optimize_timestamp_crons' );
+            function lws_optimize_timestamp_crons($schedules) {
+                $schedules['lws_five_minutes'] = array(
+                    'interval' => 300,
+                    'display' => __( 'Every 5 Minutes' )
+                );
+
+                return $schedules;
+            }
+
+            // Optimize all images to the designed MIME-Type
+            // add_filter('lws_optimize_convert_media_cron', [$this, 'lws_optimize_convert_media_cron']);
+
             add_action("lws_optimize_maintenance_db_weekly", [$this, "lws_optimize_create_maintenance_db_options"]);
             add_action("wp_ajax_lws_optimize_set_maintenance_db_options", [$this, "lws_optimize_set_maintenance_db_options"]);
             add_action("wp_ajax_lws_optimize_get_maintenance_db_options", [$this, "lws_optimize_manage_maintenance_get"]);
@@ -149,6 +163,8 @@ class LwsOptimize
                 // Activate the "preload" option for the file-based cache
                 add_action("wp_ajax_lwsop_start_preload_fb", [$this, "lwsop_preload_fb"]);
                 add_action("wp_ajax_lwsop_change_preload_amount", [$this, "lwsop_change_preload_amount"]);
+
+                add_action("wp_ajax_lwsop_convert_all_images", [$this, "lwsop_convert_all_media"]);
             }
 
             add_action("wp_ajax_lws_clear_fb_cache", [$this, "lws_optimize_clear_cache"]);
@@ -178,6 +194,9 @@ class LwsOptimize
         if ( ! function_exists( 'wp_crop_image' ) ) {
             include( ABSPATH . 'wp-admin/includes/image.php' );
         }
+
+
+        // $this->lws_optimize_convert_media_cron();
 
         // TODO
         // Force remove compression/webp if were in use
@@ -1139,7 +1158,9 @@ class LwsOptimize
      * Clean the given directory. If no directory is given, remove /cache/lwsoptimize/
      */
     function lws_optimize_clean_filebased_cache($directory = false)
-    {
+    {        
+        do_action('rt_lws_cache_purge_all');
+
         if (!function_exists("lws_optimize_delete_directory")) {
             function lws_optimize_delete_directory($dir, $stats = false)
             {
@@ -1436,55 +1457,67 @@ class LwsOptimize
      */
     public function lwsop_recalculate_stats()
     {
+
+        // TODO : Fix this time sink at high directory count
         $stats = [
             'desktop' => ['amount' => 0, 'size' => 0],
             'mobile' => ['amount' => 0, 'size' => 0],
             'css' => ['amount' => 0, 'size' => 0],
             'js' => ['amount' => 0, 'size' => 0],
         ];
-
-        $paths = [
-            'desktop' => $this->lwsop_get_content_directory("cache"),
-            'mobile' => $this->lwsop_get_content_directory("cache-mobile"),
-            'css' => $this->lwsop_get_content_directory("cache-css"),
-            'js' => $this->lwsop_get_content_directory("cache-js")
-        ];
-
-        $usable_stats = [];
-
-
-        foreach ($paths as $type => $path) {
-            $totalSize = 0;
-            $fileCount = 0;
-            if (is_dir($path)) {
-                $iterator = new RecursiveIteratorIterator(
-                    new RecursiveDirectoryIterator($path),
-                    RecursiveIteratorIterator::SELF_FIRST
-                );
-
-                foreach ($iterator as $file) {
-                    if ($file->isFile()) {
-                        $totalSize += $file->getSize();
-                        $fileCount++;
-                    }
-                }
-            }
-
-            $stats[$type] = [
-                'amount' => $fileCount,
-                'size' => $totalSize
-            ];
-
-
-            $usable_stats[$type] = [
-                'amount' => $fileCount,
-                'size' => $this->lws_size_convert($totalSize)
-            ];
-        }
-
         update_option('lws_optimize_cache_statistics', $stats);
 
-        return $usable_stats;
+        return $stats;
+
+        // $stats = [
+        //     'desktop' => ['amount' => 0, 'size' => 0],
+        //     'mobile' => ['amount' => 0, 'size' => 0],
+        //     'css' => ['amount' => 0, 'size' => 0],
+        //     'js' => ['amount' => 0, 'size' => 0],
+        // ];
+
+        // $paths = [
+        //     'desktop' => $this->lwsop_get_content_directory("cache"),
+        //     'mobile' => $this->lwsop_get_content_directory("cache-mobile"),
+        //     'css' => $this->lwsop_get_content_directory("cache-css"),
+        //     'js' => $this->lwsop_get_content_directory("cache-js")
+        // ];
+
+        // $usable_stats = [];
+
+
+        // foreach ($paths as $type => $path) {
+        //     $totalSize = 0;
+        //     $fileCount = 0;
+        //     if (is_dir($path)) {
+        //         $iterator = new RecursiveIteratorIterator(
+        //             new RecursiveDirectoryIterator($path),
+        //             RecursiveIteratorIterator::SELF_FIRST
+        //         );
+
+        //         foreach ($iterator as $file) {
+        //             if ($file->isFile()) {
+        //                 $totalSize += $file->getSize();
+        //                 $fileCount++;
+        //             }
+        //         }
+        //     }
+
+        //     $stats[$type] = [
+        //         'amount' => $fileCount,
+        //         'size' => $totalSize
+        //     ];
+
+
+        //     $usable_stats[$type] = [
+        //         'amount' => $fileCount,
+        //         'size' => $this->lws_size_convert($totalSize)
+        //     ];
+        // }
+
+        // update_option('lws_optimize_cache_statistics', $stats);
+
+        // return $usable_stats;
     }
 
     function lws_size_convert($size)
@@ -1505,6 +1538,9 @@ class LwsOptimize
             $post_id = $comment->comment_post_ID;
 
             $uri = get_page_uri($post_id);
+            $uri = get_site_url(null, $uri);
+            $uri = parse_url($uri)['path'];
+
             $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
             apply_filters("lws_optimize_clear_filebased_cache", $file);
 
@@ -1525,14 +1561,16 @@ class LwsOptimize
         if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             if ($post->post_type == "product") {
                 $shop_id = wc_get_page_id('shop');
-                $uri = get_page_uri($shop_id);
+                $uri = get_permalink($shop_id);
+                $uri = parse_url($uri)['path'];
                 $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
                 apply_filters("lws_optimize_clear_filebased_cache", $file);
             }
         }
 
-        $uri = get_page_uri($post_id);
+        $uri = get_permalink($post_id);
+        $uri = parse_url($uri)['path'];
         $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
         apply_filters("lws_optimize_clear_filebased_cache", $file);
@@ -1554,13 +1592,19 @@ class LwsOptimize
         if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             if ($post->post_type == "product") {
                 $shop_id = wc_get_page_id('shop');
-                $uri = get_page_uri($shop_id);
+
+                $uri = get_permalink($shop_id);
+                $uri = parse_url($uri)['path'];
+
                 $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
                 apply_filters("lws_optimize_clear_filebased_cache", $file);
             }
         }
-        $uri = get_page_uri($post_id);
+
+        $uri = get_permalink($post_id);
+        $uri = parse_url($uri)['path'];
+
         $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
         apply_filters("lws_optimize_clear_filebased_cache", $file);
@@ -1579,13 +1623,19 @@ class LwsOptimize
     {
         if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             $cart_id = wc_get_page_id('cart');
-            $uri = get_page_uri($cart_id);
+
+            $uri = get_permalink($cart_id);
+            $uri = parse_url($uri)['path'];
+
             $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
             apply_filters("lws_optimize_clear_filebased_cache", $file);
 
             $checkout_id = wc_get_page_id('checkout');
-            $uri = get_page_uri($checkout_id);
+
+            $uri = get_permalink($checkout_id);
+            $uri = parse_url($uri)['path'];
+
             $file = $this->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
             apply_filters("lws_optimize_clear_filebased_cache", $file);
@@ -1835,43 +1885,115 @@ class LwsOptimize
 
         apply_filters("lws_optimize_clear_filebased_cache", false);
     }
+    // unset($original_data_array['media_optimize']['original_media'][$key]);
+    // update_option('lws_optimize_original_image', $original_data_array);
 
-    public function manage_image_optimization() {
-        require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
+    // public function lwsop_convert_all_media() {
+    //     check_ajax_referer('lwsop_convert_all_images_nonce', '_ajax_nonce');
+        
+    //     $type = $_POST['data']['type'] != NULL ? sanitize_text_field($_POST['data']['type']) : "webp";
+    //     $quality = $_POST['data']['quality'] != NULL ? intval($_POST['data']['quality']) : 75;
+    //     $keepcopy = $_POST['data']['type'] != NULL ? sanitize_text_field($_POST['data']['type']) : "true";
+    //     $exceptions = $_POST['data']['exceptions'] != NULL ? sanitize_textarea_field($_POST['data']['exceptions']) : '';
+    //     $amount_per_run = $_POST['data']['amount_per_patch'] != NULL ? intval($_POST['data']['amount_per_patch']) : 10;
 
-        // If the media optimisation is active, instantiate the class
-        if ($this->lwsop_check_option("media_optimize")['state'] == "true") {
-            $media_options = $this->lwsop_check_option("media_optimize")['data'] ?? [];
 
-            $auto_convert_on_upload = $media_options['convert_on_upload'] ?? false;
-            $auto_convert_on_cron = $media_options['convert_cron'] ?? false;
+    //     $exceptions = explode(',', $exceptions);
+    //     $data = [
+    //         'convert_type' => $type,
+    //         'keep_copy' => $keepcopy,
+    //         'quality' => $quality,
+    //         'exceptions' => $exceptions,
+    //         'amount_per_run' => $amount_per_run
+    //     ];
 
-            // If not found, add back the cron for the media conversion
-            // Executed every hour, it will convert all images to the selected mimetype
-            if ($auto_convert_on_cron) {
-                if (!wp_next_scheduled('lws_optimize_convert_media_cron')) {
-                    wp_schedule_event(time(), 'hourly', 'lws_optimize_convert_media_cron');
-                }
-                // $im_opt->convert_all_medias();
-            } else {
-                wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-            }
+    //     // Add the data to the database for future access by the cron
+    //     update_option('lws_optimize_all_media_convertion', $data);
 
-            if ($auto_convert_on_upload) {
-                $im_opt = new ImageOptimization($autoupdate = true);
-            }
-        }
+    //     $scheduled = false;
+    //     if (!wp_next_scheduled('lws_optimize_convert_media_cron')) {
+    //         $scheduled = wp_schedule_event(time() + 10, 'lws_five_minutes', 'lws_optimize_convert_media_cron');
+    //     } else {
+    //         wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+    //         $scheduled = wp_schedule_event(time() + 10, 'lws_five_minutes', 'lws_optimize_convert_media_cron');
+    //     }
 
-        // $im_opt->convert_all_medias();
-        // $im_opt->revertOptimization();
+    //     if ($scheduled) {
+    //         wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
+    //     } else {
+    //         wp_die(json_encode(array('code' => "FAILED", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
+    //     }
+    // }
 
-        // TODO : Onglet dédié, si pas activé, rien disponible
-        // Si activé, propose les différentes actions
-    }
+    // public function manage_image_optimization() {
+    //     require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
 
-    public function lws_optimize_convert_media_cron() {
-        require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
-        $im_opt = new ImageOptimization();
-        $im_opt->convert_all_medias();
-    }
+    //     // If the media optimisation is active, instantiate the class
+    //     if ($this->lwsop_check_option("media_optimize")['state'] == "true") {
+    //         $media_options = $this->lwsop_check_option("media_optimize")['data'] ?? [];
+
+    //         $auto_convert_on_upload = $media_options['convert_on_upload'] ?? false;
+    //         $auto_convert_on_cron = $media_options['convert_cron'] ?? false;
+
+    //         // If not found, add back the cron for the media conversion
+    //         // Executed every hour, it will convert all images to the selected mimetype
+    //         if ($auto_convert_on_cron) {
+    //             if (!wp_next_scheduled('lws_optimize_convert_media_cron')) {
+    //                 wp_schedule_event(time() + 10, 'hourly', 'lws_optimize_convert_media_cron');
+    //             }
+    //             // $im_opt->convert_all_medias();
+    //         } else {
+    //             wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+    //         }
+
+    //         if ($auto_convert_on_upload) {
+    //             $im_opt = new ImageOptimization($autoupdate = true);
+    //         }
+    //     }
+
+    //     // TODO : Faire seulement si demandé
+    //     // $im_opt->convert_all_medias();
+    //     // $im_opt->revertOptimization();
+
+    //     // TODO : Onglet dédié, si pas activé, rien disponible
+    //     // Si activé, propose les différentes actions
+    // }
+
+    // public function lws_optimize_convert_media_cron() {
+    //     require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
+    //     $im_opt = new ImageOptimization();
+
+    //     // Fetch data from the databse and check for validity
+    //     $media_data = get_option('lws_optimize_all_media_convertion', [
+    //         'convert_type' => "webp",
+    //         'keep_copy' => "true",
+    //         'quality' => 75,
+    //         'exceptions' => [],
+    //         'amount_per_run' => 10]);
+
+
+    //     $response = $im_opt->convert_all_medias($media_data['convert_type'] ?? "webp", $media_data['quality'] ?? 75, $media_data['keep_copy'] ?? "true", $media_data['exceptions'] ?? [], $media_data['amount_per_run'] ?? 10);
+
+    //     // If no attachments got converted, stop the cron here
+    //     $response = json_decode($response, true);
+    //     if (json_last_error() !== JSON_ERROR_NONE) {
+    //     } else {
+    //         $done = $response['data'];
+    //         $options = get_option('lws_optimize_current_media_conversion', [
+    //             'done' => 0,
+    //             'latest_time' => 0
+    //         ]);
+
+    //         // Stop the cron if nothing got converted
+    //         if (explode('/', $done)[0] == "0") {
+    //             wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+    //         }
+    //         // Each passage, add the amount of images converted + update the latest time
+    //         // Those data are shown in "Image Optimization"
+    //         $done = explode('/', $done)[0];
+    //         $options['latest_time'] = time();
+    //         $options['done'] += $done;
+    //         update_option('lws_optimize_current_media_conversion', $options);
+    //     }
+    // }
 }

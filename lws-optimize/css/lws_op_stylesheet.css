@@ -3172,6 +3172,16 @@ div.lwsop_converter_scrollblock {
     align-items: flex-start;
 }
 
+.lwsop_temporary_deactivated {
+    position: relative;
+}
+.lwsop_temp_desactivated_sub {
+    position: absolute;
+    background: #ffffffd9;
+    height: 100%;
+    width: 100%;
+}
+
 @media only screen and (max-width: 1280px) {
     .lwsoptimize_container_top {
         flex-direction: column;
