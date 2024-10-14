@@ -4,8 +4,8 @@ class ImageOptimization {
 
     public function __construct($autoupdate = false){
         if ($autoupdate) {
-            add_filter('image_editor_output_format', 'filter_image_editor_output_format');
-            add_filter('wp_handle_upload_prefilter', 'lws_optimize_custom_upload_filter');
+            add_filter('image_editor_output_format', [$this, 'filter_image_editor_output_format']);
+            add_filter('wp_handle_upload_prefilter', [$this, 'lws_optimize_custom_upload_filter']);
         }
     }
 
@@ -15,18 +15,96 @@ class ImageOptimization {
      */
     public function filter_image_editor_output_format($formats)
     {
-        $config_array = get_option('lws_optimize_config_array', []);
-        $convert_type = $config_array['media_optimize']['convert_type'] ?? NULL;
+        $config_array = get_option('lws_optimize_config_array', ['auto_update' => ['state' => "false", 'convert_type' => "webp"]]);
+
+        // Return the normal data if the auto_update is unset or false
+        if ($config_array == NULL || $config_array['auto_update']['state'] == "false") {
+            return $formats;
+        }
+
+        $convert_type = $config_array['auto_update']['convert_type'] ?? NULL;
         if ($convert_type === NULL) {
             $convert_type = "webp";
         }
 
         $formats["image/jpeg"] = "image/$convert_type";
         $formats["image/png"] = "image/$convert_type";
-        $formats["image/gif"] = "image/$convert_type";
-        $formats["image/avif"] = "image/$convert_type";
-        $formats["image/webp"] = "image/$convert_type";
+        // $formats["image/avif"] = "image/$convert_type";
+        // $formats["image/webp"] = "image/$convert_type";
         return $formats;
+    }
+
+    /**
+     * Hijack the uploading process to create a new version of the given $file
+     */
+    public function lws_optimize_custom_upload_filter($file)
+    {
+        $timer = microtime(true);
+        // Get the chosen mime-type from the database. If none found, default to webp convertion
+        $config_array = get_option('lws_optimize_config_array', ['auto_update' => ['state' => "false", 'convert_type' => "webp", 'keep']]);
+
+        $config_array = get_option('lws_optimize_config_array', ['auto_update' => [
+            'state' => "true",
+            'convert_type' => "webp",
+            'quality' => 75,
+        ]]);
+
+        // Return the normal data if the auto_update is unset or false
+        if ($config_array == NULL || $config_array['auto_update']['state'] == "false") {
+            return $file;
+        }        
+
+
+        $quality = $config_array['auto_update']['quality'] ?? 75;
+        $convert_type = $config_array['auto_update']['convert_type'] ?? "webp";
+        
+        // Only convert if the file type is image ; otherwise just return the untouched $file array
+        if (substr($file['type'], 0, 5) === "image") {
+            // Create a new version of the image in the new image type and overwrite the original file
+            // On error, give up on the convertion
+            if (!$this->lws_optimize_convert_image($file['tmp_name'], $file['tmp_name'], $quality, $file['type'], "image/$convert_type")) {
+                error_log(json_encode(['code' => 'CONVERT_FAIL', 'message' => 'File optimisation has failed.', 'data' => $file, 'time' => microtime(true) - $timer]));
+                return $file;
+            }
+
+            // Get the original type of the image to add it in the name 
+            // This will make it easier to convert back to the original typing
+            $tmp = explode("/", $file['type']);
+            $starting_type = $tmp[0] == "image" ? $tmp[1] : NULL;
+            if ($starting_type === NULL) {
+                error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $file, 'time' => microtime(true) - $timer]));
+                return $file;
+            }
+
+            // Add the new extension on top of the current one (e.g. : Flowers.png => Flowers.png.webp)
+            // Also, check for the new filesize of the file and update the value
+
+            // Replace the name and PATH to remove the old extension
+            $output_name = $file['name'];
+            $tmp = explode('.', $output_name);
+            array_pop($tmp);
+            $output_name = implode('.', $tmp) . ".$convert_type";
+
+            $output_path = $file['full_path'];
+            $tmp = explode('.', $output_path);
+            array_pop($tmp);
+            $output_path = implode('.', $tmp) . ".$convert_type";
+
+            // Update data
+            $file['type'] = "image/$convert_type";
+            $file['name'] = "$output_name";
+            $file['full_path'] = "$output_path";
+
+            // Get and update de filesize of the file
+            $size = filesize($file['tmp_name']);
+            if ($size) {
+                $file['size'] = $size;
+            }
+
+            return $file;
+        }
+
+        return $file;
     }
 
     /**
@@ -43,6 +121,7 @@ class ImageOptimization {
     public function lws_optimize_convert_image(string $image, string $output, int $quality = 75, string $origin = "jpeg", string $end = "webp")
     {
         $timer = microtime(true);
+
         // Abort if any parameters are null
         if ($image === NULL || $origin === NULL || $end === NULL || $output === NULL) {
             error_log(json_encode(['code' => 'NO_PARAMETERS', 'message' => 'No/missing parameters. Cannot proceed.', 'data' => NULL, 'time' => microtime(true) - $timer]));
@@ -68,11 +147,11 @@ class ImageOptimization {
             error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $origin, 'time' => microtime(true) - $timer]));
             return false;
         }
-        
 
         // Get the image type into which the image needs to be converted
         $tmp = explode("/", $end);
         $ending_type = $tmp[0] == "image" ? $tmp[1] : $tmp[0];
+
         if ($ending_type === NULL) {
             error_log(json_encode(['code' => 'INVALID_DESTINATION', 'message' => 'Destination type is not an image or mime-type is invalid.', 'data' => $end, 'time' => microtime(true) - $timer]));
             return false;
@@ -98,7 +177,6 @@ class ImageOptimization {
             return false;
         }
 
-
         // Create the new image $img
         // If the first time fail, try again using another function. If if fails again, abort
         try {
@@ -117,64 +195,6 @@ class ImageOptimization {
         return true;
     }
 
-    /**
-     * Hijack the uploading process to create a new version of the given $file
-     * 
-     */
-    public function lws_optimize_custom_upload_filter($file)
-    {
-        $timer = microtime(true);
-        // Get the chosen mime-type from the database. If none found, default to webp convertion
-        $config_array = get_option('lws_optimize_config_array', []);
-        $convert_type = $config_array['media_optimize']['convert_type'] ?? NULL;
-        $keep_copy = $config_array['media_optimize']['keep_copy'] ?? NULL;
-        if ($convert_type === NULL) {
-            $convert_type = "webp";
-        }
-        if ($keep_copy === NULL) {
-            $keep_copy = true;
-        }
-
-        $output_path = $file['tmp_name'];
-        if ($keep_copy) {
-            $output_path = "{$file['tmp_name']}.{$file['type']}";
-        }
-
-        // Only convert if the file type is image ; otherwise just return the untouched $file array
-        if (substr($file['type'], 0, 5) === "image") {
-            // Create a new version of the image in the new image type and overwrite the original file
-            // On error, give up on the convertion
-            if (!$this->lws_optimize_convert_image($file['tmp_name'], $output_path, $file['type'], "image/$convert_type")) {
-                error_log(json_encode(['code' => 'CONVERT_FAIL', 'message' => 'File optimisation has failed.', 'data' => $file, 'time' => microtime(true) - $timer]));
-                return $file;
-            }
-
-            // Get the original type of the image to add it in the name 
-            // This will make it easier to convert back to the original typing
-            $tmp = explode("/", $file['type']);
-            $starting_type = $tmp[0] == "image" ? $tmp[1] : NULL;
-            if ($starting_type === NULL) {
-                error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $file, 'time' => microtime(true) - $timer]));
-                return $file;
-            }
-
-            // Add the new extension on top of the current one (e.g. : Flowers.png => Flowers.png.webp)
-            // This will make it easier to convert back to the original typing
-            // Also, check for the new filesize of the file and update the value
-            $size = filesize($output_path);
-            $file['type'] = "image/$convert_type";
-            $file['name'] .= ".$convert_type";
-            $file['full_path'] .= ".$convert_type";
-            if ($size) {
-                $file['size'] = $size;
-            }
-
-            return $file;
-        }
-
-        return $file;
-    }
-
     public function lws_optimize_refresh_attachments()
     {
         $args = array(
@@ -182,7 +202,7 @@ class ImageOptimization {
             'post_mime_type' => 'image',
             'numberposts' => -1,
             'post_status' => null,
-            'post_parent' => null, // any parent
+            'post_parent' => null
         );
         $attachments = get_posts($args);
         foreach ($attachments as $attachment) {
@@ -198,7 +218,6 @@ class ImageOptimization {
 
         // Get all image attachments
         $args = array(
-            'number_posts' => $amount_per_run,
             'post_type' => 'attachment',
             'post_mime_type' => 'image',
             'posts_per_page' => -1,
@@ -214,6 +233,9 @@ class ImageOptimization {
         // Update each attachment data to reflect the new mime-type
         // Also create a new image with reduced quality to replace the current one
         $attachments = get_posts($args);
+
+        $images = [];
+
         foreach ($attachments as $attachment) {
             // Invalid attachment, continue onto the next
             if ($attachment->ID == null) {
@@ -244,7 +266,15 @@ class ImageOptimization {
             $dirname = $file_info['dirname'] ?? NULL;
             $extension = $file_info['extension'] ?? NULL;
 
+
+            // Do not convert images that already are in the $type MIME
+            if ($extension == $type) {
+                continue;
+            }
+
             // Should not be touched, is an exception
+            // $exceptions should contains name as such :
+            // image1.png ; my_picture.jpg ; ...
             if (in_array($filename, $exceptions)) {
                 continue;
             }
@@ -254,26 +284,28 @@ class ImageOptimization {
                 error_log("LWSOptimize | ImageOptimization | No PATH for the attachment " . $attachment->ID);
                 continue;
             }
-
-            // Do not convert images that already are in the $type MIME
-            if ($extension == $type) {
-                continue;
-            }
             
             $webp_path = "$dirname/$filename.$type";
             $webp_url = str_replace(".$extension", ".$type", $attachment_url);
 
-            if ($keepcopy) {
-                $original_data_array['media_optimize']['original_media'][$attachment->ID] = [
-                    'original_url' => $attachment_url,
-                    'original_path' => $full_size_path,
-                    'original_name' => $filename,
-                    'original_mime' => $extension,
-                    'url' => $webp_url,
-                    'path' => $webp_path,
-                    'mime' => "image/$type",
-                    'data' => $attachment,
-                ];
+            // Only remove the additionnal sizes, not the original image
+            $metadata = wp_get_attachment_metadata($attachment->ID);
+            foreach ($metadata['sizes'] as $sizes) {
+                foreach ($sizes as $key => $type_img) {
+                    if ($key == "file") {
+                        // Get the PATH to the filename and remove each files corresponding to it
+                        $file_name = $type_img;
+  
+                        $tmp = explode('/', $full_size_path);
+                        array_pop($tmp);
+                        $file_name = implode('/', $tmp) . "/$file_name";
+                        unlink($file_name);
+
+                        $tmp = explode('/', $attachment_url);
+                        array_pop($tmp);
+                        $images[] = implode('/', $tmp) . "/$type_img";
+                    }
+                }
             }
 
             // Convert image to WebP using your preferred library (e.g., GD, Imagick)
@@ -284,7 +316,27 @@ class ImageOptimization {
                 error_log("LWSOptimize | ImageOptimization | Converted version of $filename.$extension could not be created");
                 continue;
             }
-            
+
+            // If we keep the original, add it to a database to allow for revertion
+            if ($keepcopy) {
+                $original_data_array['auto_update']['original_media'][$attachment->ID] = [
+                    'original_url' => $attachment_url,
+                    'original_path' => $full_size_path,
+                    'original_name' => $filename,
+                    'original_mime' => $extension,
+                    'url' => $webp_url,
+                    'path' => $webp_path,
+                    'mime' => "image/$type",
+                    'data' => $attachment,
+                ];
+                
+            } else {
+                // Remove the original file
+                unlink($full_size_path);
+            }
+
+
+            $images[] = $attachment_url;
 
             // Change attachment data with new image
             $attachment = array(
@@ -298,24 +350,31 @@ class ImageOptimization {
 
             // Create the new attachment
             $attach_id = wp_insert_attachment($attachment, $webp_path);
-            wp_generate_attachment_metadata($attach_id, $webp_path);
-
-
-
-            // Replace image URLs in post content (optimize this for performance)
-            $args = array(
-                'post_type' => 'any',
-            );
-
-            $posts = get_posts($args);
-            foreach ($posts as $post) {
-                $content = str_replace($attachment_url, $webp_url, $post->post_content);
-                $data = [ 'post_content' => $content ];
-                $where = [ 'ID' => $post->ID ];
-                $wpdb->update( $wpdb->prefix . 'posts', $data, $where );
-            }
 
             $done_attachments++;
+            if ($done_attachments == $amount_per_run) {
+                break;
+            }
+        }
+
+        $this->regenerate_thumbnails_for_all_images();
+
+        $posts = get_posts();
+        foreach ($posts as $post) {
+            $content = $post->post_content;
+            foreach ($images as $image) {
+                if (strpos($content, $image)) {
+                    $new_image = explode('.', $image);
+                    array_pop($new_image);
+                    $new_image = implode('.', $new_image) . "." . $type;
+
+                    $content = str_replace($image, $new_image, $content);
+                }
+            }
+
+            $data = [ 'post_content' => $content ];
+            $where = [ 'ID' => $post->ID ];
+            $wpdb->update( $wpdb->prefix . 'posts', $data, $where );
         }
 
         if (!empty($original_data_array)) {
@@ -326,25 +385,64 @@ class ImageOptimization {
     }
 
     /**
-     * Take all images stored in the database ('lws_optimize_original_image') and 
+     * Take all images stored in the database ('lws_optimize_original_image') and revert them to their original state
      */
     public function revertOptimization() {
         global $wpdb;
     
         $state = [];
         $original_data_array = get_option('lws_optimize_original_image', []);
-        $media_data = $original_data_array['media_optimize']['original_media'] ?? [];
+        $media_data = $original_data_array['auto_update']['original_media'] ?? [];
+
+        $images = [];
+
 
         foreach ($media_data as $key => $media) {
             $base_path = $media['original_path'] ?? '';
+
             // If the original file does not exists anymore, we cannot revert it
             if (!file_exists($base_path)) {
                 // We delete it from the database
-                unset($original_data_array['media_optimize']['original_media'][$key]);
+                unset($original_data_array['auto_update']['original_media'][$key]);
                 $state[] = ['id' => $key, 'state' => "NOT_EXISTS"];
                 continue;
             }
 
+            $metadata = wp_get_attachment_metadata($key);
+            $current_name = $metadata['file'] ?? "";
+            $current_name = explode('.', $current_name);
+            $current_extension = array_pop($current_name);
+
+            // Do not revert if the current file type does not match the saved type
+            if ("image/$current_extension" != $media['mime']) {
+                continue;
+            }
+
+            foreach ($metadata['sizes'] as $sizes) {
+                foreach ($sizes as $key_file => $type) {
+                    if ($key_file == "file") {
+
+                        $tmp = explode('/', $base_path);
+                        array_pop($tmp);
+                        $file_name = implode('/', $tmp) . "/$type";
+                        if (file_exists($file_name)) {
+                            unlink($file_name);
+                        }
+
+                        $tmp = explode('/', $media['original_url']);
+                        array_pop($tmp);
+                        $images[] = implode('/', $tmp) . "/$type";
+                    }
+                }
+            }
+
+            // Remove the converted file
+            if (file_exists($media['path'])) {
+                unlink($media['path']);
+            }
+
+            $images[] = $media['url'];
+            
             // Replace the attachment with the old data
             $attachment = array(
                 'ID' => $key,
@@ -357,30 +455,63 @@ class ImageOptimization {
 
             // Modify the attachment
             if ($attach_id = wp_insert_attachment($attachment, $media['original_path']) === false) {
-                $state[] = ['id' => $key, 'state' => "FAIL_INSERT_NEW"];
+                $state[] = ['id' => $key, 'state' => "FAIL_INSERT_NEW", $attachment];
                 continue;
             }
-            wp_generate_attachment_metadata($attach_id, $media['original_path']);
 
-            // Replace image URLs in post content (optimize this for performance)
-            $args = array(
-                'post_type' => 'any',
-            );
-
-            $posts = get_posts($args);
-            foreach ($posts as $post) {
-                $content = str_replace($media['url'], $media['original_url'], $post->post_content);
-                $data = [ 'post_content' => $content ];
-                $where = [ 'ID' => $post->ID ];
-                $wpdb->update( $wpdb->prefix . 'posts', $data, $where );
-            }
-
-            unset($original_data_array['media_optimize']['original_media'][$key]);
+            unset($original_data_array['auto_update']['original_media'][$key]);
             $state[] = ['id' => $key, 'state' => "REVERTED"];
         }
 
+        $this->regenerate_thumbnails_for_all_images();
+
+        // Replace image URLs in post content (optimize this for performance)
+        $posts = get_posts();
+        foreach ($posts as $post) {
+            $content = $post->post_content;
+            foreach ($images as $image) {
+                if (strpos($content, $image)) {
+                    $new_image = explode('.', $image);
+                    array_pop($new_image);
+                    $new_image = implode('.', $new_image) . "." . $media['original_mime'];
+                    $content = str_replace($image, $new_image, $content);
+                }
+            }
+
+            $data = [ 'post_content' => $content ];
+            $where = [ 'ID' => $post->ID ];
+            $wpdb->update( $wpdb->prefix . 'posts', $data, $where );
+        }
+
         update_option('lws_optimize_original_image', $original_data_array);
-        return $state;
+        return json_encode(array('code' => 'SUCCESS', 'data' => $state), JSON_PRETTY_PRINT);
+    }
+
+    public function regenerate_thumbnails_for_all_images() {
+        // Get all attachments (images)
+        $args = array(
+            'post_type' => 'attachment',
+            'post_mime_type' => 'image',
+            'posts_per_page' => -1, // Get all attachments
+            'post_status' => 'inherit',
+        );
+    
+        $attachments = get_posts($args);
+    
+        if ($attachments) {
+            foreach ($attachments as $attachment) {
+                $attachment_id = $attachment->ID;
+    
+                // Regenerate the thumbnail
+                $fullsizepath = get_attached_file($attachment_id);
+                if (false === $fullsizepath || !file_exists($fullsizepath)) {
+                    continue;
+                }
+    
+                // Generate the new sizes based on current settings
+                wp_update_attachment_metadata($attachment_id, wp_generate_attachment_metadata($attachment_id, $fullsizepath));
+            }
+        }
     }
 }
 

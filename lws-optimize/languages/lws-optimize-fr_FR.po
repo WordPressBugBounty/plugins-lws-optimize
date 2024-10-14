@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.4.3\n"
+"X-Generator: Poedit 3.2.2\n"
 
 #: lws-optimize.php:
 msgid "Activate LWS Optimize"
@@ -1395,3 +1395,126 @@ msgstr "<b>Exclusif :</b> Obtenez <b>15%</b> de réduction sur les hébergements
 
 msgid "Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached."
 msgstr "Redis Cache est déjà activé sur ce site et pourrait provoquer des incompatibilitées avec Memcached. Veuillez désactiver Redis Cache afin d'utiliser Memcached."
+
+msgid "Activate GZIP Compression"
+msgstr "Activer la compression GZIP"
+
+msgid "GZIP Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times."
+msgstr "La compression GZIP permet de compresser vos fichiers HTML, CSS et JS afin qu'ils soient plus léger, et donc plus rapide à télécharger, ce qui peut améliorer les temps de chargement."
+
+msgid "Preloading status: "
+msgstr "Statut du pré-chargement : "
+
+msgid "Preloading state: "
+msgstr "Etat du pré-chargement : "
+
+msgid "Next preloading: "
+msgstr "Prochain pré-chargement : "
+
+msgid "Page cached / Total pages: "
+msgstr "Pages en cache / Pages totales : "
+
+msgid "Ongoing"
+msgstr "En cours"
+
+msgid "Done"
+msgstr "Terminé"
+
+msgid "Up-to-date"
+msgstr "A jour"
+
+msgid "Status: "
+msgstr "Statut : "
+
+msgid "Latest convertion done on: "
+msgstr "Dernière convertion réalisée le : "
+
+msgid "Amount of images converted: "
+msgstr "Nombre d'images converties : "
+
+msgid "Convert all images"
+msgstr "Convertir toutes les images"
+
+msgid "Convert all images on your website to another Mime-Type"
+msgstr "Convertit toutes les images sur votre site vers un autre format"
+
+msgid "Inactive"
+msgstr "Inactif"
+
+msgid "No convertion recorded."
+msgstr "Aucune convertion enregistrée."
+
+msgid "Revert all images"
+msgstr "Restaurer toutes les images"
+
+msgid "Revert all images to their original format. This only works for images not converted on upload and if you choose to keep the original image."
+msgstr "Restaure toutes les images dans leur format initial. Cela ne fonctionne que pour les images qui n'ont pas été converties au téléversement et pour lesquelles la copie originale a été gardée."
+
+msgid "Revert images"
+msgstr "Restaurer les images"
+
+msgid "Convert new images on upload"
+msgstr "Convertir les nouvelles images au téléversement"
+
+msgid "Each time an image is uploaded on your WordPress, it will automatically get converted to the chosen MIME-Type."
+msgstr "Dès qu'une image est téléversée sur votre site WordPress, elle sera automatiquement convertie dans le format choisi."
+
+msgid "MIME-type in which media will be converted: "
+msgstr "MIME-type dans lequel le média sera converti : "
+
+msgid "Images already in this format will not be modified. Some types may not appear if your installation is not compatible."
+msgstr "Les images déjà sous ce format seront ignorées. Certains formats peuvent ne pas apparaitre si votre site n'est pas compatible."
+
+msgid "Quality of the converted images: "
+msgstr "Qualité des images converties : "
+
+msgid "100% means the image will have the same quality as the original. A lower quality will result in a smaller but less clear image. 75% is a good middleground between size and appearance."
+msgstr "100% signifie que l'image aura la même qualité que l'originale. Une qualité plus basse résultera en une image plus légère mais moins nette. 75% est généralement un bon compromis entre talle et apparence."
+
+msgid "Amount of images to convert per batch: "
+msgstr "Quantité d'images converties à chaque passage : "
+
+msgid "Image convertion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load."
+msgstr "La convertion d'image peut prendre du temps, ainsi les images sont converties par instance. Une quantité plus élevée résultera en une convertion plus rapides mais peut ralentir le site dû à une utilisation des ressources importante."
+
+msgid "Keep the original images: "
+msgstr "Garder les images originales : "
+
+msgid "By default, the original image will be kept, to allow for a rollback of the image to their original format. This will result in an increase in your website's size as two images will be saved instead of one. Deactivating this option will result in smaller sizes but all convertions are definitives."
+msgstr "Par défaut, les images originales sont gardées, permettant de les restaurer dans leur format original. Cela resultera en une augmentation de la taille du site, car 2 images seront sauvegardées au lieu d'une. Désactiver cette option réduira la taille du site mais toute convertion sera définitive."
+
+msgid "Image exclusion:"
+msgstr "Exclusion d'image :"
+
+msgid "Input the name of each media you wish to exclude from the convertion. Separate each name with a comma (,)."
+msgstr "Entrez le nom de chaque média que vous souhaitez exclure de la convertion. Séaprez chaque nom par une virgule (,)."
+
+msgid "Convert images"
+msgstr "Convertir les images"
+
+msgid "General options"
+msgstr "Options générales"
+
+msgid "Image Optimization"
+msgstr "Optimisation d'images"
+
+msgid "Abort convertion"
+msgstr "Arrêter la convertion"
+
+msgid "Image convertion started. It may take a while depending on the amount of files to process."
+msgstr "Convertion d'image lancée. Cela peut prendre un moment selon la quantité de fichiers à traiter."
+
+msgid "All images are getting reverted. It may take a few moments."
+msgstr "Toutes les images sont en cours de restauration. Cela peut prendre quelques instants."
+
+msgid "Auto convertion stopped."
+msgstr "Convertion automatique désactivée."
+
+msgid "Activate convertion"
+msgstr "Activer la convertion"
+
+msgid "Image convertion will now be done for each images uploaded. It may slightly lengthen the upload time"
+msgstr "La convertion d'image sera maintenant effectuée pour chaque image téléversée. Cela pourrait allonger le temps de téléversement"
+
+msgid "Media Optimisations"
+msgstr "Optimisations des Médias"

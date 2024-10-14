@@ -1,4 +1,11 @@
 <?php
+$config_array = $GLOBALS['lws_optimize']->optimize_options;
+
+$fb_preloaddata = [
+    'state' => $config_array['filebased_cache']['preload_ongoing'] ?? "false",
+    'quantity' => $config_array['filebased_cache']['preload_quantity'] ?? 0,
+    'done' => $config_array['filebased_cache']['preload_done'] ?? 0,
+];
 
 $filebased_cache_options = $GLOBALS['lws_optimize']->lwsop_check_option("filebased_cache");
 $filebased_timer = $filebased_cache_options['data']['timer'] ?? "lws_thrice_monthly";
@@ -9,17 +16,15 @@ if ($filebased_cache_options['state'] === "true") {
     $specified = "0";
 }
 
+$preload_state = @$filebased_cache_options['data']['preload'] == "true" ? "true" : "false";
+
 $preload_amount =  intval($filebased_cache_options['data']['preload_amount'] ?? 5);
 
 $lwscache_options = $GLOBALS['lws_optimize']->lwsop_check_option("dynamic_cache");
 $autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
 
-function human_filesize($bytes, $decimals = 2)
-{
-    $sz = 'BKMGTP';
-    $factor = floor((strlen($bytes) - 1) / 3);
-    return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor];
-}
+$next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
+$local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
 
 function lws_size_convert($size)
 {
@@ -94,30 +99,27 @@ $caches = [
 ];
 ?>
 
-<div class="lwsop_temporary_deactivated">
-    <div class="lwsop_temp_desactivated_sub"></div>
-    <div class="lwsop_bluebanner" style="justify-content: space-between;">
-        <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
-        <!-- Temporary deactivated -->
-        <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
-    </div>
+<div class="lwsop_bluebanner" style="justify-content: space-between;">
+    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
+    <!-- Temporary deactivated -->
+    <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
+</div>
 
-    <div class="lwsop_contentblock_stats">
-        <?php foreach ($caches as $type => $cache) : ?>
-            <div class="lwsop_stat_block" id="<?php echo esc_attr($cache['id']); ?>">
-                <img src="<?php echo esc_url(plugins_url("images/{$cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($cache['image_alt']); ?>" width="<?php echo esc_attr($cache['width']); ?>" height="<?php echo esc_attr($cache['height']); ?>">
-                <span><?php echo esc_html__($cache["title"]); ?></span>
-                <div class="lwsop_stats_bold">
-                    <span>
-                        <?php echo esc_html("{$cache['size']} / {$cache['amount']}"); ?>
-                    </span>
-                    <span>
-                        <?php esc_html_e('elements', 'lws-optimize'); ?>
-                    </span>
-                </div>
+<div class="lwsop_contentblock_stats">
+    <?php foreach ($caches as $type => $cache) : ?>
+        <div class="lwsop_stat_block" id="<?php echo esc_attr($cache['id']); ?>">
+            <img src="<?php echo esc_url(plugins_url("images/{$cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($cache['image_alt']); ?>" width="<?php echo esc_attr($cache['width']); ?>" height="<?php echo esc_attr($cache['height']); ?>">
+            <span><?php echo esc_html__($cache["title"]); ?></span>
+            <div class="lwsop_stats_bold">
+                <span>
+                    <?php echo esc_html("{$cache['size']} / {$cache['amount']}"); ?>
+                </span>
+                <span>
+                    <?php esc_html_e('elements', 'lws-optimize'); ?>
+                </span>
             </div>
-        <?php endforeach; ?>
-    </div>
+        </div>
+    <?php endforeach; ?>
 </div>
 
 <div class="lwsop_bluebanner">
@@ -226,8 +228,6 @@ $caches = [
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('File-based cache settings', 'lws-optimize'); ?></h2>
 </div>
 
-<?php // TODO : Check to see if it still works, update 
-?>
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
@@ -295,6 +295,24 @@ $caches = [
         <div class="lwsop_contentblock_fbcache_input_preload_block">
             <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="3" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
             <div class="lwsop_contentblock_input_preload_label"><?php esc_html_e('pages per minutes cached', 'lws-optimize'); ?></div>
+        </div>
+
+        <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $preload_state == "false" ? esc_attr('hidden') : '';?>">
+            <span class="lwsop_contentblock_fbcache_preload_label"><?php esc_html_e('Preloading status: ', 'lws-optimize'); ?></span>
+            <div id="lwsop_preloading_status">
+                <div class="lwsop_preloading_status_info">
+                    <span><?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?></span>
+                    <span id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Up-to-date', 'lws-optimize'); ?>
+                </div>
+                <div class="lwsop_preloading_status_info">
+                    <span><?php echo esc_html__('Next preloading: ', 'lws-optimize'); ?></span>
+                    <span id="lwsop_next_preload_info"><?php echo $next_preload != false ? esc_attr($local_timestamp)  : esc_html__('/', 'lws-optimize'); ?>
+                </div>
+                <div class="lwsop_preloading_status_info">
+                    <span><?php esc_html_e('Page cached / Total pages: ', 'lws-optimize'); ?></span>
+                    <span id="lwsop_current_preload_done"><?php echo esc_html($fb_preloaddata['done'] . "/" . $fb_preloaddata['quantity']); ?></span>
+                </div>
+            </div>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
@@ -661,17 +679,48 @@ $caches = [
                     case 'SUCCESS':
                         if (value) {
                             callPopup('success', "<?php esc_html_e("File-based cache is now preloading. Depending on the amount of URLs, it may take a few minutes for the process to be done.", "lws-optimize"); ?>");
-                            let ajaxRequest = jQuery.ajax({
-                                url: ajaxurl,
-                                type: "POST",
-                                timeout: 600000,
-                                context: document.body,
-                                data: {
-                                    action: "lwsop_do_preload_fb",
-                                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('start_the_preload_fn_nonce')); ?>'
-                                }
-                            });
+                            let p_info = document.getElementById('lwsop_current_preload_info');
+                            let p_done = document.getElementById('lwsop_current_preload_done');
+                            let p_next = document.getElementById('lwsop_next_preload_info');
+
+                            if (p_info != null) {
+                                p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
+                            }
+                            var currentdate = new Date(); 
+                            var datetime = currentdate.getDate() + "-"
+                                            + (currentdate.getMonth()+1)  + "-" 
+                                            + currentdate.getFullYear() + " "  
+                                            + currentdate.getHours() + ":"  
+                                            + currentdate.getMinutes() + ":" 
+                                            + currentdate.getSeconds();
+                            if (p_next != null) {
+                                p_next.innerHTML = datetime;
+                            }
+
+                            let block = document.getElementById('lwsop_preloading_status_block');
+                            if (block != null) {
+                                block.classList.remove('hidden');
+                            }
+
+                            if (p_done != null) {
+                                p_done.innerHTML = returnData['data']['preload_done'] + "/" + returnData['data']['preload_quantity']
+                            }
                         } else {
+                            let p_info = document.getElementById('lwsop_current_preload_info');
+                            let p_done = document.getElementById('lwsop_current_preload_done');
+
+                            let block = document.getElementById('lwsop_preloading_status_block');
+                            if (block != null) {
+                                block.classList.add('hidden');
+                            }
+
+                            if (p_info != null) {
+                                p_info.innerHTML = "<?php esc_html_e("Up-to-date", "lws-optimize"); ?>";
+                            }
+
+                            if (p_done != null) {
+                                p_done.innerHTML = returnData['data']['preload_done'] + "/" + returnData['data']['preload_quantity']
+                            }
                             callPopup('success', "<?php esc_html_e("Preloading is now deactivated.", "lws-optimize"); ?>");
                         }
                         break;
@@ -1215,6 +1264,73 @@ $caches = [
             });
         });
     }
+</script>
+
+<script>
+    let checkbox_preload = document.getElementById('lws_op_fb_cache_manage_preload');
+    let preloading_search = setInterval(() => {
+        if (checkbox_preload.checked != true) {
+            return 0;
+        }
+        let ajaxRequest = jQuery.ajax({
+            url: ajaxurl,
+            type: "POST",
+            timeout: 120000,
+            context: document.body,
+            data: {
+                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_check_for_update_preload_nonce')); ?>',
+                action: "lwsop_check_preload_update"
+            },
+            success: function(data) {
+                if (data === null || typeof data != 'string') {
+                    return 0;
+                }
+
+                try {
+                    var returnData = JSON.parse(data);
+                } catch (e) {
+                    console.log(e);
+                    return 0;
+                }
+
+                switch (returnData['code']) {
+                    case 'SUCCESS':
+
+                        let p_info = document.getElementById('lwsop_current_preload_info');
+                        let p_done = document.getElementById('lwsop_current_preload_done');
+                        let block = document.getElementById('lwsop_preloading_status_block');
+                        let p_next = document.getElementById('lwsop_next_preload_info');
+
+                        if (block != null) {
+                            block.classList.remove('hidden');
+                        }
+
+                        if (p_info != null) {
+                            if (returnData['data']['ongoing'] == "true") {
+                                p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
+                            } else {
+                                p_info.innerHTML = "<?php esc_html_e("Done", "lws-optimize"); ?>";
+                            }
+                        }
+
+                        if (p_next != null) {
+                            p_next.innerHTML = returnData['data']['next'];
+                        }
+
+                        if (p_done != null) {
+                            p_done.innerHTML = returnData['data']['done'] + "/" + returnData['data']['quantity']
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            },
+            error: function(error) {
+                console.log(error);
+            }
+        });
+        
+    }, 30000);
 </script>
 
 <script>

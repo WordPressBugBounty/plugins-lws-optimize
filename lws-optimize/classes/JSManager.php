@@ -15,6 +15,8 @@ class JSManager extends LwsOptimize
     private $content_directory;
     private $excluded_scripts;
 
+    public $files = ['file' => 0, 'size' => 0];
+
     public function __construct($content)
     {
         // Get the page content and the PATH to the cache directory as well as creating it if needed
@@ -92,7 +94,7 @@ class JSManager extends LwsOptimize
             }
         }
 
-        return $this->content;
+        return ['html' => $this->content, 'files' => $this->files];
     }
 
     public function endify_scripts() {
@@ -153,16 +155,8 @@ class JSManager extends LwsOptimize
             // Minify and combine all files into one, saved in $path
             // If it worked, we can prepare the new <link> tag
             if ($minify->minify($path)) {
-                $stats = get_option('lws_optimize_cache_statistics', [
-                    'desktop' => ['amount' => 0, 'size' => 0],
-                    'mobile' => ['amount' => 0, 'size' => 0],
-                    'css' => ['amount' => 0, 'size' => 0],
-                    'js' => ['amount' => 0, 'size' => 0],
-                ]);
-
-                $stats['js']['amount'] += $amount;
-                $stats['js']['size'] += $size;
-                update_option('lws_optimize_cache_statistics', $stats);
+                $this->files['file'] += 1;
+                $this->files['size'] += filesize($path) ?? 0;
 
                 return $path_url;
             } else {
@@ -216,18 +210,10 @@ class JSManager extends LwsOptimize
                 $minify = new Minify\JS($file_path);
 
                 if ($minify->minify($path)) {
-                    $stats = get_option('lws_optimize_cache_statistics', [
-                        'desktop' => ['amount' => 0, 'size' => 0],
-                        'mobile' => ['amount' => 0, 'size' => 0],
-                        'css' => ['amount' => 0, 'size' => 0],
-                        'js' => ['amount' => 0, 'size' => 0],
-                    ]);
-
-                    $stats['js']['amount'] += 1;
-                    $stats['js']['size'] += filesize($path);
-                    update_option('lws_optimize_cache_statistics', $stats);
 
                     if (file_exists($path)) {
+                        $this->files['file'] += 1;
+                        $this->files['size'] += filesize($path) ?? 0;
                         // Create a new link with the newly combined URL and add it to the DOM
                         $newLink = preg_replace("/src\=[\'\"]([^\'\"]+)[\'\"]/", "src='$path_url'", $element);
                         $this->content = str_replace($element, $newLink, $this->content);
@@ -236,7 +222,7 @@ class JSManager extends LwsOptimize
             }
         }
 
-        return $this->content;
+        return ['html' => $this->content, 'files' => $this->files];
     }
 
 

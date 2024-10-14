@@ -3,8 +3,8 @@
 /**
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
- * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media conversion... Everything you need for a better website
- * Version:           3.1.6.5
+ * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
+ * Version:           3.1.7
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.6
@@ -246,8 +246,8 @@ function lws_op_menu_admin()
 {
     add_menu_page(__('LWS Optimize', 'lws-optimize'), __('LWS Optimize', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
     
-    // add_submenu_page('lws-op-config', __('General', 'lws-optimize'), __('General options', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
-    // add_submenu_page('lws-op-config', __('Image Optimization', 'lws-optimize'), __('Image Optimization', 'lws-optimize'), 'manage_options', 'lws-op-config-imageop', 'lws_op_image_opti_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
+    add_submenu_page('lws-op-config', __('General', 'lws-optimize'), __('General options', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
+    add_submenu_page('lws-op-config', __('Image Optimization', 'lws-optimize'), __('Image Optimization', 'lws-optimize'), 'manage_options', 'lws-op-config-imageop', 'lws_op_image_opti_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
 }
 
 

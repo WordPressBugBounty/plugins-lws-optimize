@@ -16,6 +16,19 @@ $media_array = array(
     //     'has_checkbox' => true,
     //     'checkbox_id' => "lws_optimize_media_optimize_check",
     // ),
+    'gzip_compression' => array(
+        'title' => __('Activate GZIP Compression', 'lws-optimize'),
+        'desc' => __('GZIP Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times.', 'lws-optimize'),
+        'recommended' => true,
+        'has_logo' => false,
+        'has_exclusion' => false,
+        'has_exclusion_button' => false,
+        'has_special_button' => false,
+        'has_checkbox' => true,
+        'checkbox_id' => "lws_optimize_gzip_compression_check",
+        'has_tooltip' => true,
+        'tooltip_link' => "https://tutoriels.lws.fr/wordpress/optimiser-la-performance-et-la-vitesse-de-son-site-wordpress#Activer_la_compression_Gzip_pour_optimiser_son_site_WordPress"
+    ),
     'image_lazyload' => array(
         'title' => __('Image Lazy Loading', 'lws-optimize'),
         'desc' => __('Load images only when they appear on screen, speeding up pages loading.', 'lws-optimize'),
@@ -83,20 +96,8 @@ foreach ($media_array as $key => $array) {
 }
 ?>
 
-<div class="lwsop_contentblock">
-    <div class="lwsop_contentblock_leftside">
-        <h2 class="lwsop_contentblock_title">
-            <?php esc_html_e('LWS Media Optimize plugin', 'lws-optimize'); ?>
-        </h2>
-        <div class="lwsop_contentblock_description">
-            <?php esc_html_e('This plugin lets you optimize and convert images (JPEG, PNG, WEBP, AVIF), reduce their size and maximum dimensions to speed up the website all the while assuring an universal browser compatibility.', 'lws-optimize'); ?>
-        </div>
-    </div>
-    <div class="lwsop_contentblock_rightside">
-        <button type="button" class="lwsop_darkblue_button" id="" name="" disabled>
-            <span><?php esc_html_e('Coming soon', 'lws-optimize'); ?></span>
-        </button>
-    </div>
+<div class="lwsop_bluebanner">
+    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Media Optimisations', 'lws-optimize'); ?></h2>
 </div>
 
 <?php foreach ($media_array as $data) : ?>

@@ -1,4 +1,5 @@
 <?php
+
 // Prepare all data for the "Front-End" tab
 $first_bloc_array = array(
     'minify_css' => array(

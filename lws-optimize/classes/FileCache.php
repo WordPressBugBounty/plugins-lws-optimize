@@ -208,6 +208,13 @@ class FileCache extends LwsOptimize
 
         $modified = $buffer;
 
+        $cached_elements = [
+            'css' => ['file' => 0, 'size' => 0],
+            'js' => ['file' => 0, 'size' => 0],
+            'desktop' => ['file' => 0, 'size' => 0],
+            'mobile' => ['file' => 0, 'size' => 0]
+        ];
+
         if ($this->base->lwsop_check_option('preload_css')['state'] == "true") {
             $preload = $this->base->lwsop_check_option('preload_css')['data']['links'] ?? [];
             include_once("CSSManager.php");
@@ -227,11 +234,20 @@ class FileCache extends LwsOptimize
             if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
                 include_once("CSSManager.php");
                 $lwsOptimizeCssManager = new CSSManager($modified);
-                $modified = $lwsOptimizeCssManager->combine_css_update();
+                $data = $lwsOptimizeCssManager->combine_css_update();
+                $modified = $data['html'];
+                
+                $cached_elements['css']['file'] += $data['files']['file'];
+                $cached_elements['css']['size'] += $data['files']['size'];
+
             } else if ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
                 include_once("CSSManager.php");
                 $lwsOptimizeCssManager = new CSSManager($modified);
-                $modified = $lwsOptimizeCssManager->minify_css();
+                $data = $lwsOptimizeCssManager->minify_css();
+                $modified = $data['html'];
+
+                $cached_elements['css']['file'] += $data['files']['file'];
+                $cached_elements['css']['size'] += $data['files']['size'];
             }
         }
 
@@ -239,12 +255,22 @@ class FileCache extends LwsOptimize
             if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
                 include_once("JSManager.php");
                 $lwsOptimizeJsManager = new JSManager($modified);
-                $modified = $lwsOptimizeJsManager->combine_js_update();
+                $data = $lwsOptimizeJsManager->combine_js_update();
+
+                $modified = $data['html'];
+
+                $cached_elements['js']['file'] += $data['files']['file'];
+                $cached_elements['js']['size'] += $data['files']['size'];
                 // $modified = str_replace("<!--LWSOPTIMIZE_HERE_START_FOOTER-->", "", $modified);
             } else if ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
                 include_once("JSManager.php");
                 $lwsOptimizeJsManager = new JSManager($modified);
-                $modified = $lwsOptimizeJsManager->minify_js();
+                $data = $lwsOptimizeJsManager->minify_js();
+
+                $modified = $data['html'];
+
+                $cached_elements['js']['file'] += $data['files']['file'];
+                $cached_elements['js']['size'] += $data['files']['size'];
             }
 
             // $lwsOptimizeJsManager = new JSManager($modified);
@@ -255,7 +281,7 @@ class FileCache extends LwsOptimize
         if ($this->content_type === "html") {
 
             // Add a filter for users to modify the cache file before it is saved
-            $tmp_content = (string) apply_filters('wpfc_buffer_callback_filter', $modified, "cache", $this->cache_directory);
+            $tmp_content = (string) apply_filters('lwsop_buffer_callback_filter', $modified, "cache", $this->cache_directory);
 
             if (!$tmp_content) {
                 return $modified;
@@ -286,22 +312,29 @@ class FileCache extends LwsOptimize
                 }
             }
 
-            $this->lwsop_add_to_cache($modified);
+            $is_mobile = false;
+            if ($this->_lwsop_is_mobile()) {
+                $is_mobile = true;
+            } else {
+                $is_mobile = false;
+            }
+
+            $this->lwsop_add_to_cache($modified, $cached_elements, $is_mobile);
         } elseif ($this->content_type === "xml") {
             if (preg_match("/<link><\/link>/", $buffer)) {
                 if (preg_match("/\/feed$/", $_SERVER["REQUEST_URI"])) {
                     return $buffer . time();
                 }
             }
-            $this->lwsop_add_to_cache($buffer);
+            $this->lwsop_add_to_cache($buffer, $cached_elements, false);
         } elseif ($this->content_type === "json") {
-            $this->lwsop_add_to_cache($buffer);
+            $this->lwsop_add_to_cache($buffer, $cached_elements, false);
         }
 
         return $modified;
     }
 
-    public function lwsop_add_to_cache($content)
+    public function lwsop_add_to_cache($content, $cached, $mobile = false)
     {
         $this->lwsop_set_cachedir();
 
@@ -319,11 +352,14 @@ class FileCache extends LwsOptimize
                 if (is_dir($this->cache_directory)) {
                     if (!file_exists($this->cache_directory . $name . $this->content_type)) {
                         file_put_contents($this->cache_directory . $name . $this->content_type, $content);
+
+                        $cached['html']['file'] = 1;
+                        $cached['html']['size'] = filesize($this->cache_directory . $name . $this->content_type);
+            
+                        $this->lwsop_recalculate_stats("plus", $cached, $mobile);
                     }
                 }
             }
-
-            $this->lwsop_recalculate_stats();
         }
     }
 

@@ -15,6 +15,8 @@ class CSSManager extends LwsOptimize
     private $preloadable_urls;
     private $preloadable_urls_fonts;
 
+    public $files = ['file' => 0, 'size' => 0];
+
     public function __construct($content, array $preloadable = [], array $preloadable_fonts = [])
     {
         // Get the page content and the PATH to the cache directory as well as creating it if needed
@@ -133,7 +135,7 @@ class CSSManager extends LwsOptimize
         }
 
         // return json_encode($arrays);
-        return $this->content;
+        return ['html' => $this->content, 'files' => $this->files];
     }
 
     public function combine_current_css(array $links)
@@ -150,8 +152,6 @@ class CSSManager extends LwsOptimize
             $minify = new Minify\CSS();
 
             $name = "";
-            $size = 0;
-            $amount = 0;
 
             // Add each CSS file to the minifier
             foreach ($links as $link) {
@@ -163,11 +163,9 @@ class CSSManager extends LwsOptimize
                 $name = base_convert(crc32($name . $link), 20, 36);
 
                 if (file_exists($file_path)) {
-                    $size += filesize($file_path);
-                    $amount += 1;
+                    $minify->add($file_path);
                 }
 
-                $minify->add($file_path);
             }
 
             if (empty($name)) {
@@ -180,16 +178,8 @@ class CSSManager extends LwsOptimize
             // Minify and combine all files into one, saved in $path
             // If it worked, we can prepare the new <link> tag
             if ($minify->minify($path)) {
-                $stats = get_option('lws_optimize_cache_statistics', [
-                    'desktop' => ['amount' => 0, 'size' => 0],
-                    'mobile' => ['amount' => 0, 'size' => 0],
-                    'css' => ['amount' => 0, 'size' => 0],
-                    'js' => ['amount' => 0, 'size' => 0],
-                ]);
-
-                $stats['css']['amount'] += $amount;
-                $stats['css']['size'] += $size;
-                update_option('lws_optimize_cache_statistics', $stats);
+                $this->files['file'] += 1;
+                $this->files['size'] += filesize($path) ?? 0;
 
                 return $path_url;
             } else {
@@ -208,6 +198,8 @@ class CSSManager extends LwsOptimize
         if (empty($this->content)) {
             return false;
         }
+
+        $minified = 0;
 
         // Get all <link> tags
         preg_match_all("/<link\s*.*?>/xs", $this->content, $matches);
@@ -252,18 +244,9 @@ class CSSManager extends LwsOptimize
                 $minify = new Minify\CSS($file_path);
 
                 if ($minify->minify($path)) {
-                    $stats = get_option('lws_optimize_cache_statistics', [
-                        'desktop' => ['amount' => 0, 'size' => 0],
-                        'mobile' => ['amount' => 0, 'size' => 0],
-                        'css' => ['amount' => 0, 'size' => 0],
-                        'js' => ['amount' => 0, 'size' => 0],
-                    ]);
-
-                    $stats['css']['amount'] += 1;
-                    $stats['css']['size'] += filesize($path);
-                    update_option('lws_optimize_cache_statistics', $stats);
-
                     if (file_exists($path)) {
+                        $this->files['file'] += 1;
+                        $this->files['size'] += filesize($path) ?? 0;
                         // Create a new link with the newly combined URL and add it to the DOM
                         $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
                         $this->content = str_replace($element, $newLink, $this->content);
@@ -272,7 +255,7 @@ class CSSManager extends LwsOptimize
             }
         }
 
-        return $this->content;
+        return ['html' => $this->content, 'files' => $this->files];
     }
 
     /**
