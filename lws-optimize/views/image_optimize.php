@@ -678,7 +678,7 @@ $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron
             let media_quality = document.getElementById('lwsop_quality_convertion');
             let media_keepcopy = document.getElementById('lwsop_keepcopy_convertion');
             let media_exceptions = document.getElementById('lwsop_exclude_from_convertion');
-            let amount_per_patch = document.getElementById('lwsop_amount_per_patch_convertion');
+            let amount_per_patch = document.getElementById('lwsop_amount_convertion');
 
             media_type = media_type != null ? media_type.value : "webp";
             media_quality = media_quality != null ? media_quality.value : 75;

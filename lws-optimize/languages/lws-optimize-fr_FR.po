@@ -1518,3 +1518,6 @@ msgstr "La convertion d'image sera maintenant effectuée pour chaque image tél�
 
 msgid "Media Optimisations"
 msgstr "Optimisations des Médias"
+
+msgid "The convertion has been stopped."
+msgstr "La convertion a bien été arrétée."

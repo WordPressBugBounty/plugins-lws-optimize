@@ -18,7 +18,7 @@ class ImageOptimization {
         $config_array = get_option('lws_optimize_config_array', ['auto_update' => ['state' => "false", 'convert_type' => "webp"]]);
 
         // Return the normal data if the auto_update is unset or false
-        if ($config_array == NULL || $config_array['auto_update']['state'] == "false") {
+        if ($config_array == NULL || !isset($config_array['auto_update']['state']) || $config_array['auto_update']['state'] == "false") {
             return $formats;
         }
 
@@ -50,7 +50,7 @@ class ImageOptimization {
         ]]);
 
         // Return the normal data if the auto_update is unset or false
-        if ($config_array == NULL || $config_array['auto_update']['state'] == "false") {
+        if ($config_array == NULL || !isset($config_array['auto_update']['state']) || $config_array['auto_update']['state'] == "false") {
             return $file;
         }        
 
@@ -213,16 +213,12 @@ class ImageOptimization {
 
     public function convert_all_medias($type = "webp", $quality = 75, $keepcopy = true, $exceptions = [], $amount_per_run = 10) {
         global $wpdb;
-
         $done_attachments = 0;
 
-        // Get all image attachments
-        $args = array(
-            'post_type' => 'attachment',
-            'post_mime_type' => 'image',
-            'posts_per_page' => -1,
-        );
-
+        $amount_per_run = intval($amount_per_run);
+        if ($amount_per_run < 0 || $amount_per_run > 15) {
+            $amount_per_run = 10;
+        }
         // Assure the quality will always be an int, no matter what
         // Also always between 1 and 100
         $quality = intval($quality);
@@ -232,11 +228,14 @@ class ImageOptimization {
         
         // Update each attachment data to reflect the new mime-type
         // Also create a new image with reduced quality to replace the current one
-        $attachments = get_posts($args);
-
+        $attachments = get_posts(['post_type' => 'attachment', 'numberposts' => -1]);
         $images = [];
 
         foreach ($attachments as $attachment) {
+            if ($done_attachments >= $amount_per_run) {
+                break;
+            }
+
             // Invalid attachment, continue onto the next
             if ($attachment->ID == null) {
                 error_log("LWSOptimize | ImageOptimization | Attachment ID not found");
@@ -350,16 +349,12 @@ class ImageOptimization {
 
             // Create the new attachment
             $attach_id = wp_insert_attachment($attachment, $webp_path);
-
             $done_attachments++;
-            if ($done_attachments == $amount_per_run) {
-                break;
-            }
         }
 
         $this->regenerate_thumbnails_for_all_images();
 
-        $posts = get_posts();
+        $posts = get_posts(['post_type' => array('page','post'),]);
         foreach ($posts as $post) {
             $content = $post->post_content;
             foreach ($images as $image) {
@@ -466,7 +461,7 @@ class ImageOptimization {
         $this->regenerate_thumbnails_for_all_images();
 
         // Replace image URLs in post content (optimize this for performance)
-        $posts = get_posts();
+        $posts = get_posts(['post_type' => array('page','post'),]);
         foreach ($posts as $post) {
             $content = $post->post_content;
             foreach ($images as $image) {

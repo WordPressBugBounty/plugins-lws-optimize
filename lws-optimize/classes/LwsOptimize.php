@@ -98,7 +98,7 @@ class LwsOptimize
                 $this->lwsImageOptimization = new ImageOptimization(true);
             } else {
                 require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
-                $this->lwsImageOptimization = new ImageOptimization(true);
+                $this->lwsImageOptimization = new ImageOptimization(false);
             }
 
             // Optimize all images to the designed MIME-Type
@@ -190,7 +190,7 @@ class LwsOptimize
                 add_action("wp_ajax_lws_optimize_revert_convertion", [$this, "lws_optimize_revert_convertion"]);
             }
 
-            if (!$this->state && $this->lwsop_check_option('filebased_cache')['data']['preload'] === "true") {
+            if (!$this->state && isset($this->lwsop_check_option('filebased_cache')['data']['preload']) && $this->lwsop_check_option('filebased_cache')['data']['preload'] === "true") {
                 add_action("wp_ajax_lwsop_check_preload_update", [$this, "lwsop_check_preload_update"]);
             }
 
