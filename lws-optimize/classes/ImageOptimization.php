@@ -1,6 +1,6 @@
 <?php
 
-class ImageOptimization {
+class Lws_Optimize_ImageOptimization {
 
     public function __construct($autoupdate = false){
         if ($autoupdate) {

@@ -78,6 +78,9 @@ class FileCache extends LwsOptimize
 
     public function lwsop_launch_cache()
     {
+        error_log($this->need_cache);
+        error_log($this->cache_directory);
+
         // Don't launch cache if checks have revealed that this URL should not be cached
         if (!$this->need_cache || $this->cache_directory == false) {
             return false;
@@ -104,6 +107,8 @@ class FileCache extends LwsOptimize
                 die($content);
             }
         }
+        
+        error_log("kljlkj");
 
         $do_cache = true;
         if ($this->_lwsop_is_mobile()) {

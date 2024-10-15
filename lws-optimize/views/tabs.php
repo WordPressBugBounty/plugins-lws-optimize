@@ -1,4 +1,5 @@
 <?php
+
 // Check whether Memcached id available on this hosting or not.
 $memcached_locked = false;
 

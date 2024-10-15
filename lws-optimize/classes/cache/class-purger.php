@@ -563,12 +563,14 @@ abstract class Purger {
 
 		if ( $log_levels[ $level ] >= $log_levels[ $lws_cache_admin->options['log_level'] ] ) {
 
-			$fp = fopen( $lws_cache_admin->functional_asset_path() . 'nginx.log', 'a+' );
-			if ( $fp ) {
+			if (file_exists($lws_cache_admin->functional_asset_path() . 'nginx.log')) {
+				$fp = fopen( $lws_cache_admin->functional_asset_path() . 'nginx.log', 'a+' );
+				if ( $fp ) {
 
-				fwrite( $fp, "\n" . gmdate( 'Y-m-d H:i:s ' ) . ' | ' . $level . ' | ' . $msg );
-				fclose( $fp );
+					fwrite( $fp, "\n" . gmdate( 'Y-m-d H:i:s ' ) . ' | ' . $level . ' | ' . $msg );
+					fclose( $fp );
 
+				}
 			}
 		}
 
@@ -603,11 +605,13 @@ abstract class Purger {
 			$file_content = file_get_contents( $nginx_asset_path, null, null, $offset );
 			$file_content = empty( $file_content ) ? '' : strstr( $file_content, "\n" );
 
-			$fp = fopen( $nginx_asset_path, 'w+' );
-			if ( $file_content && $fp ) {
+			if (file_exists($nginx_asset_path)) {
+				$fp = fopen( $nginx_asset_path, 'w+' );
+				if ( $file_content && $fp ) {
 
-				fwrite( $fp, $file_content );
-				fclose( $fp );
+					fwrite( $fp, $file_content );
+					fclose( $fp );
+				}
 			}
 		}
 	}

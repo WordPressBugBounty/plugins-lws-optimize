@@ -1521,3 +1521,6 @@ msgstr "Optimisations des Médias"
 
 msgid "The convertion has been stopped."
 msgstr "La convertion a bien été arrétée."
+
+msgid "Image Convertion"
+msgstr "Convertion d'images"

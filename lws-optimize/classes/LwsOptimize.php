@@ -20,6 +20,7 @@ class LwsOptimize
             $this->optimize_options = [
                 'filebased_cache' => ['state' => "true", "preload" => "true", "preload_amount" => "5"],
                 'autopurge' => ['state' => "true"],
+                'cache_logged_user' => ['state' => "true"],
             ];
             update_option('lws_optimize_config_array', $this->optimize_options);
         }
@@ -95,10 +96,10 @@ class LwsOptimize
             // If the auto-convert feature is activated, then prepare the hooks
             if ($this->lwsop_check_option("auto_update")['state'] == "true") {
                 require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
-                $this->lwsImageOptimization = new ImageOptimization(true);
+                $this->lwsImageOptimization = new Lws_Optimize_ImageOptimization(true);
             } else {
                 require_once (dirname(__DIR__) . "/classes/ImageOptimization.php");
-                $this->lwsImageOptimization = new ImageOptimization(false);
+                $this->lwsImageOptimization = new Lws_Optimize_ImageOptimization(false);
             }
 
             // Optimize all images to the designed MIME-Type
@@ -216,6 +217,19 @@ class LwsOptimize
     public function lws_optimize_init()
     {
         load_plugin_textdomain('lws-optimize', false, dirname(LWS_OP_BASENAME) . '/languages');
+    
+        // foreach ($xml->sitemap as $sitemap) {
+        //     $sitemapUrl = (string) $sitemap->loc;
+        //     $sitemapXml = simplexml_load_file($sitemapUrl);
+
+        //     // Iterate through the URLs in the sitemap
+        //     foreach ($sitemapXml->url as $url) {
+        //         $urlString = (string) $url->loc;
+        //         $urls[] = $urlString;
+        //     }
+        // }
+
+        // print_r($urls);
 
         if ( ! function_exists( 'wp_crop_image' ) ) {
             include( ABSPATH . 'wp-admin/includes/image.php' );
@@ -611,6 +625,27 @@ class LwsOptimize
         }
     }
 
+    function fetch_url_sitemap($url, $data) {
+        $sitemap_content = file_get_contents($url);
+        // Check if content is retrieved
+        if ($sitemap_content !== false) {
+            // Load the XML content into SimpleXML
+            $sitemap = simplexml_load_string($sitemap_content);
+
+            foreach ($sitemap->url as $url) {
+                $data[] = (string)$url->loc;
+            }
+            foreach ($sitemap->sitemap as $entry) {
+                // If the file end in ".xml", then it is most likely a sitemap link
+                if (array_pop(explode('.', $entry->loc)) == "xml") {
+                    $data = $this->fetch_url_sitemap((string)$entry->loc, $data);
+                }
+            }
+        }
+
+        return $data;
+    }
+
     function lwsop_preload_fb()
     {
         check_ajax_referer('update_fb_preload', '_ajax_nonce');
@@ -622,6 +657,11 @@ class LwsOptimize
             $this->optimize_options['filebased_cache']['preload'] = sanitize_text_field($_POST['state']);
             $this->optimize_options['filebased_cache']['preload_amount'] =  $amount;
             $this->optimize_options['filebased_cache']['preload_done'] =  0;
+
+            $sitemap = get_sitemap_url("index");
+            $urls = $this->fetch_url_sitemap($sitemap, []);
+
+            $this->optimize_options['filebased_cache']['preload_quantity'] = count($urls);
 
             if ($old === $this->optimize_options) {
                 wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache'])));
@@ -1302,45 +1342,37 @@ class LwsOptimize
      */
     function lws_optimize_start_filebased_preload()
     {
-        global $wpdb;
-        $urls_to_cache = array();
-
-        $already_done = 0;
-
         $lws_filebased = new FileCache($GLOBALS['lws_optimize']);
 
-
-        $page_ids = $wpdb->get_results("SELECT ID FROM " . $wpdb->posts . " WHERE (" . $wpdb->posts . ".post_type = 'post' OR " . $wpdb->posts . ".post_type = 'page') AND (" . $wpdb->posts . ".post_status = 'publish');");
-        foreach ($page_ids as $id) {
-            $tmp = get_permalink($id->ID);
-            $urls_to_cache[] = $tmp;
-
-            $parsed_tmp = parse_url($tmp);
-            $parsed_tmp = isset($parsed_tmp['path']) ? $parsed_tmp['path'] : '';
-
-            if (file_exists($lws_filebased->lwsop_set_cachedir($parsed_tmp))) {
-                $already_done++;
-            }
-        }
+        $sitemap = get_sitemap_url("index");
+        $urls = $this->fetch_url_sitemap($sitemap, []);
 
         if ($array = get_option('lws_optimize_config_array', false)) {
             $max_try = intval($array['filebased_cache']['preload_amount'] ?? 5);
             $current_try = 0;
 
             $done = $array['filebased_cache']['preload_done'] ?? 0;
-            if ($done == 0) {
-                $done = $already_done;
-            }
 
-            $array['filebased_cache']['preload_quantity'] = count($urls_to_cache);
+            $first_run = $done == 0 ? true : false;
 
-            foreach ($urls_to_cache as $caching) {
+            $array['filebased_cache']['preload_quantity'] = count($urls);
+
+
+            foreach ($urls as $url) {
+                // Don't do more than $max_try
                 if ($current_try < $max_try) {
-                    $parsed_url = parse_url($caching);
+                    $parsed_url = parse_url($url);
                     $parsed_url = isset($parsed_url['path']) ? $parsed_url['path'] : '';
 
-                    if (!file_exists($lws_filebased->lwsop_set_cachedir($parsed_url))) {
-                        $response = wp_remote_get($caching, array(
+                    $path = $lws_filebased->lwsop_set_cachedir($parsed_url);
+
+                    $file_exists = glob($path . "index*") ?? [];
+
+                    if (!empty($file_exists) && $first_run) {
+                        $done++;
+                        continue;
+                    } else {
+                        $response = wp_remote_get($url, array(
                             'user-agent' => "LWSOptimize Preloading cURL", 'timeout' => 10,
                             'sslverify' => false, 'headers' => array("Cache-Control" => "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0")
                         ));
@@ -1348,15 +1380,21 @@ class LwsOptimize
                         if (!$response || is_wp_error($response)) {
                             error_log($response->get_error_message() . " - ");
                         }
+                        
+                        $done++;
                         $current_try++;
+                        continue;
                     }
                 }
             }
 
-            $done += $current_try;
+            if ($current_try == 0 || $done == count($urls)) {
+                $array['filebased_cache']['preload_ongoing'] = "false";
+            } else {
+                $array['filebased_cache']['preload_ongoing'] = "true";
+            }
 
             $array['filebased_cache']['preload_done'] = $done;
-            $array['filebased_cache']['preload_ongoing'] = $current_try == 0 ? "false" : "true";
 
             update_option('lws_optimize_config_array', $array);
         }

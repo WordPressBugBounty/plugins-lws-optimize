@@ -101,7 +101,6 @@ $caches = [
 
 <div class="lwsop_bluebanner" style="justify-content: space-between;">
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
-    <!-- Temporary deactivated -->
     <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
 </div>
 
