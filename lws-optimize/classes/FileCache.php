@@ -78,9 +78,6 @@ class FileCache extends LwsOptimize
 
     public function lwsop_launch_cache()
     {
-        error_log($this->need_cache);
-        error_log($this->cache_directory);
-
         // Don't launch cache if checks have revealed that this URL should not be cached
         if (!$this->need_cache || $this->cache_directory == false) {
             return false;
@@ -108,8 +105,6 @@ class FileCache extends LwsOptimize
             }
         }
         
-        error_log("kljlkj");
-
         $do_cache = true;
         if ($this->_lwsop_is_mobile()) {
             if ($this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {
@@ -751,6 +746,8 @@ class FileCache extends LwsOptimize
         }
 
         $uri = preg_replace("/^(http|https):\/\//sx", "", $uri);
+        // Remove the parameters from an URL
+        $uri = preg_replace ('/\?.+$/', '', $uri);
 
         // By default, "cache";
         $dir = "cache";

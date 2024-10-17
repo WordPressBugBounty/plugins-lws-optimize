@@ -916,8 +916,8 @@ msgstr "Purge manuellement tout le cache de fichiers de votre site pour élimine
 msgid "Preloading"
 msgstr "Préchargement"
 
-msgid "Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while."
-msgstr "Démarre automatiquement le préchargement du cache de fichiers de votre site et le maintient à jour. Garantit que les pages sont mises en cache avant la première visite d'un utilisateur. Selon la quantité de pages à mettre en cache, cela peut prendre du temps."
+msgid "Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while. Please be aware that the total amount of page may include dynamic pages that will not be cached, such as excluded URLs or WooCommerce checkout page."
+msgstr "Démarre automatiquement le préchargement du cache de fichiers de votre site et le maintient à jour. Garantit que les pages sont mises en cache avant la première visite d'un utilisateur. Selon la quantité de pages à mettre en cache, cela peut prendre du temps. Veuillez noter que le nombre total de pages peut inclure des pages dynamiques ou exclues, tel que le Panier de WooCommerce, qui ne seront alors jamais mises en cache."
 
 msgid "Exclude URLs from the cache"
 msgstr "Exclure des URLs de la mise en cache"

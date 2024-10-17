@@ -157,6 +157,12 @@ class Lws_Optimize_ImageOptimization {
             return false;
         }
 
+        $accepted_types = ['jpg', 'jpeg', 'png', 'avif', 'webp'];
+        if (!in_array(strtolower($starting_type), $accepted_types) || !in_array(strtolower($ending_type), $accepted_types)) {
+            error_log(json_encode(['code' => 'UNSUPPORTED_FORMAT', 'message' => 'Selected image type is not usable with this version of Imagick. Either choose another type or update to a newer Imagick version.', 'data' => ['origin' => in_array(strtoupper($starting_type), $supported_formats), 'destination' => in_array(strtoupper($ending_type), $supported_formats)], 'time' => microtime(true) - $timer]));
+            return false;
+        }
+
         // If the current image type or the wanted image type are not supported by this version of Imagick, then abort
         if (!in_array(strtoupper($starting_type), $supported_formats) || !in_array(strtoupper($ending_type), $supported_formats)) {
             error_log(json_encode(['code' => 'UNSUPPORTED_FORMAT', 'message' => 'Selected image type is not usable with this version of Imagick. Either choose another type or update to a newer Imagick version.', 'data' => ['origin' => in_array(strtoupper($starting_type), $supported_formats), 'destination' => in_array(strtoupper($ending_type), $supported_formats)], 'time' => microtime(true) - $timer]));
@@ -211,7 +217,7 @@ class Lws_Optimize_ImageOptimization {
         }
     }
 
-    public function convert_all_medias($type = "webp", $quality = 75, $keepcopy = true, $exceptions = [], $amount_per_run = 10) {
+    public function convert_all_medias($type = "webp", $quality = 75, $keepcopy = true, $exceptions = [], $amount_per_run = 10, $done = 0) {
         global $wpdb;
         $done_attachments = 0;
 
@@ -225,12 +231,27 @@ class Lws_Optimize_ImageOptimization {
         if ($quality < 1 || $quality > 100) {
             $quality = 75;
         }
-        
+
+        if (!isset($done)) {
+            $done = 0;
+        }
+        $done = intval($done);
+
+        $attachment_data = array(
+            'post_type' => 'attachment',
+            'post_mime_type' => 'image',
+            'numberposts' => -1,
+            'post_status' => null,
+            'post_parent' => null,
+        );
+
+
+        $images = [];
+        $reload_thumbnails = [];
+        $attachments = get_posts($attachment_data);
+
         // Update each attachment data to reflect the new mime-type
         // Also create a new image with reduced quality to replace the current one
-        $attachments = get_posts(['post_type' => 'attachment', 'numberposts' => -1]);
-        $images = [];
-
         foreach ($attachments as $attachment) {
             if ($done_attachments >= $amount_per_run) {
                 break;
@@ -265,7 +286,6 @@ class Lws_Optimize_ImageOptimization {
             $dirname = $file_info['dirname'] ?? NULL;
             $extension = $file_info['extension'] ?? NULL;
 
-
             // Do not convert images that already are in the $type MIME
             if ($extension == $type) {
                 continue;
@@ -283,26 +303,33 @@ class Lws_Optimize_ImageOptimization {
                 error_log("LWSOptimize | ImageOptimization | No PATH for the attachment " . $attachment->ID);
                 continue;
             }
+
+            $accepted_types = ['jpg', 'jpeg', 'png', 'avif', 'webp'];
+            if (!in_array(strtolower($extension), $accepted_types) || !in_array(strtolower($type), $accepted_types)) {
+                continue;
+            }
             
             $webp_path = "$dirname/$filename.$type";
             $webp_url = str_replace(".$extension", ".$type", $attachment_url);
 
             // Only remove the additionnal sizes, not the original image
             $metadata = wp_get_attachment_metadata($attachment->ID);
-            foreach ($metadata['sizes'] as $sizes) {
-                foreach ($sizes as $key => $type_img) {
-                    if ($key == "file") {
-                        // Get the PATH to the filename and remove each files corresponding to it
-                        $file_name = $type_img;
-  
-                        $tmp = explode('/', $full_size_path);
-                        array_pop($tmp);
-                        $file_name = implode('/', $tmp) . "/$file_name";
-                        unlink($file_name);
+            if (isset($metadata['sizes'])) {
+                foreach ($metadata['sizes'] as $sizes) {
+                    foreach ($sizes as $key => $type_img) {
+                        if ($key == "file") {
+                            // Get the PATH to the filename and remove each files corresponding to it
+                            $file_name = $type_img;
+    
+                            $tmp = explode('/', $full_size_path);
+                            array_pop($tmp);
+                            $file_name = implode('/', $tmp) . "/$file_name";
+                            @unlink($file_name);
 
-                        $tmp = explode('/', $attachment_url);
-                        array_pop($tmp);
-                        $images[] = implode('/', $tmp) . "/$type_img";
+                            $tmp = explode('/', $attachment_url);
+                            array_pop($tmp);
+                            $images[] = implode('/', $tmp) . "/$type_img";
+                        }
                     }
                 }
             }
@@ -334,7 +361,6 @@ class Lws_Optimize_ImageOptimization {
                 unlink($full_size_path);
             }
 
-
             $images[] = $attachment_url;
 
             // Change attachment data with new image
@@ -348,11 +374,15 @@ class Lws_Optimize_ImageOptimization {
             );
 
             // Create the new attachment
-            $attach_id = wp_insert_attachment($attachment, $webp_path);
-            $done_attachments++;
+            if ($attach_id = wp_insert_attachment($attachment, $webp_path)) {
+                $reload_thumbnails[$attach_id] = $webp_path;
+                $done_attachments++;
+            }
         }
 
-        $this->regenerate_thumbnails_for_all_images();
+        foreach ($reload_thumbnails as $reload_id => $reload) {
+            wp_update_attachment_metadata($reload_id, wp_generate_attachment_metadata($reload_id, $reload));
+        }
 
         $posts = get_posts(['post_type' => array('page','post'),]);
         foreach ($posts as $post) {
@@ -454,11 +484,11 @@ class Lws_Optimize_ImageOptimization {
                 continue;
             }
 
+            wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $base_path));
+
             unset($original_data_array['auto_update']['original_media'][$key]);
             $state[] = ['id' => $key, 'state' => "REVERTED"];
         }
-
-        $this->regenerate_thumbnails_for_all_images();
 
         // Replace image URLs in post content (optimize this for performance)
         $posts = get_posts(['post_type' => array('page','post'),]);
@@ -484,13 +514,7 @@ class Lws_Optimize_ImageOptimization {
 
     public function regenerate_thumbnails_for_all_images() {
         // Get all attachments (images)
-        $args = array(
-            'post_type' => 'attachment',
-            'post_mime_type' => 'image',
-            'posts_per_page' => -1, // Get all attachments
-            'post_status' => 'inherit',
-        );
-    
+        $args = ['post_type' => 'attachment', 'post_mime_type' => 'image', 'posts_per_page' => -1, 'post_status' => 'inherit'];
         $attachments = get_posts($args);
     
         if ($attachments) {
@@ -509,134 +533,3 @@ class Lws_Optimize_ImageOptimization {
         }
     }
 }
-
-// function lws_op_delete_webp_files()
-// {
-//     global $wpdb;
-//     $args = array(
-//         'numberposts' => -1,
-//         'post_type' => 'attachment',
-//     );
-//     $attachments = get_posts($args);
-
-//     foreach ($attachments as $a) {
-//         if (explode('/', $a->post_mime_type)[0] == 'image' && $a->post_mime_type == 'image/webp') {
-//             $id = $a->ID;
-//             $path = get_attached_file($id);
-//             $filename = basename($path);
-//             $extension = explode('.', $filename);
-//             array_pop($extension);
-
-//             $new_path = implode('.', $extension);
-//             $extension = end($extension);
-//             $dirname = dirname($path);
-//             $new_path = $dirname . '/' . $new_path;
-
-//             if (file_exists($new_path)) {
-//                 rename($path . '.old', $path);
-//                 unlink($path);
-
-//                 $meta_value = $wpdb->get_var(
-//                     $wpdb->prepare(
-//                         "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d",
-//                         $id
-//                     )
-//                 );
-//                 $meta_value = explode('.', $meta_value);
-//                 array_pop($meta_value);
-//                 $meta_value = implode('.', $meta_value);
-//                 wp_update_post(array('ID' => $id, 'post_mime_type' => 'image/' . $extension));
-//                 $wpdb->query(
-//                     $wpdb->prepare(
-//                         "UPDATE {$wpdb->postmeta} SET meta_value = %s WHERE post_id = %d AND meta_key = '_wp_attached_file'",
-//                         $meta_value,
-//                         $id
-//                     )
-//                 );
-//             }
-
-//             require_once(ABSPATH . 'wp-admin/includes/image.php');
-
-//             if ($new_path && file_exists($new_path)) {
-//                 wp_generate_attachment_metadata($id, $new_path);
-//             }
-//         }
-//     }
-
-//     lws_op_update_posts_webp("restore");
-// }
-// function lws_op_uncompress_all_to_jpeg()
-// {
-//     $args = array(
-//         'numberposts' => -1,
-//         'post_type' => 'attachment',
-//     );
-//     $attachments = get_posts($args);
-//     foreach ($attachments as $a) {
-//         if (explode('/', $a->post_mime_type)[0] == 'image') {
-//             $metadata = wp_get_attachment_metadata($a->ID);
-//             $path = get_attached_file($a->ID);
-//             if (file_exists($path . '.old')) {
-//                 @rename($path . '.old', $path);
-//                 // if ($a->post_mime_type == 'image/webp') {
-//                 //     $tmp = explode('.', $path);
-//                 //     array_pop($tmp);
-//                 //     $tmp = implode('.', $tmp);
-//                 //     @rename($tmp. '.old', $tmp);
-//                 // }
-
-//                 foreach ($metadata['sizes'] as $size => $data) {
-//                     $size_path = explode('/', $path);
-//                     $size_path = implode('/', array_replace($size_path, [(count($size_path) - 1) => $data['file']]));
-//                     @rename($size_path . '.old', $size_path);
-//                     //if ($a->post_mime_type == 'image/webp') {
-//                     //     $tmp = explode('.', $size_path);
-//                     //     array_pop($tmp);
-//                     //     $tmp = implode('.', $tmp);
-//                     //     @rename($tmp. '.old', $tmp);
-//                     // }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-
-// add_filter('init', function() {
-//     if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
-//         include( ABSPATH . 'wp-admin/includes/image.php' );
-//     }
-//     $args = array(
-//         'post_type' => 'attachment',
-//         'post_mime_type' => 'image',
-//         'numberposts' => -1,
-//         'post_status' => null,
-//         'post_parent' => null, // any parent
-//     );         
-//     $attachments = get_posts($args);
-//     foreach ($attachments as $attachment) {
-//         $filepath = get_attached_file($attachment->ID);
-//         wp_generate_attachment_metadata($attachment->ID, $filepath);
-//     }
-
-// });
-
-
-/**
- * 
- * Choix entre optimiser les images (garde le même type, juste qualité réduite), convertir en webP ou convertir en AVIF
- * Possibilité de garder, ou non, les originaux
- * Si gardé, fichier nommé [original].[ext].avif
- * Sinon, fichier nommé [original].avif
- * 
- * Stocker dans BDD les infos sur quelles images sont originales ou non
- * si désactivé, l'optimisation ne supprime *pas* les webp/avif, seulement à l'appui sur un bouton. 
- * si les originales ont été supprimées, désactiver/supprimer les optis ne les supprime pas (i.e. elles ne sont plus considérées comme des optimisations)
- * 
- * A la suppression du média, retirer les originales si disponibles
- */
-
-/**
- * Ajouter une option dans wp_options contenant le listing de toutes les PATHs vers les images originales ainsi que le PATH vers la nouvelle image
- * Lors de la désactivation de la convertion, liste les images originales de la base, retrouve la copie et la supprime puis remet les données de l'originale
- */

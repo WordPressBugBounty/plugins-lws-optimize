@@ -14,7 +14,7 @@ class LwsOptimize
 
     public function __construct()
     {
-        // Get all the options for LWSOptimize. If none are found (first start, erased from DB), recreate the array with only the cache activated
+        // Get all the options for LWSOptimize. If none are found (first start, erased from DB), recreate the array
         $this->optimize_options = get_option('lws_optimize_config_array', NULL);
         if ($this->optimize_options === NULL) {
             $this->optimize_options = [
@@ -189,6 +189,8 @@ class LwsOptimize
                 add_action("wp_ajax_lwsop_autoconvert_all_images_activate", [$this, "lwsop_start_autoconvert_media"]);
                 add_action("wp_ajax_lwsop_stop_autoconvertion", [$this, "lwsop_stop_autoconvertion"]);
                 add_action("wp_ajax_lws_optimize_revert_convertion", [$this, "lws_optimize_revert_convertion"]);
+
+                add_action("lwsop_revert_convertion_standalone_hook", [$this, "lwsop_revert_convertion_standalone"]);
             }
 
             if (!$this->state && isset($this->lwsop_check_option('filebased_cache')['data']['preload']) && $this->lwsop_check_option('filebased_cache')['data']['preload'] === "true") {
@@ -388,14 +390,13 @@ class LwsOptimize
     public function lws_optimize_wp_footer_scripts()
     { ?>
         <script>
-            var adminajaxurl = "<?php echo esc_url(admin_url('admin-ajax.php')); ?>";
             if (document.getElementById("wp-admin-bar-lwsop-clear-cache") != null) {
                 document.getElementById("wp-admin-bar-lwsop-clear-cache").addEventListener('click', function() {
                     jQuery.ajax({
-                        url: adminajaxurl,
+                        url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",
                         dataType: 'json',
-                        timeout: 120000,
+                        timeout: 30000,
                         context: document.body,
                         data: {
                             action: "lws_clear_fb_cache",
@@ -420,10 +421,10 @@ class LwsOptimize
             if (document.getElementById("wp-admin-bar-lwsop-clear-subcache") != null) {
                 document.getElementById("wp-admin-bar-lwsop-clear-subcache").addEventListener('click', function() {
                     jQuery.ajax({
-                        url: adminajaxurl,
+                        url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",
                         dataType: 'json',
-                        timeout: 120000,
+                        timeout: 30000,
                         context: document.body,
                         data: {
                             action: "lws_clear_style_fb_cache",
@@ -448,10 +449,10 @@ class LwsOptimize
             if (document.getElementById("wp-admin-bar-lwsop-clear-htmlcache") != null) {
                 document.getElementById("wp-admin-bar-lwsop-clear-htmlcache").addEventListener('click', function() {
                     jQuery.ajax({
-                        url: adminajaxurl,
+                        url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         dataType: 'json',
                         type: "POST",
-                        timeout: 120000,
+                        timeout: 30000,
                         context: document.body,
                         data: {
                             action: "lws_clear_html_fb_cache",
@@ -476,10 +477,10 @@ class LwsOptimize
             if (document.getElementById("wp-admin-bar-lwsop-clear-current-cache") != null) {
                 document.getElementById("wp-admin-bar-lwsop-clear-current-cache").addEventListener('click', function() {
                     jQuery.ajax({
-                        url: adminajaxurl,
+                        url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         dataType: 'json',
                         type: "POST",
-                        timeout: 120000,
+                        timeout: 30000,
                         context: document.body,
                         data: {
                             action: "lws_clear_currentpage_fb_cache",
@@ -1366,23 +1367,33 @@ class LwsOptimize
 
                     $path = $lws_filebased->lwsop_set_cachedir($parsed_url);
 
+                    if ($path == false) {
+                        continue;
+                    }
+
                     $file_exists = glob($path . "index*") ?? [];
 
-                    if (!empty($file_exists) && $first_run) {
-                        $done++;
+                    if (!empty($file_exists)) {
+                        if ($first_run) {
+                            $done++;
+                        }
                         continue;
                     } else {
                         $response = wp_remote_get($url, array(
-                            'user-agent' => "LWSOptimize Preloading cURL", 'timeout' => 10,
+                            'user-agent' => "LWSOptimize Preloading cURL", 'timeout' => 30,
                             'sslverify' => false, 'headers' => array("Cache-Control" => "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0")
                         ));
 
                         if (!$response || is_wp_error($response)) {
                             error_log($response->get_error_message() . " - ");
+                        } else {
+                            $file_exists = glob($path . "index*") ?? [];
+
+                            if (!empty($file_exists)) {
+                                $done++;
+                                $current_try++;
+                            }
                         }
-                        
-                        $done++;
-                        $current_try++;
                         continue;
                     }
                 }
@@ -2146,29 +2157,30 @@ class LwsOptimize
             'keep_copy' => "true",
             'quality' => 75,
             'exceptions' => [],
-            'amount_per_run' => 10]);
+            'amount_per_run' => 10
+        ]);
 
+        $options = get_option('lws_optimize_current_media_convertion', [
+            'done' => 0,
+            'latest_time' => 0
+        ]);
 
         $response = $this->lwsImageOptimization->convert_all_medias($media_data['convert_type'] ?? "webp", $media_data['quality'] ?? 75, 
-        $media_data['keep_copy'] ?? "true", $media_data['exceptions'] ?? [], $media_data['amount_per_run'] ?? 10);
+        $media_data['keep_copy'] ?? "true", $media_data['exceptions'] ?? [], $media_data['amount_per_run'] ?? 10, $options['done'] ?? 0);
 
         // If no attachments got converted, stop the cron here
         $response = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
         } else {
             $done = $response['data'];
-            $options = get_option('lws_optimize_current_media_convertion', [
-                'done' => 0,
-                'latest_time' => 0
-            ]);
+            $done = explode('/', $done)[0] ?? '0';
 
             // Stop the cron if nothing got converted
-            if (explode('/', $done)[0] == "0") {
+            if ($done == "0") {
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
             }
             // Each passage, add the amount of images converted + update the latest time
             // Those data are shown in "Image Optimization"
-            $done = explode('/', $done)[0];
             $options['latest_time'] = time();
             $options['done'] += $done;
             update_option('lws_optimize_current_media_convertion', $options);
@@ -2188,8 +2200,13 @@ class LwsOptimize
     public function lws_optimize_revert_convertion() {
         check_ajax_referer('lwsop_revert_convertion_nonce', '_ajax_nonce');
 
-        $response = $this->lwsImageOptimization->revertOptimization();
-        wp_die($response);
+        wp_schedule_single_event(time(), 'lwsop_revert_convertion_standalone_hook' );
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
+    }
+
+    function lwsop_revert_convertion_standalone() {
+        $this->lwsImageOptimization->revertOptimization();
+        wp_die();
     }
 
     /**

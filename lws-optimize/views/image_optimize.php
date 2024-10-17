@@ -33,8 +33,10 @@ $mimetype_select_values = [
     'png'  => "PNG",
 ];
 
+$img = new Imagick();
+$supported_formats = $img->queryFormats();
 
-if (floatval($wp_version) > 6.5) {
+if (floatval($wp_version) > 6.5 && in_array("AVIF", $supported_formats)) {
     $mimetype_select_values = array_merge(['avif' => "AVIF"], $mimetype_select_values);
 }
 
@@ -281,87 +283,6 @@ $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron
                 element.parentElement.parentElement.classList.add('selected')
             })
         })
-
-        document.getElementById('lwsop_form_choose_configuration').addEventListener("submit", function(event) {
-            var element = event.target;
-            event.preventDefault();
-            document.body.style.pointerEvents = "none";
-            let formData = jQuery(element).serializeArray();
-
-
-            let submit_button = document.getElementById('lwsop_submit_new_config_button');
-            let old = element.innerHTML;
-            element.innerHTML = `
-                <div class="loading_animation">
-                        <img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="120px" height="105px">
-                    </div>
-            `;
-
-            let ajaxRequest = jQuery.ajax({
-                url: ajaxurl,
-                type: "POST",
-                timeout: 120000,
-                context: document.body,
-                data: {
-                    data: formData,
-                    _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_change_optimize_configuration_nonce")); ?>",
-                    action: "lwsop_change_optimize_configuration",
-                },
-                success: function(data) {
-                    element.innerHTML = old;
-                    document.querySelectorAll('input[name="lwsop_configuration[]"]').forEach(function(element) {
-                        element.addEventListener('change', function() {
-                            document.querySelectorAll('.lwsop_configuration_block_sub.selected').forEach(function(element) {
-                                element.classList.remove('selected')
-                            });
-                            element.parentElement.parentElement.classList.add('selected')
-                        })
-                    })
-
-                    document.body.style.pointerEvents = "all";
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        returnData = {
-                            'code': "NOT_JSON",
-                            'data': "FAIL"
-                        };
-                    }
-
-                    jQuery(document.getElementById('lwsop_preconfigurate_plugin')).modal('hide');
-                    switch (returnData['code']) {
-                        case 'SUCCESS':
-                            callPopup('success', "<?php esc_html_e('New configuration applied.', 'lws-optimize'); ?>");
-                            location.reload();
-                            break;
-                        default:
-                            callPopup('error', "<?php esc_html_e('Failed to configurate the plugin.', 'lws-optimize'); ?>");
-                            break;
-                    }
-                },
-                error: function(error) {
-                    element.innerHTML = old;
-                    document.querySelectorAll('input[name="lwsop_configuration[]"]').forEach(function(element) {
-                        element.addEventListener('change', function() {
-                            document.querySelectorAll('.lwsop_configuration_block_sub.selected').forEach(function(element) {
-                                element.classList.remove('selected')
-                            });
-                            element.parentElement.parentElement.classList.add('selected')
-                        })
-                    })
-
-                    document.body.style.pointerEvents = "all";
-                    jQuery(document.getElementById('lwsop_preconfigurate_plugin')).modal('hide');
-                    callPopup("error", "<?php esc_html_e('Unknown error. Cannot configurate the plugin.', 'lws-optimize'); ?>");
-                    console.log(error);
-                }
-            });
-        });
 
         // Either open the modal to manage auto-convertion or stop the auto-convertion
         document.getElementById('lwsop_onupload_convertion').addEventListener('change', function(event) {

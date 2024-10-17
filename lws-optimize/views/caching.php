@@ -289,7 +289,7 @@ $caches = [
             <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
         </h2>
         <div class="lwsop_contentblock_description">
-            <?php esc_html_e('Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while.', 'lws-optimize'); ?>
+            <?php esc_html_e('Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while. Please be aware that the total amount of page may include dynamic pages that will not be cached, such as excluded URLs or WooCommerce checkout page.', 'lws-optimize'); ?>
         </div>
         <div class="lwsop_contentblock_fbcache_input_preload_block">
             <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="3" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
