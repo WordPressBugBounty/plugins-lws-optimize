@@ -62,7 +62,11 @@ class Lws_Optimize_ImageOptimization {
         if (substr($file['type'], 0, 5) === "image") {
             // Create a new version of the image in the new image type and overwrite the original file
             // On error, give up on the convertion
-            if (!$this->lws_optimize_convert_image($file['tmp_name'], $file['tmp_name'], $quality, $file['type'], "image/$convert_type")) {
+            if ($this->lws_optimize_convert_image($file['tmp_name'], $file['tmp_name'], $quality, $file['type'], "image/$convert_type")) {
+                $failed_convertion = get_option('lws_optimize_autooptimize_errors', []);
+                $failed_convertion[] = ['error_type' => "AUTOCONVERT", 'time' => time(), 'quality' => $quality, 'type' => $file['type'], 'convert' => $convert_type, 'file' => $file['name']];
+                update_option('lws_optimize_autooptimize_errors', $failed_convertion);
+
                 error_log(json_encode(['code' => 'CONVERT_FAIL', 'message' => 'File optimisation has failed.', 'data' => $file, 'time' => microtime(true) - $timer]));
                 return $file;
             }
@@ -72,6 +76,10 @@ class Lws_Optimize_ImageOptimization {
             $tmp = explode("/", $file['type']);
             $starting_type = $tmp[0] == "image" ? $tmp[1] : NULL;
             if ($starting_type === NULL) {
+                $failed_convertion = get_option('lws_optimize_autooptimize_errors', []);
+                $failed_convertion[] = ['error_type' => "AUTOCONVERT", 'time' => time(), 'quality' => $quality, 'type' => $file['type'], 'convert' => $convert_type, 'file' => $file['name']];
+                update_option('lws_optimize_autooptimize_errors', $failed_convertion);
+                
                 error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $file, 'time' => microtime(true) - $timer]));
                 return $file;
             }
@@ -340,6 +348,9 @@ class Lws_Optimize_ImageOptimization {
             // No image created, an error occured
             if (!$created) {
                 error_log("LWSOptimize | ImageOptimization | Converted version of $filename.$extension could not be created");
+                $failed_convertion = get_option('lws_optimize_autooptimize_errors', []);
+                $failed_convertion[] = ['error_type' => "TOTAL_CONVERTION", 'time' => time(), 'quality' => $quality, 'type' => $extension, 'convert' => $type, 'file' => $file_name];
+                update_option('lws_optimize_autooptimize_errors', $failed_convertion);
                 continue;
             }
 

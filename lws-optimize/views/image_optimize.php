@@ -24,35 +24,51 @@ if ($lwscache_status === NULL && $fastest_cache_status === NULL) {
     $lwscache_locked = true;
 }
 
-global $wp_version;
+$is_imagick = true;
+if (class_exists('Imagick')){
+    global $wp_version;
 
+    $mimetype_select_values = [
+        'webp' => "WebP",
+        'jpeg' => "JPEG",
+        'png'  => "PNG",
+    ];
 
-$mimetype_select_values = [
-    'webp' => "WebP",
-    'jpeg' => "JPEG",
-    'png'  => "PNG",
-];
+    $is_imagick = true;
+    $img = new Imagick();
+    $supported_formats = $img->queryFormats();
 
-$img = new Imagick();
-$supported_formats = $img->queryFormats();
+    if (floatval($wp_version) > 6.5 && in_array("AVIF", $supported_formats)) {
+        $mimetype_select_values = array_merge(['avif' => "AVIF"], $mimetype_select_values);
+    }
 
-if (floatval($wp_version) > 6.5 && in_array("AVIF", $supported_formats)) {
-    $mimetype_select_values = array_merge(['avif' => "AVIF"], $mimetype_select_values);
+    $latest_convertion = get_option('lws_optimize_current_media_convertion', [
+        'done' => 0,
+        'latest_time' => 0,
+    ]);
+
+    $autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
+
+    $done_convertion = $latest_convertion['done'] ?? 0;
+    $latest_time = $latest_convertion['latest_time'] ?? 0;
+    $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $latest_time), 'Y-m-d H:i:s');
+
+    $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
+} else {
+    $is_imagick = false;
+    $latest_convertion = ['done' => 0, 'latest_time' => 0];
+    $autoconvert_state = "false";
+    $done_convertion = 0;
+    $latest_time = 0;
+    $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $latest_time), 'Y-m-d H:i:s');
+    $next_scheduled_all_convert = false;
 }
-
-$latest_convertion = get_option('lws_optimize_current_media_convertion', [
-    'done' => 0,
-    'latest_time' => 0,
-]);
-
-$autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
-
-$done_convertion = $latest_convertion['done'] ?? 0;
-$latest_time = $latest_convertion['latest_time'] ?? 0;
-$local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $latest_time), 'Y-m-d H:i:s');
-
-$next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
 ?>
+<?php if ( $is_imagick == false) : ?>
+    <div class="lwsop_noimagick_block">
+        <?php esc_html_e('Imagick has not been found on this server. Please contact your hosting provider to learn more about the issue.', 'lws-optimize'); ?>
+    </div>
+<?php endif ?>
 
 <div class="lwsop_bluebanner">
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Image Convertion', 'lws-optimize'); ?></h2>
@@ -110,12 +126,14 @@ $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
+    <?php if ( $is_imagick != false) : ?>
         <button type="button" class="lwsop_blue_button" id="lwsop_revert_all_images" name="lwsop_revert_all_images">
             <span>
                 <!-- <img src="<?php //echo esc_url(plugins_url('images/', __DIR__)) ?>" alt="" width="20px"> -->
                 <?php esc_html_e('Revert images', 'lws-optimize'); ?>
             </span>
         </button>
+    <?php endif ?>
     </div>
 </div>
 
@@ -130,119 +148,164 @@ $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
-        <label class="lwsop_checkbox">
-            <input type="checkbox" name="lwsop_onupload_convertion" id="lwsop_onupload_convertion" <?php echo $autoconvert_state == "true" ? esc_attr("checked") : ""; ?>>
-            <span class="slider round"></span>
-        </label>
+        <?php if ( $is_imagick != false) : ?>
+            <label class="lwsop_checkbox">
+                <input type="checkbox" name="lwsop_onupload_convertion" id="lwsop_onupload_convertion" <?php echo $autoconvert_state == "true" ? esc_attr("checked") : ""; ?>>
+                <span class="slider round"></span>
+            </label>
+        <?php endif ?>
     </div>
+    <?php $errors = get_option('lws_optimize_autooptimize_errors', []);
+        if (!empty($errors)) : ?>
+        <div class="lwsop_error_listing_main">
+            <div id="show_errors_autoupdate_action">
+                <span><?php esc_html_e('Show failed convertions', 'lws-optimize'); ?></span>
+            </div>
+            <div class="lwsop_contentblock_error_listing hidden" id="show_errors_autoupdate">
+                <table class="lwsop_error_listing">
+                    <thead>
+                        <tr>
+                            <td><?php esc_html_e('Error type', 'lws-optimize'); ?></td>
+                            <td><?php esc_html_e('Date', 'lws-optimize'); ?></td>
+                            <td><?php esc_html_e('File', 'lws-optimize'); ?></td>
+                            <td><?php esc_html_e('Convertion', 'lws-optimize'); ?></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($errors as $error) : ?>
+                            <tr>
+                                <td><?php echo esc_html($error['error_type']); ?></td>
+                                <td><?php echo esc_html(get_date_from_gmt(date('Y-m-d H:i:s', $error['time']), 'Y-m-d H:i:s')); ?></td>
+                                <td><?php echo esc_html($error['file']); ?></td>
+                                <td><?php echo esc_html($error['type'] . " => image/" . $error['convert']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif ?>
 </div>
 
-<div class="modal fade" id="lwsop_convert_all_modal" tabindex='-1' role='dialog'>
-    <div class="modal-dialog" style="margin-top: 4%">
-        <div class="modal-content" style="padding: 30px 0;">
-            <div class="lwsop_convert_modal">
-                <label class="lwsop_convert_modal_label" for="lwsop_mimetype_select">
-                    <span>
-                        <?php esc_html_e('MIME-type in which media will be converted: ', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("Images already in this format will not be modified. Some types may not appear if your installation is not compatible.", "lws-optimize"); ?>"></a>
-                    </span>
-                    <select class="lwsop_convert_modal_type_select" id="lwsop_mimetype_select">
-                        <?php foreach ($mimetype_select_values as $key => $value) : ?>
-                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <label class="lwsop_convert_modal_label" for="lwsop_quality_convertion">
-                    <span>
-                        <?php esc_html_e('Quality of the converted images: ', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("100% means the image will have the same quality as the original. A lower quality will result in a smaller but less clear image. 75% is a good middleground between size and appearance.", "lws-optimize"); ?>"></a>
-                    </span>
-                    <input class="lwsop_convert_modal_quality" type="number" min="1" max="100" value="75" id="lwsop_quality_convertion">
-                </label>
-
-                <label class="lwsop_convert_modal_label" for="lwsop_amount_convertion">
-                    <span>
-                        <?php esc_html_e('Amount of images to convert per batch: ', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("Image convertion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load.", "lws-optimize"); ?>"></a>
-                    </span>
-                    <input class="lwsop_convert_modal_amount_convertion_label" type="number" min="1" max="50" value="10" id="lwsop_amount_convertion">
-                </label>
-
-                <label class="lwsop_convert_modal_label" for="lwsop_keepcopy_convertion">
-                    <span>
-                        <?php esc_html_e('Keep the original images: ', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("By default, the original image will be kept, to allow for a rollback of the image to their original format. This will result in an increase in your website's size as two images will be saved instead of one. Deactivating this option will result in smaller sizes but all convertions are definitives.", "lws-optimize"); ?>"></a>
-                    </span>
-                    <label class="lwsop_checkbox">
-                        <input type="checkbox" name="lwsop_keepcopy_convertion" id="lwsop_keepcopy_convertion" checked>
-                        <span class="slider round"></span>
+<?php if ( $is_imagick != false) : ?>
+    <div class="modal fade" id="lwsop_convert_all_modal" tabindex='-1' role='dialog'>
+        <div class="modal-dialog" style="margin-top: 4%">
+            <div class="modal-content" style="padding: 30px 0;">
+                <div class="lwsop_convert_modal">
+                    <label class="lwsop_convert_modal_label" for="lwsop_mimetype_select">
+                        <span>
+                            <?php esc_html_e('MIME-type in which media will be converted: ', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("Images already in this format will not be modified. Some types may not appear if your installation is not compatible.", "lws-optimize"); ?>"></a>
+                        </span>
+                        <select class="lwsop_convert_modal_type_select" id="lwsop_mimetype_select">
+                            <?php foreach ($mimetype_select_values as $key => $value) : ?>
+                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </label>
-                </label>
 
-                <label class="lwsop_convert_modal_label textarea" label="lwsop_exclude_from_convertion">
-                    <span>
-                        <?php esc_html_e('Image exclusion:', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("Input the name of each media you wish to exclude from the convertion. Separate each name with a comma (,).", "lws-optimize"); ?>"></a>
-                    </span>
-                    <textarea  class="lwsop_convert_modal_exclusions" id="lwsop_exclude_from_convertion" placeholder="image_1.png,background_image.jpg"></textarea>
-                </label>
+                    <label class="lwsop_convert_modal_label" for="lwsop_quality_convertion">
+                        <span>
+                            <?php esc_html_e('Quality of the converted images: ', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("100% means the image will have the same quality as the original. A lower quality will result in a smaller but less clear image. 75% is a good middleground between size and appearance.", "lws-optimize"); ?>"></a>
+                        </span>
+                        <input class="lwsop_convert_modal_quality" type="number" min="1" max="100" value="75" id="lwsop_quality_convertion">
+                    </label>
 
-                <div class="lwsop_modal_buttons">
-                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
-                    <button type="button" id="lwsop_all_convert_images" class="lwsop_validatebutton">
-                        <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                        <?php echo esc_html_e('Convert images', 'lws-optimize'); ?>
-                    </button>
+                    <label class="lwsop_convert_modal_label" for="lwsop_amount_convertion">
+                        <span>
+                            <?php esc_html_e('Amount of images to convert per batch: ', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("Image convertion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load.", "lws-optimize"); ?>"></a>
+                        </span>
+                        <input class="lwsop_convert_modal_amount_convertion_label" type="number" min="1" max="50" value="10" id="lwsop_amount_convertion">
+                    </label>
+
+                    <label class="lwsop_convert_modal_label" for="lwsop_keepcopy_convertion">
+                        <span>
+                            <?php esc_html_e('Keep the original images: ', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("By default, the original image will be kept, to allow for a rollback of the image to their original format. This will result in an increase in your website's size as two images will be saved instead of one. Deactivating this option will result in smaller sizes but all convertions are definitives.", "lws-optimize"); ?>"></a>
+                        </span>
+                        <label class="lwsop_checkbox">
+                            <input type="checkbox" name="lwsop_keepcopy_convertion" id="lwsop_keepcopy_convertion" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </label>
+
+                    <label class="lwsop_convert_modal_label textarea" label="lwsop_exclude_from_convertion">
+                        <span>
+                            <?php esc_html_e('Image exclusion:', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("Input the name of each media you wish to exclude from the convertion. Separate each name with a comma (,).", "lws-optimize"); ?>"></a>
+                        </span>
+                        <textarea  class="lwsop_convert_modal_exclusions" id="lwsop_exclude_from_convertion" placeholder="image_1.png,background_image.jpg"></textarea>
+                    </label>
+
+                    <div class="lwsop_modal_buttons">
+                        <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                        <button type="button" id="lwsop_all_convert_images" class="lwsop_validatebutton">
+                            <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
+                            <?php echo esc_html_e('Convert images', 'lws-optimize'); ?>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="modal fade" id="lwsop_modal_convert_on_upload" tabindex='-1' role='dialog'>
-    <div class="modal-dialog" style="margin-top: 10%">
-        <div class="modal-content" style="padding: 30px 0;">
-            <div class="lwsop_convert_modal">
-                <label class="lwsop_convert_modal_label" for="lwsop_mimetype_select_upload">
-                    <span>
-                        <?php esc_html_e('MIME-type in which media will be converted: ', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("Images already in this format will not be modified. Some types may not appear if your installation is not compatible.", "lws-optimize"); ?>"></a>
-                    </span>
-                    <select class="lwsop_convert_modal_type_select" id="lwsop_mimetype_select_upload">
-                        <?php foreach ($mimetype_select_values as $key => $value) : ?>
-                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
+    <div class="modal fade" id="lwsop_modal_convert_on_upload" tabindex='-1' role='dialog'>
+        <div class="modal-dialog" style="margin-top: 10%">
+            <div class="modal-content" style="padding: 30px 0;">
+                <div class="lwsop_convert_modal">
+                    <label class="lwsop_convert_modal_label" for="lwsop_mimetype_select_upload">
+                        <span>
+                            <?php esc_html_e('MIME-type in which media will be converted: ', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("Images already in this format will not be modified. Some types may not appear if your installation is not compatible.", "lws-optimize"); ?>"></a>
+                        </span>
+                        <select class="lwsop_convert_modal_type_select" id="lwsop_mimetype_select_upload">
+                            <?php foreach ($mimetype_select_values as $key => $value) : ?>
+                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($value); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
 
-                <label class="lwsop_convert_modal_label" for="lwsop_quality_convertion_upload">
-                    <span>
-                        <?php esc_html_e('Quality of the converted images: ', 'lws-optimize'); ?>
-                        <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
-                        title="<?php esc_html_e("100% means the image will have the same quality as the original. A lower quality will result in a smaller but less clear image. 75% is a good middleground between size and appearance.", "lws-optimize"); ?>"></a>
-                    </span>
-                    <input class="lwsop_convert_modal_quality" type="number" min="1" max="100" value="75" id="lwsop_quality_convertion_upload">
-                </label>
+                    <label class="lwsop_convert_modal_label" for="lwsop_quality_convertion_upload">
+                        <span>
+                            <?php esc_html_e('Quality of the converted images: ', 'lws-optimize'); ?>
+                            <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
+                            title="<?php esc_html_e("100% means the image will have the same quality as the original. A lower quality will result in a smaller but less clear image. 75% is a good middleground between size and appearance.", "lws-optimize"); ?>"></a>
+                        </span>
+                        <input class="lwsop_convert_modal_quality" type="number" min="1" max="100" value="75" id="lwsop_quality_convertion_upload">
+                    </label>
 
-                <div class="lwsop_modal_buttons">
-                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
-                    <button type="button" id="lwsop_all_convert_images_upload" class="lwsop_validatebutton">
-                        <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                        <?php echo esc_html_e('Activate convertion', 'lws-optimize'); ?>
-                    </button>
+                    <div class="lwsop_modal_buttons">
+                        <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                        <button type="button" id="lwsop_all_convert_images_upload" class="lwsop_validatebutton">
+                            <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
+                            <?php echo esc_html_e('Activate convertion', 'lws-optimize'); ?>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
+<?php endif ?>
+<?php if (!empty($errors)) : ?>
+<script>
+    if (document.getElementById('show_errors_autoupdate_action') != null) {
+        document.getElementById('show_errors_autoupdate_action').addEventListener('click', function() {
+            let content = document.getElementById('show_errors_autoupdate');
+            if (content != null) {
+                content.classList.toggle('hidden');
+            }
+        })
+    }
+</script>
+<?php endif ?>
 <script>
     function callPopup(type, content) {
         let modal = document.getElementById('modal_popup');

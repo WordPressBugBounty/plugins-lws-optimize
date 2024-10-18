@@ -1524,3 +1524,21 @@ msgstr "La convertion a bien été arrétée."
 
 msgid "Image Convertion"
 msgstr "Convertion d'images"
+
+msgid "Imagick has not been found on this server. Please contact your hosting provider to learn more about the issue."
+msgstr "Imagick n'a pas été détecté sur ce serveur. Veuillez contacter votre hébergeur afin d'en apprendre plus à ce propos."
+
+msgid "Show failed convertions"
+msgstr "Afficher les convertions échouées"
+
+msgid "Error type"
+msgstr "Type d'erreur"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "File"
+msgstr "Fichier"
+
+msgid "Convertion"
+msgstr "Convertion"

@@ -3298,6 +3298,51 @@ button#lwsop_deactivate_convertion:hover {
     background: #7b7b7b 0% 0% no-repeat padding-box;
 }
 
+.lwsop_noimagick_block {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #ffffffd9;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+}
+
+.lwsop_contentblock_error_listing {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    border: 1px solid #8c8f94;
+    padding: 10px;
+    width: 100%;
+    font: normal normal normal 13px/23px Poppins;
+    letter-spacing: 0px;
+    color: #1D2327;
+    border-radius: 4px;
+}
+
+.lwsop_error_listing {
+    width: 100%;
+}
+
+.lwsop_error_listing td {
+    padding-right: 10px;
+}
+
+.lwsop_error_listing_main {
+    width: 100%;
+}
+
+div#show_errors_autoupdate_action {
+    width: fit-content;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
 /* IMAGE CONVERTION */
 
 @media only screen and (max-width: 1280px) {
