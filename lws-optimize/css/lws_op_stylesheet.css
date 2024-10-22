@@ -2045,6 +2045,7 @@ h2.lwsop_contentblock_title {
     font: normal normal bold 16px/26px Poppins;
     color: #1D2327;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .lwsop_frontend_cache_block {
@@ -2928,6 +2929,9 @@ span.lwsop_contentblock_fbcache_preload_label {
     font-weight: 600;
     margin-top: 20px;
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 div#lwsop_preloading_status {
@@ -3314,13 +3318,13 @@ button#lwsop_deactivate_convertion:hover {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    border: 1px solid #8c8f94;
-    padding: 10px;
     width: 100%;
     font: normal normal normal 13px/23px Poppins;
     letter-spacing: 0px;
     color: #1D2327;
     border-radius: 4px;
+    overflow-y: scroll;
+    max-height: 350px;
 }
 
 .lwsop_error_listing {
@@ -3336,6 +3340,117 @@ button#lwsop_deactivate_convertion:hover {
 }
 
 div#show_errors_autoupdate_action {
+    width: fit-content;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.9em;
+    font-style: italic;
+}
+
+.lwsop_contentblock_convertion_status > .lwsop_contentblock_total_convert_image > span:first-child {
+    font-weight: normal;
+}
+
+.lwsop_contentblock_total_convert_image > span:nth-child(2) {
+    font-weight: 600;
+}
+
+.lwsop_update_info_button {
+    background: #1C469D 0% 0% no-repeat padding-box;
+    border-radius: 22px;
+    font: normal normal normal 14px/24px Poppins;
+    letter-spacing: 0px;
+    color: #FFFFFF;
+    border: none;
+    height: 40px;
+    padding: 0 20px;
+}
+
+
+table.lwsop_error_listing {
+    border: 1px solid #ccc;
+    border-collapse: collapse;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    table-layout: fixed;
+  }
+  
+  table.lwsop_error_listing caption {
+    font-size: 1.5em;
+    margin: .5em 0 .75em;
+  }
+  
+  table.lwsop_error_listing tr {
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    padding: .35em;
+  }
+  
+  table.lwsop_error_listing th,
+  table.lwsop_error_listing td {
+    padding: .625em;
+    text-align: center;
+    max-width: 150px;
+    word-break: break-all;
+  }
+  
+  table.lwsop_error_listing th {
+    font-size: .85em;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  
+  @media screen and (max-width: 748px) {
+    table.lwsop_error_listing {
+      border: 0;
+    }
+  
+    table.lwsop_error_listing caption {
+      font-size: 1.3em;
+    }
+    
+    table.lwsop_error_listing thead {
+      border: none;
+      clip: rect(0 0 0 0);
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      width: 1px;
+    }
+    
+    table.lwsop_error_listing tr {
+      border-bottom: 3px solid #ddd;
+      display: block;
+      margin-bottom: .625em;
+    }
+    
+    table.lwsop_error_listing td {
+      border-bottom: 1px solid #ddd;
+      display: block;
+      font-size: .8em;
+      max-width: unset;
+    }
+    
+    table.lwsop_error_listing td::before {
+      /*
+      * aria-label has no advantage, it won't be read inside a table
+      content: attr(aria-label);
+      */
+      content: attr(data-label);
+      float: left;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    
+    table.lwsop_error_listing td:last-child {
+      border-bottom: 0;
+    }
+  }
+  
+div#show_images_converted_action {
     width: fit-content;
     cursor: pointer;
     user-select: none;

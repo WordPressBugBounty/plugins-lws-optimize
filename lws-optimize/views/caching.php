@@ -297,7 +297,10 @@ $caches = [
         </div>
 
         <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $preload_state == "false" ? esc_attr('hidden') : '';?>">
-            <span class="lwsop_contentblock_fbcache_preload_label"><?php esc_html_e('Preloading status: ', 'lws-optimize'); ?></span>
+            <span class="lwsop_contentblock_fbcache_preload_label">
+                <?php esc_html_e('Preloading status: ', 'lws-optimize'); ?>
+                <button id="lwsop_update_preloading_value" class="lwsop_update_info_button"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
+            </span>
             <div id="lwsop_preloading_status">
                 <div class="lwsop_preloading_status_info">
                     <span><?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?></span>
@@ -1266,70 +1269,88 @@ $caches = [
 </script>
 
 <script>
-    let checkbox_preload = document.getElementById('lws_op_fb_cache_manage_preload');
-    let preloading_search = setInterval(() => {
-        if (checkbox_preload.checked != true) {
-            return 0;
-        }
-        let ajaxRequest = jQuery.ajax({
-            url: ajaxurl,
-            type: "POST",
-            timeout: 120000,
-            context: document.body,
-            data: {
-                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_check_for_update_preload_nonce')); ?>',
-                action: "lwsop_check_preload_update"
-            },
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
-                }
-
-                switch (returnData['code']) {
-                    case 'SUCCESS':
-
-                        let p_info = document.getElementById('lwsop_current_preload_info');
-                        let p_done = document.getElementById('lwsop_current_preload_done');
-                        let block = document.getElementById('lwsop_preloading_status_block');
-                        let p_next = document.getElementById('lwsop_next_preload_info');
-
-                        if (block != null) {
-                            block.classList.remove('hidden');
-                        }
-
-                        if (p_info != null) {
-                            if (returnData['data']['ongoing'] == "true") {
-                                p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
-                            } else {
-                                p_info.innerHTML = "<?php esc_html_e("Done", "lws-optimize"); ?>";
-                            }
-                        }
-
-                        if (p_next != null) {
-                            p_next.innerHTML = returnData['data']['next'];
-                        }
-
-                        if (p_done != null) {
-                            p_done.innerHTML = returnData['data']['done'] + "/" + returnData['data']['quantity']
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            },
-            error: function(error) {
-                console.log(error);
+    let preload_check_button = document.getElementById('lwsop_update_preloading_value');
+    if (preload_check_button != null) {
+        preload_check_button.addEventListener('click', function() {
+            let checkbox_preload = document.getElementById('lws_op_fb_cache_manage_preload');
+            if (checkbox_preload.checked != true) {
+                return 0;
             }
+
+            let button = this;
+            let old_text = this.innerHTML;
+            this.innerHTML = `
+                <span name="loading" style="padding-left:5px">
+                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                </span>
+            `;
+
+            this.disabled = true;
+
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_check_for_update_preload_nonce')); ?>',
+                    action: "lwsop_check_preload_update"
+                },
+                success: function(data) {
+                    button.disabled = false;
+                    button.innerHTML = old_text;
+
+                    if (data === null || typeof data != 'string') {
+                        return 0;
+                    }
+
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        console.log(e);
+                        return 0;
+                    }
+
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+
+                            let p_info = document.getElementById('lwsop_current_preload_info');
+                            let p_done = document.getElementById('lwsop_current_preload_done');
+                            let block = document.getElementById('lwsop_preloading_status_block');
+                            let p_next = document.getElementById('lwsop_next_preload_info');
+
+                            if (block != null) {
+                                block.classList.remove('hidden');
+                            }
+
+                            if (p_info != null) {
+                                if (returnData['data']['ongoing'] == "true") {
+                                    p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
+                                } else {
+                                    p_info.innerHTML = "<?php esc_html_e("Done", "lws-optimize"); ?>";
+                                }
+                            }
+
+                            if (p_next != null) {
+                                p_next.innerHTML = returnData['data']['next'];
+                            }
+
+                            if (p_done != null) {
+                                p_done.innerHTML = returnData['data']['done'] + "/" + returnData['data']['quantity']
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                },
+                error: function(error) {
+                    button.disabled = false;
+                    button.innerHTML = old_text;
+                    console.log(error);
+                }
+            });
         });
-        
-    }, 30000);
+    }   
 </script>
 
 <script>

@@ -1427,7 +1427,7 @@ msgid "Status: "
 msgstr "Statut : "
 
 msgid "Latest convertion done on: "
-msgstr "Dernière convertion réalisée le : "
+msgstr "Dernière conversion réalisée le : "
 
 msgid "Amount of images converted: "
 msgstr "Nombre d'images converties : "
@@ -1442,7 +1442,7 @@ msgid "Inactive"
 msgstr "Inactif"
 
 msgid "No convertion recorded."
-msgstr "Aucune convertion enregistrée."
+msgstr "Aucune conversion enregistrée."
 
 msgid "Revert all images"
 msgstr "Restaurer toutes les images"
@@ -1475,19 +1475,19 @@ msgid "Amount of images to convert per batch: "
 msgstr "Quantité d'images converties à chaque passage : "
 
 msgid "Image convertion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load."
-msgstr "La convertion d'image peut prendre du temps, ainsi les images sont converties par instance. Une quantité plus élevée résultera en une convertion plus rapides mais peut ralentir le site dû à une utilisation des ressources importante."
+msgstr "La conversion d'image peut prendre du temps, ainsi les images sont converties par instance. Une quantité plus élevée résultera en une conversion plus rapides mais peut ralentir le site dû à une utilisation des ressources importante."
 
 msgid "Keep the original images: "
 msgstr "Garder les images originales : "
 
 msgid "By default, the original image will be kept, to allow for a rollback of the image to their original format. This will result in an increase in your website's size as two images will be saved instead of one. Deactivating this option will result in smaller sizes but all convertions are definitives."
-msgstr "Par défaut, les images originales sont gardées, permettant de les restaurer dans leur format original. Cela resultera en une augmentation de la taille du site, car 2 images seront sauvegardées au lieu d'une. Désactiver cette option réduira la taille du site mais toute convertion sera définitive."
+msgstr "Par défaut, les images originales sont gardées, permettant de les restaurer dans leur format original. Cela resultera en une augmentation de la taille du site, car 2 images seront sauvegardées au lieu d'une. Désactiver cette option réduira la taille du site mais toute conversion sera définitive."
 
 msgid "Image exclusion:"
 msgstr "Exclusion d'image :"
 
 msgid "Input the name of each media you wish to exclude from the convertion. Separate each name with a comma (,)."
-msgstr "Entrez le nom de chaque média que vous souhaitez exclure de la convertion. Séaprez chaque nom par une virgule (,)."
+msgstr "Entrez le nom de chaque média que vous souhaitez exclure de la conversion. Séaprez chaque nom par une virgule (,)."
 
 msgid "Convert images"
 msgstr "Convertir les images"
@@ -1499,37 +1499,37 @@ msgid "Image Optimization"
 msgstr "Optimisation d'images"
 
 msgid "Abort convertion"
-msgstr "Arrêter la convertion"
+msgstr "Arrêter la conversion"
 
 msgid "Image convertion started. It may take a while depending on the amount of files to process."
-msgstr "Convertion d'image lancée. Cela peut prendre un moment selon la quantité de fichiers à traiter."
+msgstr "Conversion d'image lancée. Cela peut prendre un moment selon la quantité de fichiers à traiter."
 
 msgid "All images are getting reverted. It may take a few moments."
 msgstr "Toutes les images sont en cours de restauration. Cela peut prendre quelques instants."
 
 msgid "Auto convertion stopped."
-msgstr "Convertion automatique désactivée."
+msgstr "Conversion automatique désactivée."
 
 msgid "Activate convertion"
-msgstr "Activer la convertion"
+msgstr "Activer la conversion"
 
 msgid "Image convertion will now be done for each images uploaded. It may slightly lengthen the upload time"
-msgstr "La convertion d'image sera maintenant effectuée pour chaque image téléversée. Cela pourrait allonger le temps de téléversement"
+msgstr "La conversion d'image sera maintenant effectuée pour chaque image téléversée. Cela pourrait allonger le temps de téléversement"
 
 msgid "Media Optimisations"
 msgstr "Optimisations des Médias"
 
 msgid "The convertion has been stopped."
-msgstr "La convertion a bien été arrétée."
+msgstr "La conversion a bien été arrétée."
 
 msgid "Image Convertion"
-msgstr "Convertion d'images"
+msgstr "Conversion d'images"
 
 msgid "Imagick has not been found on this server. Please contact your hosting provider to learn more about the issue."
 msgstr "Imagick n'a pas été détecté sur ce serveur. Veuillez contacter votre hébergeur afin d'en apprendre plus à ce propos."
 
 msgid "Show failed convertions"
-msgstr "Afficher les convertions échouées"
+msgstr "Afficher les conversions échouées"
 
 msgid "Error type"
 msgstr "Type d'erreur"
@@ -1541,4 +1541,25 @@ msgid "File"
 msgstr "Fichier"
 
 msgid "Convertion"
-msgstr "Convertion"
+msgstr "Conversion"
+
+msgid "Next convertion: "
+msgstr "Prochaine conversion : "
+
+msgid " images converted out of "
+msgstr " images converties sur "
+
+msgid "Images left to be converted: "
+msgstr "Images restantes à convertir : "
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Path"
+msgstr "Chemin d'accès"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Show converted images"
+msgstr "Afficher les images converties"

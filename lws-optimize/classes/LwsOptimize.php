@@ -107,7 +107,8 @@ class LwsOptimize
 
             // Stop or Revert the convertion of all medias
             add_filter('wp_ajax_lwsop_stop_convertion', [$this, 'lws_optimize_stop_convertion']);
-            add_filter('wp_ajax_lwsop_revert_convertion', [$this, 'lws_optimize_revert_convertion']);
+            add_action("wp_ajax_lws_optimize_revert_convertion", [$this, "lws_optimize_revert_convertion"]);
+            add_action("lwsop_revertOptimization", [$this, "lwsop_revertOptimization"]);
 
             // Launch the weekyl DB cleanup
             add_action("lws_optimize_maintenance_db_weekly", [$this, "lws_optimize_create_maintenance_db_options"]);
@@ -188,9 +189,8 @@ class LwsOptimize
                 // Activate or deactivate the auto-convertion of upload medias
                 add_action("wp_ajax_lwsop_autoconvert_all_images_activate", [$this, "lwsop_start_autoconvert_media"]);
                 add_action("wp_ajax_lwsop_stop_autoconvertion", [$this, "lwsop_stop_autoconvertion"]);
-                add_action("wp_ajax_lws_optimize_revert_convertion", [$this, "lws_optimize_revert_convertion"]);
 
-                add_action("lwsop_revert_convertion_standalone_hook", [$this, "lwsop_revert_convertion_standalone"]);
+                add_action("wp_ajax_lwsop_check_convert_images_update", [$this, "lwsop_check_convert_images_update"]);
             }
 
             if (!$this->state && isset($this->lwsop_check_option('filebased_cache')['data']['preload']) && $this->lwsop_check_option('filebased_cache')['data']['preload'] === "true") {
@@ -2124,8 +2124,9 @@ class LwsOptimize
         // Add the data to the database for future access by the cron
         update_option('lws_optimize_all_media_convertion', $data);
 
+        // Create or empty the "latest convertion" array
         update_option('lws_optimize_current_media_convertion', [
-            'done' => 0,
+            'data' => ['max' => 0, 'to_convert' => 0, 'converted' => 0, 'left' => 0],
             'latest_time' => 0
         ]);
 
@@ -2145,10 +2146,8 @@ class LwsOptimize
     }
 
     /**
-     * Convert a certain 'amount_per_run' of images to the 'convert_type'. 
-     * The 'quality' allows for smaller but less good images or keeping the same quality as the original. 
-     * Some 'exceptions' can be set to ignore those during convertion 
-     * and 'keep_copy' let the user choose whether to keep the original or not
+     * Convert a certain amount (between 1 and 15) of images to the desired format. 
+     * The function does not check much else, whether or not anything got converted is not checked
      */
     public function lws_optimize_convert_media_cron() {
         // Fetch data from the databse and check for validity
@@ -2160,31 +2159,43 @@ class LwsOptimize
             'amount_per_run' => 10
         ]);
 
-        $options = get_option('lws_optimize_current_media_convertion', [
-            'done' => 0,
-            'latest_time' => 0
-        ]);
-
-        $response = $this->lwsImageOptimization->convert_all_medias($media_data['convert_type'] ?? "webp", $media_data['quality'] ?? 75, 
-        $media_data['keep_copy'] ?? "true", $media_data['exceptions'] ?? [], $media_data['amount_per_run'] ?? 10, $options['done'] ?? 0);
+        // Launch the convertion
+        $response = $this->lwsImageOptimization->convert_all_medias(
+            $media_data['convert_type'] ?? "webp",
+            $media_data['quality'] ?? 75,
+            $media_data['keep_copy'] ?? "true",
+            $media_data['exceptions'] ?? [],
+            $media_data['amount_per_run'] ?? 10,
+            $options['done'] ?? 0
+        );
 
         // If no attachments got converted, stop the cron here
         $response = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
         } else {
-            $done = $response['data'];
-            $done = explode('/', $done)[0] ?? '0';
+            $data = $response['data'];
 
-            // Stop the cron if nothing got converted
-            if ($done == "0") {
+            // No images left to convert, stop the cron
+            $left = $data['left'] ?? NULL;
+
+            if ($left == (int)0) {
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
             }
-            // Each passage, add the amount of images converted + update the latest time
-            // Those data are shown in "Image Optimization"
-            $options['latest_time'] = time();
-            $options['done'] += $done;
+
+            // Update the data array with info on what has been done and what is left
+            $options = [
+                'latest_time' => time(),
+                'data' => [
+                    'max' => $data['max'] ?? 0,
+                    'to_convert' => $data['to_convert'] ?? 0,
+                    'converted' => $data['converted'] ?? 0,
+                    'left' => $data['left'] ?? 0,
+                ]
+            ];
             update_option('lws_optimize_current_media_convertion', $options);
         }
+
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
     /**
@@ -2197,16 +2208,17 @@ class LwsOptimize
         wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
+    /**
+     * Revert all original (and saved) images to normal
+     */
     public function lws_optimize_revert_convertion() {
         check_ajax_referer('lwsop_revert_convertion_nonce', '_ajax_nonce');
-
-        wp_schedule_single_event(time(), 'lwsop_revert_convertion_standalone_hook' );
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
+        $return = wp_schedule_single_event(time(), 'lwsop_revertOptimization');
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $return, 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
-    function lwsop_revert_convertion_standalone() {
+    public function lwsop_revertOptimization() {
         $this->lwsImageOptimization->revertOptimization();
-        wp_die();
     }
 
     /**
@@ -2277,6 +2289,87 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "ERROR", "data" => $data, 'message' => "Failed to get some of the datas", 'domain' => site_url())), JSON_PRETTY_PRINT);
         }
 
+
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
+    }
+
+    public function lwsop_check_convert_images_update() {
+        check_ajax_referer('lwsop_check_for_update_convert_image_nonce', '_ajax_nonce');
+
+        $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
+
+        $mimetypes = $this->lwsImageOptimization->mimetypes;
+
+        $counter = NULL;
+        $max_count = NULL;
+
+        $latest_convertion = get_option('lws_optimize_current_media_convertion', [
+            'latest_time' => time(),
+            'data' => [
+                'max' => 0,
+                'to_convert' => 0,
+                'converted' => 0,
+                'left' => 0,
+            ]
+        ]);
+
+        $current_media_convertion = get_option('lws_optimize_all_media_convertion', NULL);
+        if ($current_media_convertion != NULL && isset($current_media_convertion['convert_type'])) {
+            $type = $current_media_convertion['convert_type'];
+            
+            $counter = 0;
+            $max_count = 0;
+            $converted = 0;
+
+            $count_attachment = wp_count_attachments();
+            foreach($count_attachment as $mime => $count) {
+                // Only process images
+                if (strpos($mime, "image/") !== false) {
+                    $mimetype = explode('/', $mime)[1];
+            
+                    // Only process images which mimetype is supported
+                    if (array_key_exists($mimetype, $mimetypes)) {
+                        // Do not count images already in the desired format
+                        if ($mimetype != $type) {
+                            $counter += $count;
+                        } else {
+                            $converted += $count;
+                        }
+            
+                        // Keep track of the total amount of images (supported)
+                        $max_count += $count;
+                    }
+                }
+            }
+
+            $latest_convertion['data']['max'] = $max_count;
+            $latest_convertion['data']['to_convert'] = $max_count;
+            $latest_convertion['data']['converted'] = $converted;
+            $latest_convertion['data']['left'] = $counter;
+
+            update_option('lws_optimize_current_media_convertion', $latest_convertion);
+        }
+
+        $latest = intval($latest_convertion['latest_time']);
+        if ($latest > 0) {
+            $latest = get_date_from_gmt(date('Y-m-d H:i:s', $latest), 'Y-m-d H:i:s');
+        } else {
+            $latest = "-";
+        }
+
+        $next = $next_scheduled_all_convert == true ? get_date_from_gmt(date('Y-m-d H:i:s', intval($next_scheduled_all_convert)), 'Y-m-d H:i:s') : "-";
+        $max = intval($latest_convertion['data']['max'] ?? 0);
+        $left = intval($latest_convertion['data']['left'] ?? 0);
+        $done = $max - $left;
+
+        $data = [
+            'status' => $next_scheduled_all_convert == true ? true : false,
+            'latest' => htmlentities($latest),
+            'next' => htmlentities($next),
+            'max' => intval($max) ?? 0,
+            'left' => intval($left) ?? 0,
+            'done' => intval($done) ?? 0,
+        ];
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
     }

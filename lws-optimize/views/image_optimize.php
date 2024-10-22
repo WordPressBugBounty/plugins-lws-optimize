@@ -1,7 +1,6 @@
 <?php
 // Fetch the configuration for each elements of LWSOptimize
 $config_array = $GLOBALS['lws_optimize']->optimize_options;
-
 // Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
 $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? NULL;
 $lwscache_status = $_SERVER['lwscache'] ?? NULL;
@@ -43,25 +42,52 @@ if (class_exists('Imagick')){
     }
 
     $latest_convertion = get_option('lws_optimize_current_media_convertion', [
-        'done' => 0,
-        'latest_time' => 0,
+        'latest_time' => time(),
+        'data' => [
+            'max' => $data['max'] ?? 0,
+            'to_convert' => $data['to_convert'] ?? 0,
+            'converted' => $data['converted'] ?? 0,
+            'left' => $data['left'] ?? 0,
+        ]
     ]);
 
     $autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
 
-    $done_convertion = $latest_convertion['done'] ?? 0;
     $latest_time = $latest_convertion['latest_time'] ?? 0;
-    $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $latest_time), 'Y-m-d H:i:s');
+    if ($latest_time == 0) {
+        $local_timestamp = "-";
+    } else {
+        $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $latest_time), 'Y-m-d H:i:s');
+    }
+
+    $convertion_data = $latest_convertion['data'] ?? [
+        'max' => 0,
+        'to_convert' => 0,
+        'converted' => 0,
+        'left' => 0,
+    ];
 
     $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
+    if ($next_scheduled_all_convert) {
+        $next_scheduled_all_convert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_all_convert), 'Y-m-d H:i:s');
+    } else {
+        $next_scheduled_all_convert = false;
+    }
 } else {
     $is_imagick = false;
-    $latest_convertion = ['done' => 0, 'latest_time' => 0];
     $autoconvert_state = "false";
-    $done_convertion = 0;
-    $latest_time = 0;
-    $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $latest_time), 'Y-m-d H:i:s');
     $next_scheduled_all_convert = false;
+
+    $latest_time = 0;
+    $local_timestamp = "-";
+
+    $convertion_data = $latest_convertion['data'] ?? [
+        'max' => 0,
+        'to_convert' => 0,
+        'converted' => 0,
+        'left' => 0,
+    ];
+
 }
 ?>
 <?php if ( $is_imagick == false) : ?>
@@ -80,6 +106,8 @@ if (class_exists('Imagick')){
             <?php esc_html_e('Convert all images', 'lws-optimize'); ?>
             <a href="" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" 
             width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+            <button id="lwsop_update_convertion_value" class="lwsop_update_info_button"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
+
         </h2>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Convert all images on your website to another Mime-Type', 'lws-optimize'); ?>
@@ -87,20 +115,25 @@ if (class_exists('Imagick')){
         <div class="lwsop_contentblock_convertion_status" id="lwsop_convertion_status">
             <div>
                 <span><?php echo esc_html__('Status: ', 'lws-optimize'); ?></span> 
-                <span><?php echo $next_scheduled_all_convert ? esc_html__('Ongoing','lws-optimize') : esc_html__('Inactive','lws-optimize'); ?></span>
+                <span id="lwsop_convertion_status_element"><?php echo $next_scheduled_all_convert ? esc_html__('Ongoing','lws-optimize') : esc_html__('Inactive','lws-optimize'); ?></span>
             </div>
-            <?php if ($latest_time == 0) : ?>
-                <div><?php esc_html_e('No convertion recorded.', 'lws-optimize'); ?></div>
-            <?php else : ?>
-                <div>
-                    <span><?php echo esc_html__('Latest convertion done on: ', 'lws-optimize'); ?></span>
-                    <span> <?php echo esc_html($local_timestamp); ?></span>
-                </div>
-                <div>
-                    <span><?php echo esc_html__('Amount of images converted: ', 'lws-optimize'); ?></span>
-                    <span><?php echo esc_html($done_convertion); ?></span>
-                </div>
-            <?php endif; ?>
+            <div>
+                <span><?php echo esc_html__('Latest convertion done on: ', 'lws-optimize'); ?></span>
+                <span id="lwsop_convertion_latest"><?php echo esc_html($local_timestamp); ?></span>
+            </div>
+            <div>
+                <span><?php echo esc_html__('Next convertion: ', 'lws-optimize'); ?></span>
+                <span id="lwsop_convertion_next"><?php echo esc_html($next_scheduled_all_convert != false ? $next_scheduled_all_convert : "-"); ?></span>
+            </div>
+            <div class="lwsop_contentblock_total_convert_image">
+                <span id="lwsop_convertion_done"><?php echo ($convertion_data['max'] - $convertion_data['left']); ?></span>
+                <span><?php echo esc_html__(' images converted out of ', 'lws-optimize'); ?></span>
+                <span id="lwsop_convertion_max"><?php echo ($convertion_data['max'] ?? 0); ?></span>
+            </div>
+            <div>
+                <span><?php echo esc_html__('Images left to be converted: ', 'lws-optimize'); ?></span>
+                <span id="lwsop_convertion_left"><?php echo esc_html($convertion_data['left']); ?></span>
+            </div>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside" style="display: flex; flex-direction: column; align-items: flex-end;">
@@ -112,6 +145,41 @@ if (class_exists('Imagick')){
         </button>
         <button type="button" id="lwsop_deactivate_convertion" <?php echo $next_scheduled_all_convert ? "" : esc_attr('hidden'); ?>><?php esc_html_e('Abort convertion', 'lws-optimize'); ?></button>
     </div>
+
+    <div class="lwsop_error_listing_main">
+            <div id="show_images_converted_action">
+                <span><?php esc_html_e('Show converted images', 'lws-optimize'); ?></span>
+            </div>
+            <div class="lwsop_contentblock_error_listing hidden" id="show_images_converted">
+                <table class="lwsop_error_listing">
+                    <thead>
+                        <tr>
+                            <td><?php esc_html_e('Name', 'lws-optimize'); ?></td>
+                            <td><?php esc_html_e('Path', 'lws-optimize'); ?></td>
+                            <td><?php esc_html_e('Date', 'lws-optimize'); ?></td>
+                            <td><?php esc_html_e('Type', 'lws-optimize'); ?></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $images_converted = get_option('lws_optimize_original_image', ['auto_update' => ['original_media' => []]]); 
+                        if (!isset($images_converted['auto_update']) || !isset($images_converted['auto_update']['original_media'])) {
+                            $images_converted['auto_update']['original_media'] = [];
+                        }
+                        ?>
+                        <?php foreach ($images_converted['auto_update']['original_media'] as $image) : ?>
+                            <?php if (isset($image['original_name']) && isset($image['original_mime']) && isset($image['path']) && isset($image['mime']) && isset($image['converted'])) : ?>
+                            <tr>
+                                <td><?php echo esc_html($image['original_name']); ?></td>
+                                <td><?php echo esc_html($image['path']); ?></td>
+                                <td><?php echo esc_html(get_date_from_gmt(date('Y-m-d H:i:s', $image['converted']), 'Y-m-d H:i:s')); ?></td>
+                                <td><?php echo esc_html("image/" . $image['original_mime'] . " => " . $image['mime']); ?></td>
+                            </tr>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 </div>
 
 <div class="lwsop_contentblock">
@@ -129,7 +197,6 @@ if (class_exists('Imagick')){
     <?php if ( $is_imagick != false) : ?>
         <button type="button" class="lwsop_blue_button" id="lwsop_revert_all_images" name="lwsop_revert_all_images">
             <span>
-                <!-- <img src="<?php //echo esc_url(plugins_url('images/', __DIR__)) ?>" alt="" width="20px"> -->
                 <?php esc_html_e('Revert images', 'lws-optimize'); ?>
             </span>
         </button>
@@ -220,7 +287,7 @@ if (class_exists('Imagick')){
                             <a href="#" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" 
                             title="<?php esc_html_e("Image convertion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load.", "lws-optimize"); ?>"></a>
                         </span>
-                        <input class="lwsop_convert_modal_amount_convertion_label" type="number" min="1" max="50" value="10" id="lwsop_amount_convertion">
+                        <input class="lwsop_convert_modal_amount_convertion_label" type="number" min="1" max="15" value="10" id="lwsop_amount_convertion">
                     </label>
 
                     <label class="lwsop_convert_modal_label" for="lwsop_keepcopy_convertion">
@@ -294,8 +361,8 @@ if (class_exists('Imagick')){
         </div>
     </div>
 <?php endif ?>
-<?php if (!empty($errors)) : ?>
 <script>
+<?php if (!empty($errors)) : ?>
     if (document.getElementById('show_errors_autoupdate_action') != null) {
         document.getElementById('show_errors_autoupdate_action').addEventListener('click', function() {
             let content = document.getElementById('show_errors_autoupdate');
@@ -304,8 +371,16 @@ if (class_exists('Imagick')){
             }
         })
     }
-</script>
 <?php endif ?>
+    if (document.getElementById('show_images_converted_action') != null) {
+        document.getElementById('show_images_converted_action').addEventListener('click', function() {
+            let content = document.getElementById('show_images_converted');
+            if (content != null) {
+                content.classList.toggle('hidden');
+            }
+        })
+    }
+</script>
 <script>
     function callPopup(type, content) {
         let modal = document.getElementById('modal_popup');
@@ -538,6 +613,10 @@ if (class_exists('Imagick')){
                     switch (returnData['code']) {
                         case 'SUCCESS':
                             callPopup('success', "<?php esc_html_e('Image convertion started. It may take a while depending on the amount of files to process.', 'lws-optimize'); ?>");
+                            let convert_check_button = document.getElementById('lwsop_update_convertion_value');
+                            if (convert_check_button != null) {
+                                convert_check_button.dispatchEvent(new Event('click'));
+                            }
                             document.getElementById('lwsop_deactivate_convertion').style.display = "block";
                             break;
                         case 'FAILED':
@@ -670,6 +749,94 @@ if (class_exists('Imagick')){
                 }
             });
         });
+
+        let convert_check_button = document.getElementById('lwsop_update_convertion_value');
+        if (convert_check_button != null) {
+            convert_check_button.addEventListener('click', function() {
+                let old_text = this.innerHTML;
+                this.innerHTML = `
+                    <span name="loading" style="padding-left:5px">
+                        <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                    </span>
+                `;
+
+                this.disabled = true;
+                let button = this;
+
+
+                let ajaxRequest = jQuery.ajax({
+                    url: ajaxurl,
+                    type: "POST",
+                    timeout: 120000,
+                    context: document.body,
+                    data: {
+                        _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_check_for_update_convert_image_nonce')); ?>',
+                        action: "lwsop_check_convert_images_update"
+                    },
+                    success: function(data) {
+                        button.disabled = false;
+                        button.innerHTML = old_text;
+
+                        if (data === null || typeof data != 'string') {
+                            return 0;
+                        }
+
+                        try {
+                            var returnData = JSON.parse(data);
+                        } catch (e) {
+                            console.log(e);
+                            return 0;
+                        }
+
+                        switch (returnData['code']) {
+                            case 'SUCCESS':
+                                let data = returnData['data'];
+
+                                let status = document.getElementById('lwsop_convertion_status_element');
+                                let latest = document.getElementById('lwsop_convertion_latest');
+                                let next = document.getElementById('lwsop_convertion_next');
+                                let done = document.getElementById('lwsop_convertion_done');
+                                let max = document.getElementById('lwsop_convertion_max');
+                                let left = document.getElementById('lwsop_convertion_left');
+
+                                if (status != null) {
+                                    if (data['status'] == true) {
+                                        status.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
+                                    } else {
+                                        status.innerHTML = "<?php esc_html_e("Inactive", "lws-optimize"); ?>";
+                                    }
+                                }
+
+                                if (latest != null) {
+                                    latest.innerHTML = data['latest'];
+                                }
+                                if (next != null) {
+                                    next.innerHTML = data['next'];
+                                }
+                                if (done != null) {
+                                    done.innerHTML = data['done'];
+                                }
+                                if (max != null) {
+                                    max.innerHTML = data['max'];
+                                }
+                                if (left != null) {
+                                    left.innerHTML = data['left'];
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                    },
+                    error: function(error) {
+                        button.disabled = false;
+                        button.innerHTML = old_text;
+                        console.log(error);
+                    }
+                });
+            });
+        }
+
+
 
         jQuery(document).ready(function() {
             jQuery('[data-toggle="tooltip"]').tooltip();

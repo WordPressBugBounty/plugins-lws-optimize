@@ -1,11 +1,29 @@
 <?php
 
 class Lws_Optimize_ImageOptimization {
+    public $mimetypes;
 
     public function __construct($autoupdate = false){
+        global $wp_version;
+
         if ($autoupdate) {
             add_filter('image_editor_output_format', [$this, 'filter_image_editor_output_format']);
             add_filter('wp_handle_upload_prefilter', [$this, 'lws_optimize_custom_upload_filter']);
+        }
+
+        $this->mimetypes = [
+            'webp' => "WebP",
+            'jpeg' => "JPEG",
+            'png'  => "PNG",
+        ];
+
+        if (class_exists("Imagick")) {
+            $img = new Imagick();
+            $supported_formats = $img->queryFormats();
+        
+            if (floatval($wp_version) > 6.5 && in_array("AVIF", $supported_formats)) {
+                $this->mimetypes = array_merge(['avif' => "AVIF"], $this->mimetypes);
+            }
         }
     }
 
@@ -225,14 +243,26 @@ class Lws_Optimize_ImageOptimization {
         }
     }
 
-    public function convert_all_medias($type = "webp", $quality = 75, $keepcopy = true, $exceptions = [], $amount_per_run = 10, $done = 0) {
+    public function convert_all_medias($type = "webp", $quality = 75, $keepcopy = true, $exceptions = [], $amount_per_run = 10) {
         global $wpdb;
+
+        // Where every images will be saved, in case we need to keep the original
+        $original_data_array = get_option('lws_optimize_original_image', []);
+
+
+        // Counter of attachments that successfully got converted
         $done_attachments = 0;
 
+        // Counter for how many images should be converted and the total amount of images
+        $counter = 0;
+        $max_count = 0;
+
+        // Get the maximum amount of successful convertion per run
         $amount_per_run = intval($amount_per_run);
         if ($amount_per_run < 0 || $amount_per_run > 15) {
             $amount_per_run = 10;
         }
+
         // Assure the quality will always be an int, no matter what
         // Also always between 1 and 100
         $quality = intval($quality);
@@ -240,34 +270,54 @@ class Lws_Optimize_ImageOptimization {
             $quality = 75;
         }
 
-        if (!isset($done)) {
-            $done = 0;
+        // Get the total amount of attachments on the website, separate by mimetype
+        $count_attachment = wp_count_attachments();
+        foreach($count_attachment as $mime => $count) {
+            // Only process images
+            if (strpos($mime, "image/") !== false) {
+                $mimetype = explode('/', $mime)[1];
+
+                // Only process images which mimetype is supported
+                if (array_key_exists($mimetype, $this->mimetypes)) {
+                    // Do not count images already in the desired format
+                    if ($mimetype != $type) {
+                        $counter += $count;
+                    }
+
+                    // Keep track of the total amount of images (supported)
+                    $max_count += $count;
+                }
+            }
         }
-        $done = intval($done);
 
         $attachment_data = array(
             'post_type' => 'attachment',
             'post_mime_type' => 'image',
-            'numberposts' => -1,
+            'numberposts' => 1,
             'post_status' => null,
             'post_parent' => null,
         );
 
-
+        $attachment_page = 1;
         $images = [];
         $reload_thumbnails = [];
-        $attachments = get_posts($attachment_data);
 
         // Update each attachment data to reflect the new mime-type
         // Also create a new image with reduced quality to replace the current one
-        foreach ($attachments as $attachment) {
-            if ($done_attachments >= $amount_per_run) {
+        while ($done_attachments < $amount_per_run) {
+            // Exit the loop if we reached the max_count, as there is no more attachments to be found
+            if ($attachment_page > $max_count) {
                 break;
             }
+
+            // Get one attachment at a time
+            $attachment_data['paged'] = $attachment_page;
+            $attachment = get_posts($attachment_data)[0] ?? NULL;
 
             // Invalid attachment, continue onto the next
             if ($attachment->ID == null) {
                 error_log("LWSOptimize | ImageOptimization | Attachment ID not found");
+                $attachment_page++;
                 continue;
             }
 
@@ -276,6 +326,7 @@ class Lws_Optimize_ImageOptimization {
             // The URL was not found, continue onto the next
             if ($attachment_url == false) {
                 error_log("LWSOptimize | ImageOptimization | Attachment not found : " . $attachment->ID);
+                $attachment_page++;
                 continue;
             }
 
@@ -284,18 +335,19 @@ class Lws_Optimize_ImageOptimization {
             // The attachment does not exists, continue onto the next
             if (!file_exists($full_size_path)) {
                 error_log("LWSOptimize | ImageOptimization | File does not exists for attachment " . $attachment->ID);
+                $attachment_page++;
                 continue;
             }
 
             // Break the PATH in multiple parts
             $file_info = pathinfo($full_size_path);
             $filename = $file_info['filename'] ?? NULL;
-            $basename = $file_info['basename'] ?? NULL;
             $dirname = $file_info['dirname'] ?? NULL;
             $extension = $file_info['extension'] ?? NULL;
 
             // Do not convert images that already are in the $type MIME
             if ($extension == $type) {
+                $attachment_page++;
                 continue;
             }
 
@@ -303,17 +355,20 @@ class Lws_Optimize_ImageOptimization {
             // $exceptions should contains name as such :
             // image1.png ; my_picture.jpg ; ...
             if (in_array($filename, $exceptions)) {
+                $attachment_page++;
                 continue;
             }
 
             // Cannot get PATH, continue onto the next
             if ($filename == NULL || $dirname == NULL || $extension == NULL) {
                 error_log("LWSOptimize | ImageOptimization | No PATH for the attachment " . $attachment->ID);
+                $attachment_page++;
                 continue;
             }
 
             $accepted_types = ['jpg', 'jpeg', 'png', 'avif', 'webp'];
             if (!in_array(strtolower($extension), $accepted_types) || !in_array(strtolower($type), $accepted_types)) {
+                $attachment_page++;
                 continue;
             }
             
@@ -351,23 +406,28 @@ class Lws_Optimize_ImageOptimization {
                 $failed_convertion = get_option('lws_optimize_autooptimize_errors', []);
                 $failed_convertion[] = ['error_type' => "TOTAL_CONVERTION", 'time' => time(), 'quality' => $quality, 'type' => $extension, 'convert' => $type, 'file' => $file_name];
                 update_option('lws_optimize_autooptimize_errors', $failed_convertion);
+                $attachment_page++;
                 continue;
             }
 
-            // If we keep the original, add it to a database to allow for revertion
+            // Keep the original info in the database
+            $original_data_array['auto_update']['original_media'][$attachment->ID] = [
+                'original_url' => $attachment_url,
+                'original_path' => $full_size_path,
+                'original_name' => $filename,
+                'original_mime' => $extension,
+                'url' => $webp_url,
+                'path' => $webp_path,
+                'mime' => "image/$type",
+                'converted' => time(),
+                'data' => $attachment,
+            ];
+            
+            // If we keep the original, also add a value to the DB to remember it
             if ($keepcopy) {
-                $original_data_array['auto_update']['original_media'][$attachment->ID] = [
-                    'original_url' => $attachment_url,
-                    'original_path' => $full_size_path,
-                    'original_name' => $filename,
-                    'original_mime' => $extension,
-                    'url' => $webp_url,
-                    'path' => $webp_path,
-                    'mime' => "image/$type",
-                    'data' => $attachment,
-                ];
-                
+                $original_data_array['auto_update']['original_media'][$attachment->ID]['keep_original'] = "true";
             } else {
+                $original_data_array['auto_update']['original_media'][$attachment->ID]['keep_original'] = "false";
                 // Remove the original file
                 unlink($full_size_path);
             }
@@ -384,18 +444,24 @@ class Lws_Optimize_ImageOptimization {
                 'guid' => $webp_url,
             );
 
-            // Create the new attachment
+            // Create the new attachment ; If successfully inserted, add it to the reloading thumbnails listing
+            // and add it to the count of done attachments
             if ($attach_id = wp_insert_attachment($attachment, $webp_path)) {
                 $reload_thumbnails[$attach_id] = $webp_path;
                 $done_attachments++;
             }
+
+            // Go to the next attachment
+            $attachment_page++;
         }
 
+        // Regenerate the thumbnails of every images that got converted
         foreach ($reload_thumbnails as $reload_id => $reload) {
             wp_update_attachment_metadata($reload_id, wp_generate_attachment_metadata($reload_id, $reload));
         }
 
-        $posts = get_posts(['post_type' => array('page','post'),]);
+        // Fetch all posts and update the images to the newest URL
+        $posts = get_posts(['post_type' => array('page','post')]);
         foreach ($posts as $post) {
             $content = $post->post_content;
             foreach ($images as $image) {
@@ -417,7 +483,7 @@ class Lws_Optimize_ImageOptimization {
             update_option('lws_optimize_original_image', $original_data_array);
         }
 
-        return json_encode(array('code' => 'SUCCESS', 'data' => "$done_attachments/$amount_per_run", 'done' => $done_attachments), JSON_PRETTY_PRINT);
+        return json_encode(array('code' => 'SUCCESS', 'data' => ['max' => $max_count, 'to_convert' => $counter, 'converted' => $done_attachments, 'left' => $counter - $done_attachments]), JSON_PRETTY_PRINT);
     }
 
     /**
@@ -434,6 +500,11 @@ class Lws_Optimize_ImageOptimization {
 
 
         foreach ($media_data as $key => $media) {
+            // Do not revert the original, remove it from the array
+            if (isset($media['keep_original']) && $media['keep_original'] == "false") {
+                unset($original_data_array['auto_update']['original_media'][$key]);
+                continue;
+            }
             $base_path = $media['original_path'] ?? '';
 
             // If the original file does not exists anymore, we cannot revert it
