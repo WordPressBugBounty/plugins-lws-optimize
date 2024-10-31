@@ -105,8 +105,6 @@ $third_bloc_array = array(
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1873"
     ),
-    // TODO : Separate optimize & preload
-    // Optimize will, for now, preload fonts
     'preload_font' => array(
         'title' => __('Webfont preloading', 'lws-optimize'),
         'desc' => __('Preload used fonts to improve rendering speed.', 'lws-optimize'),
@@ -124,19 +122,6 @@ $third_bloc_array = array(
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1883"
     ),
-    // 'webfont_preload' => array(
-    //     'title' => __('Webfont preloading', 'lws-optimize'),
-    //     'desc' => __('Preload used fonts to improve rendering speed.', 'lws-optimize'),
-    //     'recommended' => false,
-    //     'has_exclusion' => false,
-    //     'has_exclusion_button' => false,
-    //     'has_special_button' => true,
-    //     's_button_title' => __('Preload fonts', 'lws-optimize'),
-    //     's_button_infobubble' => __('fonts', 'lws-optimize'),
-    //     's_button_id' => "lws_optimize_webfont_preload_button",
-    //     's_infobubble_value' => "X",
-    //     'has_checkbox' => false,
-    // ),
     'deactivate_emoji' => array(
         'title' => __('Deactivate WordPress Emojis', 'lws-optimize'),
         'desc' => __('Deactivate the WordPress automatic emoji functionnality.', 'lws-optimize'),
@@ -233,7 +218,7 @@ foreach ($third_bloc_array as $key => $array) {
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
                 <?php if (isset($data['has_tooltip'])) : ?>
-                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
@@ -275,7 +260,7 @@ foreach ($third_bloc_array as $key => $array) {
                 </button>
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
-                <label class="lwsop_checkbox">
+                <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
                     <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $stop_css) {
                                                                                                                                                                                                                             echo esc_html("disabled");
                                                                                                                                                                                                                         } ?>>
@@ -299,7 +284,7 @@ foreach ($third_bloc_array as $key => $array) {
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
                 <?php if (isset($data['has_tooltip'])) : ?>
-                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
@@ -335,7 +320,7 @@ foreach ($third_bloc_array as $key => $array) {
                 </button>
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
-                <label class="lwsop_checkbox">
+                <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
                     <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) {
                                                                                                                                                                                                                             echo esc_html("disabled");
                                                                                                                                                                                                                         } ?>>
@@ -359,7 +344,7 @@ foreach ($third_bloc_array as $key => $array) {
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
                 <?php if (isset($data['has_tooltip'])) : ?>
-                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
@@ -395,7 +380,7 @@ foreach ($third_bloc_array as $key => $array) {
                 </button>
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
-                <label class="lwsop_checkbox">
+                <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
                     <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) {
                                                                                                                                                                                                                             echo esc_html("disabled");
                                                                                                                                                                                                                         } ?>>
@@ -405,14 +390,3 @@ foreach ($third_bloc_array as $key => $array) {
         </div>
     </div>
 <?php endforeach; ?>
-
-<?php
-// Do not load scripts if LWS Optimize is OFF
-if (get_option('lws_optimize_offline', null) === null) : ?>
-    <script>
-        // document.getElementById('lws_optimize_webfont_preload_button').addEventListener('click', function(event) {
-        //     let element = this;
-        //     let type = element.getAttribute('id');
-        // });
-    </script>
-<?php endif ?>

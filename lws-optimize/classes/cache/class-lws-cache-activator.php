@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Fired during plugin activation.
  *
@@ -15,7 +16,8 @@
 /**
  * Class LWSCache_Activator
  */
-class LWSCache_Activator {
+class LWSCache_Activator
+{
 
 	/**
 	 * Create log directory. Add capability of LWSCache.
@@ -25,38 +27,36 @@ class LWSCache_Activator {
 	 *
 	 * @global LWSCache_Admin $lws_cache_admin
 	 */
-	public static function activate() {
+	public static function activate()
+	{
 
 		global $lws_cache_admin;
 
 		$path = $lws_cache_admin->functional_asset_path();
 
-		if ( ! is_dir( $path ) ) {
-			mkdir( $path );
+		if (! is_dir($path)) {
+			mkdir($path);
 		}
 
-		if ( ! current_user_can( 'activate_plugins' ) ) {
+		if (! current_user_can('activate_plugins')) {
 			return;
 		}
 
-		$role = get_role( 'administrator' );
+		$role = get_role('administrator');
 
-		if ( empty( $role ) ) {
+		if (empty($role)) {
 
 			update_site_option(
 				'rt_wp_lws_cache_init_check',
-				__( 'Sorry, you need to be an administrator to use LWSCache', 'lwscache' )
+				__('Sorry, you need to be an administrator to use LWSCache', 'lwscache')
 			);
 
 			return;
-
 		}
 
-		$role->add_cap( 'LWSCache | Config' );
-		$role->add_cap( 'LWSCache | Purge cache' );
+		$role->add_cap('LWSCache | Config');
+		$role->add_cap('LWSCache | Purge cache');
 
-		wp_schedule_event( time(), 'daily', 'rt_wp_lws_cache_check_log_file_size_daily' );
-
+		wp_schedule_event(time(), 'daily', 'rt_wp_lws_cache_check_log_file_size_daily');
 	}
-
 }

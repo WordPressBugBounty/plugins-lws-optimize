@@ -42,17 +42,6 @@ $media_array = array(
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1886"
     ),
-    // 'bg_image_lazyload' => array(
-    //     'title' => __('CSS Background Image Lazy Loading', 'lws-optimize'),
-    //     'desc' => __('Load CSS background images only when they appear on screen, speeding up loading time.', 'lws-optimize'),
-    //     'recommended' => true,
-    //     'has_logo' => false,
-    //     'has_exclusion' => false,
-    //     'has_exclusion_button' => false,
-    //     'has_special_button' => false,
-    //     'has_checkbox' => true,
-    //     'checkbox_id' => "lws_optimize_bg_image_lazyload_check",
-    // ),
     'iframe_video_lazyload' => array(
         'title' => __('Iframes and videos Lazy Loading', 'lws-optimize'),
         'desc' => __('Load integrated widgets and videos only when they appear on screen, boosting loading speed for pages rich in content.', 'lws-optimize'),
@@ -109,7 +98,7 @@ foreach ($media_array as $key => $array) {
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
                 <?php if (isset($data['has_tooltip'])) : ?>
-                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
@@ -137,7 +126,7 @@ foreach ($media_array as $key => $array) {
                 </button>
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
-                <label class="lwsop_checkbox">
+                <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
                     <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?>>
                     <span class="slider round"></span>
                 </label>
@@ -146,7 +135,7 @@ foreach ($media_array as $key => $array) {
     </div>
 <?php endforeach; ?>
 
-<div class="modal fade" id="lws_optimize_exclusion_lazyload_modale" tabindex='-1' role='dialog' aria-hidden='true'>
+<div class="modal fade" id="lws_optimize_exclusion_lazyload_modale" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
             <h2 class="lwsop_exclude_title" id="lws_optimize_exclusion_lazyload_title"><?php esc_html_e('Exclude from Lazy Loading', 'lws-optimize'); ?></h2>
@@ -230,13 +219,11 @@ foreach ($media_array as $key => $array) {
                             form.insertAdjacentHTML('beforeend', `
                                 <h2 class="lwsoptimize_modal_exclude_subtitle"><?php esc_html_e('CSS Classes exclusion', 'lws-optimize'); ?></h2>
                                 <div class="lwsoptimize_exclude_element_grid" id="lwsoptimize_exclude_element_grid"></div>
-                                <h2 class="lwsoptimize_modal_exclude_subtitle"><?php esc_html_e('Media Types exclusion', 'lws-optimize'); ?></h2>
-                                <div class="lwsoptimize_exclude_media_types" id="lwsoptimize_exclude_media_types"></div>
                             `);
 
                             for (var i in infos['css_classes']) {
                                 document.getElementById('lwsoptimize_exclude_element_grid').insertAdjacentHTML('beforeend', `
-                                    <div class="lwsoptimize_exclude_element">        
+                                    <div class="lwsoptimize_exclude_element">
                                         <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + infos['css_classes'][i] + `">
                                         <div class="lwsoptimize_exclude_action_buttons">
                                             <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
@@ -249,7 +236,7 @@ foreach ($media_array as $key => $array) {
                             form.insertAdjacentHTML('beforeend', `
                                 <h2 class="lwsoptimize_modal_exclude_subtitle"><?php esc_html_e('CSS Classes exclusion', 'lws-optimize'); ?></h2>
                                 <div class="lwsoptimize_exclude_element_grid" id="lwsoptimize_exclude_element_grid">
-                                    <div class="lwsoptimize_exclude_element">        
+                                    <div class="lwsoptimize_exclude_element">
                                         <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="">
                                         <div class="lwsoptimize_exclude_action_buttons">
                                             <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
@@ -257,8 +244,6 @@ foreach ($media_array as $key => $array) {
                                         </div>
                                     </div>
                                 </div>
-                                <h2 class="lwsoptimize_modal_exclude_subtitle"><?php esc_html_e('Media Types exclusion', 'lws-optimize'); ?></h2>
-                                <div class="lwsoptimize_exclude_media_types" id="lwsoptimize_exclude_media_types"></div>
                             `);
                         }
 
@@ -272,28 +257,6 @@ foreach ($media_array as $key => $array) {
                             document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
                             document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "30px";
                         }
-
-                        <?php foreach ($media_type_excluded as $id => $media) : ?>
-                            document.getElementById('lwsoptimize_exclude_media_types').insertAdjacentHTML('beforeend', `
-                                <div class="lwsoptimize_exclude_media_types_element">
-                                    <label class="new_checkbox">
-                                        <input type="checkbox" id="lwsoptimize_<?php echo esc_html($id); ?>" name="lwsoptimize_<?php echo esc_html($id); ?>">
-                                        <span class="new_checkbox_check"></span>
-                                    </label>
-                                    <span><?php echo esc_html($media); ?></span>
-                                </div>
-                            `);
-
-                            if (infos['media_types'] !== undefined) {
-                                if (infos['media_types']["<?php echo esc_html($id); ?>"] !== undefined) {
-                                    document.getElementById("lwsoptimize_<?php echo esc_html($id); ?>").checked = true;
-                                } else {
-                                    document.getElementById("lwsoptimize_<?php echo esc_html($id); ?>").checked = false;
-                                }
-                            } else {
-                                document.getElementById("lwsoptimize_<?php echo esc_html($id); ?>").checked = false;
-                            }
-                        <?php endforeach; ?>
 
                         form.insertAdjacentHTML('beforeend', `
                             <h2 class="lwsoptimize_modal_exclude_subtitle"><?php esc_html_e('Images or Iframes excluded', 'lws-optimize'); ?></h2>

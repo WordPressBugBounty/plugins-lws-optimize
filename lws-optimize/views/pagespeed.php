@@ -1,7 +1,7 @@
 <div class="lwsop_bluebanner_alt">
     <h2 class="lwsop_bluebanner_title">
         <?php esc_html_e('Analyze Performances of Your Website with Google PageSpeed', 'lws-optimize'); ?>
-        <a href="https://aide.lws.fr/a/1892" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+        <a href="https://aide.lws.fr/a/1892" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
     </h2>
     <div class="lwsop_bluebanner_subtitle"><?php esc_html_e('This section lets you launch Google PageSpeed tests and follow the PageSpeed scores history.', 'lws-optimize'); ?>
         <?php esc_html_e('Please be aware that those tests are done using low-end devices, to simulate performances on sub-optimal devices. Performances on your own devices may differ from what is shown.', 'lws-optimize'); ?></div>
@@ -9,7 +9,7 @@
 
 <div class="lwsop_pagespeed_block">
     <div class="lwsop_pagespeed_start_line">
-        <label class="lwsop_pagespeed_label">
+        <div class="lwsop_pagespeed_label">
             <span class="lwsop_pagespeed_label_text"><?php esc_html_e('Device type', 'lws-optimize'); ?></span>
             <div class="lwsop_custom_select" id="custom-select">
                 <span id="custom-option" class="lwsop_custom_option">
@@ -30,9 +30,9 @@
                     </li>
                 </ul>
             </div>
-        </label>
+        </div>
 
-        <label class="lwsop_pagespeed_textlabel">
+        <label class="lwsop_pagespeed_textlabel" for="lwsop_pagespeed_url">
             <span class="lwsop_pagespeed_label_text"><?php esc_html_e('URL to Scan', 'lws-optimize'); ?></span>
             <input type="url" placeholder="https://example.com/" id="lwsop_pagespeed_url" value="<?php echo esc_url(get_site_url()); ?>/">
         </label>
@@ -101,7 +101,7 @@
                         <?php endif ?>
                         <div class="lwsop_pagespeed_history_text_bottom_right">
                             <span><?php echo esc_url($history['url']); ?></span>
-                            <a target="_blank" href="<?php echo esc_url($history['url']); ?>"><img src="<?php echo esc_url(plugins_url('images/lien.svg', __DIR__)) ?>" width="14px" height="13px"></a>
+                            <a target="_blank" rel="noopener" href="<?php echo esc_url($history['url']); ?>"><img src="<?php echo esc_url(plugins_url('images/lien.svg', __DIR__)) ?>" alt="icône de lien web" width="14px" height="13px"></a>
                         </div>
                     </div>
                 </div>
@@ -192,9 +192,9 @@
                     case 'SUCCESS':
                         callPopup('success', "<?php esc_html_e('PageSpeed was executed successfully', 'lws-optimize'); ?>")
 
-                        let score = returnData['data']['performance'] ?? NULL;
-                        let speed = returnData['data']['speed'] ?? NULL;
-                        let speed_milli = returnData['data']['speed_milli'] ?? NULL;
+                        let score = returnData['data']['performance'] ?? null;
+                        let speed = returnData['data']['speed'] ?? null;
+                        let speed_milli = returnData['data']['speed_milli'] ?? null;
 
                         document.getElementById('pagespeed_results').innerHTML = `
                             <div class="lwsop_pagespeed_results left">
@@ -308,7 +308,7 @@
                                                 </div>
                                                 <div class="lwsop_pagespeed_history_text_bottom_right">
                                                     <span>` + history[i]['url'] + `</span>
-                                                    <a target="_blank" href="` + history[i]['url'] + `"><img src="<?php echo esc_url(plugins_url('images/lien.svg', __DIR__)) ?>" width="14px" height="13px"></a>
+                                                    <a target="_blank" href="` + history[i]['url'] + `"><img src="<?php echo esc_url(plugins_url('images/lien.svg', __DIR__)) ?>" alt="icône de lien web" width="14px" height="13px"></a>
                                                 </div>
                                             </div>
                                         </div>

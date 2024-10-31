@@ -1,4 +1,5 @@
 <?php
+global $wpdb;
 // Check whether Memcached id available on this hosting or not.
 $memcached_locked = false;
 
@@ -16,10 +17,10 @@ if (class_exists('Memcached')) {
 }
 
 // Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
-$fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? NULL;
-$lwscache_status = $_SERVER['lwscache'] ?? NULL;
+$fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? null;
+$lwscache_status = $_SERVER['lwscache'] ?? null;
 
-// Whether LWSCache/FastestCache is active or not. If status is NULL : not a LWS Hosting
+// Whether LWSCache/FastestCache is active or not. If status is null : not a LWS Hosting
 if ($lwscache_status == "Off") {
     $lwscache_status = false;
 } elseif ($lwscache_status == "On") {
@@ -33,7 +34,7 @@ if ($fastest_cache_status == "0") {
 }
 
 $lwscache_locked = false;
-if ($lwscache_status === NULL && $fastest_cache_status === NULL) {
+if ($lwscache_status === null && $fastest_cache_status === null) {
     $lwscache_locked = true;
 }
 
@@ -159,10 +160,9 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
             <div class="tab-pane main-tab-pane" id="<?php echo esc_attr($tab[0]) ?>" role="tabpanel" aria-labelledby="nav-<?php echo esc_attr($tab[0]) ?>" <?php echo $tab[0] == 'frontend' ? esc_attr('tabindex="0"') : esc_attr('tabindex="-1" hidden') ?>>
                 <div id="post-body" class="<?php echo $tab[0] == 'plugins' ? esc_attr('lws_op_configpage_plugin') : esc_attr('lws_op_configpage'); ?> ">
                     <?php if (get_option("lws_optimize_offline")) : ?>
-                        <?php if ($tab[0] == "plugins" || $tab[0] == 'pagespeed'); ?>
                         <?php echo ($tab[0] == 'plugins' || $tab[0] == 'pagespeed') ? '' : '<div class="deactivated_plugin_state"></div>'; ?>
                     <?php endif ?>
-                    <?php include plugin_dir_path(__FILE__) . $tab[0] . '.php'; ?>
+                    <?php include_once plugin_dir_path(__FILE__) . $tab[0] . '.php'; ?>
                 </div>
             </div>
         <?php endforeach ?>
@@ -232,82 +232,122 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
     </div>
 </div>
 
-<div id='modal_popup' class='modal fade' data-result="warning" tabindex='-1' role='dialog' aria-labelledby='myModalLabel' aria-hidden='true' style="display: none;">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class='modal-body'>
-                <div class="container-modal">
-                    <div class="success-animation">
-                        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
-                            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
-                        </svg>
-                    </div>
-                    <div class="error-animation">
-                        <svg class="circular red-stroke">
-                            <circle class="path" cx="75" cy="75" r="50" fill="none" stroke-width="5" stroke-miterlimit="10" />
-                        </svg>
-                        <svg class="cross red-stroke">
-                            <g transform="matrix(0.79961,8.65821e-32,8.39584e-32,0.79961,-502.652,-204.518)">
-                                <path class="first-line" d="M634.087,300.805L673.361,261.53" fill="none" />
-                            </g>
-                            <g transform="matrix(-1.28587e-16,-0.79961,0.79961,-1.28587e-16,-204.752,543.031)">
-                                <path class="second-line" d="M634.087,300.805L673.361,261.53" />
-                            </g>
-                        </svg>
-                    </div>
-                    <div class="warning-animation">
-                        <svg class="circular yellow-stroke">
-                            <circle class="path" cx="75" cy="75" r="50" fill="none" stroke-width="5" stroke-miterlimit="10" />
-                        </svg>
-                        <svg class="alert-sign yellow-stroke">
-                            <g transform="matrix(1,0,0,1,-615.516,-257.346)">
-                                <g transform="matrix(0.56541,-0.56541,0.56541,0.56541,93.7153,495.69)">
-                                    <path class="line" d="M634.087,300.805L673.361,261.53" fill="none" />
-                                </g>
-                                <g transform="matrix(2.27612,-2.46519e-32,0,2.27612,-792.339,-404.147)">
-                                    <circle class="dot" cx="621.52" cy="316.126" r="1.318" />
-                                </g>
-                            </g>
-                        </svg>
-                    </div>
-                    <div class="content_message" id="container_content"></div>
-                    <div>
-                        <button class="btn" data-dismiss="modal" aria-hidden="true" onclick="closemodal()">OK</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<div id="lwsop_popup_alerting"></div>
 
 <script>
-    function callPopup(type, content) {
-        let modal = document.getElementById('modal_popup');
-        let text_content = document.getElementById('container_content');
-        if (modal === null || text_content === null) {
-            console.log(JSON.stringify({
-                'code': "POPUP_FAIL",
-                'data': "Failed to find modal or its elements"
-            }));
-            return 1;
-        }
-
-        text_content.innerHTML = content;
-        modal.setAttribute('data-result', type);
-        jQuery('#modal_popup').modal('toggle');
+    // Execute the function callback after ms milliseconds unless delay() is called again
+    function delay(callback, ms) {
+        var timer = 0;
+        return function() {
+        var context = this, args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+            callback.apply(context, args);
+        }, ms || 0);
+        };
     }
 
-    function closemodal() {
-        let modal = document.getElementById('modal_popup');
-        if (modal === null) {
+    function callPopup(type, content) {
+        // Get the element containing all popups
+        let alerting = document.getElementById('lwsop_popup_alerting');
+        if (alerting == null) {
             console.log(JSON.stringify({
                 'code': "POPUP_FAIL",
-                'data': "Failed to find modal"
+                'data': "Failed to find alerting"
             }));
-            return 1;
+            return -1;
         }
-        jQuery('#modal_popup').modal('hide');
+
+        if (content == null) {
+            console.log(JSON.stringify({
+                'code': "POPUP_FAIL",
+                'data': "Failed to find content"
+            }));
+            return -1;
+        }
+
+        if (type == null) {
+            console.log(JSON.stringify({
+                'code': "POPUP_FAIL",
+                'data': "Failed to find type"
+            }));
+            return -1;
+        }
+
+        // No more than 4 popups at a time. Remove the oldest one
+        if (alerting.children.length > 4) {
+            let amount_popups = alerting.children;
+            let last = amount_popups.item(amount_popups.length - 1);
+            if (last != null) {
+                jQuery(last).animate({
+                    'left': '150%'
+                }, 500, function() {
+                    last.remove();
+                });
+            }
+        }
+
+        let number = alerting.children.length ?? 5;
+
+        alerting.insertAdjacentHTML('afterbegin', `<div class="lwsop_information_popup" style="left: 150%;" id="lwsop_information_popup_` + number + `"></div>`);
+        let popup = document.getElementById('lwsop_information_popup_' + number);
+
+        if (popup == null) {
+            console.log(JSON.stringify({
+                'code': "POPUP_NOT_CREATED",
+                'data': "Failed to create the popup"
+            }));
+            return -1;
+        }
+
+        animation = ``;
+        switch (type) {
+            case 'success':
+                animation = `<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" /><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" /></svg>`;
+                break;
+            case 'error':
+                animation = `
+                <svg class="crossmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"> <circle class="crossmark__circle" cx="26" cy="26" r="25" fill="none" stroke="red" stroke-width="2"></circle> <path class="crossmark__cross" fill="none" stroke="red" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="36" stroke-dashoffset="36" d="M16 16 36 36 M36 16 16 36"> <animate attributeName="stroke-dashoffset" from="36" to="0" dur="0.5s" fill="freeze" /> </path></svg>`
+                break;
+            case 'warning':
+                animation = `<svg class="exclamation" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"> <circle class="exclamation__circle" cx="26" cy="26" r="25" fill="none" stroke="#FFD700" stroke-width="2"></circle> <text class="exclamation__mark" x="26" y="30" font-size="26" font-family="Arial" text-anchor="middle" fill="#FFD700" dominant-baseline="middle">!</text> <style> .exclamation__mark { animation: blink 1s ease-in-out 3; } @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } } </style> </svg>`;
+                break;
+            default:
+                animation = `<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" /><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" /></svg>`;
+                break;
+        }
+        
+        popup.insertAdjacentHTML('beforeend', `
+            <div class="lwsop_information_popup_animation">` + animation + `</div>
+            <div class="lwsop_information_popup_content">` + content + `</div>
+            <div id="lwsop_close_popup_`+ number + `" class="lwsop_information_popup_close"><img src="<?php echo esc_url(plugins_url('images/fermer.svg', __DIR__)) ?>" alt="close button" width="10px" height="10px">
+        `)
+
+        jQuery(popup).animate({
+            'left': '0%'
+        }, 500);
+
+        popup.classList.add('popup_' + type);
+
+        let popup_button = document.getElementById('lwsop_close_popup_' + number);
+        if (popup_button != null) {
+            popup_button.addEventListener('click', function() {
+                this.parentNode.remove();
+            })
+        }
+
+        popup.addEventListener('mouseover', delay(function() {
+            if (popup.matches(':hover')) {
+                return 0;
+            }
+            jQuery(this).animate({
+                'left': '150%'
+            }, 500, function() {
+                this.remove();
+            });
+        }, 5000));
+
+        popup.dispatchEvent(new Event('mouseover'));
     }
 
     document.getElementById('manage_plugin_state').addEventListener('change', function(event) {
@@ -652,7 +692,11 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
                         switch (returnData['code']) {
                             case 'SUCCESS':
                                 let status = returnData['data'] == "true" ? "<?php esc_html_e('activated', 'lws-optimize'); ?>" : "<?php esc_html_e('deactivated', 'lws-optimize'); ?>";
-                                callPopup('success', "<?php esc_html_e('The action has been ', 'lws-optimize'); ?> " + status);
+                                if (returnData['type'] == "maintenance_db") {
+                                    // Update the "Next conversion" value
+                                    lws_op_update_database_cleaner();
+                                }
+                                callPopup('success', "<?php esc_html_e('Option ', 'lws-optimize'); ?> " + status);
                                 break;
                             case 'MEMCACHE_NOT_WORK':
                                 element.checked = !state;
@@ -793,7 +837,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
                                 if (!urls.length) {
                                     form.insertAdjacentHTML('beforeend', `
-                                    <div class="lwsoptimize_exclude_element">        
+                                    <div class="lwsoptimize_exclude_element">
                                         <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="">
                                         <div class="lwsoptimize_exclude_action_buttons">
                                             <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
@@ -908,7 +952,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
                                 if (!urls.length) {
                                     form.insertAdjacentHTML('beforeend', `
-                                    <div class="lwsoptimize_exclude_element">        
+                                    <div class="lwsoptimize_exclude_element">
                                         <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="">
                                         <div class="lwsoptimize_exclude_action_buttons">
                                             <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
@@ -1380,7 +1424,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
         })
 
 
-        // Open "preloading fonts" modal        
+        // Open "preloading fonts" modal
         if (document.getElementById('lws_op_add_to_preload_font') !== null) {
             document.getElementById('lws_op_add_to_preload_font').addEventListener('click', function(event) {
                 let element = this;
@@ -1446,7 +1490,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
                                 if (!urls.length) {
                                     form.insertAdjacentHTML('beforeend', `
-                                    <div class="lwsoptimize_exclude_element">        
+                                    <div class="lwsoptimize_exclude_element">
                                         <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="">
                                         <div class="lwsoptimize_exclude_action_buttons">
                                             <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>

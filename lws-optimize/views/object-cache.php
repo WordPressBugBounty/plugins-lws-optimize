@@ -58,14 +58,14 @@ if (class_exists('Memcached')):
     }
 
     /**
-    * $keys_and_groups = array(
-    * array( 'key', 'group' ),
-    * array( 'key', '' ),
-    * array( 'key', 'group' ),
-    * array( 'key' )
-    * );
-    *
-    */
+     * $keys_and_groups = array(
+     * array( 'key', 'group' ),
+     * array( 'key', '' ),
+     * array( 'key', 'group' ),
+     * array( 'key' )
+     * );
+     *
+     */
     function wp_cache_get_multi($key_and_groups, $bucket = 'default')
     {
         global $wp_object_cache;
@@ -74,12 +74,12 @@ if (class_exists('Memcached')):
     }
 
     /**
-    * $items = array(
-    * array( 'key', 'data', 'group' ),
-    * array( 'key', 'data' )
-    * );
-    *
-    */
+     * $items = array(
+     * array( 'key', 'data', 'group' ),
+     * array( 'key', 'data' )
+     * );
+     *
+     */
     function wp_cache_set_multi($items, $expire = 0, $group = 'default')
     {
         global $wp_object_cache;
@@ -112,291 +112,256 @@ if (class_exists('Memcached')):
         }
     }
 
-function wp_cache_add_global_groups($groups)
-{
-    global $wp_object_cache;
-
-    $wp_object_cache->add_global_groups($groups);
-}
-
-function wp_cache_add_non_persistent_groups($groups)
-{
-    global $wp_object_cache;
-
-    $wp_object_cache->add_non_persistent_groups($groups);
-}
-
-class WP_Object_Cache
-{
-    public $global_groups = array();
-
-    public $no_mc_groups = array();
-
-    public $cache = array();
-    public $mc = array();
-    public $stats = array();
-    public $group_ops = array();
-
-    public $cache_enabled = true;
-    public $default_expiration = 0;
-
-    public function add($id, $data, $group = 'default', $expire = 0)
+    function wp_cache_add_global_groups($groups)
     {
-        $key = $this->key($id, $group);
+        global $wp_object_cache;
 
-        if (is_object($data)) {
-            $data = clone $data;
-        }
-
-        if (in_array($group, $this->no_mc_groups)) {
-            $this->cache[$key] = $data;
-            return true;
-        } elseif (isset($this->cache[$key]) && $this->cache[$key] !== false) {
-            return false;
-        }
-
-        $mc =& $this->get_mc($group);
-        $expire = ($expire == 0) ? $this->default_expiration : $expire;
-        $result = $mc->add($key, $data, $expire);
-
-        if (false !== $result) {
-            ++$this->stats['add'];
-            $this->group_ops[$group][] = "add $id";
-            $this->cache[$key] = $data;
-        }
-
-        return $result;
+        $wp_object_cache->add_global_groups($groups);
     }
 
-    public function add_global_groups($groups)
+    function wp_cache_add_non_persistent_groups($groups)
     {
-        if (! is_array($groups)) {
-            $groups = (array) $groups;
-        }
+        global $wp_object_cache;
 
-        $this->global_groups = array_merge($this->global_groups, $groups);
-        $this->global_groups = array_unique($this->global_groups);
+        $wp_object_cache->add_non_persistent_groups($groups);
     }
 
-    public function add_non_persistent_groups($groups)
+    class WP_Object_Cache
     {
-        if (! is_array($groups)) {
-            $groups = (array) $groups;
-        }
+        public $global_groups = array();
 
-        $this->no_mc_groups = array_merge($this->no_mc_groups, $groups);
-        $this->no_mc_groups = array_unique($this->no_mc_groups);
-    }
+        public $no_mc_groups = array();
 
-    public function incr($id, $n = 1, $group = 'default')
-    {
-        $key = $this->key($id, $group);
-        $mc =& $this->get_mc($group);
-        $this->cache[ $key ] = $mc->increment($key, $n);
-        return $this->cache[ $key ];
-    }
+        public $cache = array();
+        public $mc = array();
+        public $stats = array();
+        public $group_ops = array();
 
-    public function decr($id, $n = 1, $group = 'default')
-    {
-        $key = $this->key($id, $group);
-        $mc =& $this->get_mc($group);
-        $this->cache[ $key ] = $mc->decrement($key, $n);
-        return $this->cache[ $key ];
-    }
+        public $cache_enabled = true;
+        public $default_expiration = 0;
 
-    public function close()
-    {
-        // Silence is Golden.
-    }
-
-    public function delete($id, $group = 'default')
-    {
-        $key = $this->key($id, $group);
-
-        if (in_array($group, $this->no_mc_groups)) {
-            unset($this->cache[$key]);
-            return true;
-        }
-
-        $mc =& $this->get_mc($group);
-
-        $result = $mc->delete($key);
-
-        if (false !== $result) {
-            ++$this->stats['delete'];
-            $this->group_ops[$group][] = "delete $id";
-            unset($this->cache[$key]);
-        }
-
-        return $result;
-    }
-
-    public function flush()
-    {
-        // Don't flush if multi-blog.
-        if (function_exists('is_site_admin') || defined('CUSTOM_USER_TABLE') && defined('CUSTOM_USER_META_TABLE')) {
-            return true;
-        }
-
-        $ret = true;
-        foreach (array_keys($this->mc) as $group) {
-            $ret &= $this->mc[$group]->flush();
-        }
-        return $ret;
-    }
-
-    public function get($id, $group = 'default', $force = false, &$found = null)
-    {
-        $key = $this->key($id, $group);
-        $mc =& $this->get_mc($group);
-        $found = false;
-
-        if (isset($this->cache[$key]) && (!$force || in_array($group, $this->no_mc_groups))) {
-            $found = true;
-            if (is_object($this->cache[$key])) {
-                $value = clone $this->cache[$key];
-            } else {
-                $value = $this->cache[$key];
-            }
-        } elseif (in_array($group, $this->no_mc_groups)) {
-            $this->cache[$key] = $value = false;
-        } else {
-            $value = $mc->get($key);
-            if (empty($value) || (is_integer($value) && -1 == $value)) {
-                $value = false;
-                $found = $mc->getResultCode() !== Memcached::RES_NOTFOUND;
-            } else {
-                $found = true;
-            }
-            $this->cache[$key] = $value;
-        }
-
-        if ($found) {
-            ++$this->stats['get'];
-            $this->group_ops[$group][] = "get $id";
-        } else {
-            ++$this->stats['miss'];
-        }
-
-        if ('checkthedatabaseplease' === $value) {
-            unset($this->cache[$key]);
-            $value = false;
-        }
-
-        return $value;
-    }
-
-    public function get_multi($keys, $group = 'default')
-    {
-        $return = array();
-        $gets = array();
-        foreach ($keys as $i => $values) {
-            $mc =& $this->get_mc($group);
-            $values = (array) $values;
-            if (empty($values[1])) {
-                $values[1] = 'default';
-            }
-
-            list($id, $group) = (array) $values;
+        public function add($id, $data, $group = 'default', $expire = 0)
+        {
             $key = $this->key($id, $group);
 
-            if (isset($this->cache[$key])) {
+            if (is_object($data)) {
+                $data = clone $data;
+            }
+
+            if (in_array($group, $this->no_mc_groups)) {
+                $this->cache[$key] = $data;
+                return true;
+            } else if (isset($this->cache[$key]) && $this->cache[$key] !== false) {
+                return false;
+            }
+
+            $mc = &$this->get_mc($group);
+            $expire = ($expire == 0) ? $this->default_expiration : $expire;
+            $result = $mc->add($key, $data, $expire);
+
+            if (false !== $result) {
+                ++$this->stats['add'];
+                $this->group_ops[$group][] = "add $id";
+                $this->cache[$key] = $data;
+            }
+
+            return $result;
+        }
+
+        public function add_global_groups($groups)
+        {
+            if (! is_array($groups)) {
+                $groups = (array) $groups;
+            }
+
+            $this->global_groups = array_merge($this->global_groups, $groups);
+            $this->global_groups = array_unique($this->global_groups);
+        }
+
+        public function add_non_persistent_groups($groups)
+        {
+            if (! is_array($groups)) {
+                $groups = (array) $groups;
+            }
+
+            $this->no_mc_groups = array_merge($this->no_mc_groups, $groups);
+            $this->no_mc_groups = array_unique($this->no_mc_groups);
+        }
+
+        public function incr($id, $n = 1, $group = 'default')
+        {
+            $key = $this->key($id, $group);
+            $mc = &$this->get_mc($group);
+            $this->cache[$key] = $mc->increment($key, $n);
+            return $this->cache[$key];
+        }
+
+        public function decr($id, $n = 1, $group = 'default')
+        {
+            $key = $this->key($id, $group);
+            $mc = &$this->get_mc($group);
+            $this->cache[$key] = $mc->decrement($key, $n);
+            return $this->cache[$key];
+        }
+
+        public function close()
+        {
+            // Silence is Golden.
+        }
+
+        public function delete($id, $group = 'default')
+        {
+            $key = $this->key($id, $group);
+
+            if (in_array($group, $this->no_mc_groups)) {
+                unset($this->cache[$key]);
+                return true;
+            }
+
+            $mc = &$this->get_mc($group);
+
+            $result = $mc->delete($key);
+
+            if (false !== $result) {
+                ++$this->stats['delete'];
+                $this->group_ops[$group][] = "delete $id";
+                unset($this->cache[$key]);
+            }
+
+            return $result;
+        }
+
+        public function flush()
+        {
+            // Don't flush if multi-blog.
+            if (function_exists('is_site_admin') || defined('CUSTOM_USER_TABLE') && defined('CUSTOM_USER_META_TABLE')) {
+                return true;
+            }
+
+            $ret = true;
+            foreach (array_keys($this->mc) as $group) {
+                $ret &= $this->mc[$group]->flush();
+            }
+            return $ret;
+        }
+
+        public function get($id, $group = 'default', $force = false, &$found = null)
+        {
+            $key = $this->key($id, $group);
+            $mc = &$this->get_mc($group);
+            $found = false;
+
+            if (isset($this->cache[$key]) && (!$force || in_array($group, $this->no_mc_groups))) {
+                $found = true;
                 if (is_object($this->cache[$key])) {
-                    $return[$key] = clone $this->cache[$key];
+                    $value = clone $this->cache[$key];
                 } else {
-                    $return[$key] = $this->cache[$key];
+                    $value = $this->cache[$key];
                 }
-            } elseif (in_array($group, $this->no_mc_groups)) {
-                $return[$key] = false;
+            } else if (in_array($group, $this->no_mc_groups)) {
+                $this->cache[$key] = $value = false;
             } else {
-                $gets[$key] = $key;
-            }
-        }
-
-        if (!empty($gets)) {
-            $results = $mc->getMulti($gets, $null, Memcached::GET_PRESERVE_ORDER);
-            $joined = array_combine(array_keys($gets), array_values($results));
-            $return = array_merge($return, $joined);
-        }
-
-        ++$this->stats['get_multi'];
-        $this->group_ops[$group][] = "get_multi $id";
-        $this->cache = array_merge($this->cache, $return);
-        return array_values($return);
-    }
-
-    public function key($key, $group)
-    {
-        if (empty($group)) {
-            $group = 'default';
-        }
-
-        if (false !== array_search($group, $this->global_groups)) {
-            $prefix = $this->global_prefix;
-        } else {
-            $prefix = $this->blog_prefix;
-        }
-
-        return preg_replace('/\s+/', '', WP_CACHE_KEY_SALT . "$prefix$group:$key");
-    }
-
-    public function replace($id, $data, $group = 'default', $expire = 0)
-    {
-        $key = $this->key($id, $group);
-        $expire = ($expire == 0) ? $this->default_expiration : $expire;
-        $mc =& $this->get_mc($group);
-
-        if (is_object($data)) {
-            $data = clone $data;
-        }
-
-        $result = $mc->replace($key, $data, $expire);
-        if (false !== $result) {
-            $this->cache[$key] = $data;
-        }
-        return $result;
-    }
-
-    public function set($id, $data, $group = 'default', $expire = 0)
-    {
-        $key = $this->key($id, $group);
-        if (isset($this->cache[$key]) && ('checkthedatabaseplease' === $this->cache[$key])) {
-            return false;
-        }
-
-        if (is_object($data)) {
-            $data = clone $data;
-        }
-
-        $this->cache[$key] = $data;
-
-        if (in_array($group, $this->no_mc_groups)) {
-            return true;
-        }
-
-        $expire = ($expire == 0) ? $this->default_expiration : $expire;
-        $mc =& $this->get_mc($group);
-        $result = $mc->set($key, $data, $expire);
-
-        return $result;
-    }
-
-    public function set_multi($items, $expire = 0, $group = 'default')
-    {
-        $sets = array();
-        $mc =& $this->get_mc($group);
-        $expire = ($expire == 0) ? $this->default_expiration : $expire;
-
-        foreach ($items as $i => $item) {
-            if (empty($item[2])) {
-                $item[2] = 'default';
+                $value = $mc->get($key);
+                if (empty($value) || (is_integer($value) && -1 == $value)) {
+                    $value = false;
+                    $found = $mc->getResultCode() !== Memcached::RES_NOTFOUND;
+                } else {
+                    $found = true;
+                }
+                $this->cache[$key] = $value;
             }
 
-            list($id, $data, $group) = $item;
+            if ($found) {
+                ++$this->stats['get'];
+                $this->group_ops[$group][] = "get $id";
+            } else {
+                ++$this->stats['miss'];
+            }
 
+            if ('checkthedatabaseplease' === $value) {
+                unset($this->cache[$key]);
+                $value = false;
+            }
+
+            return $value;
+        }
+
+        public function get_multi($keys, $group = 'default')
+        {
+            $return = array();
+            $gets = array();
+            foreach ($keys as $i => $values) {
+                $mc = &$this->get_mc($group);
+                $values = (array) $values;
+                if (empty($values[1])) {
+                    $values[1] = 'default';
+                }
+
+                list($id, $group) = (array) $values;
+                $key = $this->key($id, $group);
+
+                if (isset($this->cache[$key])) {
+                    if (is_object($this->cache[$key])) {
+                        $return[$key] = clone $this->cache[$key];
+                    } else {
+                        $return[$key] = $this->cache[$key];
+                    }
+                } else if (in_array($group, $this->no_mc_groups)) {
+                    $return[$key] = false;
+                } else {
+                    $gets[$key] = $key;
+                }
+            }
+
+            if (!empty($gets)) {
+                $results = $mc->getMulti($gets, $null, Memcached::GET_PRESERVE_ORDER);
+                $joined = array_combine(array_keys($gets), array_values($results));
+                $return = array_merge($return, $joined);
+            }
+
+            ++$this->stats['get_multi'];
+            $this->group_ops[$group][] = "get_multi $id";
+            $this->cache = array_merge($this->cache, $return);
+            return array_values($return);
+        }
+
+        public function key($key, $group)
+        {
+            if (empty($group)) {
+                $group = 'default';
+            }
+
+            if (false !== array_search($group, $this->global_groups)) {
+                $prefix = $this->global_prefix;
+            } else {
+                $prefix = $this->blog_prefix;
+            }
+
+            return preg_replace('/\s+/', '', WP_CACHE_KEY_SALT . "$prefix$group:$key");
+        }
+
+        public function replace($id, $data, $group = 'default', $expire = 0)
+        {
+            $key = $this->key($id, $group);
+            $expire = ($expire == 0) ? $this->default_expiration : $expire;
+            $mc = &$this->get_mc($group);
+
+            if (is_object($data)) {
+                $data = clone $data;
+            }
+
+            $result = $mc->replace($key, $data, $expire);
+            if (false !== $result) {
+                $this->cache[$key] = $data;
+            }
+            return $result;
+        }
+
+        public function set($id, $data, $group = 'default', $expire = 0)
+        {
             $key = $this->key($id, $group);
             if (isset($this->cache[$key]) && ('checkthedatabaseplease' === $this->cache[$key])) {
-                continue;
+                return false;
             }
 
             if (is_object($data)) {
@@ -406,61 +371,97 @@ class WP_Object_Cache
             $this->cache[$key] = $data;
 
             if (in_array($group, $this->no_mc_groups)) {
-                continue;
+                return true;
             }
 
-            $sets[$key] = $data;
+            $expire = ($expire == 0) ? $this->default_expiration : $expire;
+            $mc = &$this->get_mc($group);
+            $result = $mc->set($key, $data, $expire);
+
+            return $result;
         }
 
-        if (!empty($sets)) {
-            $mc->setMulti($sets, $expire);
-        }
-    }
+        public function set_multi($items, $expire = 0, $group = 'default')
+        {
+            $sets = array();
+            $mc = &$this->get_mc($group);
+            $expire = ($expire == 0) ? $this->default_expiration : $expire;
 
-    public function colorize_debug_line($line)
-    {
-        $colors = array(
-        'get' => 'green',
-        'set' => 'purple',
-        'add' => 'blue',
-        'delete'=> 'red'
-        );
+            foreach ($items as $i => $item) {
+                if (empty($item[2])) {
+                    $item[2] = 'default';
+                }
 
-        $cmd = substr($line, 0, strpos($line, ' '));
+                list($id, $data, $group) = $item;
 
-        $cmd2 = "<span style='color:" . esc_attr($colors[$cmd]) . "'>" . esc_html($cmd) . "</span>";
+                $key = $this->key($id, $group);
+                if (isset($this->cache[$key]) && ('checkthedatabaseplease' === $this->cache[$key])) {
+                    continue;
+                }
 
-        return $cmd2 . esc_html(substr($line, strlen($cmd))) . "\n";
-    }
+                if (is_object($data)) {
+                    $data = clone $data;
+                }
 
-    public function stats()
-    {
-        echo "<p>\n";
-        foreach ($this->stats as $stat => $n) {
-            echo "<strong>" . esc_html($stat) . "</strong> " . esc_html($n);
-            echo "<br />\n";
-        }
-        echo "</p>\n";
-        echo "<h3>Memcached:</h3>";
-        foreach ($this->group_ops as $group => $ops) {
-            if (!isset($_GET['debug_queries']) && 500 < count($ops)) {
-                $ops=array_slice($ops, 0, 500);
-                echo "<big>Too many to show! <a href='" . esc_url(add_query_arg('debug_queries', 'true'))
-                . "'>Show them anyway</a>.</big>\n" ;
-            } echo "<h4>" . esc_html($group) . " commands</h4>" ;
-            echo "<pre>\n" ;
-            $lines=array();
-            foreach ($ops as $op) {
-                $lines[]=$this->colorize_debug_line($op);
+                $this->cache[$key] = $data;
+
+                if (in_array($group, $this->no_mc_groups)) {
+                    continue;
+                }
+
+                $sets[$key] = $data;
             }
-            print_r($lines);
-            echo "</pre>\n";
+
+            if (!empty($sets)) {
+                $mc->setMulti($sets, $expire);
+            }
         }
 
-        if (!empty($this->debug) && $this->debug) {
-            var_dump($this->memcache_debug);
+        public function colorize_debug_line($line)
+        {
+            $colors = array(
+                'get' => 'green',
+                'set' => 'purple',
+                'add' => 'blue',
+                'delete' => 'red'
+            );
+
+            $cmd = substr($line, 0, strpos($line, ' '));
+
+            $cmd2 = "<span style='color:" . esc_attr($colors[$cmd]) . "'>" . esc_html($cmd) . "</span>";
+
+            return $cmd2 . esc_html(substr($line, strlen($cmd))) . "\n";
         }
-    }
+
+        public function stats()
+        {
+            echo "<p>\n";
+            foreach ($this->stats as $stat => $n) {
+                echo "<strong>" . esc_html($stat) . "</strong> " . esc_html($n);
+                echo "<br />\n";
+            }
+            echo "</p>\n";
+            echo "<h3>Memcached:</h3>";
+            foreach ($this->group_ops as $group => $ops) {
+                if (!isset($_GET['debug_queries']) && 500 < count($ops)) {
+                    $ops = array_slice($ops, 0, 500);
+                    echo "<big>Too many to show! <a href='" . esc_url(add_query_arg('debug_queries', 'true'))
+                        . "'>Show them anyway</a>.</big>\n";
+                }
+                echo "<h4>" . esc_html($group) . " commands</h4>";
+                echo "<pre>\n";
+                $lines = array();
+                foreach ($ops as $op) {
+                    $lines[] = $this->colorize_debug_line($op);
+                }
+                print_r($lines);
+                echo "</pre>\n";
+            }
+
+            if (!empty($this->debug) && $this->debug) {
+                var_dump($this->memcache_debug);
+            }
+        }
 
         public function &get_mc($group)
         {
@@ -473,12 +474,12 @@ class WP_Object_Cache
         public function __construct()
         {
             $this->stats = array(
-            'get' => 0,
-            'get_multi' => 0,
-            'add' => 0,
-            'set' => 0,
-            'delete' => 0,
-            'miss' => 0,
+                'get' => 0,
+                'get_multi' => 0,
+                'add' => 0,
+                'set' => 0,
+                'delete' => 0,
+                'miss' => 0,
             );
 
             global $memcached_servers;
@@ -486,12 +487,12 @@ class WP_Object_Cache
             if (isset($memcached_servers)) {
                 $buckets = $memcached_servers;
             } else {
-                $buckets = array( '127.0.0.1:11211' );
+                $buckets = array('127.0.0.1:11211');
             }
 
             reset($buckets);
             if (is_int(key($buckets))) {
-                $buckets = array( 'default' => $buckets );
+                $buckets = array('default' => $buckets);
             }
 
             foreach ($buckets as $bucket => $servers) {
@@ -508,7 +509,7 @@ class WP_Object_Cache
                         $port = 11211;
                     }
 
-                    $instances[] = array( $node, $port, 1 );
+                    $instances[] = array($node, $port, 1);
                 }
                 $this->mc[$bucket]->addServers($instances);
             }
@@ -518,20 +519,21 @@ class WP_Object_Cache
             $this->blog_prefix = '';
             if (function_exists('is_multisite')) {
                 $this->global_prefix = (is_multisite() || defined('CUSTOM_USER_TABLE') && defined('CUSTOM_USER_META_TABLE')) ?
-                '' : $table_prefix;
+                    '' : $table_prefix;
                 $this->blog_prefix = (is_multisite() ? $blog_id : $table_prefix) . ':';
             }
 
-            $this->cache_hits =& $this->stats['get'];
-            $this->cache_misses =& $this->stats['miss'];
+            $this->cache_hits = &$this->stats['get'];
+            $this->cache_misses = &$this->stats['miss'];
         }
-} else: // No Memcached
+    }
+else: // No Memcached
 
     // In 3.7+, we can handle this smoothly
     if (function_exists('wp_using_ext_object_cache')) {
         wp_using_ext_object_cache(false);
 
-    // In earlier versions, there isn't a clean bail-out method.
+        // In earlier versions, there isn't a clean bail-out method.
     } else {
         wp_die('Memcached class not available.');
     }

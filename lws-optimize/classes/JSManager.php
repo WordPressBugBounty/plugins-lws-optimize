@@ -1,12 +1,12 @@
 <?php
 
-include_once(LWS_OP_DIR . "/vendor/autoload.php");
+require_once LWS_OP_DIR . "/vendor/autoload.php";
 
 use MatthiasMullie\Minify;
 
 
 /**
- * Manage the minification and combination of CSS files. 
+ * Manage the minification and combination of CSS files.
  * Mostly a fork of WPFC. The main difference come from the way files are modified, by using Matthias Mullie library
  */
 class JSManager extends LwsOptimize
@@ -81,11 +81,7 @@ class JSManager extends LwsOptimize
             if ($key + 1 == count($elements)) {
                 $file_url = $this->combine_current_js($current_scripts);
                 if (!empty($file_url) && $file_url !== false) {
-                    if ($header) {
-                        $newLink = "<script id='$ids' type='text/javascript' src='$file_url'></script>";
-                    } else {
-                        $newLink = "<script id='$ids' type='text/javascript' src='$file_url'></script>";
-                    }
+                    $newLink = "<script id='$ids' type='text/javascript' src='$file_url'></script>";
 
                     if (isset($src)) {
                         $this->content = str_replace("$src-->", "$src -->$newLink", $this->content);
@@ -97,19 +93,17 @@ class JSManager extends LwsOptimize
         return ['html' => $this->content, 'files' => $this->files];
     }
 
-    public function endify_scripts() {
+    public function endify_scripts()
+    {
         preg_match_all("/(<script\s*.*?<\/script>)/xs", $this->content, $matches);
-
-        $current_scripts = "";
 
         $elements = $matches[0];
 
         $this->content = preg_replace("/(<script\s*.*?<\/script>)/xs", '', $this->content);
-        $this->content = preg_replace('/<\/body>/', implode(' ', $elements) . '</body>', $this->content);
+        $this->content = str_replace('</body>', implode(' ', $elements) . '</body>', $this->content);
         return $this->content;
     }
 
-    // TODO : Maybe use "defer" on ALL js...?
     public function combine_current_js(array $scripts)
     {
         if (empty($scripts)) {
@@ -124,8 +118,6 @@ class JSManager extends LwsOptimize
             $minify = new Minify\JS();
 
             $name = "";
-            $size = 0;
-            $amount = 0;
 
             // Add each CSS file to the minifier
             foreach ($scripts as $script) {
@@ -136,11 +128,6 @@ class JSManager extends LwsOptimize
                 $file_path = explode("?", $file_path)[0];
 
                 $name = base_convert(crc32($name . $script), 20, 36);
-
-                if (file_exists($file_path)) {
-                    $size += filesize($file_path);
-                    $amount += 1;
-                }
 
                 $minify->add($file_path);
             }
@@ -159,8 +146,6 @@ class JSManager extends LwsOptimize
                 $this->files['size'] += filesize($path) ?? 0;
 
                 return $path_url;
-            } else {
-                return false;
             }
         }
         return false;
@@ -181,7 +166,7 @@ class JSManager extends LwsOptimize
         $elements = $matches[0];
         // Loop through the <link>, get their attributes and verify if we have to minify them
         // Then we minify it and replace the old URL by the minified one
-        foreach ($elements as $key => $element) {
+        foreach ($elements as $element) {
             if (substr($element, 0, 7) == "<script") {
                 preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $href);
                 $href = $href[1] ?? "";
@@ -209,15 +194,12 @@ class JSManager extends LwsOptimize
 
                 $minify = new Minify\JS($file_path);
 
-                if ($minify->minify($path)) {
-
-                    if (file_exists($path)) {
-                        $this->files['file'] += 1;
-                        $this->files['size'] += filesize($path) ?? 0;
-                        // Create a new link with the newly combined URL and add it to the DOM
-                        $newLink = preg_replace("/src\=[\'\"]([^\'\"]+)[\'\"]/", "src='$path_url'", $element);
-                        $this->content = str_replace($element, $newLink, $this->content);
-                    }
+                if ($minify->minify($path) && file_exists($path)) {
+                    $this->files['file'] += 1;
+                    $this->files['size'] += filesize($path) ?? 0;
+                    // Create a new link with the newly combined URL and add it to the DOM
+                    $newLink = preg_replace("/src\=[\'\"]([^\'\"]+)[\'\"]/", "src='$path_url'", $element);
+                    $this->content = str_replace($element, $newLink, $this->content);
                 }
             }
         }
@@ -228,10 +210,6 @@ class JSManager extends LwsOptimize
 
     private function _set_excluded()
     {
-        $data = $this->content;
-        $script_list = array();
-        $script_start_index = false;
-
         $tag_start = "";
         $tag_end = "";
         $tags = [];
@@ -244,18 +222,16 @@ class JSManager extends LwsOptimize
             }
 
             // If we found a <link> tag and have started to read it...
-            if (!empty($tag_start) && is_numeric($tag_start) && $i > $tag_start) {
+            if (!empty($tag_start) && is_numeric($tag_start) && $i > $tag_start && substr($this->content, $i, 1) == ")") {
                 // If we are at the very end of the <link> tag, we keep note of its position
                 // then we fetch the content of the tag and add it to the listing
-                if (substr($this->content, $i, 1) == ")") {
-                    $tag_end = $i;
-                    $text = substr($this->content, $tag_start, ($tag_end - $tag_start) + 1);
-                    array_push($tags, array("start" => $tag_start, "end" => $tag_end, "text" => $text));
+                $tag_end = $i;
+                $text = substr($this->content, $tag_start, ($tag_end - $tag_start) + 1);
+                array_push($tags, array("start" => $tag_start, "end" => $tag_end, "text" => $text));
 
-                    // Reinitialize the tracking of the tags
-                    $tag_start = "";
-                    $tag_end = "";
-                }
+                // Reinitialize the tracking of the tags
+                $tag_start = "";
+                $tag_end = "";
             }
         }
 
@@ -309,20 +285,18 @@ class JSManager extends LwsOptimize
     {
         $optimize_options = get_option('lws_optimize_config_array', []);
         try {
-            if (empty($option) || $option === NULL) {
+            if (empty($option) || $option === null) {
                 return ['state' => "false", 'data' => []];
             }
 
             $option = sanitize_text_field($option);
-            if (isset($optimize_options[$option])) {
-                if (isset($optimize_options[$option]['state'])) {
-                    $array = $optimize_options[$option];
-                    $state = $array['state'];
-                    unset($array['state']);
-                    $data = $array;
+            if (isset($optimize_options[$option]) && isset($optimize_options[$option]['state'])) {
+                $array = $optimize_options[$option];
+                $state = $array['state'];
+                unset($array['state']);
+                $data = $array;
 
-                    return ['state' => $state, 'data' => $data];
-                }
+                return ['state' => $state, 'data' => $data];
             }
             return ['state' => "false", 'data' => []];
         } catch (Exception $e) {
@@ -332,7 +306,7 @@ class JSManager extends LwsOptimize
     }
 
     /**
-     * Compare the given $url of $type (minify/combine) with the exceptions. 
+     * Compare the given $url of $type (minify/combine) with the exceptions.
      * If there is a match, $url is excluded
      */
     public function check_for_exclusion($url, $type)
@@ -347,8 +321,8 @@ class JSManager extends LwsOptimize
 
         $httpHost = str_replace("www.", "", $_SERVER["HTTP_HOST"]);
 
+        //<script src="https://server1.opentracker.net/?site=www.site.com"></script>
         if (preg_match("/" . preg_quote($httpHost, "/") . "/i", $url)) {
-            //<script src="https://server1.opentracker.net/?site=www.site.com"></script>
             if (preg_match("/[\?\=].*" . preg_quote($httpHost, "/") . "/i", $url)) {
                 return true;
             }
@@ -356,14 +330,12 @@ class JSManager extends LwsOptimize
             return true;
         }
 
-        if ($content = @file_get_contents($url)) {
-            if (preg_match("/document\s*\).ready\s*\(/xs", $content, $matches)) {
-                return true;
-            }
+        if (preg_match("/document\s*\).ready\s*\(/xs", (file_get_contents($url) ?? ''), $matches)) {
+            return true;
         }
 
         // If the URL is found in a comment, ignore it as there is no point in processing unused files
-        preg_match_all("/(document.write\(\s*.*?\))/xs", $this->content, $matches);
+        preg_match_all("/(document.write\(\s*[^\)]*+\))/xs", $this->content, $matches);
         $writes = $matches[0] ? $matches[0] : [];
         foreach ($writes as $write) {
             if (preg_match("~$url~xs", $write)) {
@@ -384,9 +356,7 @@ class JSManager extends LwsOptimize
                     return true;
                 }
             }
-
-            return false;
-        } else if ($type == "combine") {
+        } elseif ($type == "combine") {
             $options_combine = $this->lwsop_check_option('combine_js');
             if ($options_combine['state'] == "true" && isset($options_combine['data']['exclusions'])) {
                 $combine_js_exclusions = $options_combine['data']['exclusions'];
@@ -409,8 +379,6 @@ class JSManager extends LwsOptimize
                     return true;
                 }
             }
-
-            return false;
         } else {
             $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['minify_html']['state']) && $options_combine['minify_html']['state'] == "true" && isset($options_combine['minify_html']['exclusions'])) {
@@ -424,34 +392,21 @@ class JSManager extends LwsOptimize
                     return true;
                 }
             }
-
-            return false;
         }
+
+        return false;
     }
 
     public function checkInternal($link)
     {
         $httpHost = str_replace("www.", "", $_SERVER["HTTP_HOST"]);
 
-        if (preg_match("/^<script[^\>]+\>/i", $link, $script)) {
-            if (preg_match("/src=[\"\'](.*?)[\"\']/", $script[0], $src)) {
-                if (preg_match("/alexa\.com\/site\_stats/i", $src[1])) {
-                    return false;
-                }
-
-                if (preg_match("/^\/[^\/]/", $src[1])) {
-                    return $src[1];
-                }
-
-                if (preg_match("/" . preg_quote($httpHost, "/") . "/i", $src[1])) {
-                    //<script src="https://server1.opentracker.net/?site=www.site.com"></script>
-                    if (preg_match("/[\?\=].*" . preg_quote($httpHost, "/") . "/i", $src[1])) {
-                        return false;
-                    }
-
-                    return $src[1];
-                }
-            }
+        if (
+            preg_match("/^<script[^\>]+\>/i", $link, $script) && preg_match("/src=[\"\'](.*?)[\"\']/", $script[0], $src)
+            && !preg_match("/alexa\.com\/site\_stats/i", $src[1]) && preg_match("/^\/[^\/]/", $src[1])
+            && preg_match("/" . preg_quote($httpHost, "/") . "/i", $src[1]) && !preg_match("/[\?\=].*" . preg_quote($httpHost, "/") . "/i", $src[1])
+        ) {
+            return $src[1];
         }
 
         return false;

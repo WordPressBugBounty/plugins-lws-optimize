@@ -1041,7 +1041,7 @@ class StringBitOp extends Command
     protected function filterArguments(array $arguments)
     {
         if (count($arguments) === 3 && is_array($arguments[2])) {
-            list($operation, $destination, ) = $arguments;
+            list($operation, $destination,) = $arguments;
             $arguments = $arguments[2];
             array_unshift($arguments, $operation, $destination);
         }
@@ -2930,9 +2930,11 @@ class KeySort extends Command
             }
         }
 
-        if (isset($sortParams['LIMIT']) &&
+        if (
+            isset($sortParams['LIMIT']) &&
             is_array($sortParams['LIMIT']) &&
-            count($sortParams['LIMIT']) == 2) {
+            count($sortParams['LIMIT']) == 2
+        ) {
 
             $query[] = 'LIMIT';
             $query[] = $sortParams['LIMIT'][0];
@@ -4047,7 +4049,9 @@ abstract class AbstractConnection implements NodeConnectionInterface
     {
         CommunicationException::handle(
             new ConnectionException(
-                $this, "$message [{$this->parameters->scheme}://{$this->getIdentifier()}]", $code
+                $this,
+                "$message [{$this->parameters->scheme}://{$this->getIdentifier()}]",
+                $code
             )
         );
     }
@@ -4061,7 +4065,8 @@ abstract class AbstractConnection implements NodeConnectionInterface
     {
         CommunicationException::handle(
             new ProtocolException(
-                $this, "$message [{$this->parameters->scheme}://{$this->getIdentifier()}]"
+                $this,
+                "$message [{$this->parameters->scheme}://{$this->getIdentifier()}]"
             )
         );
     }
@@ -5539,9 +5544,7 @@ class CompositeStreamConnection extends StreamConnection implements CompositeCon
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-class ConnectionException extends CommunicationException
-{
-}
+class ConnectionException extends CommunicationException {}
 
 /**
  * Container for connection parameters used to initialize connections to Redis.
@@ -5756,8 +5759,8 @@ class Factory implements FactoryInterface
 
         if (!$connection instanceof NodeConnectionInterface) {
             throw new UnexpectedValueException(
-                "Objects returned by connection initializers must implement ".
-                "'Predis\Connection\NodeConnectionInterface'."
+                "Objects returned by connection initializers must implement " .
+                    "'Predis\Connection\NodeConnectionInterface'."
             );
         }
 
@@ -7412,9 +7415,7 @@ use Predis\Connection\NodeConnectionInterface;
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-abstract class PredisException extends Exception
-{
-}
+abstract class PredisException extends Exception {}
 
 /**
  * Interface defining a client-side context such as a pipeline or transaction.
@@ -7877,18 +7878,14 @@ interface ClientInterface
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-class NotSupportedException extends PredisException
-{
-}
+class NotSupportedException extends PredisException {}
 
 /**
  * Exception class that identifies client-side errors.
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-class ClientException extends PredisException
-{
-}
+class ClientException extends PredisException {}
 
 /**
  * Client class used for connecting and executing commands on Redis.
@@ -8287,7 +8284,7 @@ class Client implements ClientInterface
     {
         if (isset($options['atomic']) && $options['atomic']) {
             $class = 'Predis\Pipeline\Atomic';
-        } elseif (isset($options['fire-and-forget']) && $options['fire-and-forget']) {
+        } else if (isset($options['fire-and-forget']) && $options['fire-and-forget']) {
             $class = 'Predis\Pipeline\FireAndForget';
         } else {
             $class = 'Predis\Pipeline\Pipeline';
@@ -8425,10 +8422,10 @@ class Autoloader
     {
         if (0 === strpos($className, $this->prefix)) {
             $parts = explode('\\', substr($className, $this->prefixLength));
-            $filepath = $this->directory.DIRECTORY_SEPARATOR.implode(DIRECTORY_SEPARATOR, $parts).'.php';
+            $filepath = $this->directory . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $parts) . '.php';
 
             if (is_file($filepath)) {
-                require($filepath);
+                require_once($filepath);
             }
         }
     }
@@ -8514,7 +8511,7 @@ interface OptionsInterface
     public function defined($option);
 
     /**
-     * Checks if the given option has been set and does not evaluate to NULL.
+     * Checks if the given option has been set and does not evaluate to null.
      *
      * @param string $option Name of the option.
      *
@@ -8595,7 +8592,7 @@ class ProfileOption implements OptionInterface
         if (is_string($value)) {
             $value = Predis_Factory::get($value);
             $this->setProcessors($options, $value);
-        } elseif (!$value instanceof ProfileInterface) {
+        } else if (!$value instanceof ProfileInterface) {
             throw new InvalidArgumentException('Invalid value for the profile option.');
         }
 
@@ -8627,7 +8624,7 @@ class ReplicationOption implements OptionInterface
      *
      * @todo There's more code than needed due to a bug in filter_var() as
      *       discussed here https://bugs.php.net/bug.php?id=49510 and  different
-     *       behaviours when encountering NULL values on PHP 5.3.
+     *       behaviours when encountering null values on PHP 5.3.
      */
     public function filter(OptionsInterface $options, $value)
     {
@@ -8641,7 +8638,7 @@ class ReplicationOption implements OptionInterface
 
         if (
             !is_object($value) &&
-            null !== $asbool = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            null !== $asbool = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_null_ON_FAILURE)
         ) {
             return $asbool ? $this->getDefault($options) : null;
         }
@@ -8785,7 +8782,7 @@ class ConnectionFactoryOption implements OptionInterface
     {
         if ($value instanceof FactoryInterface) {
             return $value;
-        } elseif (is_array($value)) {
+        } else if (is_array($value)) {
             $factory = $this->getDefault($options);
 
             foreach ($value as $scheme => $initializer) {
@@ -8905,9 +8902,7 @@ use Predis\PredisException;
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-interface ResponseInterface
-{
-}
+interface ResponseInterface {}
 
 /**
  * Represents an error returned by Redis (responses identified by "-" in the
@@ -9030,7 +9025,7 @@ class Error implements ErrorInterface
      */
     public function getErrorType()
     {
-        list($errorType, ) = explode(' ', $this->getMessage(), 2);
+        list($errorType,) = explode(' ', $this->getMessage(), 2);
 
         return $errorType;
     }
@@ -9060,7 +9055,7 @@ class ServerException extends PredisException implements ErrorInterface
      */
     public function getErrorType()
     {
-        list($errorType, ) = explode(' ', $this->getMessage(), 2);
+        list($errorType,) = explode(' ', $this->getMessage(), 2);
 
         return $errorType;
     }
@@ -9146,7 +9141,8 @@ class StreamableMultiBulkResponse implements ResponseHandlerInterface
 
         if ("$length" != $payload) {
             CommunicationException::handle(new ProtocolException(
-                $connection, "Cannot parse '$payload' as a valid length for a multi-bulk response."
+                $connection,
+                "Cannot parse '$payload' as a valid length for a multi-bulk response."
             ));
         }
 
@@ -9172,7 +9168,8 @@ class MultiBulkResponse implements ResponseHandlerInterface
 
         if ("$length" !== $payload) {
             CommunicationException::handle(new ProtocolException(
-                $connection, "Cannot parse '$payload' as a valid length of a multi-bulk response."
+                $connection,
+                "Cannot parse '$payload' as a valid length of a multi-bulk response."
             ));
         }
 
@@ -9225,7 +9222,7 @@ class ErrorResponse implements ResponseHandlerInterface
 
 /**
  * Handler for the integer response type in the standard Redis wire protocol.
- * It translates the payload an integer or NULL.
+ * It translates the payload an integer or null.
  *
  * @link http://redis.io/topics/protocol
  * @author Daniele Alessandri <suppakilla@gmail.com>
@@ -9243,7 +9240,8 @@ class IntegerResponse implements ResponseHandlerInterface
 
         if ($payload !== 'nil') {
             CommunicationException::handle(new ProtocolException(
-                $connection, "Cannot parse '$payload' as a valid numeric response."
+                $connection,
+                "Cannot parse '$payload' as a valid numeric response."
             ));
         }
 
@@ -9253,7 +9251,7 @@ class IntegerResponse implements ResponseHandlerInterface
 
 /**
  * Handler for the bulk response type in the standard Redis wire protocol.
- * It translates the payload to a string or a NULL.
+ * It translates the payload to a string or a null.
  *
  * @link http://redis.io/topics/protocol
  * @author Daniele Alessandri <suppakilla@gmail.com>
@@ -9269,7 +9267,8 @@ class BulkResponse implements ResponseHandlerInterface
 
         if ("$length" !== $payload) {
             CommunicationException::handle(new ProtocolException(
-                $connection, "Cannot parse '$payload' as a valid length for a bulk response."
+                $connection,
+                "Cannot parse '$payload' as a valid length for a bulk response."
             ));
         }
 
@@ -9282,7 +9281,8 @@ class BulkResponse implements ResponseHandlerInterface
         }
 
         CommunicationException::handle(new ProtocolException(
-            $connection, "Value '$payload' is not a valid length for a bulk response."
+            $connection,
+            "Value '$payload' is not a valid length for a bulk response."
         ));
 
         return;
@@ -9401,7 +9401,7 @@ abstract class CursorBasedIterator implements Iterator
      */
     protected function fetch()
     {
-		list($cursor, $elements) = $this->executeCommand();
+        list($cursor, $elements) = $this->executeCommand();
 
         if (!$cursor) {
             $this->fetchmore = false;
@@ -9457,7 +9457,7 @@ abstract class CursorBasedIterator implements Iterator
 
             if ($this->elements) {
                 $this->extractNext();
-            } elseif ($this->cursor) {
+            } else if ($this->cursor) {
                 goto tryFetch;
             } else {
                 $this->valid = false;
@@ -9805,7 +9805,7 @@ interface StrategyInterface
 {
     /**
      * Returns a slot for the given command used for clustering distribution or
-     * NULL when this is not possible.
+     * null when this is not possible.
      *
      * @param CommandInterface $command Command instance.
      *
@@ -9814,7 +9814,7 @@ interface StrategyInterface
     public function getSlot(CommandInterface $command);
 
     /**
-     * Returns a slot for the given key used for clustering distribution or NULL
+     * Returns a slot for the given key used for clustering distribution or null
      * when this is not possible.
      *
      * @param string $key Key string.
@@ -9998,11 +9998,11 @@ abstract class ClusterStrategy implements StrategyInterface
      * The signature of the callback must have a single parameter of type
      * Predis\Command\CommandInterface.
      *
-     * When the callback argument is omitted or NULL, the previously associated
+     * When the callback argument is omitted or null, the previously associated
      * handler for the specified command ID is removed.
      *
      * @param string $commandID Command ID.
-     * @param mixed  $callback  A valid callable object, or NULL to unset the handler.
+     * @param mixed  $callback  A valid callable object, or null to unset the handler.
      *
      * @throws \InvalidArgumentException
      */
@@ -10018,7 +10018,7 @@ abstract class ClusterStrategy implements StrategyInterface
 
         if (!is_callable($callback)) {
             throw new InvalidArgumentException(
-                "The argument must be a callable object or NULL."
+                "The argument must be a callable object or null."
             );
         }
 
@@ -10393,9 +10393,7 @@ interface RequestSerializerInterface
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-class ProtocolException extends CommunicationException
-{
-}
+class ProtocolException extends CommunicationException {}
 
 /* --------------------------------------------------------------------------- */
 
@@ -10425,9 +10423,7 @@ use Predis\Response\ErrorInterface as ErrorResponseInterface;
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-interface ClusterInterface extends AggregateConnectionInterface
-{
-}
+interface ClusterInterface extends AggregateConnectionInterface {}
 
 /**
  * Defines a group of Redis nodes in a master / slave replication setup.
@@ -10673,7 +10669,8 @@ class RedisCluster implements ClusterInterface, IteratorAggregate, Countable
      */
     public function setSlots($first, $last, $connection)
     {
-        if ($first < 0x0000 || $first > 0x3FFF ||
+        if (
+            $first < 0x0000 || $first > 0x3FFF ||
             $last < 0x0000 || $last > 0x3FFF ||
             $last < $first
         ) {
@@ -11600,7 +11597,7 @@ class Pipeline implements ClientContextInterface
 
             if (!$response instanceof ResponseInterface) {
                 $responses[] = $command->parseResponse($response);
-            } elseif ($response instanceof ErrorResponseInterface && $exceptions) {
+            } else if ($response instanceof ErrorResponseInterface && $exceptions) {
                 $this->exception($connection, $response);
             } else {
                 $responses[] = $response;
@@ -11750,7 +11747,7 @@ class ConnectionErrorProof extends Pipeline
     {
         if ($connection instanceof NodeConnectionInterface) {
             return $this->executeSingleNode($connection, $commands);
-        } elseif ($connection instanceof ClusterInterface) {
+        } else if ($connection instanceof ClusterInterface) {
             return $this->executeCluster($connection, $commands);
         } else {
             $class = get_class($connection);
@@ -11923,7 +11920,7 @@ class Atomic extends Pipeline
 
             if (!$response instanceof ResponseInterface) {
                 $responses[] = $command->parseResponse($response);
-            } elseif ($response instanceof ErrorResponseInterface && $exceptions) {
+            } else if ($response instanceof ErrorResponseInterface && $exceptions) {
                 $this->exception($connection, $response);
             } else {
                 $responses[] = $response;
@@ -12221,7 +12218,7 @@ class HashRing implements DistributorInterface, HashGeneratorInterface
 
             if ($item > $hash) {
                 $upper = $index - 1;
-            } elseif ($item < $hash) {
+            } else if ($item < $hash) {
                 $lower = $index + 1;
             } else {
                 return $item;
@@ -12331,9 +12328,7 @@ class KetamaRing extends HashRing
  *
  * @author Daniele Alessandri <suppakilla@gmail.com>
  */
-class EmptyRingException extends Exception
-{
-}
+class EmptyRingException extends Exception {}
 
 /* --------------------------------------------------------------------------- */
 
@@ -12608,38 +12603,262 @@ interface HashGeneratorInterface
 class CRC16 implements HashGeneratorInterface
 {
     private static $CCITT_16 = array(
-        0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50A5, 0x60C6, 0x70E7,
-        0x8108, 0x9129, 0xA14A, 0xB16B, 0xC18C, 0xD1AD, 0xE1CE, 0xF1EF,
-        0x1231, 0x0210, 0x3273, 0x2252, 0x52B5, 0x4294, 0x72F7, 0x62D6,
-        0x9339, 0x8318, 0xB37B, 0xA35A, 0xD3BD, 0xC39C, 0xF3FF, 0xE3DE,
-        0x2462, 0x3443, 0x0420, 0x1401, 0x64E6, 0x74C7, 0x44A4, 0x5485,
-        0xA56A, 0xB54B, 0x8528, 0x9509, 0xE5EE, 0xF5CF, 0xC5AC, 0xD58D,
-        0x3653, 0x2672, 0x1611, 0x0630, 0x76D7, 0x66F6, 0x5695, 0x46B4,
-        0xB75B, 0xA77A, 0x9719, 0x8738, 0xF7DF, 0xE7FE, 0xD79D, 0xC7BC,
-        0x48C4, 0x58E5, 0x6886, 0x78A7, 0x0840, 0x1861, 0x2802, 0x3823,
-        0xC9CC, 0xD9ED, 0xE98E, 0xF9AF, 0x8948, 0x9969, 0xA90A, 0xB92B,
-        0x5AF5, 0x4AD4, 0x7AB7, 0x6A96, 0x1A71, 0x0A50, 0x3A33, 0x2A12,
-        0xDBFD, 0xCBDC, 0xFBBF, 0xEB9E, 0x9B79, 0x8B58, 0xBB3B, 0xAB1A,
-        0x6CA6, 0x7C87, 0x4CE4, 0x5CC5, 0x2C22, 0x3C03, 0x0C60, 0x1C41,
-        0xEDAE, 0xFD8F, 0xCDEC, 0xDDCD, 0xAD2A, 0xBD0B, 0x8D68, 0x9D49,
-        0x7E97, 0x6EB6, 0x5ED5, 0x4EF4, 0x3E13, 0x2E32, 0x1E51, 0x0E70,
-        0xFF9F, 0xEFBE, 0xDFDD, 0xCFFC, 0xBF1B, 0xAF3A, 0x9F59, 0x8F78,
-        0x9188, 0x81A9, 0xB1CA, 0xA1EB, 0xD10C, 0xC12D, 0xF14E, 0xE16F,
-        0x1080, 0x00A1, 0x30C2, 0x20E3, 0x5004, 0x4025, 0x7046, 0x6067,
-        0x83B9, 0x9398, 0xA3FB, 0xB3DA, 0xC33D, 0xD31C, 0xE37F, 0xF35E,
-        0x02B1, 0x1290, 0x22F3, 0x32D2, 0x4235, 0x5214, 0x6277, 0x7256,
-        0xB5EA, 0xA5CB, 0x95A8, 0x8589, 0xF56E, 0xE54F, 0xD52C, 0xC50D,
-        0x34E2, 0x24C3, 0x14A0, 0x0481, 0x7466, 0x6447, 0x5424, 0x4405,
-        0xA7DB, 0xB7FA, 0x8799, 0x97B8, 0xE75F, 0xF77E, 0xC71D, 0xD73C,
-        0x26D3, 0x36F2, 0x0691, 0x16B0, 0x6657, 0x7676, 0x4615, 0x5634,
-        0xD94C, 0xC96D, 0xF90E, 0xE92F, 0x99C8, 0x89E9, 0xB98A, 0xA9AB,
-        0x5844, 0x4865, 0x7806, 0x6827, 0x18C0, 0x08E1, 0x3882, 0x28A3,
-        0xCB7D, 0xDB5C, 0xEB3F, 0xFB1E, 0x8BF9, 0x9BD8, 0xABBB, 0xBB9A,
-        0x4A75, 0x5A54, 0x6A37, 0x7A16, 0x0AF1, 0x1AD0, 0x2AB3, 0x3A92,
-        0xFD2E, 0xED0F, 0xDD6C, 0xCD4D, 0xBDAA, 0xAD8B, 0x9DE8, 0x8DC9,
-        0x7C26, 0x6C07, 0x5C64, 0x4C45, 0x3CA2, 0x2C83, 0x1CE0, 0x0CC1,
-        0xEF1F, 0xFF3E, 0xCF5D, 0xDF7C, 0xAF9B, 0xBFBA, 0x8FD9, 0x9FF8,
-        0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1, 0x1EF0,
+        0x0000,
+        0x1021,
+        0x2042,
+        0x3063,
+        0x4084,
+        0x50A5,
+        0x60C6,
+        0x70E7,
+        0x8108,
+        0x9129,
+        0xA14A,
+        0xB16B,
+        0xC18C,
+        0xD1AD,
+        0xE1CE,
+        0xF1EF,
+        0x1231,
+        0x0210,
+        0x3273,
+        0x2252,
+        0x52B5,
+        0x4294,
+        0x72F7,
+        0x62D6,
+        0x9339,
+        0x8318,
+        0xB37B,
+        0xA35A,
+        0xD3BD,
+        0xC39C,
+        0xF3FF,
+        0xE3DE,
+        0x2462,
+        0x3443,
+        0x0420,
+        0x1401,
+        0x64E6,
+        0x74C7,
+        0x44A4,
+        0x5485,
+        0xA56A,
+        0xB54B,
+        0x8528,
+        0x9509,
+        0xE5EE,
+        0xF5CF,
+        0xC5AC,
+        0xD58D,
+        0x3653,
+        0x2672,
+        0x1611,
+        0x0630,
+        0x76D7,
+        0x66F6,
+        0x5695,
+        0x46B4,
+        0xB75B,
+        0xA77A,
+        0x9719,
+        0x8738,
+        0xF7DF,
+        0xE7FE,
+        0xD79D,
+        0xC7BC,
+        0x48C4,
+        0x58E5,
+        0x6886,
+        0x78A7,
+        0x0840,
+        0x1861,
+        0x2802,
+        0x3823,
+        0xC9CC,
+        0xD9ED,
+        0xE98E,
+        0xF9AF,
+        0x8948,
+        0x9969,
+        0xA90A,
+        0xB92B,
+        0x5AF5,
+        0x4AD4,
+        0x7AB7,
+        0x6A96,
+        0x1A71,
+        0x0A50,
+        0x3A33,
+        0x2A12,
+        0xDBFD,
+        0xCBDC,
+        0xFBBF,
+        0xEB9E,
+        0x9B79,
+        0x8B58,
+        0xBB3B,
+        0xAB1A,
+        0x6CA6,
+        0x7C87,
+        0x4CE4,
+        0x5CC5,
+        0x2C22,
+        0x3C03,
+        0x0C60,
+        0x1C41,
+        0xEDAE,
+        0xFD8F,
+        0xCDEC,
+        0xDDCD,
+        0xAD2A,
+        0xBD0B,
+        0x8D68,
+        0x9D49,
+        0x7E97,
+        0x6EB6,
+        0x5ED5,
+        0x4EF4,
+        0x3E13,
+        0x2E32,
+        0x1E51,
+        0x0E70,
+        0xFF9F,
+        0xEFBE,
+        0xDFDD,
+        0xCFFC,
+        0xBF1B,
+        0xAF3A,
+        0x9F59,
+        0x8F78,
+        0x9188,
+        0x81A9,
+        0xB1CA,
+        0xA1EB,
+        0xD10C,
+        0xC12D,
+        0xF14E,
+        0xE16F,
+        0x1080,
+        0x00A1,
+        0x30C2,
+        0x20E3,
+        0x5004,
+        0x4025,
+        0x7046,
+        0x6067,
+        0x83B9,
+        0x9398,
+        0xA3FB,
+        0xB3DA,
+        0xC33D,
+        0xD31C,
+        0xE37F,
+        0xF35E,
+        0x02B1,
+        0x1290,
+        0x22F3,
+        0x32D2,
+        0x4235,
+        0x5214,
+        0x6277,
+        0x7256,
+        0xB5EA,
+        0xA5CB,
+        0x95A8,
+        0x8589,
+        0xF56E,
+        0xE54F,
+        0xD52C,
+        0xC50D,
+        0x34E2,
+        0x24C3,
+        0x14A0,
+        0x0481,
+        0x7466,
+        0x6447,
+        0x5424,
+        0x4405,
+        0xA7DB,
+        0xB7FA,
+        0x8799,
+        0x97B8,
+        0xE75F,
+        0xF77E,
+        0xC71D,
+        0xD73C,
+        0x26D3,
+        0x36F2,
+        0x0691,
+        0x16B0,
+        0x6657,
+        0x7676,
+        0x4615,
+        0x5634,
+        0xD94C,
+        0xC96D,
+        0xF90E,
+        0xE92F,
+        0x99C8,
+        0x89E9,
+        0xB98A,
+        0xA9AB,
+        0x5844,
+        0x4865,
+        0x7806,
+        0x6827,
+        0x18C0,
+        0x08E1,
+        0x3882,
+        0x28A3,
+        0xCB7D,
+        0xDB5C,
+        0xEB3F,
+        0xFB1E,
+        0x8BF9,
+        0x9BD8,
+        0xABBB,
+        0xBB9A,
+        0x4A75,
+        0x5A54,
+        0x6A37,
+        0x7A16,
+        0x0AF1,
+        0x1AD0,
+        0x2AB3,
+        0x3A92,
+        0xFD2E,
+        0xED0F,
+        0xDD6C,
+        0xCD4D,
+        0xBDAA,
+        0xAD8B,
+        0x9DE8,
+        0x8DC9,
+        0x7C26,
+        0x6C07,
+        0x5C64,
+        0x4C45,
+        0x3CA2,
+        0x2C83,
+        0x1CE0,
+        0x0CC1,
+        0xEF1F,
+        0xFF3E,
+        0xCF5D,
+        0xDF7C,
+        0xAF9B,
+        0xBFBA,
+        0x8FD9,
+        0x9FF8,
+        0x6E17,
+        0x7E36,
+        0x4E55,
+        0x5E74,
+        0x2E93,
+        0x3EB2,
+        0x0ED1,
+        0x1EF0,
     );
 
     /**
@@ -12783,8 +13002,8 @@ class ProcessorChain implements ArrayAccess, ProcessorInterface
     {
         if (!$processor instanceof ProcessorInterface) {
             throw new InvalidArgumentException(
-                "A processor chain accepts only instances of ".
-                "'Predis\Command\Processor\ProcessorInterface'."
+                "A processor chain accepts only instances of " .
+                    "'Predis\Command\Processor\ProcessorInterface'."
             );
         }
 
@@ -12971,7 +13190,7 @@ class KeyPrefixProcessor implements ProcessorInterface
     {
         if ($command instanceof PrefixableCommandInterface) {
             $command->prefixKeys($this->prefix);
-        } elseif (isset($this->commands[$commandID = strtoupper($command->getId())])) {
+        } else if (isset($this->commands[$commandID = strtoupper($command->getId())])) {
             call_user_func($this->commands[$commandID], $command, $this->prefix);
         }
     }
@@ -12984,11 +13203,11 @@ class KeyPrefixProcessor implements ProcessorInterface
      *   - Predis\Command\CommandInterface (command instance)
      *   - String (prefix)
      *
-     * When the callback argument is omitted or NULL, the previously
+     * When the callback argument is omitted or null, the previously
      * associated handler for the specified command ID is removed.
      *
      * @param string $commandID The ID of the command to be handled.
-     * @param mixed  $callback  A valid callable object or NULL.
+     * @param mixed  $callback  A valid callable object or null.
      *
      * @throws \InvalidArgumentException
      */
@@ -13004,7 +13223,7 @@ class KeyPrefixProcessor implements ProcessorInterface
 
         if (!is_callable($callback)) {
             throw new InvalidArgumentException(
-                "Callback must be a valid callable object or NULL"
+                "Callback must be a valid callable object or null"
             );
         }
 
@@ -13402,7 +13621,8 @@ class ProtocolProcessor implements ProtocolProcessorInterface
 
             default:
                 CommunicationException::handle(new ProtocolException(
-                    $connection, "Unknown response prefix: '$prefix'."
+                    $connection,
+                    "Unknown response prefix: '$prefix'."
                 ));
 
                 return;
@@ -13541,9 +13761,9 @@ abstract class AbstractConsumer implements Iterator
     const PMESSAGE     = 'pmessage';
     const PONG         = 'pong';
 
-    const STATUS_VALID       = 1;	// 0b0001
-    const STATUS_SUBSCRIBED  = 2;	// 0b0010
-    const STATUS_PSUBSCRIBED = 4;	// 0b0100
+    const STATUS_VALID       = 1;    // 0b0001
+    const STATUS_SUBSCRIBED  = 2;    // 0b0010
+    const STATUS_PSUBSCRIBED = 4;    // 0b0100
 
     private $position = null;
     private $statusFlags = self::STATUS_VALID;
@@ -13721,7 +13941,7 @@ abstract class AbstractConsumer implements Iterator
      */
     protected function invalidate()
     {
-        $this->statusFlags = 0;	// 0b0000;
+        $this->statusFlags = 0;    // 0b0000;
     }
 
     /**
@@ -13859,7 +14079,7 @@ class DispatcherLoop
             if (isset($this->callbacks[$message->channel])) {
                 $callback = $this->callbacks[$message->channel];
                 call_user_func($callback, $message->payload);
-            } elseif (isset($this->defaultCallback)) {
+            } else if (isset($this->defaultCallback)) {
                 $callback = $this->defaultCallback;
                 call_user_func($callback, $message);
             }
@@ -13969,7 +14189,8 @@ class Consumer extends AbstractConsumer
     protected function writeRequest($method, $arguments)
     {
         $this->client->getConnection()->writeRequest(
-            $this->client->createCommand($method,
+            $this->client->createCommand(
+                $method,
                 Command::normalizeArguments($arguments)
             )
         );
@@ -14388,7 +14609,7 @@ class MultiExec implements ClientContextInterface
 
         if ($response instanceof StatusResponse && $response == 'QUEUED') {
             $this->commands->enqueue($command);
-        } elseif ($response instanceof ErrorResponseInterface) {
+        } else if ($response instanceof ErrorResponseInterface) {
             throw new AbortedMultiExecException($this, $response->getMessage());
         } else {
             $this->onProtocolError('The server did not return a +QUEUED status response.');
@@ -14517,7 +14738,7 @@ class MultiExec implements ClientContextInterface
                     'Cannot execute a transaction block after using fluent interface.'
                 );
             }
-        } elseif ($this->attempts) {
+        } else if ($this->attempts) {
             $this->discard();
 
             throw new ClientException(
@@ -14562,7 +14783,8 @@ class MultiExec implements ClientContextInterface
             if ($execResponse === null) {
                 if ($attempts === 0) {
                     throw new AbortedMultiExecException(
-                        $this, 'The current transaction has been aborted by the server.'
+                        $this,
+                        'The current transaction has been aborted by the server.'
                     );
                 }
 
@@ -14636,7 +14858,8 @@ class MultiExec implements ClientContextInterface
         // connections we can safely assume that Predis\Client::getConnection()
         // will return a Predis\Connection\NodeConnectionInterface instance.
         CommunicationException::handle(new ProtocolException(
-            $this->client->getConnection(), $message
+            $this->client->getConnection(),
+            $message
         ));
     }
 }

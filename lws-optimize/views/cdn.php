@@ -39,7 +39,7 @@ $list_time = array(
         <h2 class="lwsop_contentblock_title">
             <img src="<?php echo esc_url(plugins_url('images/cloudflare.svg', __DIR__)) ?>" alt="pc icon" width="30px" height="30px">
             <?php echo esc_html_e('Cloudflare integration with LWS Optimize', 'lws-optimize'); ?>
-            <a href="https://aide.lws.fr/a/1890" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+            <a href="https://aide.lws.fr/a/1890" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
         </h2>
         <div class="lwsop_contentblock_description">
             <?php echo esc_html_e('LWS Optimize is fully compatible with Cloudflare CDN. This integration prevent incompatibilities by modifying Cloudflare settings. Furthermore, it purges Cloudflare cache at the same time as LWS Optimize.', 'lws-optimize'); ?>
@@ -53,7 +53,7 @@ $list_time = array(
     </div>
 </div>
 
-<div class="modal fade" id="lws_optimize_cloudflare_manage" tabindex='-1' role='dialog' aria-hidden='true'>
+<div class="modal fade" id="lws_optimize_cloudflare_manage" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog cloudflare_dialog">
         <div class="modal-content cloudflare_content" style="padding: 30px 0;">
             <h2 class="lwsop_exclude_title" id="lws_optimize_cloudflare_manage_title"><?php esc_html_e('Cloudflare settings : Insert API Keys', 'lws-optimize'); ?></h2>

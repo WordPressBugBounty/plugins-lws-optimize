@@ -298,7 +298,7 @@ a.lwsop_button_rate_plugin{
     text-decoration: none;
 }
 
-a.lwsop_review_button_secondary{
+button.lwsop_review_button_secondary{
     text-decoration: underline;
     font-size: 16px;
     line-height: 26px;

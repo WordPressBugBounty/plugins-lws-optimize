@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The file that defines the core plugin class
  *
@@ -88,7 +89,7 @@ class LWSCache
             define('RT_WP_LWS_CACHE_CACHE_PATH', '/tmp/.nginx');
         }
 
-        $this->load_dependencies();        
+        $this->load_dependencies();
         $this->define_admin_hooks();
     }
 
@@ -153,7 +154,7 @@ class LWSCache
         // Defines global variables.
         if (! empty($lws_cache_admin->options['cache_method']) && 'enable_redis' === $lws_cache_admin->options['cache_method']) {
             if (class_exists('Redis')) { // Use PHP5-Redis extension if installed.
-                if (class_exists('PhpRedis_Purger')) {                
+                if (class_exists('PhpRedis_Purger')) {
                     require_once plugin_dir_path(dirname(__FILE__)) . 'cache/class-phpredis-purger.php';
                 }
                 $nginx_purger = new PhpRedis_Purger();
@@ -163,8 +164,10 @@ class LWSCache
                 }
                 $nginx_purger = new Predis_Purger();
             }
-        } elseif (isset($_SERVER['HTTP_X_CACHE_ENGINE_ENABLED']) && isset($_SERVER['HTTP_X_CACHE_ENGINE'])
-        && $_SERVER['HTTP_X_CACHE_ENGINE_ENABLED'] == '1' && $_SERVER['HTTP_X_CACHE_ENGINE'] == 'varnish') {
+        } else if (
+            isset($_SERVER['HTTP_X_CACHE_ENGINE_ENABLED']) && isset($_SERVER['HTTP_X_CACHE_ENGINE'])
+            && $_SERVER['HTTP_X_CACHE_ENGINE_ENABLED'] == '1' && $_SERVER['HTTP_X_CACHE_ENGINE'] == 'varnish'
+        ) {
             if (!class_exists("Varnish_Purger")) {
                 require_once plugin_dir_path(dirname(__FILE__)) . 'cache/class-varnish-purger.php';
             }
@@ -188,7 +191,7 @@ class LWSCache
         }
 
         $this->loader->add_action('admin_bar_menu', $lws_cache_admin, 'lws_cache_toolbar_purge_link', 100);
-        
+
 
         $this->loader->add_action('wp_ajax_rt_get_feeds', $lws_cache_admin, 'lws_cache_get_feeds');
 
@@ -285,8 +288,8 @@ class LWSCache
         $wp_ok = version_compare($wp_version, $this->minimum_wp, '>=');
 
         if (false === $wp_ok) {
-            add_action('admin_notices', array( &$this, 'display_notices' ));
-            add_action('network_admin_notices', array( &$this, 'display_notices' ));
+            add_action('admin_notices', array(&$this, 'display_notices'));
+            add_action('network_admin_notices', array(&$this, 'display_notices'));
             return false;
         }
 
@@ -298,20 +301,20 @@ class LWSCache
      */
     public function display_notices()
     {
-        ?>
-<div id="message" class="error">
-    <p>
-        <strong>
-            <?php
-                printf(
-                    /* translators: %s is Minimum WP version. */
-                    esc_html__('Sorry, LWSCache requires WordPress %s or higher', 'lwscache'),
-            esc_html($this->minimum_wp)
-        );
-        ?>
-        </strong>
-    </p>
-</div>
+?>
+        <div id="message" class="error">
+            <p>
+                <strong>
+                    <?php
+                    printf(
+                        /* translators: %s is Minimum WP version. */
+                        esc_html__('Sorry, LWSCache requires WordPress %s or higher', 'lwscache'),
+                        esc_html($this->minimum_wp)
+                    );
+                    ?>
+                </strong>
+            </p>
+        </div>
 <?php
     }
 }

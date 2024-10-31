@@ -11,6 +11,7 @@ $first_bloc_array = array(
         'button_id' => "lws_optimize_maintenance_db_manage",
         'has_checkbox' => true,
         'checkbox_id' => "lws_optimize_maintenance_db_check",
+        'has_special_element_database' => true,
     ),
     'lwscleaner' => array(
         'has_logo' => true,
@@ -25,6 +26,7 @@ $first_bloc_array = array(
         'button_id' => "lws_optimize_lwscleaner_manage",
         'has_checkbox' => true,
         'checkbox_id' => "lws_optimize_lwscleaner_check",
+        'has_special_element_database' => false,
     ),
 );
 
@@ -50,6 +52,13 @@ if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
     $first_bloc_array['lwscleaner']['has_button'] = true;
 }
 
+
+$next_scheduled_maintenance = wp_next_scheduled('lws_optimize_maintenance_db_weekly');
+if ($next_scheduled_maintenance) {
+    $next_scheduled_maintenance = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_maintenance), 'Y-m-d H:i:s');
+} else {
+    $next_scheduled_maintenance = "-";
+}
 ?>
 
 <?php foreach ($first_bloc_array as $key => $data) : ?>
@@ -63,11 +72,20 @@ if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
                 <?php if ($data['recommended']) : ?>
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
-                <a href="https://aide.lws.fr/a/1891" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                <a href="https://aide.lws.fr/a/1891" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
             </h2>
             <div class="lwsop_contentblock_description">
                 <?php echo wp_kses($data['desc'], ['b' => []]); ?>
             </div>
+
+            <?php if ($data['has_special_element_database']) : ?>
+                <div class="lwsop_contentblock_convertion_status" id="lwsop_database_cleaning_status">
+                    <div>
+                        <span><?php echo esc_html__('Next convertion: ', 'lws-optimize'); ?></span>
+                        <span id="lwsop_next_cleaning_db"><?php echo esc_html($next_scheduled_maintenance); ?></span>
+                    </div>
+                </div>
+            <?php endif ?>
         </div>
         <div class="lwsop_contentblock_rightside" <?php if ($key == "lwscleaner") : ?> id='lwsop_button_side' <?php endif; ?>>
             <?php if ($data['has_button']) : ?>
@@ -87,7 +105,7 @@ if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
     </div>
 <?php endforeach; ?>
 
-<div class="modal fade" id="lws_optimize_manage_maintenance_modal" tabindex='-1' role='dialog' aria-hidden='true'>
+<div class="modal fade" id="lws_optimize_manage_maintenance_modal" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
             <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Database Maintenance Options', 'lws-optimize'); ?></h2>
@@ -238,9 +256,7 @@ if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
                     case 'SUCCESS':
                         form.innerHTML = old_form;
                         buttons.innerHTML = old_buttons;
-                        document.querySelectorAll('button[data-dismiss="modal"]').forEach(function(b) {
-                            b.click()
-                        });
+                        document.getElementById('lwsop_maintenance_db_modal_buttons').children[0].click();
                         callPopup('success', "Les options ont bien été mises à jour");
                         break;
                     case 'FAILURE':
@@ -260,9 +276,7 @@ if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
                 }
             },
             error: function(error) {
-                document.querySelectorAll('button[data-dismiss="modal"]').forEach(function(b) {
-                    b.click()
-                });
+                document.getElementById('lwsop_maintenance_db_modal_buttons').children[0].click();
                 document.body.style.pointerEvents = "all";
                 callPopup('error', "Une erreur inconnue est survenue");
                 console.log(error);
@@ -288,6 +302,45 @@ if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
             updateMaintenanceOptions(data);
         }
     });
+
+    function lws_op_update_database_cleaner() {
+        let element = document.getElementById('lwsop_next_cleaning_db');
+        let ajaxRequest = jQuery.ajax({
+            url: ajaxurl,
+            type: "POST",
+            timeout: 120000,
+            context: document.body,
+            data: {
+                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_optimize_get_database_cleaning_nonce')); ?>',
+                action: "lws_optimize_get_database_cleaning_time",
+            },
+            success: function(data) {
+                if (data === null || typeof data != 'string') {
+                    return 0;
+                }
+
+                try {
+                    var returnData = JSON.parse(data);
+                } catch (e) {
+                    console.log(e);
+                    return 0;
+                }
+
+                switch (returnData['code']) {
+                    case 'SUCCESS':
+                        element.innerHTML = returnData['data'];
+                        break;
+                    default:
+                        console.log(returnData['code']);
+                        break;
+                }
+            },
+            error: function(error) {
+                console.log(error);
+            }
+        });
+
+    }
 
     document.getElementById('lws_optimize_lwscleaner_check').addEventListener('click', function() {
         document.getElementById('wpcontent').style.pointerEvents = "none";

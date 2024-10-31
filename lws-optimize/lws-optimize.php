@@ -4,7 +4,7 @@
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.1.7.6
+ * Version:           3.2.0.1
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.6
@@ -45,12 +45,15 @@ if (!defined('LWS_OP_BASENAME')) {
 /**
  * Remove a directory and all its content
  */
-function removeDir(string $dir): void {
+function removeDir(string $dir): void
+{
     $it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
-    $files = new RecursiveIteratorIterator($it,
-                 RecursiveIteratorIterator::CHILD_FIRST);
-    foreach($files as $file) {
-        if ($file->isDir()){
+    $files = new RecursiveIteratorIterator(
+        $it,
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($files as $file) {
+        if ($file->isDir()) {
             removeDir($file->getPathname());
         } else {
             unlink($file->getPathname());
@@ -58,7 +61,6 @@ function removeDir(string $dir): void {
     }
     rmdir($dir);
 }
-
 
 // Polyfills of useful PHP8+ functions for PHP < 8
 if (!function_exists('str_starts_with')) {
@@ -210,9 +212,9 @@ function lwsop_review_ad_plugin()
         <div style="padding:16px">
             <h1 class="lwsop_review_block_title"> <?php esc_html_e('Thank you for using LWS Optimize!', 'lws-optimize'); ?></h1>
             <p class="lwsop_review_block_desc"><?php _e('Evaluate our plugin to help others optimize and boost the performances of their WordPress website!', 'lws-optimize'); ?></p>
-            <a class="lwsop_button_rate_plugin" href="https://wordpress.org/support/plugin/lws-optimize/reviews/" target="_blank"><img style="margin-right: 8px;" src="<?php echo esc_url(plugins_url('images/noter.svg', __FILE__)) ?>" width="15px" height="15px"><?php esc_html_e('Rate', 'lws-optimize'); ?></a>
-            <a class="lwsop_review_button_secondary" onclick="lwsop_remind_me()"><?php esc_html_e('Remind me later', 'lws-optimize'); ?></a>
-            <a class="lwsop_review_button_secondary" onclick="lwsop_do_not_bother_me()"><?php esc_html_e('Do not ask again', 'lws-optimize'); ?></a>
+            <a class="lwsop_button_rate_plugin" href="https://wordpress.org/support/plugin/lws-optimize/reviews/" rel="noopener" target="_blank"><img style="margin-right: 8px;" src="<?php echo esc_url(plugins_url('images/noter.svg', __FILE__)) ?>" width="15px" height="15px"><?php esc_html_e('Rate', 'lws-optimize'); ?></a>
+            <button type="button" class="lwsop_review_button_secondary" onclick="lwsop_remind_me()"><?php esc_html_e('Remind me later', 'lws-optimize'); ?></button>
+            <button type="button" class="lwsop_review_button_secondary" onclick="lwsop_do_not_bother_me()"><?php esc_html_e('Do not ask again', 'lws-optimize'); ?></button>
         </div>
     </div>
 <?php
@@ -239,13 +241,25 @@ function lwsop_review_ad_plugin()
 // }
 
 /**
+ * Add a link to the settings directly in the plugin page
+ */
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'lws_op_add_settings_link');
+function lws_op_add_settings_link($actions) {
+    $settings = array(
+        '<a href="' . admin_url( 'admin.php?page=lws-op-config' ) . '">' . __( 'Settings' ) . '</a>',
+    );
+    $actions = array_merge($settings, $actions);
+    return $actions;
+}
+
+/**
  * Create plugin menu in wp-admin
  */
 add_action('admin_menu', 'lws_op_menu_admin');
 function lws_op_menu_admin()
 {
     add_menu_page(__('LWS Optimize', 'lws-optimize'), __('LWS Optimize', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
-    
+
     // add_submenu_page('lws-op-config', __('General', 'lws-optimize'), __('General options', 'lws-optimize'), 'manage_options', 'lws-op-config', 'lws_op_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
     // add_submenu_page('lws-op-config', __('Image Optimization', 'lws-optimize'), __('Image Optimization', 'lws-optimize'), 'manage_options', 'lws-op-config-imageop', 'lws_op_image_opti_page', LWS_OP_URL . 'images/plugin_lws_optimize.svg');
 }
@@ -263,11 +277,12 @@ function lws_op_page()
         array('pagespeed', __('Pagespeed test', 'lws-optimize')),
         array('plugins', __('Our others plugins', 'lws-optimize')),
     );
-    include __DIR__ . '/views/tabs.php';
+    include_once __DIR__ . '/views/tabs.php';
 }
 
-function lws_op_image_opti_page() {
-    include __DIR__ . '/views/image_optimize.php';
+function lws_op_image_opti_page()
+{
+    include_once __DIR__ . '/views/image_optimize.php';
 }
 
 
@@ -405,9 +420,9 @@ function lws_op_activate_plugin()
 // CDN
 add_action("wp_ajax_lws_optimize_check_cloudflare_key", function () {
     check_ajax_referer('lwsop_check_cloudflare_key_nonce', '_ajax_nonce');
-    $token_key = $_POST['key'] ?? NULL;
+    $token_key = $_POST['key'] ?? null;
 
-    if ($token_key === NULL) {
+    if ($token_key === null) {
         wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
     }
 
@@ -434,11 +449,11 @@ add_action("wp_ajax_lws_optimize_check_cloudflare_key", function () {
         wp_die(json_encode(array('code' => "ERROR_DECODE", 'data' => $response), JSON_PRETTY_PRINT));
     }
 
-    $success = $response['success'] ?? NULL;
-    $status = $response['result']['status'] ?? NULL;
+    $success = $response['success'] ?? null;
+    $status = $response['result']['status'] ?? null;
 
     // The verification has succeeded
-    if ($success !== NULL && $success === true) {
+    if ($success !== null && $success === true) {
         // If the key is active, we now check for zones
         if ($status == "active") {
             $zones_response = wp_remote_get(
@@ -462,10 +477,10 @@ add_action("wp_ajax_lws_optimize_check_cloudflare_key", function () {
                 wp_die(json_encode(array('code' => "ERROR_DECODE_ZONES", 'data' => $zones_response), JSON_PRETTY_PRINT));
             }
 
-            $zone_id = NULL;
-            $account_id = NULL;
-            $success = $zones_response['success'] ?? NULL;
-            if ($success !== NULL && $success === true) {
+            $zone_id = null;
+            $account_id = null;
+            $success = $zones_response['success'] ?? null;
+            if ($success !== null && $success === true) {
                 $amount = $zones_response['result_info']['count'];
                 if ($amount <= 0) {
                     wp_die(json_encode(array('code' => "NO_ZONES", 'data' => $zones_response), JSON_PRETTY_PRINT));
@@ -478,7 +493,7 @@ add_action("wp_ajax_lws_optimize_check_cloudflare_key", function () {
                         }
                     }
 
-                    if ($zone_id === NULL) {
+                    if ($zone_id === null) {
                         wp_die(json_encode(array('code' => "NO_ZONE_FOR_DOMAIN", 'data' => $zones_response), JSON_PRETTY_PRINT));
                     }
                 }
@@ -506,16 +521,16 @@ add_action("wp_ajax_lws_optimize_check_cloudflare_key", function () {
 
 add_action("wp_ajax_lws_optimize_cloudflare_tools_deactivation", function () {
     check_ajax_referer('lwsop_opti_cf_tools_nonce', '_ajax_nonce');
-    $min_css = $_POST['min_css'] ?? NULL;
-    $min_js = $_POST['min_js'] ?? NULL;
-    $dynamic_cache = $_POST['cache_deactivate'] ?? NULL;
+    $min_css = $_POST['min_css'] ?? null;
+    $min_js = $_POST['min_js'] ?? null;
+    $dynamic_cache = $_POST['cache_deactivate'] ?? null;
 
     $tmp = $config_array = get_option('lws_optimize_config_array', array());
 
     $config_array['cloudflare']['tools'] = [
-        'min_css' => $min_css === NULL ? false : true,
-        'min_js' => $min_js === NULL ? false : true,
-        'dynamic_cache' => $dynamic_cache === NULL ? false : true,
+        'min_css' => $min_css === null ? false : true,
+        'min_js' => $min_js === null ? false : true,
+        'dynamic_cache' => $dynamic_cache === null ? false : true,
     ];
     $saved = update_option('lws_optimize_config_array', $config_array);
 
@@ -528,9 +543,9 @@ add_action("wp_ajax_lws_optimize_cloudflare_tools_deactivation", function () {
 
 add_action("wp_ajax_lws_optimize_cloudflare_cache_duration", function () {
     check_ajax_referer('lwsop_opti_cf_duration_nonce', '_ajax_nonce');
-    $cache_span = $_POST['lifespan'] ?? NULL;
+    $cache_span = $_POST['lifespan'] ?? null;
 
-    if ($cache_span !== NULL) {
+    if ($cache_span !== null) {
         $tmp = $config_array = get_option('lws_optimize_config_array', array());
         $config_array['cloudflare']['lifespan'] = sanitize_text_field($cache_span);
         $saved = update_option('lws_optimize_config_array', $config_array);
@@ -547,12 +562,12 @@ add_action("wp_ajax_lws_optimize_cloudflare_finish_configuration", function () {
     check_ajax_referer('lwsop_cloudflare_finish_config_nonce', '_ajax_nonce');
 
     $tmp = $config_array = get_option('lws_optimize_config_array', array());
-    $zone_id = $config_array['cloudflare']['zone_id'] ?? NULL;
-    $api_token = $config_array['cloudflare']['api'] ?? NULL;
-    $cache_span = $config_array['cloudflare']['lifespan'] ?? NULL;
-    $tools = $config_array['cloudflare']['tools'] ?? NULL;
+    $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
+    $api_token = $config_array['cloudflare']['api'] ?? null;
+    $cache_span = $config_array['cloudflare']['lifespan'] ?? null;
+    $tools = $config_array['cloudflare']['tools'] ?? null;
 
-    if ($zone_id === NULL || $api_token === NULL || $cache_span === NULL || $tools === NULL) {
+    if ($zone_id === null || $api_token === null || $cache_span === null || $tools === null) {
         wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
     }
 
@@ -618,11 +633,11 @@ add_action("wp_ajax_lws_optimize_deactivate_cloudflare_integration", function ()
 
     $tmp = $config_array = get_option('lws_optimize_config_array', array());
 
-    $zone_id = $config_array['cloudflare']['zone_id'] ?? NULL;
-    $api_token = $config_array['cloudflare']['api'] ?? NULL;
-    $cache_span = $config_array['cloudflare']['lifespan'] ?? NULL;
+    $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
+    $api_token = $config_array['cloudflare']['api'] ?? null;
+    $cache_span = $config_array['cloudflare']['lifespan'] ?? null;
 
-    if ($zone_id === NULL || $api_token === NULL || $cache_span === NULL) {
+    if ($zone_id === null || $api_token === null || $cache_span === null) {
         wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
     }
 
@@ -661,21 +676,21 @@ add_action("wp_ajax_lws_optimize_deactivate_cloudflare_integration", function ()
  */
 function lwsop_clear_cache_cloudflare(string $cache_type, array $url)
 {
-    $purge_type = NULL;
+    $purge_type = null;
     if ($cache_type === "purge") {
         $purge_type = "full_purge";
-    } elseif ($cache_type === "part_purge") {
+    } else if ($cache_type === "part_purge") {
         $purge_type = "part_purge";
     } else {
-        $purge_type = NULL;
+        $purge_type = null;
     }
 
     $config_array = get_option('lws_optimize_config_array', array());
 
-    $zone_id = $config_array['cloudflare']['zone_id'] ?? NULL;
-    $api_token = $config_array['cloudflare']['api'] ?? NULL;
+    $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
+    $api_token = $config_array['cloudflare']['api'] ?? null;
 
-    if ($zone_id === NULL || $api_token === NULL || $purge_type === NULL || $url === NULL || !is_array($url)) {
+    if ($zone_id === null || $api_token === null || $purge_type === null || $url === null || !is_array($url)) {
         // error_log(json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
         return (json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
     }
@@ -700,7 +715,7 @@ function lwsop_clear_cache_cloudflare(string $cache_type, array $url)
                 "Content-Type: application/json"
             ],
         ]);
-    } elseif ($purge_type === 'part_purge') {
+    } else if ($purge_type === 'part_purge') {
         $tmp = "{\n  \"prefixes\": [\n ";
         foreach ($url as $prefix) {
             $prefix = esc_url($prefix);
@@ -784,141 +799,21 @@ $state = get_option('lws_optimize_offline', null);
 if (!isset($state)) {
     // Force all images to be/not be lazy loaded ; By default activated
     if ((isset($config_array['image_lazyload']['state']) && $config_array['image_lazyload']['state'] === "true")) {
-        add_filter('wp_get_attachment_image_attributes', 'lws_optimize_manage_media_image_lazyload', 0, 3);
-        // Manage lazy-loading for pages where this hook is usable
-        function lws_optimize_manage_media_image_lazyload($attr, $attachment, $size)
-        {
-            global $config_array;
 
-            if (is_admin()) {
-                return $attr;
+
+        add_filter('wp_get_attachment_image_attributes', 'lws_optimize_manage_media_image_lazyload');
+        function lws_optimize_manage_media_image_lazyload( $attr, $attachment ) {
+            if ( isset( $attr['src'] ) ) {
+                $attr['data-src'] = $attr['src'];
+                // $attr['src'] = 'placeholder.jpg';
+                $attr['class'] .= ' lws-optimize-lazyload';
             }
-
-            if (isset($attr['fetchpriority']) && $attr['fetchpriority'] == "high") {
-                unset($attr['loading']);
-            } else {
-                $attr['loading'] = 'lazy';
-            }
-
-            // Thumbnails banned
-            if (isset($config_array['lazyload']['exclusions']['media_types']['thumbnails'])) {
-                if (str_contains($size, 'thumbnail')) {
-                    unset($attr['loading']);
-                    return $attr;
-                }
-            }
-
-            // Responsive banned ; If has attribute "sizes", is considered as Responsive
-            if (isset($config_array['lazyload']['exclusions']['media_types']['responsive'])) {
-                if (isset($attr['sizes'])) {
-                    unset($attr['loading']);
-                    return $attr;
-                }
-            }
-
-            // If banned class found, no lazy-loading
-            if (isset($config_array['lazyload']['exclusions']['css_classes']) && isset($attr['class'])) {
-                $classes = $config_array['lazyload']['exclusions']['css_classes'];
-                $found_values = array_intersect($classes, explode(" ", $attr['class']));
-
-                if (!empty($found_values)) {
-                    unset($attr['loading']);
-                    return $attr;
-                }
-            }
-
-
-            // Remove lazy-load for images whose source contains
-            if (isset($config_array['lazyload']['exclusions']['img_iframe'])) {
-                foreach ($config_array['lazyload']['exclusions']['img_iframe'] as $url) {
-                    // Find all img tags with $url in their src attribute and loading="lazy"
-                    if (trim(esc_url($url)) == '') {
-                        continue;
-                    }
-                    if (preg_match("~" . esc_url($url) . "~", $attr['src'])) {
-                        unset($attr['loading']);
-                    }
-                }
-            }
-
-            // Lazyload the image
             return $attr;
         }
 
-
-        add_filter('the_content', 'lws_optimize_manage_media_image_lazyload_content');
-        // Function to add lazy-loading to images
-        function lws_optimize_manage_media_image_lazyload_content($content)
-        {
-            if (is_admin()) {
-                return $content;
-            }
-
-            global $config_array;
-            // Define the classes that exempt images from lazy-loading
-            if (isset($config_array['lazyload']['exclusions']['css_classes'])) {
-                $exempt_classes = $config_array['lazyload']['exclusions']['css_classes'];
-            } else {
-                $exempt_classes = array();
-            }
-
-            // Find all <img> tags in the content
-            $pattern = '/<img(.*?)>/';
-            preg_match_all($pattern, $content, $matches);
-
-            // Loop through each <img> tag and add lazy-loading if the class is not exempt
-            foreach ($matches[0] as $img_tag) {
-                $replace_img_tag = $img_tag;
-
-                // Check if the <img> tag has a loading attribute
-                if (!preg_match('/loading=["\'](.*?)["\']/', $img_tag)) {
-                    // Check if the <img> tag has a class attribute
-                    if (preg_match('/class=["\'](.*?)["\']/', $img_tag, $class_matches)) {
-                        $classes = explode(' ', $class_matches[1]);
-
-                        // Check if any of the exempt classes are present
-                        if (array_intersect($classes, $exempt_classes)) {
-                            continue; // Skip lazy-loading for exempt classes
-                        }
-                    }
-
-                    // Remove lazy-load for responsive img (considered responsive if possess the attribute "sizes")
-                    if (isset($config_array['lazyload']['exclusions']['media_types']['responsive'])) {
-                        if (preg_match('/sizes=/', $img_tag)) {
-                            continue;
-                        }
-                    }
-
-                    // Remove lazy-load for images whose source contains gravatar
-                    if (isset($config_array['lazyload']['exclusions']['media_types']['gravatar'])) {
-                        if (preg_match('/src=["\'](.*?gravatar\.com.*?)["\']/', $img_tag)) {
-                            continue;
-                        }
-                    }
-
-                    // Remove lazy-load for images whose source contains $url
-                    if (isset($config_array['lazyload']['exclusions']['media_types']['img_iframe'])) {
-                        foreach ($config_array['lazyload']['exclusions']['img_iframe'] as $url) {
-                            if (preg_match('/src=["\'](.*?' . esc_url($url) . '.*?)["\']/', $img_tag)) {
-                                continue;
-                            }
-                        }
-                    }
-
-                    // Remove lazy-load for high fetch priority images
-                    if (preg_match('/fetchpriority="high"/', $img_tag)) {
-                        continue;
-                    }
-
-                    // Add lazy-loading attribute to the <img> tag
-                    $replace_img_tag = preg_replace('/<img/', '<img loading="lazy"', $replace_img_tag, 1);
-                }
-
-                // Replace the original <img> tag with the modified one
-                $content = str_replace($img_tag, $replace_img_tag, $content);
-            }
-
-            return $content;
+        add_action( 'wp_enqueue_scripts', 'lws_optimize_manage_media_image_lazyload_js' );
+        function lws_optimize_manage_media_image_lazyload_js() {
+            wp_enqueue_script( 'lws-optimize-lazyload', plugin_dir_url( __FILE__ ) . 'js/lws_op_lazyload.js', array(), null, true );
         }
     }
 
@@ -1042,7 +937,7 @@ if (!isset($state)) {
         }
         if (!in_array('lwscache/lwscache.php', apply_filters('active_plugins', get_option('active_plugins')))) {
             if (!class_exists("LWSCache")) {
-                require LWS_OP_DIR . 'classes/cache/class-lws-cache.php';
+                require_once LWS_OP_DIR . 'classes/cache/class-lws-cache.php';
             }
             $config_array = get_option('lws_optimize_config_array', array(
                 'image_lazyload' => array('state' => true),
@@ -1077,7 +972,7 @@ if (!isset($state)) {
     add_action("wp_ajax_lwsop_dump_dynamic_cache", "lwsop_dump_dynamic_cache");
     function lwsop_dump_dynamic_cache()
     {
-        global $config_array, $lws_cache;
+        global $config_array, $lws_cache_admin;
         check_ajax_referer('lwsop_empty_d_cache_nonce', '_ajax_nonce');
 
         if (!class_exists("LWSCache_Admin")) {
@@ -1101,7 +996,7 @@ if (!isset($state)) {
                 }
                 $nginx_purger = new Predis_Purger();
             }
-        } elseif (
+        } else if (
             isset($_SERVER['HTTP_X_CACHE_ENGINE_ENABLED']) && isset($_SERVER['HTTP_X_CACHE_ENGINE'])
             && $_SERVER['HTTP_X_CACHE_ENGINE_ENABLED'] == '1' && $_SERVER['HTTP_X_CACHE_ENGINE'] == 'varnish'
         ) {
@@ -1176,5 +1071,5 @@ add_filter('cron_schedules', function () {
     return $schedules;
 });
 
-include_once("classes/LwsOptimize.php");
+include_once "classes/LwsOptimize.php";
 $GLOBALS['lws_optimize'] = $lwsop = new LwsOptimize();

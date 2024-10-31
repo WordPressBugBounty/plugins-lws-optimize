@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The admin-specific functionality of the plugin.
  *
@@ -12,7 +13,8 @@
  * @subpackage /admin
  * @author     LWS
  */
-class Predis_Purger extends Purger {
+class Predis_Purger extends Purger
+{
 
 	/**
 	 * Predis api object.
@@ -28,11 +30,12 @@ class Predis_Purger extends Purger {
 	 *
 	 * @since    2.0.0
 	 */
-	public function __construct() {
+	public function __construct()
+	{
 
 		global $lws_cache_admin;
 
-		if ( ! class_exists( 'Predis\Autoloader' ) ) {
+		if (! class_exists('Predis\Autoloader')) {
 			require_once LWS_CACHE_BASEPATH . 'classes/cache/predis.php';
 		}
 
@@ -48,46 +51,44 @@ class Predis_Purger extends Purger {
 
 		try {
 			$this->redis_object->connect();
-		} catch ( Exception $e ) {
-			$this->log( $e->getMessage(), 'ERROR' );
+		} catch (Exception $e) {
+			$this->log($e->getMessage(), 'ERROR');
 		}
-
 	}
 
 	/**
 	 * Purge all.
 	 */
-	public function purge_all() {
+	public function purge_all()
+	{
 
 		global $lws_cache_admin;
 
-		$prefix = trim( $lws_cache_admin->options['redis_prefix'] );
+		$prefix = trim($lws_cache_admin->options['redis_prefix']);
 
-		$this->log( '* * * * *' );
+		$this->log('* * * * *');
 
 		// If Purge Cache link click from network admin then purge all.
-		if ( is_network_admin() ) {
+		if (is_network_admin()) {
 
-			$this->delete_keys_by_wildcard( $prefix . '*' );
-			$this->log( '* Purged Everything! * ' );
-
+			$this->delete_keys_by_wildcard($prefix . '*');
+			$this->log('* Purged Everything! * ');
 		} else { // Else purge only site specific cache.
 
-			$parse         = wp_parse_url( get_home_url() );
-			$parse['path'] = empty( $parse['path'] ) ? '/' : $parse['path'];
-			$this->delete_keys_by_wildcard( $prefix . $parse['scheme'] . 'GET' . $parse['host'] . $parse['path'] . '*' );
-			$this->log( '* ' . get_home_url() . ' Purged! * ' );
-
+			$parse         = wp_parse_url(get_home_url());
+			$parse['path'] = empty($parse['path']) ? '/' : $parse['path'];
+			$this->delete_keys_by_wildcard($prefix . $parse['scheme'] . 'GET' . $parse['host'] . $parse['path'] . '*');
+			$this->log('* ' . get_home_url() . ' Purged! * ');
 		}
 
-		$this->log( '* * * * *' );
+		$this->log('* * * * *');
 
 		/**
 		 * Fire an action after the Redis cache has been purged.
 		 *
 		 * @since 1.0
 		 */
-		do_action( 'rt_lws_cache_after_redis_purge_all' );
+		do_action('rt_lws_cache_after_redis_purge_all');
 	}
 
 	/**
@@ -96,7 +97,8 @@ class Predis_Purger extends Purger {
 	 * @param string $url URL.
 	 * @param bool   $feed Feed or not.
 	 */
-	public function purge_url( $url, $feed = true ) {
+	public function purge_url($url, $feed = true)
+	{
 
 		global $lws_cache_admin;
 
@@ -107,13 +109,13 @@ class Predis_Purger extends Purger {
 		 *
 		 * @param string $url URL to be purged.
 		 */
-		$url = apply_filters( 'rt_lws_cache_purge_url', $url );
+		$url = apply_filters('rt_lws_cache_purge_url', $url);
 
-		$this->log( '- Purging URL | ' . $url );
+		$this->log('- Purging URL | ' . $url);
 
-		$parse = wp_parse_url( $url );
+		$parse = wp_parse_url($url);
 
-		if ( ! isset( $parse['path'] ) ) {
+		if (! isset($parse['path'])) {
 			$parse['path'] = '';
 		}
 
@@ -137,41 +139,41 @@ class Predis_Purger extends Purger {
 		 *
 		 * @since 1.0
 		 */
-		if ( strpos( $_url_purge_base, '*' ) === false ) {
+		if (strpos($_url_purge_base, '*') === false) {
 
-			$status = $this->delete_single_key( $_url_purge_base );
+			$status = $this->delete_single_key($_url_purge_base);
 
-			if ( $status ) {
-				$this->log( '- Purge URL | ' . $_url_purge_base );
+			if ($status) {
+				$this->log('- Purge URL | ' . $_url_purge_base);
 			} else {
-				$this->log( '- Cache Not Found | ' . $_url_purge_base, 'ERROR' );
+				$this->log('- Cache Not Found | ' . $_url_purge_base, 'ERROR');
 			}
 		} else {
 
-			$status = $this->delete_keys_by_wildcard( $_url_purge_base );
+			$status = $this->delete_keys_by_wildcard($_url_purge_base);
 
-			if ( $status ) {
-				$this->log( '- Purge Wild Card URL | ' . $_url_purge_base . ' | ' . $status . ' url purged' );
+			if ($status) {
+				$this->log('- Purge Wild Card URL | ' . $_url_purge_base . ' | ' . $status . ' url purged');
 			} else {
-				$this->log( '- Cache Not Found | ' . $_url_purge_base, 'ERROR' );
+				$this->log('- Cache Not Found | ' . $_url_purge_base, 'ERROR');
 			}
 		}
-
 	}
 
 	/**
 	 * Custom purge urls.
 	 */
-	public function custom_purge_urls() {
+	public function custom_purge_urls()
+	{
 
 		global $lws_cache_admin;
 
-		$parse           = wp_parse_url( home_url() );
+		$parse           = wp_parse_url(home_url());
 		$prefix          = $lws_cache_admin->options['redis_prefix'];
 		$_url_purge_base = $prefix . $parse['scheme'] . 'GET' . $parse['host'];
 
-		$purge_urls = isset( $lws_cache_admin->options['purge_url'] ) && ! empty( $lws_cache_admin->options['purge_url'] ) ?
-			explode( "\r\n", $lws_cache_admin->options['purge_url'] ) : array();
+		$purge_urls = isset($lws_cache_admin->options['purge_url']) && ! empty($lws_cache_admin->options['purge_url']) ?
+			explode("\r\n", $lws_cache_admin->options['purge_url']) : array();
 
 		/**
 		 * Allow plugins/themes to modify/extend urls.
@@ -179,37 +181,36 @@ class Predis_Purger extends Purger {
 		 * @param array $purge_urls URLs which needs to be purged.
 		 * @param bool  $wildcard   If wildcard in url is allowed or not. default true.
 		 */
-		$purge_urls = apply_filters( 'rt_lws_cache_purge_urls', $purge_urls, true );
+		$purge_urls = apply_filters('rt_lws_cache_purge_urls', $purge_urls, true);
 
-		if ( is_array( $purge_urls ) && ! empty( $purge_urls ) ) {
+		if (is_array($purge_urls) && ! empty($purge_urls)) {
 
-			foreach ( $purge_urls as $purge_url ) {
+			foreach ($purge_urls as $purge_url) {
 
-				$purge_url = trim( $purge_url );
+				$purge_url = trim($purge_url);
 
-				if ( strpos( $purge_url, '*' ) === false ) {
+				if (strpos($purge_url, '*') === false) {
 
 					$purge_url = $_url_purge_base . $purge_url;
-					$status    = $this->delete_single_key( $purge_url );
-					if ( $status ) {
-						$this->log( '- Purge URL | ' . $purge_url );
+					$status    = $this->delete_single_key($purge_url);
+					if ($status) {
+						$this->log('- Purge URL | ' . $purge_url);
 					} else {
-						$this->log( '- Not Found | ' . $purge_url, 'ERROR' );
+						$this->log('- Not Found | ' . $purge_url, 'ERROR');
 					}
 				} else {
 
 					$purge_url = $_url_purge_base . $purge_url;
-					$status    = $this->delete_keys_by_wildcard( $purge_url );
+					$status    = $this->delete_keys_by_wildcard($purge_url);
 
-					if ( $status ) {
-						$this->log( '- Purge Wild Card URL | ' . $purge_url . ' | ' . $status . ' url purged' );
+					if ($status) {
+						$this->log('- Purge Wild Card URL | ' . $purge_url . ' | ' . $status . ' url purged');
 					} else {
-						$this->log( '- Not Found | ' . $purge_url, 'ERROR' );
+						$this->log('- Not Found | ' . $purge_url, 'ERROR');
 					}
 				}
 			}
 		}
-
 	}
 
 	/**
@@ -220,14 +221,14 @@ class Predis_Purger extends Purger {
 	 *
 	 * @return mixed
 	 */
-	public function delete_single_key( $key ) {
+	public function delete_single_key($key)
+	{
 
 		try {
-			return $this->redis_object->executeRaw( array( 'DEL', $key ) );
-		} catch ( Exception $e ) {
-			$this->log( $e->getMessage(), 'ERROR' );
+			return $this->redis_object->executeRaw(array('DEL', $key));
+		} catch (Exception $e) {
+			$this->log($e->getMessage(), 'ERROR');
 		}
-
 	}
 
 	/**
@@ -244,7 +245,8 @@ class Predis_Purger extends Purger {
 	 *
 	 * @return mixed
 	 */
-	public function delete_keys_by_wildcard( $pattern ) {
+	public function delete_keys_by_wildcard($pattern)
+	{
 
 		// Lua Script.
 		$lua = <<<LUA
@@ -258,11 +260,9 @@ return k
 LUA;
 
 		try {
-			return $this->redis_object->eval( $lua, 1, $pattern );
-		} catch ( Exception $e ) {
-			$this->log( $e->getMessage(), 'ERROR' );
+			return $this->redis_object->eval($lua, 1, $pattern);
+		} catch (Exception $e) {
+			$this->log($e->getMessage(), 'ERROR');
 		}
-
 	}
-
 }

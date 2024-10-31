@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The admin-specific functionality of the plugin.
  *
@@ -19,9 +20,7 @@ class Varnish_Purger extends Purger
      *
      * @since    2.0.0
      */
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     /**
      * Purge all.
@@ -34,11 +33,11 @@ class Varnish_Purger extends Purger
     }
 
     /**
-         * Purge url.
-         *
-         * @param string $url URL.
-         * @param bool   $feed Feed or not.
-         */
+     * Purge url.
+     *
+     * @param string $url URL.
+     * @param bool   $feed Feed or not.
+     */
     public function purge_url($url, $feed = true)
     {
         global $lws_cache_admin;
@@ -71,7 +70,7 @@ class Varnish_Purger extends Purger
         global $lws_cache_admin;
 
         $purge_urls = isset($lws_cache_admin->options['purge_url']) && ! empty($lws_cache_admin->options['purge_url']) ?
-        explode("\r\n", $lws_cache_admin->options['purge_url']) : array();
+            explode("\r\n", $lws_cache_admin->options['purge_url']) : array();
 
         if (is_array($purge_urls) && ! empty($purge_urls)) {
             foreach ($purge_urls as $purge_url) {

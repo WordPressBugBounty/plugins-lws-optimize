@@ -865,8 +865,8 @@ msgstr "désactivée"
 msgid "activated"
 msgstr "activée"
 
-msgid "The action has been "
-msgstr "L'action a été "
+msgid "Option "
+msgstr "Option "
 
 msgid "Created with ❤️ by LWS.fr"
 msgstr "Crée avec ❤️ par LWS.fr"
@@ -1274,7 +1274,7 @@ msgid "Show an uncached version of the website to user on mobile devices. No cac
 msgstr "Affiche une version non mise en cache du site aux utilisateurs sur des appareils mobile. Aucun cache ne sera crée pour eux."
 
 msgid "Clear all cache"
-msgstr "Vider le cache entièrement"
+msgstr "Vider tous les caches"
 
 msgid "Clear all HTML cache files"
 msgstr "Vider le cache HTML"
@@ -1487,7 +1487,7 @@ msgid "Image exclusion:"
 msgstr "Exclusion d'image :"
 
 msgid "Input the name of each media you wish to exclude from the convertion. Separate each name with a comma (,)."
-msgstr "Entrez le nom de chaque média que vous souhaitez exclure de la conversion. Séaprez chaque nom par une virgule (,)."
+msgstr "Entrez le nom de chaque média que vous souhaitez exclure de la conversion. Séparez chaque nom par une virgule (,)."
 
 msgid "Convert images"
 msgstr "Convertir les images"
@@ -1500,6 +1500,9 @@ msgstr "Optimisation d'images"
 
 msgid "Abort convertion"
 msgstr "Arrêter la conversion"
+
+msgid "Abort restoration"
+msgstr "Arrêter la restauration"
 
 msgid "Image convertion started. It may take a while depending on the amount of files to process."
 msgstr "Conversion d'image lancée. Cela peut prendre un moment selon la quantité de fichiers à traiter."
@@ -1563,3 +1566,108 @@ msgstr "Type"
 
 msgid "Show converted images"
 msgstr "Afficher les images converties"
+
+msgid "This functionnality is still in beta and may not work properly on all websites. Please be careful and make sure to have a backup at the ready before using it."
+msgstr "Cette fonctionnalité est actuellement en béta et pourrait pas fonctionner correctement sur tous les sites. Soyez sûr de ce que vous faites et assurez-vous d'avoir une sauvegarde de votre site avant de l'utiliser."
+
+msgid "Important informations: "
+msgstr "Informations importantes : "
+
+msgid "AVIF convertion may not be available on your website if your WordPress or Imagick version is too old"
+msgstr "La conversion en AVIF peut ne pas être disponible si votre version de WordPress ou de Imagick est trop vieille"
+
+msgid "Images may lose transparency when converted to AVIF"
+msgstr "Les images peuvent perdre leur transparence une fois converties en AVIF"
+
+msgid "AVIF convertion is limited to images up to 400Kb. Depending on the amount of file and their size, the process may take a few minutes to complete"
+msgstr "La conversion AVIF est limitée à des images jusqu'à 400 Ko. Selon la quantité et la taille des fichiers, le processus pourrait prendre plusieurs minutes"
+
+msgid "If your images are not getting converted, you may need to upgrade your max_execution_time to at least 120s. More time may be necessary if you want to convert more images. Contact your hosting provider for more informations on how to proceed."
+msgstr "Si vos images ne sont pas converties, vous pourriez avoir à augmenter la max_execution_time de votre site jusqu'à au moins 120s. Un temps plus important peut être nécessaire selon la quantité d'images. Contactez votre hébergeur pour plus d'informations sur la marche à suivre."
+
+msgid "MIME-Type: "
+msgstr "Type MIME : "
+
+msgid "Next deconvertion: "
+msgstr "Prochaine déconversion : "
+
+msgid " images deconverted out of "
+msgstr " images déconverties sur "
+
+msgid "Images left to be deconverted: "
+msgstr "Images restantes à déconvertir : "
+
+msgid "MIME-Types to convert: "
+msgstr "Types MIME à convertir : "
+
+msgid "If you wish to add or remove some image types from the convertion. This allows you to only convert specific image types or have more control over what may or may not be converted."
+msgstr "Si vous souhaitez ajouter ou retirer des types d'image de la conversion. Cela vous permet de ne convertir que les types d'images que vous souhaitez et d'avoir plus de contrôle sur ce qui peut, ou non, être converti."
+
+msgid "The default WP-Cron is activated. For optimal performances it is recommended to use a server cron, which is more efficient and do not slow your website."
+msgstr "Le WP-Cron est activé. Pour des performances optimales, il est recommandé d'utiliser un cron serveur, plus efficace et ne ralentissant pas votre site."
+
+msgid "For more informations, contact your hosting provider. If your are hosted by LWS, you can do so in the WPManager by following this "
+msgstr "Pour plus d'informations, contactez votre hébergeur. Si vous êtes hébergés chez LWS, vous pouver utiliser le WPManager pour l'activer en suivant cette "
+
+msgid "documentation."
+msgstr "documentation."
+
+msgid "The restoration has been stopped."
+msgstr "La restauration a été arrêtée."
+
+msgid "Unknown error. Cannot abort restoration."
+msgstr "Erreur inconnue. Impossible d'arrêter la restauration."
+
+msgid "Unknown error. Cannot abort convertion."
+msgstr "Erreur inconnue. Impossible d'arrêter la conversion."
+
+msgid "Please contact your hosting provider to find out how to change this value."
+msgstr "Veuillez contacter votre hébergeur afin de changer cette valeur."
+
+msgid "Please follow the instructions in the following "
+msgstr "Suivez les instructions de cette "
+
+msgid "documentation"
+msgstr "documentation"
+
+msgid " to change this value."
+msgstr " pour changer cette valeur."
+
+msgid "A max_execution_time of at least 120s is necessary to use this functionnality. Your currently have a value of "
+msgstr "Un max_execution_time d'au moins 120s est nécessaire afin d'utiliser cette fonctionnalité. Actuellement il est de "
+
+msgid "A memory_limit of at least 128M is necessary to use this functionnality. Your currently have a value of "
+msgstr "Une memory_limit d'au moins 128M est nécessaire afin d'utiliser cette fonctionnalité. Actuellement elle est de "
+
+msgid "Pending"
+msgstr "En attente"
+
+msgid "Convertion Date"
+msgstr "Date de conversion"
+
+msgid "Compression"
+msgstr "Compression"
+
+msgid "For more informations on how to setup server crons, follow this "
+msgstr "Pour plus d'informations sur la manière de mettre en place un cron serveur, suivez cette "
+
+msgid "For more informations on how to setup server crons by using the WPManager, follow this "
+msgstr "Pour plus d'informations sur comment mettre en place un cron serveur avec le WPManager, suivez cette "
+
+msgid "For more informations on how to setup server crons, contact your hosting provider."
+msgstr "Pour plus d'infromations sur comment mettre en place un cron serveur, contactez votre hébergeur."
+
+msgid "Image convertion is a recurring task which may consume a lot of resources for a prolonged time. You are currently using WP-Cron, which means this task will only be executed when there is activity on your website and will use your website resources, slowing it down."
+msgstr "La conversion d'image est une tâche récurrente qui peut consommer beaucoup de ressources sur une durée prolongée. Vous utilisez actuellement le WP-Cron, ce qui signifie que la tâche sera exécutée uniquement s'il y a de l'activité sur votre site et qu'elle utilisera les ressources de ce dernier, causant des ralentissements."
+
+msgid "We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website."
+msgstr "Nous vous recommendons d'utiliser un cron serveur, qui exécutera les tâches à un moment précis et sans s'accaparer les ressources, peu importe ce qui se passe sur votre site."
+
+msgid "AVIF convertion is not available on your website. Your WordPress needs to be updated to at least 6.5 and the installed Imagick version must be compatible with AVIF"
+msgstr "La conversion AVIF n'est pas disponible sur votre site. Votre version de WordPress doit être au moins en 6.5 et la version d'Imagick doit être compatible avec AVIF"
+
+msgid "You are currently using WP-Cron, which means the preloading will only be executed when there is activity on your website and will use your website resources, slowing it down."
+msgstr "Vous utilisez actuellement le WP-Cron, ce qui signifie que le préchargement des pages ne sera exécuté que s'il y a de l'activité sur votre site et utilisera les ressources de ce dernier, causant des ralentissements."
+
+msgid " smaller"
+msgstr " plus léger"

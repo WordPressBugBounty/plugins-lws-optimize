@@ -1,6 +1,6 @@
 <?php
 
-include_once(LWS_OP_DIR . "/vendor/autoload.php");
+include_once LWS_OP_DIR . "/vendor/autoload.php";
 class FileCache extends LwsOptimize
 {
     private $base;
@@ -8,14 +8,12 @@ class FileCache extends LwsOptimize
     private $content_type;
     private $page_type;
     private $need_cache;
-    private $has_parameters;
 
     public function __construct($parent)
     {
         $this->base = $parent;
-        include_once(ABSPATH . "wp-includes/pluggable.php");
+        include_once ABSPATH . "wp-includes/pluggable.php";
         $this->need_cache = $this->lwsop_check_need_cache();
-        $this->has_parameters = false;
         $this->lwsop_set_cachedir();
     }
 
@@ -39,21 +37,19 @@ class FileCache extends LwsOptimize
                         } else {
                             // If the file being deleted is from the LWSOptimize Cache, update the stats
                             // Stats will be updated depending on the file type (html/mobile_html/css/js)
-                            if (preg_match("/\/cache\/lwsoptimize\//i", $dir)) {
-                                if ($stats !== false && is_array($stats)) {
-                                    if (preg_match("/\.html/i", $file)) {
-                                        $stats['desktop']['amount'] -= 1;
-                                        $stats['desktop']['size'] -= filesize("$dir/$file");
-                                    } else if (preg_match("/\/cache-mobile\//i", $dir)) {
-                                        $stats['mobile']['amount'] -= 1;
-                                        $stats['mobile']['size'] -= filesize("$dir/$file");
-                                    } else if (preg_match("/\.(min\.css|css)/i", $file)) {
-                                        $stats['css']['amount'] -= 1;
-                                        $stats['css']['size'] -= filesize("$dir/$file");
-                                    } else if (preg_match("/\.(min\.js|js)/i", $file)) {
-                                        $stats['js']['amount'] -= 1;
-                                        $stats['js']['size'] -= filesize("$dir/$file");
-                                    }
+                            if (preg_match("/\/cache\/lwsoptimize\//i", $dir) && $stats !== false && is_array($stats)) {
+                                if (preg_match("/\.html/i", $file)) {
+                                    $stats['desktop']['amount'] -= 1;
+                                    $stats['desktop']['size'] -= filesize("$dir/$file");
+                                } elseif (preg_match("/\/cache-mobile\//i", $dir)) {
+                                    $stats['mobile']['amount'] -= 1;
+                                    $stats['mobile']['size'] -= filesize("$dir/$file");
+                                } elseif (preg_match("/\.(min\.css|css)/i", $file)) {
+                                    $stats['css']['amount'] -= 1;
+                                    $stats['css']['size'] -= filesize("$dir/$file");
+                                } elseif (preg_match("/\.(min\.js|js)/i", $file)) {
+                                    $stats['js']['amount'] -= 1;
+                                    $stats['js']['size'] -= filesize("$dir/$file");
                                 }
                             }
                         }
@@ -61,7 +57,7 @@ class FileCache extends LwsOptimize
                 }
 
                 rmdir($dir);
-                return (!file_exists($dir));
+                return !file_exists($dir);
             }
         }
 
@@ -79,7 +75,7 @@ class FileCache extends LwsOptimize
     public function lwsop_launch_cache()
     {
         // Don't launch cache if checks have revealed that this URL should not be cached
-        if (!$this->need_cache || $this->cache_directory == false) {
+        if (!$this->need_cache || !$this->cache_directory) {
             return false;
         }
 
@@ -90,10 +86,10 @@ class FileCache extends LwsOptimize
             if (file_exists($this->cache_directory . "index_$user_id.html")) {
                 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($this->cache_directory . "index_$user_id.html")) . ' GMT', true, 200);
                 $extension = "html";
-            } else if (file_exists($this->cache_directory . "index_$user_id.xml")) {
+            } elseif (file_exists($this->cache_directory . "index_$user_id.xml")) {
                 header('Content-type: text/xml');
                 $extension = "xml";
-            } else if (file_exists($this->cache_directory . "index_$user_id.json")) {
+            } elseif (file_exists($this->cache_directory . "index_$user_id.json")) {
                 header('Content-type: application/json');
                 $extension = "json";
             }
@@ -104,28 +100,13 @@ class FileCache extends LwsOptimize
                 die($content);
             }
         }
-        
-        $do_cache = true;
-        if ($this->_lwsop_is_mobile()) {
-            if ($this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {
-                $do_cache = false;
-            }
-        }
 
-        if ($do_cache) {
+        if (!$this->_lwsop_is_mobile() && $this->base->lwsop_check_option('cache_mobile_user')['state'] == "false") {
             add_action('wp', array($this, "lwsop_detect_page_type"));
             add_action('get_footer', array($this, "lwsop_detect_page_type"));
             add_action('get_footer', function () {
                 echo "<!--LWSOPTIMIZE_HERE_START_FOOTER-->";
             });
-
-            // if ($this->base->lwsop_check_option('preload_css')['state'] == "true") {
-            //     add_filter('style_loader_tag', [$this, 'lws_optimize_manage_frontend_preload_css'], 10, 3);
-            // }
-
-            // if ($this->base->lwsop_check_option('preload_js')['state'] == "true") {
-            //     add_filter('script_loader_tag', [$this, 'lws_optimize_manage_frontend_preload_js'], 10, 3);
-            // }
 
             if ($this->base->lwsop_check_option('webfont_optimize')['state'] == "true") {
                 add_filter('style_loader_tag', [$this, 'lws_optimize_manage_frontend_webfont_optimize'], 10, 3);
@@ -174,11 +155,8 @@ class FileCache extends LwsOptimize
             return $buffer . "<!-- DONOTCACHEPAGE is defined as TRUE -->";
         }
 
-        // Do not cache if there is a captch from CF7 (TODO : not sure if this is still useful)
-        if (is_single() || is_page()) {
-            if (preg_match("/<input[^\>]+_wpcf7_captcha[^\>]+>/i", $buffer)) {
-                return $buffer . "<!-- This page was not cached because ContactForm7's captcha -->";
-            }
+        if ((is_single() || is_page()) && preg_match("/<input[^\>]+_wpcf7_captcha[^\>]+>/i", $buffer)) {
+            return $buffer . "<!-- This page was not cached because ContactForm7's captcha -->";
         }
 
         // Check a list of pages that cannot be cached (core WP, specific plugin pages like WooCommerce, ...) as it would break or hinder the website
@@ -196,13 +174,13 @@ class FileCache extends LwsOptimize
             return $buffer . "<!-- not cached -->";
         }
 
-        // If the current page is HTML but does not have the correct <html><body></body> structure, do not cache it. 
+        // If the current page is HTML but does not have the correct <html><body></body> structure, do not cache it.
         if ($this->content_type === "html" && !(preg_match('/<\s*html[^\>]*>/si', $buffer) && preg_match('/<\s*body[^\>]*>/si', $buffer) && preg_match('/<\/body\s*>/si', $buffer))) {
             return $buffer;
         }
 
-        // If the page is a redirection (temp/permanent), do not cache the page. Otherwise, 
-        if ((http_response_code() == 301 || http_response_code() == 302)) {
+        // If the page is a redirection (temp/permanent), do not cache the page. Otherwise,
+        if (http_response_code() == 301 || http_response_code() == 302) {
             return $buffer;
         }
 
@@ -215,16 +193,32 @@ class FileCache extends LwsOptimize
             'mobile' => ['file' => 0, 'size' => 0]
         ];
 
+        $original_data_array = get_option("lws_optimize_original_image", []);
+        $media_data = $original_data_array['auto_update']['original_media'] ?? [];
+
+        $media_to_update = [];
+
+        if (!empty($media_data)) {
+            foreach ($media_data as $media) {
+                if (file_exists($media['path'])) {
+                    $media_to_update[] = [
+                        'original' => $media['original_url'],
+                        'new' => $media['url']
+                    ];
+                }
+            }
+        }
+
         if ($this->base->lwsop_check_option('preload_css')['state'] == "true") {
             $preload = $this->base->lwsop_check_option('preload_css')['data']['links'] ?? [];
-            include_once("CSSManager.php");
-            $lwsOptimizeCssManager = new CSSManager($modified, $preload);
+            include_once "CSSManager.php";
+            $lwsOptimizeCssManager = new CSSManager($modified, $preload, []);
             $modified = $lwsOptimizeCssManager->preload_css();
         }
 
         if ($this->base->lwsop_check_option('preload_font')['state'] == "true") {
-            $preload = $this->base->lwsop_check_option('preload_FONT')['data']['links'] ?? [];
-            include_once("CSSManager.php");
+            $preload = $this->base->lwsop_check_option('preload_font')['data']['links'] ?? [];
+            include_once "CSSManager.php";
             $lwsOptimizeCssManager = new CSSManager($modified, [], $preload);
             $modified = $lwsOptimizeCssManager->preload_fonts();
         }
@@ -232,17 +226,16 @@ class FileCache extends LwsOptimize
         // We can put the current page to cache. We now apply the chosen options to the file (minify CSS/JS, combine CSS/JS, ...)
         if ($this->base->lwsop_check_option('cloudflare')['state'] == "false" || !isset($this->base->lwsop_check_option('cloudflare')['data']['tools']['min_css'])) {
             if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
-                include_once("CSSManager.php");
-                $lwsOptimizeCssManager = new CSSManager($modified);
+                include_once "CSSManager.php";
+                $lwsOptimizeCssManager = new CSSManager($modified, [], [], $media_to_update);
                 $data = $lwsOptimizeCssManager->combine_css_update();
                 $modified = $data['html'];
-                
+
                 $cached_elements['css']['file'] += $data['files']['file'];
                 $cached_elements['css']['size'] += $data['files']['size'];
-
-            } else if ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
-                include_once("CSSManager.php");
-                $lwsOptimizeCssManager = new CSSManager($modified);
+            } elseif ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
+                include_once "CSSManager.php";
+                $lwsOptimizeCssManager = new CSSManager($modified, [], [], $media_to_update);
                 $data = $lwsOptimizeCssManager->minify_css();
                 $modified = $data['html'];
 
@@ -253,7 +246,7 @@ class FileCache extends LwsOptimize
 
         if ($this->base->lwsop_check_option('cloudflare')['state'] == "false" && !isset($this->base->lwsop_check_option('cloudflare')['data']['tools']['min_js'])) {
             if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
-                include_once("JSManager.php");
+                include_once "JSManager.php";
                 $lwsOptimizeJsManager = new JSManager($modified);
                 $data = $lwsOptimizeJsManager->combine_js_update();
 
@@ -261,9 +254,8 @@ class FileCache extends LwsOptimize
 
                 $cached_elements['js']['file'] += $data['files']['file'];
                 $cached_elements['js']['size'] += $data['files']['size'];
-                // $modified = str_replace("<!--LWSOPTIMIZE_HERE_START_FOOTER-->", "", $modified);
-            } else if ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
-                include_once("JSManager.php");
+            } elseif ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
+                include_once "JSManager.php";
                 $lwsOptimizeJsManager = new JSManager($modified);
                 $data = $lwsOptimizeJsManager->minify_js();
 
@@ -272,9 +264,6 @@ class FileCache extends LwsOptimize
                 $cached_elements['js']['file'] += $data['files']['file'];
                 $cached_elements['js']['size'] += $data['files']['size'];
             }
-
-            // $lwsOptimizeJsManager = new JSManager($modified);
-            // $modified = $lwsOptimizeJsManager->endify_scripts();
         }
 
         // Finally add the cache file
@@ -292,9 +281,9 @@ class FileCache extends LwsOptimize
             if ($this->base->lwsop_check_option('minify_html')['state'] == "true") {
 
                 $exclusions = $this->base->lwsop_check_option('minify_html');
-                $exclusions = $exclusions['data']['exclusions'] ?? NULL;
+                $exclusions = $exclusions['data']['exclusions'] ?? null;
 
-                if ($exclusions === NULL || empty($exclusions)) {
+                if ($exclusions === null || empty($exclusions)) {
                     $htmlMin = new Abordage\HtmlMin\HtmlMin();
                     $modified = $htmlMin->minify($modified);
                 } else {
@@ -321,10 +310,8 @@ class FileCache extends LwsOptimize
 
             $this->lwsop_add_to_cache($modified, $cached_elements, $is_mobile);
         } elseif ($this->content_type === "xml") {
-            if (preg_match("/<link><\/link>/", $buffer)) {
-                if (preg_match("/\/feed$/", $_SERVER["REQUEST_URI"])) {
-                    return $buffer . time();
-                }
+            if (preg_match("/<link><\/link>/", $buffer) && preg_match("/\/feed$/", $_SERVER["REQUEST_URI"])) {
+                return $buffer . time();
             }
             $this->lwsop_add_to_cache($buffer, $cached_elements, false);
         } elseif ($this->content_type === "json") {
@@ -349,15 +336,13 @@ class FileCache extends LwsOptimize
                     mkdir($this->cache_directory, 0755, true);
                 }
 
-                if (is_dir($this->cache_directory)) {
-                    if (!file_exists($this->cache_directory . $name . $this->content_type)) {
-                        file_put_contents($this->cache_directory . $name . $this->content_type, $content);
+                if (is_dir($this->cache_directory) && !file_exists($this->cache_directory . $name . $this->content_type)) {
+                    file_put_contents($this->cache_directory . $name . $this->content_type, $content);
 
-                        $cached['html']['file'] = 1;
-                        $cached['html']['size'] = filesize($this->cache_directory . $name . $this->content_type);
-            
-                        $this->lwsop_recalculate_stats("plus", $cached, $mobile);
-                    }
+                    $cached['html']['file'] = 1;
+                    $cached['html']['size'] = filesize($this->cache_directory . $name . $this->content_type);
+
+                    $this->lwsop_recalculate_stats("plus", $cached, $mobile);
                 }
             }
         }
@@ -365,11 +350,11 @@ class FileCache extends LwsOptimize
 
     public function lws_optimize_manage_frontend_preload_css($html, $handle, $href)
     {
-        if (is_admin())
+        if (is_admin()) {
             return $html;
+        }
 
         $html = str_replace("rel='stylesheet'", "rel='preload' as='style' ", $html);
-        // $html = "<link rel='preload' as='style' id='$handle' href='$href' type='text/css' media='all' />";
 
         return $html;
     }
@@ -412,19 +397,18 @@ class FileCache extends LwsOptimize
 
     public function lws_optimize_manage_frontend_webfont_optimize($html, $handle, $href)
     {
-        if (is_admin())
+        if (is_admin()) {
             return $html;
+        }
 
         if (!str_contains($handle, "fonts") && !str_contains($href, "fonts")) {
             return $html;
         }
 
-        $html = "<link rel='preconnect' href='$href' crossorigin/>";
-
-        return $html;
+        return "<link rel='preconnect' href='$href' crossorigin/>";
     }
 
-    function lws_optimize_manage_frontend_deactivate_emoji()
+    public function lws_optimize_manage_frontend_deactivate_emoji()
     {
         // Disable WordPress emoji support
         remove_action('wp_head', 'print_emoji_detection_script', 7);
@@ -448,7 +432,6 @@ class FileCache extends LwsOptimize
         });
     }
 
-    // TODO : Add the newest page type added too (in the UI)
     public function lwsop_detect_page_type()
     {
         if (preg_match("/\?/", $_SERVER["REQUEST_URI"]) || preg_match("/^\/wp-json/", $_SERVER["REQUEST_URI"])) {
@@ -457,23 +440,23 @@ class FileCache extends LwsOptimize
 
         if (is_front_page()) {
             $this->page_type = "homepage";
-        } else if (is_category()) {
+        } elseif (is_category()) {
             $this->page_type = "category";
-        } else if (is_tag()) {
+        } elseif (is_tag()) {
             $this->page_type = "tag";
-        } else if (is_tax()) {
+        } elseif (is_tax()) {
             $this->page_type = "tax";
-        } else if (is_author()) {
+        } elseif (is_author()) {
             $this->page_type = "author";
-        } else if (is_search()) {
+        } elseif (is_search()) {
             $this->page_type = "search";
-        } else if (is_single()) {
+        } elseif (is_single()) {
             $this->page_type = "post";
-        } else if (is_page()) {
+        } elseif (is_page()) {
             $this->page_type = "page";
-        } else if (is_attachment()) {
+        } elseif (is_attachment()) {
             $this->page_type = "attachment";
-        } else if (is_archive()) {
+        } elseif (is_archive()) {
             $this->page_type = "archive";
         }
     }
@@ -492,28 +475,25 @@ class FileCache extends LwsOptimize
 
         if (preg_match("/xml/i", $content_type)) {
             $this->content_type = "xml";
-        } else if (preg_match("/json/i", $content_type)) {
+        } elseif (preg_match("/json/i", $content_type)) {
             $this->content_type = "json";
         } else {
             $this->content_type = "html";
         }
     }
 
-    /**
-     * #WPFC TODO : Change to match ours
-     */
-    public function lwsop_page_has_been_excluded($buffer = NULL)
+    public function lwsop_page_has_been_excluded($buffer = null)
     {
         $url = urldecode($_SERVER["REQUEST_URI"]);
 
         $exclusions = $this->optimize_options['filebased_cache']['exclusions'] ?? [];
 
         foreach ($exclusions as $page) {
-            $type = $page['type'] ?? NULL;
-            $page = $page['value'] ?? NULL;
-            $category = $page['category'] ?? NULL;
+            $type = $page['type'] ?? null;
+            $page = $page['value'] ?? null;
+            $category = $page['category'] ?? null;
 
-            if ($type === NULL || $page === NULL || $category === NULL) {
+            if ($type === null || $page === null || $category === null) {
                 continue;
             }
 
@@ -525,14 +505,14 @@ class FileCache extends LwsOptimize
                     if ($page == $this->page_type) {
                         return true;
                     }
-                } else if ($type == "exact") {
+                } elseif ($type == "exact") {
                     $url = trim($url, "/");
                     $page = trim($page, "/");
 
                     if (strtolower($page) == strtolower($url)) {
                         return true;
                     }
-                } else if ($type == "regex") {
+                } elseif ($type == "regex") {
                     if (preg_match("/" . $page . "/i", $url)) {
                         return true;
                     }
@@ -542,26 +522,20 @@ class FileCache extends LwsOptimize
                         $page = ltrim($page, "/");
 
                         $preg_match_rule = "^" . preg_quote($page, "/");
-                    } else if ($type == "contain") {
+                    } elseif ($type == "contain") {
                         $preg_match_rule = preg_quote($page, "/");
                     }
 
-                    if ($preg_match_rule) {
-                        if (preg_match("/" . $preg_match_rule . "/i", $url)) {
-                            return true;
-                        }
-                    }
-                }
-            } else if ($category == "useragent") {
-                if (preg_match("/" . preg_quote($page, "/") . "/i", $_SERVER['HTTP_USER_AGENT'])) {
-                    return true;
-                }
-            } else if ($category == "cookie") {
-                if (isset($_SERVER['HTTP_COOKIE'])) {
-                    if (preg_match("/" . preg_quote($page, "/") . "/i", $_SERVER['HTTP_COOKIE'])) {
+                    if ($preg_match_rule && preg_match("/" . $preg_match_rule . "/i", $url)) {
                         return true;
                     }
                 }
+            } elseif ($category == "useragent") {
+                if (preg_match("/" . preg_quote($page, "/") . "/i", $_SERVER['HTTP_USER_AGENT'])) {
+                    return true;
+                }
+            } elseif ($category == "cookie" && isset($_SERVER['HTTP_COOKIE']) && preg_match("/" . preg_quote($page, "/") . "/i", $_SERVER['HTTP_COOKIE'])) {
+                return true;
             }
         }
 
@@ -584,24 +558,20 @@ class FileCache extends LwsOptimize
             "leaflet\-geojson\.php",
             "\/clientarea\.php"
         );
-        if ($this->lwsop_plugin_active('woocommerce/woocommerce.php')) {
-            if ($this->page_type != "homepage") {
-                global $post;
+        if ($this->lwsop_plugin_active('woocommerce/woocommerce.php') && $this->page_type != "homepage") {
+            global $post;
 
-                if (isset($post->ID) && $post->ID) {
-                    if (function_exists("wc_get_page_id")) {
-                        $woocommerce_ids = array();
+            if (isset($post->ID) && $post->ID && function_exists("wc_get_page_id")) {
+                $woocommerce_ids = array();
 
-                        array_push($woocommerce_ids, wc_get_page_id('cart'), wc_get_page_id('checkout'), wc_get_page_id('receipt'), wc_get_page_id('confirmation'), wc_get_page_id('myaccount'), wc_get_page_id('product'), wc_get_page_id('product-category'));
+                array_push($woocommerce_ids, wc_get_page_id('cart'), wc_get_page_id('checkout'), wc_get_page_id('receipt'), wc_get_page_id('confirmation'), wc_get_page_id('myaccount'), wc_get_page_id('product'), wc_get_page_id('product-category'));
 
-                        if (in_array($post->ID, $woocommerce_ids)) {
-                            return true;
-                        }
-                    }
+                if (in_array($post->ID, $woocommerce_ids)) {
+                    return true;
                 }
-
-                array_push($ignored, "\/cart\/?$", "\/checkout", "\/receipt", "\/confirmation", "\/wc-api\/");
             }
+
+            array_push($ignored, "\/cart\/?$", "\/checkout", "\/receipt", "\/confirmation", "\/wc-api\/");
         }
 
         if ($this->lwsop_plugin_active('wp-easycart/wpeasycart.php')) {
@@ -620,8 +590,8 @@ class FileCache extends LwsOptimize
     }
 
     /**
-     * Check if the cache needs to be created for this URL. As a general rule, we do not cache pages with errors, bad URLs or redirections 
-     * as it serves no purposes to cache bad data. Unless specifically activated, no cache is made for admins and connected users. 
+     * Check if the cache needs to be created for this URL. As a general rule, we do not cache pages with errors, bad URLs or redirections
+     * as it serves no purposes to cache bad data. Unless specifically activated, no cache is made for admins and connected users.
      * Finally, if the user excluded the page, we do not cache it. Some checks are from WPFastestCache.
      */
     public function lwsop_check_need_cache($uri = false)
@@ -682,7 +652,7 @@ class FileCache extends LwsOptimize
             return false;
         }
 
-        // Get the COOKIES if set and loop through them to check for specific cookies        
+        // Get the COOKIES if set and loop through them to check for specific cookies
         if (isset($_COOKIE)) {
             foreach ($_COOKIE as $key => $cookie) {
                 // We could use WP functions to check if a comment has been sent, but it is faster to check the cookie
@@ -714,16 +684,17 @@ class FileCache extends LwsOptimize
 
         // Do not cache if SSL parameters do not match
         // In case a plugin doing HTTPS redirection is active, proceed with the caching (this part if from #WPFC)
-        if (preg_match("/^https/i", get_option("home")) && !is_ssl() || !preg_match("/^https/i", get_option("home")) && is_ssl()) {
-            if (
-                is_ssl() &&
-                $this->lwsop_plugin_active('really-simple-ssl/rlrsssl-really-simple-ssl.php') ||
-                $this->lwsop_plugin_active('really-simple-ssl-on-specific-pages/really-simple-ssl-on-specific-pages.php') ||
-                $this->lwsop_plugin_active('ssl-insecure-content-fixer/ssl-insecure-content-fixer.php') ||
-                $this->lwsop_plugin_active('https-redirection/https-redirection.php') ||
-                $this->lwsop_plugin_active('better-wp-security/better-wp-security.php')
-            ) {
-            }
+        if ((preg_match("/^https/i", get_option("home")) && !is_ssl()) || (!preg_match("/^https/i", get_option("home")) && is_ssl())
+        || (
+            !is_ssl()
+            || (
+                $this->lwsop_plugin_active('really-simple-ssl/rlrsssl-really-simple-ssl.php')
+                || $this->lwsop_plugin_active('really-simple-ssl-on-specific-pages/really-simple-ssl-on-specific-pages.php')
+                || $this->lwsop_plugin_active('ssl-insecure-content-fixer/ssl-insecure-content-fixer.php')
+                || $this->lwsop_plugin_active('https-redirection/https-redirection.php')
+                || $this->lwsop_plugin_active('better-wp-security/better-wp-security.php')
+            )
+        )) {
             return false;
         }
 
@@ -732,10 +703,10 @@ class FileCache extends LwsOptimize
 
     /**
      * Return the PATH to the cachefile for the current URL
-     * 
+     *
      * Adapted from WPFastestCache, changes have been made to clean up the code a bit and update it
      *
-     * @return string PATH to the cachefile. If it does not exist, 
+     * @return string PATH to the cachefile. If it does not exist,
      */
     public function lwsop_set_cachedir($uri = false)
     {
@@ -747,12 +718,12 @@ class FileCache extends LwsOptimize
 
         $uri = preg_replace("/^(http|https):\/\//sx", "", $uri);
         // Remove the parameters from an URL
-        $uri = preg_replace ('/\?.+$/', '', $uri);
+        $uri = preg_replace('/\?.+$/', '', $uri);
 
         // By default, "cache";
         $dir = "cache";
         // If the user is on mobile and the site has mobile cache, then "cache_mobile"
-        if ($this->_lwsop_is_mobile() && $this->base->lwsop_check_option('mobile_cache')['state'] == "true") {
+        if ($this->_lwsop_is_mobile()) {
             $dir = "cache-mobile";
         }
 
@@ -770,53 +741,30 @@ class FileCache extends LwsOptimize
         $this->cache_directory = rtrim(rtrim($this->cache_directory), "\/") . "/" ?? "";
 
         // Remove the query parameters from the URL if it has any ; Only if the parameters are from GoogleAnalytics, Google Click Identifier, Yandex, Facebook #WPFC
-        if (
-            preg_match("/gclid\=/i", $this->cache_directory) ||
-            preg_match("/y(ad|s)?clid\=/i", $this->cache_directory) ||
-            preg_match("/fbclid\=/i", $this->cache_directory) ||
-            preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)
-        ) {
-            if (strlen($uri) > 1) {
-
-                $this->cache_directory = preg_replace("/\/*\?.+/", "", $this->cache_directory);
-                $this->cache_directory = $this->cache_directory . "/";
-                $this->has_parameters = true;
-            }
+        if ((preg_match("/gclid\=/i", $this->cache_directory) || preg_match("/y(ad|s)?clid\=/i", $this->cache_directory) || preg_match("/fbclid\=/i", $this->cache_directory) || preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)) && strlen($uri) > 1) {
+            $this->cache_directory = preg_replace("/\/*\?.+/", "", $this->cache_directory);
+            $this->cache_directory = $this->cache_directory . "/";
         }
 
         $this->cache_directory = urldecode($this->cache_directory);
 
         // Security
-        if (preg_match("/\.{2,}/", $this->cache_directory) || preg_match("/\.{2,}/", $this->cache_directory)) {
+        if (preg_match("/\.{2,}/", $this->cache_directory)) {
             $this->cache_directory = false;
         }
 
 
         /*
-        This code snippet suggests logic for selective caching based on URL structure, 
+        This code snippet suggests logic for selective caching based on URL structure,
         file types, and specific query string parameters. It aims to avoid caching for dynamic content influenced by these parameters.
         */
-        if (strlen($uri) > 1) { // for the sub-pages
-            if (!preg_match("/\.(html|xml)/i", $uri)) {
-                if ($this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', ""))) {
-                    if (!preg_match("/\/$/", $uri)) {
-                        if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
-                        } else if (preg_match("/y(ad|s)?clid\=/i", $this->cache_directory)) {
-                        } else if (preg_match("/gclid\=/i", $this->cache_directory)) {
-                        } else if (preg_match("/fbclid\=/i", $this->cache_directory)) {
-                        } else if (preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)) {
-                        } else {
-                            $this->cache_directory = false;
-                        }
-                    }
-                }
-            }
+        // for the sub-pages
+        if (strlen($uri) > 1 && !preg_match("/\.(html|xml)/i", $uri) && $this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', "")) && !preg_match("/\/$/", $uri) && (!isset($_SERVER["QUERY_STRING"]) || !$_SERVER["QUERY_STRING"] || !preg_match("/y(ad|s)?clid\=/i", $this->cache_directory) || !preg_match("/gclid\=/i", $this->cache_directory) || !preg_match("/fbclid\=/i", $this->cache_directory) || !preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory))) {
+            $this->cache_directory = false;
         }
 
-        if ($this->_lwsop_is_mobile()) {
-            if ($this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {
-                $this->cache_directory = false;
-            }
+        if ($this->_lwsop_is_mobile() && $this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {
+            $this->cache_directory = false;
         }
 
         return $this->cache_directory;
@@ -825,7 +773,7 @@ class FileCache extends LwsOptimize
     /**
      * Check whether the current device is mobile of desktop
      * A copy of wp_is_mobile() [wp-includes/vars.php] - Last Updated 6.4.0
-     * 
+     *
      * @return bool true if is mobile, false otherwise
      */
     private function _lwsop_is_mobile()
@@ -833,7 +781,7 @@ class FileCache extends LwsOptimize
         if (isset($_SERVER['HTTP_SEC_CH_UA_MOBILE'])) {
             // This is the `Sec-CH-UA-Mobile` user agent client hint HTTP request header.
             // See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Sec-CH-UA-Mobile>.
-            return ('?1' === $_SERVER['HTTP_SEC_CH_UA_MOBILE']);
+            return '?1' === $_SERVER['HTTP_SEC_CH_UA_MOBILE'];
         } elseif (empty($_SERVER['HTTP_USER_AGENT'])) {
             return false;
         } elseif (

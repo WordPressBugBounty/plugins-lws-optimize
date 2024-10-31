@@ -1,4 +1,5 @@
 <?php
+
 /**
  * The admin-specific functionality of the plugin.
  *
@@ -110,21 +111,21 @@ class LWSCache_Admin
          * class.
          */
 
-        if ( substr( get_current_screen()->id, 0, 29 ) == "toplevel_page_options-general") {
+        if (substr(get_current_screen()->id, 0, 29) == "toplevel_page_options-general") {
 
             // Hide all errors for the client
             error_reporting(0);
-            wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/lws-cache-admin.js', array( 'jquery' ), $this->version, false);
+            wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/lws-cache-admin.js', array('jquery'), $this->version, false);
 
             wp_enqueue_style($this->plugin_name, plugin_dir_url(__FILE__) . 'css/lws-cache-admin.css', array(), $this->version, 'all');
             wp_enqueue_script("lwscache_bootstrap_js", plugin_dir_url(__FILE__) . 'js/bootstrap.min.js', array('jquery'), $this->version, false);
-            wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/lws-cache-admin.js', array( 'jquery' ), $this->version, false);
+            wp_enqueue_script($this->plugin_name, plugin_dir_url(__FILE__) . 'js/lws-cache-admin.js', array('jquery'), $this->version, false);
             wp_enqueue_style('lwscache_bootstrap_css', plugin_dir_url(__FILE__) . 'css/bootstrap.min.css', array(), $this->version, false);
             wp_enqueue_style('lwscache-Poppins', 'https://fonts.googleapis.com/css?family=Poppins');
         }
-            if ('settings_page_nginx' !== $hook) {
-                return;
-            }
+        if ('settings_page_nginx' !== $hook) {
+            return;
+        }
 
         wp_enqueue_style($this->plugin_name . '-icons', plugin_dir_url(__FILE__) . 'icons/css/nginx-fontello.css', array(), $this->version, 'all');
     }
@@ -205,7 +206,7 @@ class LWSCache_Admin
         if (!isset($t[1])) {
             return;
         }
-        
+
         switch (explode('/', getcwd())[1]) {
             case 'htdocs':
                 $is_mutu = true;
@@ -230,8 +231,8 @@ class LWSCache_Admin
         }
 
         // if (is_admin()) {
-            $lws_cache_urls = 'all';
-            $link_title     = __('Purge LWSCache', 'lwscache');
+        $lws_cache_urls = 'all';
+        $link_title     = __('Purge LWSCache', 'lwscache');
         // } else {
         //     $lws_cache_urls = 'current-url';
         //     $link_title     = __('Purge Current Page', 'lwscache');
@@ -255,11 +256,11 @@ class LWSCache_Admin
         );
         $wp_admin_bar->add_menu(
             array(
-                'parent'=> 'lws-cache',
+                'parent' => 'lws-cache',
                 'id'    => 'lws-cache-purge-all',
                 'title' => $link_title,
                 'href'  => $nonced_url,
-                'meta'  => array( 'title' => $link_title ),
+                'meta'  => array('title' => $link_title),
             )
         );
 
@@ -271,11 +272,11 @@ class LWSCache_Admin
         }
         $wp_admin_bar->add_menu(
             array(
-                'parent'=> 'lws-cache',
+                'parent' => 'lws-cache',
                 'id'    => 'lws-cache-settings',
                 'title' => __('Settings', 'lwscache'),
                 'href'  => $path . "/wp-admin/admin.php?page=options-general.php?page=nginx",
-                'meta'  => array( 'title' => $link_title ),
+                'meta'  => array('title' => $link_title),
             )
         );
     }
@@ -289,7 +290,7 @@ class LWSCache_Admin
      */
     public function lws_cache_setting_page()
     {
-        include plugin_dir_path(__FILE__) . 'partials/lws-cache-admin-display.php';
+        include_once plugin_dir_path(__FILE__) . 'partials/lws-cache-admin-display.php';
     }
 
     /**
@@ -436,30 +437,30 @@ class LWSCache_Admin
             // Build an array of all the items, starting with element 0 (first element).
             $rss_items = $rss->get_items(0, $maxitems);
         }
-        ?>
-<ul role="list">
-    <?php
+?>
+        <ul>
+            <?php
             if (0 === $maxitems) {
-                echo '<li role="listitem">' . esc_html_e('No items', 'lwscache') . '.</li>';
+                echo '<li>' . esc_html_e('No items', 'lwscache') . '.</li>';
             } else {
                 // Loop through each feed item and display each item as a hyperlink.
                 foreach ($rss_items as $item) {
-                    ?>
-    <li role="listitem">
-        <?php
-                                printf(
-                        '<a href="%s" title="%s">%s</a>',
-                        esc_url($item->get_permalink()),
-                        esc_attr__('Posted ', 'lwscache') . esc_attr($item->get_date('j F Y | g:i a')),
-                        esc_html($item->get_title())
-                    );
-                    ?>
-    </li>
-    <?php
+            ?>
+                    <li>
+                        <?php
+                        printf(
+                            '<a href="%s" title="%s">%s</a>',
+                            esc_url($item->get_permalink()),
+                            esc_attr__('Posted ', 'lwscache') . esc_attr($item->get_date('j F Y | g:i a')),
+                            esc_html($item->get_title())
+                        );
+                        ?>
+                    </li>
+            <?php
                 }
             }
-        ?>
-</ul>
+            ?>
+        </ul>
 <?php
         die();
     }
@@ -506,10 +507,10 @@ class LWSCache_Admin
         }
 
         $timestamps = "\n<!--" .
-                'Cached using lwscache on ' . current_time('mysql') . '. ' .
-                'It took ' . get_num_queries() . ' queries executed in ' . timer_stop() . ' seconds.' .
-                "-->\n" .
-                '<!--Visit https://www.lws.fr/ for more details-->';
+            'Cached using lwscache on ' . current_time('mysql') . '. ' .
+            'It took ' . get_num_queries() . ' queries executed in ' . timer_stop() . ' seconds.' .
+            "-->\n" .
+            '<!--Visit https://www.lws.fr/ for more details-->';
 
         echo wp_kses($timestamps, array());
     }
@@ -551,10 +552,10 @@ class LWSCache_Admin
             if ($rt_all_blogs) {
                 foreach ($rt_all_blogs as $blog) {
                     if (true === SUBDOMAIN_INSTALL) {
-                        $rt_nginx_map_array[ $blog->domain ] = $blog->blog_id;
+                        $rt_nginx_map_array[$blog->domain] = $blog->blog_id;
                     } else {
                         if (1 !== $blog->blog_id) {
-                            $rt_nginx_map_array[ $blog->path ] = $blog->blog_id;
+                            $rt_nginx_map_array[$blog->path] = $blog->blog_id;
                         }
                     }
                 }
@@ -562,7 +563,7 @@ class LWSCache_Admin
 
             if ($rt_domain_map_sites) {
                 foreach ($rt_domain_map_sites as $site) {
-                    $rt_nginx_map_array[ $site->domain ] = $site->blog_id;
+                    $rt_nginx_map_array[$site->domain] = $site->blog_id;
                 }
             }
 
@@ -603,13 +604,13 @@ class LWSCache_Admin
 
     public function set_future_post_option_on_future_status($new_status, $old_status, $post)
     {
-        global $blog_id, $nginx_purger;        
+        global $blog_id, $nginx_purger;
 
         if (! $this->options['enable_purge']) {
             return;
         }
 
-        $purge_status = array( 'publish', 'future' );
+        $purge_status = array('publish', 'future');
 
         if (in_array($old_status, $purge_status, true) || in_array($new_status, $purge_status, true)) {
             $nginx_purger->log('Purge post on transition post STATUS from ' . $old_status . ' to ' . $new_status);
@@ -627,7 +628,7 @@ class LWSCache_Admin
             )
         ) {
             $nginx_purger->log('Set/update future_posts option ( post id = ' . $post->ID . ' and blog id = ' . $blog_id . ' )');
-            $this->options['future_posts'][ $blog_id ][ $post->ID ] = strtotime($post->post_date_gmt) + 60;
+            $this->options['future_posts'][$blog_id][$post->ID] = strtotime($post->post_date_gmt) + 60;
             update_site_option('rt_wp_lws_cache_options', $this->options);
         }
     }
@@ -647,8 +648,8 @@ class LWSCache_Admin
         if (
             ! $this->options['enable_purge'] ||
             empty($this->options['future_posts']) ||
-            empty($this->options['future_posts'][ $blog_id ]) ||
-            isset($this->options['future_posts'][ $blog_id ][ $post_id ]) ||
+            empty($this->options['future_posts'][$blog_id]) ||
+            isset($this->options['future_posts'][$blog_id][$post_id]) ||
             wp_is_post_revision($post_id)
         ) {
             return;
@@ -656,10 +657,10 @@ class LWSCache_Admin
 
         $nginx_purger->log('Unset future_posts option ( post id = ' . $post_id . ' and blog id = ' . $blog_id . ' )');
 
-        unset($this->options['future_posts'][ $blog_id ][ $post_id ]);
+        unset($this->options['future_posts'][$blog_id][$post_id]);
 
-        if (! count($this->options['future_posts'][ $blog_id ])) {
-            unset($this->options['future_posts'][ $blog_id ]);
+        if (! count($this->options['future_posts'][$blog_id])) {
+            unset($this->options['future_posts'][$blog_id]);
         }
 
         update_site_option('rt_wp_lws_cache_options', $this->options);
@@ -715,8 +716,8 @@ class LWSCache_Admin
         }
 
         if ('done' === $action) {
-            add_action('admin_notices', array( &$this, 'display_notices' ));
-            add_action('network_admin_notices', array( &$this, 'display_notices' ));
+            add_action('admin_notices', array(&$this, 'display_notices'));
+            add_action('network_admin_notices', array(&$this, 'display_notices'));
             return;
         }
 
@@ -728,7 +729,7 @@ class LWSCache_Admin
         //     $action       = 'purge_current_page';
         //     $redirect_url = $current_url;
         // } else {
-            $redirect_url = add_query_arg(array( 'lws_cache_action' => 'done' ));
+        $redirect_url = add_query_arg(array('lws_cache_action' => 'done'));
         // }
 
         switch ($action) {

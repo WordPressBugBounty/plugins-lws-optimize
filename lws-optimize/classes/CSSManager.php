@@ -1,11 +1,11 @@
 <?php
 
-include_once(LWS_OP_DIR . "/vendor/autoload.php");
+require_once LWS_OP_DIR . "/vendor/autoload.php";
 
 use MatthiasMullie\Minify;
 
 /**
- * Manage the minification and combination of CSS files. 
+ * Manage the minification and combination of CSS files.
  * Mostly a fork of WPFC. The main difference come from the way files are modified, by using Matthias Mullie library
  */
 class CSSManager extends LwsOptimize
@@ -14,16 +14,18 @@ class CSSManager extends LwsOptimize
     private $content_directory;
     private $preloadable_urls;
     private $preloadable_urls_fonts;
+    private $media_convertion;
 
     public $files = ['file' => 0, 'size' => 0];
 
-    public function __construct($content, array $preloadable = [], array $preloadable_fonts = [])
+    public function __construct($content, array $preloadable = [], array $preloadable_fonts = [], $media_convertion = [])
     {
         // Get the page content and the PATH to the cache directory as well as creating it if needed
         $this->content = $content;
         $this->content_directory = $this->lwsop_get_content_directory("cache-css/");
         $this->preloadable_urls = $preloadable;
         $this->preloadable_urls_fonts = $preloadable_fonts;
+        $this->media_convertion = $media_convertion;
 
         if (!is_dir($this->content_directory)) {
             mkdir($this->content_directory, 0755, true);
@@ -40,9 +42,8 @@ class CSSManager extends LwsOptimize
         }
 
         // Get all <link> and <style> tags
-        preg_match_all("/(<link\s*.*?>|<style\s*.*?<\/style>)/xs", $this->content, $matches);
+        preg_match_all("/(<link\s*[^>]*+>|<style\s*.*?<\/style>)/xs", $this->content, $matches);
 
-        $header_combined_style = "";
         $current_links = [];
         $current_media = false;
 
@@ -51,7 +52,7 @@ class CSSManager extends LwsOptimize
         foreach ($elements as $key => $element) {
             // If it is a <link>, get the attributes and proceed with the verifications
             // If the <link> is to be combined, add it to the current array
-            // Once we reach an incompatible <link> or a <style>, we combine the <link> and empty the array to start again with another batch of <link>            
+            // Once we reach an incompatible <link> or a <style>, we combine the <link> and empty the array to start again with another batch of <link>
             if (substr($element, 0, 5) == "<link") {
                 preg_match("/media\=[\'\"]([^\'\"]+)[\'\"]/", $element, $media);
                 preg_match("/href\=[\'\"]([^\'\"]+)[\'\"]/", $element, $href);
@@ -66,8 +67,8 @@ class CSSManager extends LwsOptimize
                 $media = trim($media[1]);
                 $href = trim($href[1]);
                 $rel = trim($rel[1]);
-                $type = trim($type[1]);                
-                
+                $type = trim($type[1]);
+
 
                 if ($rel !== "stylesheet" || $this->check_for_exclusion($href, "combine")) {
                     $file_url = $this->combine_current_css($current_links);
@@ -75,7 +76,7 @@ class CSSManager extends LwsOptimize
                         $newLink = "<link rel='stylesheet' href='$file_url' media='$current_media'>";
                         $this->content = str_replace($element, "$newLink\n$element", $this->content);
                     }
-                    
+
 
                     $current_links = [];
                     $current_media = false;
@@ -83,7 +84,7 @@ class CSSManager extends LwsOptimize
                 }
 
                 // Stylesheets with the same media will get combined together. We store the link's media as the $current_media if it is empty
-                if ($current_media == false) {
+                if (!$current_media) {
                     $current_media = $media;
                 }
 
@@ -98,7 +99,7 @@ class CSSManager extends LwsOptimize
                         // Create a new link with the newly combined URL and add it to the DOM
                         $newLink = "<link rel='stylesheet' href='$file_url' media='$current_media'>";
                         $this->content = str_replace($element, "<!-- Removed (2) $href -->\n$newLink", $this->content);
-                    }                    
+                    }
 
                     // Empty the array and add in the current <link> being observed
                     $current_links = [];
@@ -113,7 +114,7 @@ class CSSManager extends LwsOptimize
                 if (!empty($file_url) && $file_url !== false) {
                     $newLink = "<link rel='stylesheet' href='$file_url' media='$current_media'>";
                     $this->content = str_replace($element, "$newLink\n$element", $this->content);
-                }                
+                }
 
                 $current_links = [];
                 $current_media = false;
@@ -130,11 +131,10 @@ class CSSManager extends LwsOptimize
                     if (isset($href)) {
                         $this->content = str_replace("$href-->", "$href -->\n$newLink", $this->content);
                     }
-                }                
+                }
             }
         }
 
-        // return json_encode($arrays);
         return ['html' => $this->content, 'files' => $this->files];
     }
 
@@ -165,7 +165,6 @@ class CSSManager extends LwsOptimize
                 if (file_exists($file_path)) {
                     $minify->add($file_path);
                 }
-
             }
 
             if (empty($name)) {
@@ -177,17 +176,20 @@ class CSSManager extends LwsOptimize
 
             // Minify and combine all files into one, saved in $path
             // If it worked, we can prepare the new <link> tag
-            if ($minify->minify($path)) {
+            if ($minify->minify($path) && file_exists($path)) {
+                $file_contents = file_get_contents($path);
+                foreach ($this->media_convertion as $media_element) {
+                    $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);
+                }
+                file_put_contents($path, $file_contents);
+
                 $this->files['file'] += 1;
                 $this->files['size'] += filesize($path) ?? 0;
 
                 return $path_url;
-            } else {
-                return false;
             }
-        } else {
-            return false;
         }
+        return false;
     }
 
     /**
@@ -199,15 +201,13 @@ class CSSManager extends LwsOptimize
             return false;
         }
 
-        $minified = 0;
-
         // Get all <link> tags
-        preg_match_all("/<link\s*.*?>/xs", $this->content, $matches);
+        preg_match_all("/<link\s*[^>]*+>/xs", $this->content, $matches);
 
         $elements = $matches[0];
         // Loop through the <link>, get their attributes and verify if we have to minify them
         // Then we minify it and replace the old URL by the minified one
-        foreach ($elements as $key => $element) {
+        foreach ($elements as $element) {
             if (substr($element, 0, 5) == "<link") {
 
                 preg_match("/media\=[\'\"]([^\'\"]+)[\'\"]/", $element, $media);
@@ -243,14 +243,18 @@ class CSSManager extends LwsOptimize
 
                 $minify = new Minify\CSS($file_path);
 
-                if ($minify->minify($path)) {
-                    if (file_exists($path)) {
-                        $this->files['file'] += 1;
-                        $this->files['size'] += filesize($path) ?? 0;
-                        // Create a new link with the newly combined URL and add it to the DOM
-                        $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
-                        $this->content = str_replace($element, $newLink, $this->content);
+                if ($minify->minify($path) && file_exists($path)) {
+                    $file_contents = file_get_contents($path);
+                    foreach ($this->media_convertion as $media_element) {
+                        $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);
                     }
+                    file_put_contents($path, $file_contents);
+
+                    $this->files['file'] += 1;
+                    $this->files['size'] += filesize($path) ?? 0;
+                    // Create a new link with the newly combined URL and add it to the DOM
+                    $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
+                    $this->content = str_replace($element, $newLink, $this->content);
                 }
             }
         }
@@ -264,11 +268,11 @@ class CSSManager extends LwsOptimize
     public function preload_css()
     {
         // Get all <link> tags
-        preg_match_all("/<link\s*.*?>/xs", $this->content, $matches);
+        preg_match_all("/<link\s*[^>]*+>/xs", $this->content, $matches);
 
         $elements = $matches[0];
         // Loop through the <link> and replace the rel="stylesheet" by rel="preload" as="style"
-        foreach ($elements as $key => $element) {
+        foreach ($elements as $element) {
             if (substr($element, 0, 5) == "<link") {
                 preg_match("/rel\=[\'\"]([^\'\"]+)[\'\"]/", $element, $rel);
                 preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
@@ -299,11 +303,11 @@ class CSSManager extends LwsOptimize
     public function preload_fonts()
     {
         // Get all <link> tags
-        preg_match_all("/<link\s*.*?>/xs", $this->content, $matches);
+        preg_match_all("/<link\s*[^>]*+>/xs", $this->content, $matches);
 
         $elements = $matches[0];
         // Loop through the <link> and replace the rel="stylesheet" by rel="preload" as="style"
-        foreach ($elements as $key => $element) {
+        foreach ($elements as $element) {
             if (substr($element, 0, 5) == "<link") {
                 preg_match("/rel\=[\'\"]([^\'\"]+)[\'\"]/", $element, $rel);
                 preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
@@ -336,46 +340,34 @@ class CSSManager extends LwsOptimize
     {
         $optimize_options = get_option('lws_optimize_config_array', []);
         try {
-            if (empty($option) || $option === NULL) {
+            if (empty($option) || $option === null) {
                 return ['state' => "false", 'data' => []];
             }
 
             $option = sanitize_text_field($option);
-            if (isset($optimize_options[$option])) {
-                if (isset($optimize_options[$option]['state'])) {
-                    $array = $optimize_options[$option];
-                    $state = $array['state'];
-                    unset($array['state']);
-                    $data = $array;
+            if (isset($optimize_options[$option]) && isset($optimize_options[$option]['state'])) {
+                $array = $optimize_options[$option];
+                $state = $array['state'];
+                unset($array['state']);
+                $data = $array;
 
-                    return ['state' => $state, 'data' => $data];
-                }
+                return ['state' => $state, 'data' => $data];
             }
-            return ['state' => "false", 'data' => []];
         } catch (Exception $e) {
             error_log("LwsOptimize.php::lwsop_check_option | " . $e);
-            return ['state' => "false", 'data' => []];
         }
+
+        return ['state' => "false", 'data' => []];
     }
 
     /**
-     * Compare the given $url of $type (minify/combine) with the exceptions. 
+     * Compare the given $url of $type (minify/combine) with the exceptions.
      * If there is a match, $url is excluded
      */
     public function check_for_exclusion($url, $type)
     {
-        if (empty($type)) {
+        if (empty($type) || preg_match("/fonts/", $url) || preg_match("/bootstrap/", $url)) {
             return false;
-        }
-
-
-        if (preg_match("/fonts/", $url)) {
-            return true;
-        }
-
-
-        if (preg_match("/bootstrap/", $url)) {
-            return true;
         }
 
         if ($type == "minify") {
@@ -391,9 +383,7 @@ class CSSManager extends LwsOptimize
                     return true;
                 }
             }
-
-            return false;
-        } else if ($type == "combine") {
+        } elseif ($type == "combine") {
             $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['combine_css']['state']) && $options_combine['combine_css']['state'] == "true" && isset($options_combine['combine_css']['exclusions'])) {
                 $combine_css_exclusions = $options_combine['combine_css']['exclusions'];
@@ -425,9 +415,6 @@ class CSSManager extends LwsOptimize
                     return true;
                 }
             }
-
-
-            return false;
         } else {
             $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['minify_html']['state']) && $options_combine['minify_html']['state'] == "true" && isset($options_combine['minify_html']['exclusions'])) {
@@ -441,8 +428,8 @@ class CSSManager extends LwsOptimize
                     return true;
                 }
             }
-
-            return false;
         }
+
+        return false;
     }
 }

@@ -8,7 +8,8 @@ input.lwsop_contentblock_fbcache_input_preload {
     width: 60px;
 }
 .lwsop_contentblock_input_preload_label {
-    font: normal normal normal 13px/23px Poppins;
+    font: normal normal normal 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #1D2327;
 }
 
@@ -80,14 +81,16 @@ div.load-animated div.line:nth-last-child(1) {
 
 .lws_op_block_ad_review_title {
     text-align: center;
-    font: normal normal 600 18px/28px Poppins;
+    font: normal normal 600 18px/28px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
 }
 
 .lws_op_block_ad_review_description {
     text-align: center;
-    font: normal normal normal 15px/26px Poppins;
+    font: normal normal normal 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
 }
 
@@ -428,7 +431,7 @@ input.lws_op_checkbox_file_based_cache[type="checkbox"] {
     border-radius: 2px;
 }
 
-@media only screen and (max-width: 1386x) {
+@media only screen and (max-width: 1386px) {
     .lwsop_contentblock_rightside.custom {
         align-items: flex-start;
     }
@@ -1111,7 +1114,8 @@ input.lws_op_checkbox_file_based_cache[type="checkbox"]:checked::before {
 
 /* NEW CSS */
 .lws_made_with_heart {
-    font: normal normal normal 15px/26px Poppins;
+    font: normal normal normal 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     padding-top: 30px;
@@ -1141,7 +1145,8 @@ input.lws_op_checkbox_file_based_cache[type="checkbox"]:checked::before {
 span.lwsop_necessary {
     background: #1B2E4B 0% 0% no-repeat padding-box;
     border-radius: 22px;
-    font: normal normal 600 12px/24px Poppins;
+    font: normal normal 600 12px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #FFFFFF;
     text-transform: uppercase;
@@ -1155,7 +1160,8 @@ span.lwsop_necessary {
 .lwsop_exclusion_infobubble {
     background: #ECF5FE 0% 0% no-repeat padding-box;
     border-radius: 16px;
-    font: normal normal 600 15px/5px Open Sans;
+    font: normal normal 600 15px/5px sans-serif;
+    font-family: Open Sans, sans-serif;
     letter-spacing: 0px;
     color: #2893E9;
     height: 32px;
@@ -1216,7 +1222,7 @@ span.lwsop_necessary {
 .lwsoptimize_container {
     max-width: 1400px;
     margin: auto;
-    font-family: 'Poppins';
+    font-family: 'Poppins', sans-serif;
 }
 
 .lwsoptimize_container_top {
@@ -1225,7 +1231,7 @@ span.lwsop_necessary {
     align-items: stretch;
     gap: 30px;
     margin: 30px 0;
-    font-family: 'Poppins';
+    font-family: 'Poppins', sans-serif;
 }
 
 .lwsoptimize_main_header {
@@ -1720,7 +1726,8 @@ button.lwsoptimize_validatebutton {
 .lwsop_contentblock_specific_purge {
     background: #ECF5FE 0% 0% no-repeat padding-box;
     border-radius: 16px;
-    font: normal normal 600 15px/5px Open Sans;
+    font: normal normal 600 15px/5px sans-serif;
+    font-family: Open Sans, sans-serif;
     letter-spacing: 0px;
     color: #2893E9;
     display: flex;
@@ -1819,7 +1826,8 @@ h2.lwsop_exclude_title {
 }
 
 h2.lwsoptimize_modal_exclude_subtitle {
-    font: normal normal bold 18px/28px Poppins;
+    font: normal normal bold 18px/28px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     margin: 0;
@@ -1833,7 +1841,6 @@ div.lwsoptimize_exclude_element_grid {
         "c d";
     justify-items: stretch;
     align-items: center;
-    padding-bottom: 30px;
     border-bottom: 1px solid #CCCCCC;
     padding: 30px;
     margin-bottom: 30px;
@@ -1852,7 +1859,8 @@ div.lwsoptimize_exclude_media_types {
 }
 
 .lwsoptimize_exclusion_info {
-    font: normal normal normal 15px/26px Poppins;
+    font: normal normal normal 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     padding: 0 30px;
@@ -1866,7 +1874,7 @@ div.lwsoptimize_exclude_media_types {
 
 textarea#lwsoptimize_excluded_iframes_img {
     width: 100%;
-    height: 80px;
+    height: 200px;
     box-sizing: content-box;
     padding: 0;
     border: 1px solid #292F34;
@@ -1889,7 +1897,8 @@ form#lwsop_form_exclude_urls {
 
 .lwsop_modal_infobubble {
     max-width: 740px;
-    font: normal normal normal 15px/25px Poppins;
+    font: normal normal normal 15px/25px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #292F34;
     background: #ECF5FE 0% 0% no-repeat padding-box;
@@ -2003,14 +2012,16 @@ button.lwsop_validatebutton {
 }
 
 h2.lwsop_bluebanner_title {
-    font: normal normal bold 18px/28px Poppins;
+    font: normal normal bold 18px/28px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     margin: 0;
 }
 
 div.lwsop_bluebanner_subtitle {
-    font: normal normal normal 14px/26px Poppins;
+    font: normal normal normal 14px/26px sans-serif;
+    font-family: Poppins, sans-serif;
 }
 
 .lwsop_contentblock {
@@ -2042,7 +2053,8 @@ h2.lwsop_contentblock_title {
     display: flex;
     margin: 0;
     gap: 10px;
-    font: normal normal bold 16px/26px Poppins;
+    font: normal normal bold 16px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #1D2327;
     flex-wrap: wrap;
     align-items: center;
@@ -2059,7 +2071,8 @@ h2.lwsop_contentblock_title {
 }
 
 span.lwsop_recommended {
-    font: normal normal 600 12px/0px Poppins;
+    font: normal normal 600 12px/0px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #FFFFFF;
     text-transform: uppercase;
@@ -2074,7 +2087,8 @@ span.lwsop_recommended {
 }
 
 .lwsop_contentblock_description {
-    font: normal normal normal 13px/23px Poppins;
+    font: normal normal normal 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     margin-top: 8px;
@@ -2082,12 +2096,14 @@ span.lwsop_recommended {
 }
 
 span.lwsop_contentblock_select_label {
-    font: normal normal normal 13px/23px Poppins;
+    font: normal normal normal 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #1D2327;
 }
 
 .lwsop_contentblock_fbcache_select {
-    font: normal normal normal 15px/26px Poppins;
+    font: normal normal normal 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     display: flex;
@@ -2097,7 +2113,8 @@ span.lwsop_contentblock_select_label {
 }
 
 .lwsop_contentblock_fbcache_select>select {
-    font: normal normal normal 15px/19px Poppins;
+    font: normal normal normal 15px/19px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     padding: 8px 10px;
@@ -2110,7 +2127,8 @@ button.lwsop_blue_button {
     background: #2893E9 0% 0% no-repeat padding-box;
     border-radius: 22px;
     border: none;
-    font: normal normal normal 14px/19px Poppins;
+    font: normal normal normal 14px/19px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #FFFFFF;
     padding: 10px 20px;
@@ -2136,7 +2154,8 @@ button.lwsop_blue_button>span {
 button.lwsop_darkblue_button {
     background: #1C469D 0% 0% no-repeat padding-box;
     border-radius: 22px;
-    font: normal normal normal 14px/24px Poppins;
+    font: normal normal normal 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #FFFFFF;
     border: none;
@@ -2183,7 +2202,8 @@ div.lwsop_stat_block:last-of-type {
 
 .lwsop_stats_bold {
     display: flex;
-    font: normal normal bold 15px/26px Poppins;
+    font: normal normal bold 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #1D2327;
     gap: 5px;
     flex-wrap: wrap;
@@ -2203,7 +2223,8 @@ button.lwsop_pagespeed_button {
     background: #2893E9 0% 0% no-repeat padding-box;
     border-radius: 22px;
     border: none;
-    font: normal normal normal 14px/24px Poppins;
+    font: normal normal normal 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #fff;
     height: 40px;
     padding: 0 20px;
@@ -2213,7 +2234,7 @@ button.lwsop_pagespeed_button {
     align-items: center;
 }
 
-label.lwsop_pagespeed_label {
+div.lwsop_pagespeed_label {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -2237,7 +2258,8 @@ label.lwsop_pagespeed_textlabel {
 }
 
 .lwsop_pagespeed_label_text {
-    font: normal normal bold 14px/24px Poppins;
+    font: normal normal bold 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
 }
 
 label.lwsop_pagespeed_textlabel>input {
@@ -2391,7 +2413,8 @@ div.lwsop_pagespeed_result_circle_colored {
 }
 
 .lwsop_pagespeed_result_circle_text {
-    font: normal normal 600 30px/30px Poppins;
+    font: normal normal 600 30px/30px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #c9cbcc;
     text-align: center;
     z-index: 1;
@@ -2399,7 +2422,8 @@ div.lwsop_pagespeed_result_circle_colored {
 
 .lwsop_pagespeed_result_circle_text.small,
 .lwsop_pagespeed_result_bubble_text.small {
-    font: normal normal 600 16px/30px Poppins;
+    font: normal normal 600 16px/30px sans-serif;
+    font-family: Poppins, sans-serif;
 }
 
 .lwsop_pagespeed_result_bubble_text.green,
@@ -2430,7 +2454,8 @@ div.lwsop_pagespeed_result_circle_colored {
 }
 
 span.lwsop_pagespeed_result_subtext {
-    font: normal normal bold 20px/30px Poppins;
+    font: normal normal bold 20px/30px sans-serif;
+    font-family: Poppins, sans-serif;
 }
 
 .lwsop_pagespeed_result_scale_block {
@@ -2438,7 +2463,8 @@ span.lwsop_pagespeed_result_subtext {
     align-items: center;
     flex-direction: row;
     gap: 20px;
-    font: normal normal normal 15px/25px Poppins;
+    font: normal normal normal 15px/25px sans-serif;
+    font-family: Poppins, sans-serif;
     flex-wrap: wrap;
 }
 
@@ -2469,7 +2495,8 @@ span.pagespeed_green_text {
 }
 
 .lwsop_pagespeed_result_bubble_text {
-    font: normal normal 600 20px/30px Poppins;
+    font: normal normal 600 20px/30px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #c9cbcc;
     overflow: hidden;
 }
@@ -2500,7 +2527,8 @@ div.lwsop_pagespeed_history {
 }
 
 .lwsop_pagespeed_history_text_top {
-    font: normal normal bold 18px/28px Poppins;
+    font: normal normal bold 18px/28px sans-serif;
+    font-family: Poppins, sans-serif;
 }
 
 .lwsop_pagespeed_history_text_bottom {
@@ -2508,7 +2536,8 @@ div.lwsop_pagespeed_history {
     align-items: center;
     flex-direction: row;
     gap: 15px;
-    font: normal normal normal 14px/24px Poppins;
+    font: normal normal normal 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #292F34;
 }
@@ -2541,7 +2570,8 @@ div.modal-content.cloudflare_content {
     background: #ECF5FE 0% 0% no-repeat padding-box;
     border: 2px solid #2893E9;
     border-radius: 10px;
-    font: normal normal normal 15px/25px Poppins;
+    font: normal normal normal 15px/25px sans-serif;
+    font-family: Poppins, sans-serif;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -2571,7 +2601,8 @@ label.cloudflare_token_label {
 }
 
 span.cloudflare_token_label_text {
-    font: normal normal bold 15px/24px Poppins;
+    font: normal normal bold 15px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #292F34;
 }
@@ -2586,14 +2617,16 @@ input.cloudflare_token_input {
 
 a.cloudflare_token_link {
     text-decoration: underline;
-    font: normal normal normal 15px/26px Poppins;
+    font: normal normal normal 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #006EDC;
 }
 
 button.lws_optimize_cloudflare_next {
     background: #1C469D 0% 0% no-repeat padding-box;
     border-radius: 22px;
-    font: normal normal normal 14px/24px Poppins;
+    font: normal normal normal 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #FFFFFF;
     display: flex;
     align-items: center;
@@ -2618,12 +2651,14 @@ button.lws_optimize_cloudflare_next {
 }
 
 .cloudflare_tools_text {
-    font: normal normal bold 18px/28px Poppins;
+    font: normal normal bold 18px/28px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #1D2327;
 }
 
 .cloudflare_tools_description {
-    font: normal normal normal 15px/26px Poppins;
+    font: normal normal normal 15px/26px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #1D2327;
 }
 
@@ -2656,7 +2691,8 @@ button.lws_optimize_cloudflare_end {
 }
 
 span.lwsop_prom_bullet_point_text {
-    font: normal normal normal 15px/25px Poppins;
+    font: normal normal normal 15px/25px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #292F34;
 }
 
@@ -2680,7 +2716,8 @@ span.lwsop_prom_bullet_point_text {
     display: flex;
     align-items: center;
     padding: 0 20px;
-    font: normal normal normal 14px/24px Poppins;
+    font: normal normal normal 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #FFFFFF;
 }
 
@@ -2694,7 +2731,8 @@ span.lwsop_prom_bullet_point_text {
 span.lwsop_prom_bullet_point_plugin_specific {
     background: #ECF5FE 0% 0% no-repeat padding-box;
     border-radius: 16px;
-    font: normal normal 600 15px/5px Poppins;
+    font: normal normal 600 15px/5px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #2893E9;
     padding: 5px 15px;
     height: 32px;
@@ -2772,284 +2810,356 @@ body.wp-admin {
 }
 
 /* MODALE (NEW POPUP) */
-#modal_popup div.container-modal {
-    text-align: center;
-}
+    #modal_popup div.container-modal {
+        text-align: center;
+    }
 
-#modal_popup div.container-modal p {
-    color: #333;
-    font-size: 16px;
-}
+    #modal_popup div.container-modal p {
+        color: #333;
+        font-size: 16px;
+    }
 
-#modal_popup div.container-modal button {
-    color: #fff;
-    font-weight: 600;
-    border: 0;
-    border-radius: 3px;
-    padding: 7px 15px;
-    margin: 10px 5px;
-    background-color: rgb(0, 105, 92);
-}
+    #modal_popup div.container-modal button {
+        color: #fff;
+        font-weight: 600;
+        border: 0;
+        border-radius: 3px;
+        padding: 7px 15px;
+        margin: 10px 5px;
+        background-color: rgb(0, 105, 92);
+    }
 
-.success-animation {
-    margin: 10px auto 30px;
-}
+    .success-animation {
+        margin: 10px auto 30px;
+    }
 
-.checkmark {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    display: block;
-    stroke-width: 2;
-    stroke: #4bb71b;
-    stroke-miterlimit: 10;
-    box-shadow: inset 0px 0px 0px #4bb71b;
-    animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
-    position: relative;
-    top: 5px;
-    right: 5px;
-    margin: 0 auto !important;
-}
+    .checkmark {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        display: block;
+        stroke-width: 2;
+        stroke: #4bb71b;
+        stroke-miterlimit: 10;
+        box-shadow: inset 0px 0px 0px #4bb71b;
+        animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+        position: relative;
+        top: 5px;
+        right: 5px;
+        margin: 0 auto !important;
+    }
 
-.checkmark__circle {
-    stroke-dasharray: 166;
-    stroke-dashoffset: 166;
-    stroke-width: 2;
-    stroke-miterlimit: 10;
-    stroke: #4bb71b;
-    fill: #fff;
-    animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-}
+    .checkmark__circle {
+        stroke-dasharray: 166;
+        stroke-dashoffset: 166;
+        stroke-width: 2;
+        stroke-miterlimit: 10;
+        stroke: #4bb71b;
+        fill: #fff;
+        animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    }
 
-.checkmark__check {
-    transform-origin: 50% 50%;
-    stroke-dasharray: 48;
-    stroke-dashoffset: 48;
-    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
-}
+    .checkmark__check {
+        transform-origin: 50% 50%;
+        stroke-dasharray: 48;
+        stroke-dashoffset: 48;
+        animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+    }
 
-.error-animation,
-.warning-animation {
-    display: inline-block;
-    position: relative;
-    width: 150px;
-}
+    .error-animation,
+    .warning-animation {
+        display: inline-block;
+        position: relative;
+        width: 150px;
+    }
 
-.red-stroke {
-    stroke: #FF6245;
-}
+    .red-stroke {
+        stroke: #FF6245;
+    }
 
-.yellow-stroke {
-    stroke: #FFC107;
-}
+    .yellow-stroke {
+        stroke: #FFC107;
+    }
 
-.circular circle.path {
-    stroke-dasharray: 330;
-    stroke-dashoffset: 0;
-    stroke-linecap: round;
-    opacity: 0.4;
-    animation: 0.7s draw-circle ease-out;
-}
-
-.cross {
-    stroke-width: 6.25;
-    stroke-linecap: round;
-    position: absolute;
-    top: 54px;
-    left: 54px;
-    width: 40px;
-    height: 40px;
-}
-
-.cross .first-line {
-    animation: 0.7s draw-first-line ease-out;
-    animation-delay: -0.25s;
-}
-
-.cross .second-line {
-    animation: 0.7s draw-second-line ease-out;
-}
-
-.alert-sign {
-    stroke-width: 6.25;
-    stroke-linecap: round;
-    position: absolute;
-    top: 40px;
-    left: 68px;
-    width: 15px;
-    height: 70px;
-    animation: 0.5s alert-sign-bounce cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    animation-delay: 0.15s;
-}
-
-.alert-sign .dot {
-    stroke: none;
-    fill: #FFC107;
-}
-
-#modal_popup[data-result='success'] .error-animation,
-#modal_popup[data-result='success'] .warning-animation {
-    display: none;
-}
-
-#modal_popup[data-result='success'] div.container-modal button {
-    background-color: rgb(0, 105, 92);
-}
-
-#modal_popup[data-result='error'] .success-animation,
-#modal_popup[data-result='error'] .warning-animation {
-    display: none;
-}
-
-#modal_popup[data-result='error'] div.container-modal button {
-    background-color: #e74c3c;
-}
-
-#modal_popup[data-result='warning'] .error-animation,
-#modal_popup[data-result='warning'] .success-animation {
-    display: none;
-}
-
-#modal_popup[data-result='warning'] div.container-modal button {
-    background-color: #34495e;
-}
-
-div.content_message {
-    margin-bottom: 20px;
-}
-
-.lwsop_contentblock_fbcache_preload {
-    display: flex;
-    flex-direction: column;
-}
-
-span.lwsop_contentblock_fbcache_preload_label {
-    font: normal normal normal 15px/23px Poppins;
-    color: #1D2327;
-    font-weight: 600;
-    margin-top: 20px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-div#lwsop_preloading_status {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    border: 1px solid #8c8f94;
-    padding: 10px;
-    width: fit-content;
-    font: normal normal normal 13px/23px Poppins;
-    letter-spacing: 0px;
-    color: #1D2327;
-    border-radius: 4px;
-}
-
-.lwsop_contentblock_convertion_status {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    border: 1px solid #8c8f94;
-    padding: 10px;
-    width: fit-content;
-    font: normal normal normal 13px/23px Poppins;
-    letter-spacing: 0px;
-    color: #1D2327;
-    border-radius: 4px;
-    margin-top: 15px;
-}
-
-.lwsop_contentblock_convertion_status > div > span:first-child {
-    font-weight: 600;
-}
-
-.lwsop_preloading_status_info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.lwsop_preloading_status_info > span:first-child {
-    font-weight: 600;
-}
-
-@keyframes stroke {
-    100% {
+    .circular circle.path {
+        stroke-dasharray: 330;
         stroke-dashoffset: 0;
-    }
-}
-
-@keyframes scale {
-
-    0%,
-    100% {
-        transform: none;
+        stroke-linecap: round;
+        opacity: 0.4;
+        animation: 0.7s draw-circle ease-out;
     }
 
-    50% {
-        transform: scale3d(1.1, 1.1, 1);
-    }
-}
-
-@keyframes fill {
-    100% {
-        box-shadow: inset 0px 0px 0px 30px #4bb71b;
-    }
-}
-
-@keyframes draw-first-line {
-    0% {
-        stroke-dasharray: 0, 56;
-        stroke-dashoffset: 0;
+    .cross {
+        stroke-width: 6.25;
+        stroke-linecap: round;
+        position: absolute;
+        top: 54px;
+        left: 54px;
+        width: 40px;
+        height: 40px;
     }
 
-    50% {
-        stroke-dasharray: 0, 56;
-        stroke-dashoffset: 0;
+    .cross .first-line {
+        animation: 0.7s draw-first-line ease-out;
+        animation-delay: -0.25s;
     }
 
-    100% {
-        stroke-dasharray: 56, 330;
-        stroke-dashoffset: 0;
-    }
-}
-
-@keyframes draw-second-line {
-    0% {
-        stroke-dasharray: 0, 55;
-        stroke-dashoffset: 1;
+    .cross .second-line {
+        animation: 0.7s draw-second-line ease-out;
     }
 
-    50% {
-        stroke-dasharray: 0, 55;
-        stroke-dashoffset: 1;
+    .alert-sign {
+        stroke-width: 6.25;
+        stroke-linecap: round;
+        position: absolute;
+        top: 40px;
+        left: 68px;
+        width: 15px;
+        height: 70px;
+        animation: 0.5s alert-sign-bounce cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        animation-delay: 0.15s;
     }
 
-    100% {
-        stroke-dasharray: 55, 0;
-        stroke-dashoffset: 70;
-    }
-}
-
-@keyframes alert-sign-bounce {
-    0% {
-        transform: scale(0);
-        opacity: 0;
+    .alert-sign .dot {
+        stroke: none;
+        fill: #FFC107;
     }
 
-    50% {
-        transform: scale(0);
-        opacity: 1;
+    #modal_popup[data-result='success'] .error-animation,
+    #modal_popup[data-result='success'] .warning-animation {
+        display: none;
     }
 
-    100% {
-        transform: scale(1);
+    #modal_popup[data-result='success'] div.container-modal button {
+        background-color: rgb(0, 105, 92);
     }
-}
 
+    #modal_popup[data-result='error'] .success-animation,
+    #modal_popup[data-result='error'] .warning-animation {
+        display: none;
+    }
+
+    #modal_popup[data-result='error'] div.container-modal button {
+        background-color: #e74c3c;
+    }
+
+    #modal_popup[data-result='warning'] .error-animation,
+    #modal_popup[data-result='warning'] .success-animation {
+        display: none;
+    }
+
+    #modal_popup[data-result='warning'] div.container-modal button {
+        background-color: #34495e;
+    }
+
+    div.content_message {
+        margin-bottom: 20px;
+    }
+
+    .lwsop_contentblock_fbcache_preload {
+        display: flex;
+        flex-direction: column;
+    }
+
+    span.lwsop_contentblock_fbcache_preload_label {
+        font: normal normal normal 15px/23px sans-serif;
+        font-family: Poppins, sans-serif;
+        color: #1D2327;
+        font-weight: 600;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    div#lwsop_preloading_status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        border: 1px solid #8c8f94;
+        padding: 10px;
+        width: fit-content;
+        font: normal normal normal 13px/23px sans-serif;
+        font-family: Poppins, sans-serif;
+        letter-spacing: 0px;
+        color: #1D2327;
+        border-radius: 4px;
+    }
+
+    .lwsop_contentblock_convertion_status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        border: 1px solid #8c8f94;
+        padding: 10px;
+        width: fit-content;
+        font: normal normal normal 13px/23px sans-serif;
+        font-family: Poppins, sans-serif;
+        letter-spacing: 0px;
+        color: #1D2327;
+        border-radius: 4px;
+        margin-top: 15px;
+    }
+
+    .lwsop_contentblock_convertion_status > div > span:first-child {
+        font-weight: 600;
+    }
+
+    .lwsop_preloading_status_info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .lwsop_preloading_status_info > span:first-child {
+        font-weight: 600;
+    }
+
+    @keyframes stroke {
+        100% {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    @keyframes scale {
+
+        0%,
+        100% {
+            transform: none;
+        }
+
+        50% {
+            transform: scale3d(1.1, 1.1, 1);
+        }
+    }
+
+    @keyframes fill {
+        100% {
+            box-shadow: inset 0px 0px 0px 30px #4bb71b;
+        }
+    }
+
+    @keyframes draw-first-line {
+        0% {
+            stroke-dasharray: 0, 56;
+            stroke-dashoffset: 0;
+        }
+
+        50% {
+            stroke-dasharray: 0, 56;
+            stroke-dashoffset: 0;
+        }
+
+        100% {
+            stroke-dasharray: 56, 330;
+            stroke-dashoffset: 0;
+        }
+    }
+
+    @keyframes draw-second-line {
+        0% {
+            stroke-dasharray: 0, 55;
+            stroke-dashoffset: 1;
+        }
+
+        50% {
+            stroke-dasharray: 0, 55;
+            stroke-dashoffset: 1;
+        }
+
+        100% {
+            stroke-dasharray: 55, 0;
+            stroke-dashoffset: 70;
+        }
+    }
+
+    @keyframes alert-sign-bounce {
+        0% {
+            transform: scale(0);
+            opacity: 0;
+        }
+
+        50% {
+            transform: scale(0);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
 /* MODALE (NEW POPUP) */
+
+/* MODALE NEW v2 */
+div#lwsop_popup_alerting {
+    position: fixed;
+    top: 7%;
+    right: 2%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+div.lwsop_information_popup {
+    position: relative;
+    background-color: #ffffff;
+    border: 1px solid #cbcbcb;
+    border-radius: 10px;
+    padding: 10px;
+    padding-left: 40px;
+    padding-right: 40px;
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+    align-items: center;
+}
+
+.lwsop_information_popup_content {
+    max-width: 275px;
+    word-break: break-all;
+}
+
+div.lwsop_information_popup.popup_success {
+    border-bottom: 2px solid green;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+div.lwsop_information_popup.popup_error {
+    border-bottom: 2px solid red;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+div.lwsop_information_popup.popup_warning {
+    border-bottom: 2px solid #FFD700;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+div.lwsop_information_popup_animation {
+    position: relative;
+}
+
+div.lwsop_information_popup_close {
+    position: absolute;
+    top: 26%;
+    right: 5%;
+    width: 10px;
+    height: 10px;
+    cursor: pointer;
+}
+svg.crossmark,
+svg.exclamation,
+svg.checkmark {
+    width: 30px;
+    height: 30px;
+    position: absolute;
+    left: -28px;
+    top: -15px;
+}
+/* MODALE NEW v2 */
 
 .lwsop_title_banner {
     display: flex;
@@ -3091,13 +3201,15 @@ div#lwsop_preloading_status {
 }
 
 .lwsop_top_title > span:first-child {
-    font: normal normal bold 26px/36px Poppins;
+    font: normal normal bold 26px/36px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
 }
 
 .lwsop_top_title > span:nth-child(2) {
-    font: normal normal normal 13px/23px Poppins;
+    font: normal normal normal 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
 }
@@ -3110,7 +3222,8 @@ span.logo_lws {
 }
 
 .lwsop_top_description {
-    font: normal normal normal 13px/23px Poppins;
+    font: normal normal normal 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
 }
@@ -3131,7 +3244,8 @@ span.logo_lws {
 .lwsop_top_rateus {
     background: #E9F4FD 0% 0% no-repeat padding-box;
     border-radius: 10px;
-    font: normal normal 600 13px/23px Poppins;
+    font: normal normal 600 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     max-width: 480px;
     width: 100%;
     padding: 10px 15px;
@@ -3188,7 +3302,8 @@ a.link_to_rating_with_stars {
 .lwsop_top_banner_right_bottom > a {
     background: #1B2E4B 0% 0% no-repeat padding-box;
     border-radius: 22px;
-    font: normal normal 600 14px/24px Poppins;
+    font: normal normal 600 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     color: #FFFFFF;
     padding: 10px 20px;
 }
@@ -3244,6 +3359,53 @@ div.lwsop_converter_scrollblock {
 /* TEMP */
 
 /* IMAGE CONVERTION */
+.lwop_beta_cutout {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 30px 30px 0 30px;
+    padding: 20px 30px;
+    flex-wrap: nowrap;
+    background: #F0EFF0 0% 0% no-repeat padding-box;
+    border-radius: 10px;
+    font-size: 0.9em;
+}
+.lwop_beta_cutout > span:first-child{
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.lwop_beta_cutout > span:nth-child(2){
+    margin-top: 20px;
+    font-weight: 500;
+}
+
+.lwop_beta_cutout > ul {
+    list-style: circle;
+    padding-left: 30px;
+    font-size: 0.9em;
+}
+
+.lwsop_wpcron_cutout {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 30px 30px 0 30px;
+    padding: 20px 30px;
+    border-radius: 10px;
+    font-size: 0.9em;
+    gap: 30px;
+    border: 2px solid #ff9e1d;
+}
+
+.lwsop_wpcron_cutout > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+
 .lwsop_convert_modal {
     display: flex;
     flex-direction: column;
@@ -3259,8 +3421,25 @@ label.lwsop_convert_modal_label {
     justify-content: space-between;
 }
 
+.lwsop_convert_modal_mimetype_grid {
+    display: grid;
+    grid-template-areas: "a b c"
+        "d e f";
+    column-gap: 15px;
+    row-gap: 3px;
+    width: 100%;
+    padding: 0 30px;
+}
+
+label.lwsop_convert_modal_label.column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
 label.lwsop_convert_modal_label > span {
-    font: normal normal bold 18px/28px Poppins;
+    font: normal normal bold 18px/28px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     margin: 0;
@@ -3288,20 +3467,6 @@ label.lwsop_convert_modal_label.textarea {
     align-items: stretch;
 }
 
-button#lwsop_deactivate_convertion {
-    background: #bcbbbb 0% 0% no-repeat padding-box;
-    border-radius: 22px;
-    border: none;
-    font: normal normal normal 14px/19px Poppins;
-    letter-spacing: 0px;
-    color: #FFFFFF;
-    padding: 10px 20px;
-}
-
-button#lwsop_deactivate_convertion:hover {
-    background: #7b7b7b 0% 0% no-repeat padding-box;
-}
-
 .lwsop_noimagick_block {
     position: absolute;
     width: 100%;
@@ -3319,7 +3484,8 @@ button#lwsop_deactivate_convertion:hover {
     flex-direction: column;
     align-items: flex-start;
     width: 100%;
-    font: normal normal normal 13px/23px Poppins;
+    font: normal normal normal 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #1D2327;
     border-radius: 4px;
@@ -3358,7 +3524,8 @@ div#show_errors_autoupdate_action {
 .lwsop_update_info_button {
     background: #1C469D 0% 0% no-repeat padding-box;
     border-radius: 22px;
-    font: normal normal normal 14px/24px Poppins;
+    font: normal normal normal 14px/24px sans-serif;
+    font-family: Poppins, sans-serif;
     letter-spacing: 0px;
     color: #FFFFFF;
     border: none;
@@ -3456,6 +3623,10 @@ div#show_images_converted_action {
     user-select: none;
     font-size: 0.9em;
     font-style: italic;
+    text-decoration: underline;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* IMAGE CONVERTION */
@@ -3513,7 +3684,8 @@ div#show_images_converted_action {
     }
 
     span.lwsop_pagespeed_result_subtext {
-        font: normal normal bold 16px/20px Poppins;
+        font: normal normal bold 16px/20px sans-serif;
+        font-family: Poppins, sans-serif;
     }
 
     .lwsop_pagespeed_result_scale_block {
@@ -3521,7 +3693,8 @@ div#show_images_converted_action {
         align-items: center;
         flex-direction: row;
         gap: 5px;
-        font: normal normal normal 13px/20px Poppins;
+        font: normal normal normal 13px/20px sans-serif;
+        font-family: Poppins, sans-serif;
         flex-wrap: wrap;
     }
 
@@ -3533,11 +3706,13 @@ div#show_images_converted_action {
     }
 
     .lwsop_pagespeed_result_bubble_text {
-        font: normal normal 600 16px/30px Poppins;
+        font: normal normal 600 16px/30px sans-serif;
+        font-family: Poppins, sans-serif;
     }
 
     .lwsop_pagespeed_result_circle_text {
-        font: normal normal 600 16px/30px Poppins;
+        font: normal normal 600 16px/30px sans-serif;
+        font-family: Poppins, sans-serif;
     }
 
 
