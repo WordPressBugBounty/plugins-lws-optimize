@@ -459,6 +459,10 @@ class LwsOptimize
                 add_action('admin_bar_menu', [$this, 'lws_optimize_admin_bar'], 300);
                 add_action('admin_footer', [$this, 'lws_optimize_admin_footer_scripts'], 300);
                 add_action('wp_footer', [$this, 'lws_optimize_wp_footer_scripts'], 300);
+
+                // Customize the CSS of the admin_bar
+                add_action('admin_head', [$this, 'lwsop_admin_bar_change_css']);
+                add_action('wp_head', [$this, 'lwsop_admin_bar_change_css']);
             }
 
             add_filter('lws_optimize_clear_filebased_cache', [$this, 'lws_optimize_clean_filebased_cache']);
@@ -607,7 +611,7 @@ class LwsOptimize
      * Initial setup of the plugin ; execute all basic actions
      */
     public function lws_optimize_init()
-    {
+    {        
         load_plugin_textdomain('lws-optimize', false, dirname(LWS_OP_BASENAME) . '/languages');
 
         if (! function_exists('wp_crop_image')) {
@@ -623,6 +627,18 @@ class LwsOptimize
         } elseif ($this->state || $this->lwsop_check_option('filebased_cache')['state'] === "false") {
             wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
         }
+    }
+
+    public function lwsop_admin_bar_change_css() { 
+        if ( is_admin_bar_showing() ) : ?>
+           <style type="text/css">
+                ul#wp-admin-bar-lwsop-manage-cache-default div.ab-item {
+                    cursor: pointer;
+                }
+              /* add your style here */
+           </style>
+     
+        <?php endif;
     }
 
     /**
@@ -2243,7 +2259,7 @@ class LwsOptimize
                     // Remove revisions
                     break;
                 case 'deleted_posts':
-                    $wpdb->query("DELETE FROM {$wpdb->prefix}posts WHERE post_status = 'trash' && post_type = 'post' OR post_type = 'page';");
+                    $wpdb->query("DELETE FROM {$wpdb->prefix}posts WHERE post_status = 'trash' && (post_type = 'post' OR post_type = 'page');");
                     // Remove trashed posts/page
                     break;
                 case 'spam_comments':
@@ -2335,7 +2351,7 @@ class LwsOptimize
                 $options['minify_js']['state'] = "true";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                $options['memcached']['state'] = "true";
+                $options['memcached']['state'] = "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
                 $options['iframe_video_lazyload']['state'] = "true";
@@ -2365,11 +2381,11 @@ class LwsOptimize
                 $options['minify_js']['state'] = "true";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                $options['memcached']['state'] = "true";
+                $options['memcached']['state'] = "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
                 $options['iframe_video_lazyload']['state'] = "true";
-                $options['maintenance_db']['state'] = "true";
+                $options['maintenance_db']['state'] = "false";
                 $options['maintenance_db']['options'] = ["myisam", "spam_comments", "expired_transients"];
                 $options['preload_css']['state'] = "true";
                 $options['preload_font']['state'] = "true";
@@ -2391,11 +2407,11 @@ class LwsOptimize
                 $options['minify_js']['state'] = "true";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                $options['memcached']['state'] = "true";
+                $options['memcached']['state'] = "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
                 $options['iframe_video_lazyload']['state'] = "true";
-                $options['maintenance_db']['state'] = "true";
+                $options['maintenance_db']['state'] = "false";
                 $options['maintenance_db']['options'] = ["myisam", "spam_comments", "expired_transients", "drafts", "revisions", "deleted_posts", "deleted_comments"];
                 $options['preload_css']['state'] = "true";
                 $options['preload_font']['state'] = "true";
@@ -2687,7 +2703,7 @@ class LwsOptimize
     }
 
     /**
-     * Update the database sith the latest data about the current state of convertion
+     * Update the database with the latest data about the current state of convertion
      */
     public function lwsop_update_current_media_convertion_database() {
         $data = get_option('lws_optimize_all_media_convertion');

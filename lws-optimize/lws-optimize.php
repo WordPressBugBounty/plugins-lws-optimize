@@ -4,7 +4,7 @@
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.2.0.1
+ * Version:           3.2.0.3
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.6
@@ -121,6 +121,12 @@ function lws_optimize_on_upgrade_cleanup($upgrader_object, $options)
     if ($options['action'] == 'update' && $options['type'] == 'plugin') {
         foreach ($options['plugins'] as $each_plugin) {
             if ($each_plugin == $current_plugin_path_name) {
+                $optimize_options = get_option('lws_optimize_config_array', null);
+
+                // Force deactivate memcached for everyone
+                $optimize_options['memcached']['state'] = false;
+                update_option('lws_optimize_config_array', $optimize_options);
+
                 delete_option('lwsop_do_not_ask_again');
                 delete_transient('lwsop_remind_me');
                 delete_option('lws_optimize_offline');

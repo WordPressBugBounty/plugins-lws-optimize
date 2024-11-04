@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: LWS, Admin, Optimisation, Cache
 Requires at least: 6.0
 Tested up to: 6.6
-Stable tag: 3.2.0.1
+Stable tag: 3.2.0.3
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -144,6 +144,11 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 4. Activation / deactivation of caching systems
 
 == Changelog ==
+= 3.2.0.3 =
+* Readded Memcached
+* Fixed an issue with the database weekly maintenance where an SQL request could potentially remove all "pages" elements from the DB
+* Minor CSS ameliorations
+
 = 3.2 = 
 * Image convertion greatly improved and changed to BETA
 * Lazy-loading changed : now an active solution greatly improving performances

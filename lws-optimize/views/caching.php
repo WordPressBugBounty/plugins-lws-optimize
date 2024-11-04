@@ -26,6 +26,8 @@ $autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
 $next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
 $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
 
+$memcached_force_off = false;
+
 function lwsOpSizeConvert($size)
 {
     $unit = array(__('b', 'lws-optimize'), __('K', 'lws-optimize'), __('M', 'lws-optimize'), __('G', 'lws-optimize'), __('T', 'lws-optimize'), __('P', 'lws-optimize'));
@@ -183,14 +185,20 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
             <?php esc_html_e('Memcached', 'lws-optimize'); ?>
-            <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
             <a href="https://aide.lws.fr/a/1889" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
         </h2>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Memcached optimize the cache by stocking frequent requests in a database, improving the global performances.', 'lws-optimize'); ?>
         </div>
     </div>
-    <?php if ($memcached_locked) : ?>
+    <?php if ($memcached_force_off) : ?>
+        <div class="lwsop_contentblock_rightside custom">
+            <label class="lwsop_checkbox" for="lws_open_memcached_lws_checkbox">
+                <input type="checkbox" name="" id="lws_open_memcached_lws_checkbox" data-toggle="modal" data-target="#lws_optimize_lws_memcached">
+                <span class="slider round"></span>
+            </label>
+        </div>
+    <?php elseif ($memcached_locked) : ?>
         <div class="lwsop_contentblock_rightside custom">
             <label class="lwsop_checkbox" for="lws_open_prom_lws_memcached_checkbox">
                 <input type="checkbox" name="" id="lws_open_prom_lws_memcached_checkbox" data-toggle="modal" data-target="#lws_optimize_lws_prom">
@@ -402,6 +410,20 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Specify URLs to purge along with the cache', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_specify_urls"></form>
             <div class="lwsop_modal_buttons" id="lwsop_specify_modal_buttons">
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="lws_optimize_lws_memcached" tabindex='-1' aria-hidden='true'>
+    <div class="modal-dialog" style="width: fit-content; top: 10%; max-width: 800px;">
+        <div class="modal-content" style="padding: 30px;">
+            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Momentarily unavailable', 'lws-optimize'); ?></h2>
+            <div id="lws_optimize_lws_prom_text"><?php esc_html_e('Due to many users experiencing issues with Memcached, this functionnality has been temporarily deactivated', 'lws-optimize'); ?></div>
+
+
+            <div class="lwsop_modal_buttons" id="">
                 <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
@@ -1169,6 +1191,13 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             this.checked = false;
         });
     }
+
+    if (document.getElementById('lws_open_memcached_lws_checkbox') !== null) {
+        document.getElementById('lws_open_memcached_lws_checkbox').addEventListener('change', function() {
+            this.checked = false;
+        });
+    }
+
     if (document.getElementById('lws_open_prom_lws_memcached_checkbox') !== null) {
         document.getElementById('lws_open_prom_lws_memcached_checkbox').addEventListener('change', function() {
             this.checked = false;

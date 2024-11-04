@@ -1671,3 +1671,9 @@ msgstr "Vous utilisez actuellement le WP-Cron, ce qui signifie que le précharge
 
 msgid " smaller"
 msgstr " plus léger"
+
+msgid "Momentarily unavailable"
+msgstr "Momentanément indisponible"
+
+msgid "Due to many users experiencing issues with Memcached, this functionnality has been temporarily deactivated"
+msgstr "Suite à de nombreux utilisateurs rencontrant des problèmes avec Memcached, cette fonctionnalité a été temporairement désactivé"
