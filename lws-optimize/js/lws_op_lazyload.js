@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", function () {
         lazyElements.forEach(el => {
             observer.observe(el);
         });
+
     } else {
         // Fallback for browsers that don't support IntersectionObserver
         lazyElements.forEach(el => {
@@ -47,5 +48,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 el.removeAttribute("data-data-src");
             }
         });
+
     }
 });

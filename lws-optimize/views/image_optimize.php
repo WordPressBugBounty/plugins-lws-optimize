@@ -192,7 +192,7 @@ if (!$memory_limit) {
             </div>
             <div>
                 <span><?php echo esc_html__('Images left to be converted: ', 'lws-optimize'); ?></span>
-                <span id="lwsop_convertion_left"><?php echo esc_html($current_convertion['original'] - $current_convertion['converted']); ?></span>
+                <span id="lwsop_convertion_left"><?php echo esc_html(($current_convertion['original'] ?? 0) - ($current_convertion['converted'] ?? 0)); ?></span>
             </div>
         </div>
     </div>
@@ -1065,7 +1065,7 @@ if (!$memory_limit) {
                             let data = returnData['data'];
 
                             // CONVERT IMAGES
-                            
+
                             let status = document.getElementById('lwsop_convertion_status_element');
                             let type = document.getElementById('lwsop_convertion_type');
                             let next = document.getElementById('lwsop_convertion_next');
@@ -1077,12 +1077,20 @@ if (!$memory_limit) {
                             if (status != null) {
                                 if (data['status'] == true) {
                                     status.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
-                                    document.getElementById('lwsop_deactivate_convertion').style.display = "block";
-                                    document.getElementById('lwsop_convertion_deactivate_modal').style.display = "none";
+                                    if (document.getElementById('lwsop_deactivate_convertion') != null) {
+                                        document.getElementById('lwsop_deactivate_convertion').style.display = "block";
+                                    }
+                                    if (document.getElementById('lwsop_convertion_deactivate_modal') != null) {
+                                        document.getElementById('lwsop_convertion_deactivate_modal').style.display = "none";
+                                    }
                                 } else {
                                     status.innerHTML = "<?php esc_html_e("Inactive", "lws-optimize"); ?>";
-                                    document.getElementById('lwsop_deactivate_convertion').style.display = "none";
-                                    document.getElementById('lwsop_convertion_deactivate_modal').style.display = "block";
+                                    if (document.getElementById('lwsop_deactivate_convertion') != null) {
+                                        document.getElementById('lwsop_deactivate_convertion').style.display = "none";
+                                    }
+                                    if (document.getElementById('lwsop_convertion_deactivate_modal') != null) {
+                                        document.getElementById('lwsop_convertion_deactivate_modal').style.display = "block";
+                                    }
                                 }
                             }
 
@@ -1191,7 +1199,7 @@ if (!$memory_limit) {
                                     </div>`);
                                 }
                             }
-                            
+
                             break;
                         default:
                             break;

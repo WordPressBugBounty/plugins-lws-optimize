@@ -6,5 +6,25 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Abordage\\HtmlMin\\HtmlMin' => $vendorDir . '/abordage/html-min/src/HtmlMin.php',
     'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
+    'Lws\\Classes\\Admin\\LwsOptimizeManageAdmin' => $baseDir . '/Classes/Admin/LwsOptimizeManageAdmin.php',
+    'Lws\\Classes\\FileCache\\LwsOptimizeAutoPurge' => $baseDir . '/Classes/FileCache/LwsOptimizeAutoPurge.php',
+    'Lws\\Classes\\FileCache\\LwsOptimizeCloudFlare' => $baseDir . '/Classes/FileCache/LwsOptimizeCloudFlare.php',
+    'Lws\\Classes\\FileCache\\LwsOptimizeFileCache' => $baseDir . '/Classes/FileCache/LwsOptimizeFileCache.php',
+    'Lws\\Classes\\Front\\LwsOptimizeCSSManager' => $baseDir . '/Classes/Front/LwsOptimizeCSSManager.php',
+    'Lws\\Classes\\Front\\LwsOptimizeJSManager' => $baseDir . '/Classes/Front/LwsOptimizeJSManager.php',
+    'Lws\\Classes\\Images\\LwsOptimizeImageOptimization' => $baseDir . '/Classes/Images/LwsOptimizeImageOptimization.php',
+    'Lws\\Classes\\LazyLoad\\LwsOptimizeLazyLoading' => $baseDir . '/Classes/LazyLoad/LwsOptimizeLazyLoading.php',
+    'Lws\\Classes\\LwsOptimize' => $baseDir . '/Classes/LwsOptimize.php',
+    'MatthiasMullie\\Minify\\CSS' => $vendorDir . '/matthiasmullie/minify/src/CSS.php',
+    'MatthiasMullie\\Minify\\Exception' => $vendorDir . '/matthiasmullie/minify/src/Exception.php',
+    'MatthiasMullie\\Minify\\Exceptions\\BasicException' => $vendorDir . '/matthiasmullie/minify/src/Exceptions/BasicException.php',
+    'MatthiasMullie\\Minify\\Exceptions\\FileImportException' => $vendorDir . '/matthiasmullie/minify/src/Exceptions/FileImportException.php',
+    'MatthiasMullie\\Minify\\Exceptions\\IOException' => $vendorDir . '/matthiasmullie/minify/src/Exceptions/IOException.php',
+    'MatthiasMullie\\Minify\\JS' => $vendorDir . '/matthiasmullie/minify/src/JS.php',
+    'MatthiasMullie\\Minify\\Minify' => $vendorDir . '/matthiasmullie/minify/src/Minify.php',
+    'MatthiasMullie\\PathConverter\\Converter' => $vendorDir . '/matthiasmullie/path-converter/src/Converter.php',
+    'MatthiasMullie\\PathConverter\\ConverterInterface' => $vendorDir . '/matthiasmullie/path-converter/src/ConverterInterface.php',
+    'MatthiasMullie\\PathConverter\\NoConverter' => $vendorDir . '/matthiasmullie/path-converter/src/NoConverter.php',
 );

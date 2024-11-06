@@ -1,5 +1,16 @@
 <?php
-global $wpdb;
+
+$tabs_list = array(
+    array('frontend', __('Frontend', 'lws-optimize')),
+    array('medias', __('Medias', 'lws-optimize')),
+    array('image_optimize', __('Images', 'lws-optimize')),
+    array('caching', __('Caching', 'lws-optimize')),
+    array('cdn', __('CDN', 'lws-optimize')),
+    array('database', __('Database', 'lws-optimize')),
+    array('pagespeed', __('Pagespeed test', 'lws-optimize')),
+    array('plugins', __('Our others plugins', 'lws-optimize')),
+);
+
 // Check whether Memcached id available on this hosting or not.
 $memcached_locked = false;
 
@@ -239,11 +250,12 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
     function delay(callback, ms) {
         var timer = 0;
         return function() {
-        var context = this, args = arguments;
-        clearTimeout(timer);
-        timer = setTimeout(function () {
-            callback.apply(context, args);
-        }, ms || 0);
+            var context = this,
+                args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function() {
+                callback.apply(context, args);
+            }, ms || 0);
         };
     }
 
@@ -316,11 +328,11 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
                 animation = `<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" /><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" /></svg>`;
                 break;
         }
-        
+
         popup.insertAdjacentHTML('beforeend', `
             <div class="lwsop_information_popup_animation">` + animation + `</div>
             <div class="lwsop_information_popup_content">` + content + `</div>
-            <div id="lwsop_close_popup_`+ number + `" class="lwsop_information_popup_close"><img src="<?php echo esc_url(plugins_url('images/fermer.svg', __DIR__)) ?>" alt="close button" width="10px" height="10px">
+            <div id="lwsop_close_popup_` + number + `" class="lwsop_information_popup_close"><img src="<?php echo esc_url(plugins_url('images/fermer.svg', __DIR__)) ?>" alt="close button" width="10px" height="10px">
         `)
 
         jQuery(popup).animate({
@@ -331,7 +343,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
         let popup_button = document.getElementById('lwsop_close_popup_' + number);
         if (popup_button != null) {
-            popup_button.addEventListener('click', function() {
+            popup_button.addEventListener('click', function() {
                 this.parentNode.remove();
             })
         }

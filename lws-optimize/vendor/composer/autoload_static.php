@@ -12,6 +12,10 @@ class ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917
             'MatthiasMullie\\PathConverter\\' => 29,
             'MatthiasMullie\\Minify\\' => 22,
         ),
+        'L' => 
+        array (
+            'Lws\\' => 4,
+        ),
         'A' => 
         array (
             'Abordage\\HtmlMin\\' => 17,
@@ -27,6 +31,10 @@ class ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917
         array (
             0 => __DIR__ . '/..' . '/matthiasmullie/minify/src',
         ),
+        'Lws\\' => 
+        array (
+            0 => __DIR__ . '/../..' . '/',
+        ),
         'Abordage\\HtmlMin\\' => 
         array (
             0 => __DIR__ . '/..' . '/abordage/html-min/src',
@@ -34,7 +42,27 @@ class ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917
     );
 
     public static $classMap = array (
+        'Abordage\\HtmlMin\\HtmlMin' => __DIR__ . '/..' . '/abordage/html-min/src/HtmlMin.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+        'Lws\\Classes\\Admin\\LwsOptimizeManageAdmin' => __DIR__ . '/../..' . '/Classes/Admin/LwsOptimizeManageAdmin.php',
+        'Lws\\Classes\\FileCache\\LwsOptimizeAutoPurge' => __DIR__ . '/../..' . '/Classes/FileCache/LwsOptimizeAutoPurge.php',
+        'Lws\\Classes\\FileCache\\LwsOptimizeCloudFlare' => __DIR__ . '/../..' . '/Classes/FileCache/LwsOptimizeCloudFlare.php',
+        'Lws\\Classes\\FileCache\\LwsOptimizeFileCache' => __DIR__ . '/../..' . '/Classes/FileCache/LwsOptimizeFileCache.php',
+        'Lws\\Classes\\Front\\LwsOptimizeCSSManager' => __DIR__ . '/../..' . '/Classes/Front/LwsOptimizeCSSManager.php',
+        'Lws\\Classes\\Front\\LwsOptimizeJSManager' => __DIR__ . '/../..' . '/Classes/Front/LwsOptimizeJSManager.php',
+        'Lws\\Classes\\Images\\LwsOptimizeImageOptimization' => __DIR__ . '/../..' . '/Classes/Images/LwsOptimizeImageOptimization.php',
+        'Lws\\Classes\\LazyLoad\\LwsOptimizeLazyLoading' => __DIR__ . '/../..' . '/Classes/LazyLoad/LwsOptimizeLazyLoading.php',
+        'Lws\\Classes\\LwsOptimize' => __DIR__ . '/../..' . '/Classes/LwsOptimize.php',
+        'MatthiasMullie\\Minify\\CSS' => __DIR__ . '/..' . '/matthiasmullie/minify/src/CSS.php',
+        'MatthiasMullie\\Minify\\Exception' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exception.php',
+        'MatthiasMullie\\Minify\\Exceptions\\BasicException' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exceptions/BasicException.php',
+        'MatthiasMullie\\Minify\\Exceptions\\FileImportException' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exceptions/FileImportException.php',
+        'MatthiasMullie\\Minify\\Exceptions\\IOException' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exceptions/IOException.php',
+        'MatthiasMullie\\Minify\\JS' => __DIR__ . '/..' . '/matthiasmullie/minify/src/JS.php',
+        'MatthiasMullie\\Minify\\Minify' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Minify.php',
+        'MatthiasMullie\\PathConverter\\Converter' => __DIR__ . '/..' . '/matthiasmullie/path-converter/src/Converter.php',
+        'MatthiasMullie\\PathConverter\\ConverterInterface' => __DIR__ . '/..' . '/matthiasmullie/path-converter/src/ConverterInterface.php',
+        'MatthiasMullie\\PathConverter\\NoConverter' => __DIR__ . '/..' . '/matthiasmullie/path-converter/src/NoConverter.php',
     );
 
     public static function getInitializer(ClassLoader $loader)

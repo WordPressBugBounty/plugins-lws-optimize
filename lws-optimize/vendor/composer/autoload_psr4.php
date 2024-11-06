@@ -8,5 +8,6 @@ $baseDir = dirname($vendorDir);
 return array(
     'MatthiasMullie\\PathConverter\\' => array($vendorDir . '/matthiasmullie/path-converter/src'),
     'MatthiasMullie\\Minify\\' => array($vendorDir . '/matthiasmullie/minify/src'),
+    'Lws\\' => array($baseDir . '/'),
     'Abordage\\HtmlMin\\' => array($vendorDir . '/abordage/html-min/src'),
 );

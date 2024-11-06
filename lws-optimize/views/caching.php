@@ -1277,7 +1277,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <script>
     let preload_check_button = document.getElementById('lwsop_update_preloading_value');
     if (preload_check_button != null) {
-        preload_check_button.addEventListener('click', function() {
+        preload_check_button.addEventListener('click', lwsop_refresh_preloading_cache);
+
+        function lwsop_refresh_preloading_cache() {
             let checkbox_preload = document.getElementById('lws_op_fb_cache_manage_preload');
             if (checkbox_preload.checked != true) {
                 return 0;
@@ -1355,7 +1357,11 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     console.log(error);
                 }
             });
-        });
+        }
+
+        setInterval(function(){
+                preload_check_button.dispatchEvent(new Event('click'));
+            }, 60000);
     }
 </script>
 

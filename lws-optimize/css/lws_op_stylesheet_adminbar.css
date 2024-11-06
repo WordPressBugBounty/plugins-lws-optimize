@@ -1,14 +1,14 @@
-li#wp-admin-bar-lwsop-clear-current-cache > div,
-li#wp-admin-bar-lwsop-clear-cache > div,
-li#wp-admin-bar-lwsop-clear-htmlcache > div,
-li#wp-admin-bar-lwsop-clear-subcache > div {
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache > div,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache_html > div,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache_jscss > div,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache_page > div {
     cursor: pointer;
 }
 
-li#wp-admin-bar-lwsop-clear-current-cache:hover,
-li#wp-admin-bar-lwsop-clear-cache:hover,
-li#wp-admin-bar-lwsop-clear-htmlcache:hover,
-li#wp-admin-bar-lwsop-clear-subcache:hover {
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache:hover,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache_html:hover,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache_jscss:hover,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearcache_page:hover {
     cursor: pointer;
     background-color: #2271B1;
 }
