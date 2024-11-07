@@ -43,7 +43,7 @@ class LwsOptimizeAutoPurge
 
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
         }
     }
 
@@ -63,7 +63,7 @@ class LwsOptimizeAutoPurge
 
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
             $this->purge_specified_url();
     }
 
@@ -91,7 +91,7 @@ class LwsOptimizeAutoPurge
 
         $url = str_replace("https://", "", get_site_url());
         $url = str_replace("http://", "", $url);
-        $GLOBALS['lws_optimize']->lws_optimize_clear_cloudflare_cache("purge", array($url));
+        $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
         $this->purge_specified_url();
     }
 
@@ -123,7 +123,7 @@ class LwsOptimizeAutoPurge
 
         $url = str_replace("https://", "", get_site_url());
         $url = str_replace("http://", "", $url);
-        $GLOBALS['lws_optimize']->lws_optimize_clear_cloudflare_cache("purge", array($url));
+        $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
         $this->purge_specified_url();
     }
 
@@ -153,7 +153,7 @@ class LwsOptimizeAutoPurge
 
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
             $this->purge_specified_url();
         }
     }
