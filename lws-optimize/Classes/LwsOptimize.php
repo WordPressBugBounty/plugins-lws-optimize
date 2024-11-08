@@ -519,7 +519,9 @@ class LwsOptimize
     }
 
     public function lwsop_remove_opcache() {
-        opcache_reset();
+        if (function_exists("opcache_reset")) {
+            opcache_reset();
+        }
         return (json_encode(array('code' => "SUCCESS", 'data' => "Done"), JSON_PRETTY_PRINT));
     }
 
