@@ -1237,6 +1237,9 @@ msgstr "LWSCache, disponible pour tout les clients, accélère vos sites en stoc
 msgid "Clear cache"
 msgstr "Vider le cache"
 
+msgid "Clear OPcache"
+msgstr "Vider OPcache"
+
 msgid "pages per minutes cached"
 msgstr "pages par minute mises en cache"
 

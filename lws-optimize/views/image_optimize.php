@@ -1025,16 +1025,22 @@ if (!$memory_limit) {
         }
 
         function lws_op_update_convertion_info() {
-            let old_text = this.innerHTML;
-            this.innerHTML = `
+            let button = this;
+
+            let value = button.getAttribute('value');
+            if (value == "ongoing") {
+                return 0;
+            }
+
+            button.disabled = true;
+            button.setAttribute('value', "ongoing");
+
+            let old_text = button.innerHTML;
+            button.innerHTML = `
                 <span name="loading" style="padding-left:5px">
                     <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="chargement" width="18px" height="18px">
                 </span>
             `;
-
-            this.disabled = true;
-            let button = this;
-
 
             let ajaxRequest = jQuery.ajax({
                 url: ajaxurl,
@@ -1048,6 +1054,7 @@ if (!$memory_limit) {
                 success: function(data) {
                     button.disabled = false;
                     button.innerHTML = old_text;
+                    button.setAttribute('value', "");
 
                     if (data === null || typeof data != 'string') {
                         return 0;
@@ -1208,6 +1215,7 @@ if (!$memory_limit) {
                 error: function(error) {
                     button.disabled = false;
                     button.innerHTML = old_text;
+                    button.setAttribute('value', "");
                     console.log(error);
                     return -1;
                 }

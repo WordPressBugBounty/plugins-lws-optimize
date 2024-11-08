@@ -109,6 +109,13 @@ class LwsOptimizeManageAdmin
                 'title' => __('Clear all cache', 'lws-optimize')
             ]
         );
+        $Wp_Admin_Bar->add_menu(
+            [
+                'id' => "lws_optimize_clearopcache",
+                'parent' => "lws_optimize_managecache",
+                'title' => __('Clear OPcache', 'lws-optimize')
+            ]
+        );
         if (!is_admin()) {
             $Wp_Admin_Bar->add_menu(
                 [
@@ -131,8 +138,11 @@ class LwsOptimizeManageAdmin
             let clearcache_jscss = document.getElementById('wp-admin-bar-lws_optimize_clearcache_jscss');
             let clearcache_page = document.getElementById('wp-admin-bar-lws_optimize_clearcache_page');
 
+            let clearcache_opcache = document.getElementById('wp-admin-bar-lws_optimize_clearopcache');
+
             if (clearcache != null) {
                 clearcache.addEventListener('click', function() {
+                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: absolute; width: 100%; height: 100%; background: #000000a3; z-index: 10000';></div>");
                     jQuery.ajax({
                         url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",
@@ -142,6 +152,29 @@ class LwsOptimizeManageAdmin
                         data: {
                             action: "lws_clear_fb_cache",
                             _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('clear_fb_caching')); ?>'
+                        },
+                        success: function(data) {
+                            window.location.reload();
+                        },
+                        error: function(error) {
+                            window.location.reload();
+                        }
+                    });
+                })
+            }
+
+            if (clearcache_opcache != null) {
+                clearcache_opcache.addEventListener('click', function() {
+                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: absolute; width: 100%; height: 100%; background: #000000a3; z-index: 10000';></div>");
+                    jQuery.ajax({
+                        url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
+                        type: "POST",
+                        dataType: 'json',
+                        timeout: 60000,
+                        context: document.body,
+                        data: {
+                            action: "lws_clear_opcache",
+                            _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('clear_opcache_caching')); ?>'
                         },
                         success: function(data) {
                             window.location.reload();
@@ -199,6 +232,7 @@ class LwsOptimizeManageAdmin
 
             if (clearcache_page != null) {
                 clearcache_page.addEventListener('click', function() {
+                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: absolute; width: 100%; height: 100%; background: #000000a3; z-index: 10000';></div>");
                     jQuery.ajax({
                         url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",
@@ -337,6 +371,9 @@ class LwsOptimizeManageAdmin
         } else {
             $result = update_option('lws_optimize_offline', "ON");
         }
+
+        // Remove Dynamic Cache at the same time
+        $GLOBALS['lws_optimize']->lwsop_dump_all_dynamic_caches();
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $result)), JSON_PRETTY_PRINT);
     }

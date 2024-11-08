@@ -20,9 +20,9 @@ class LwsOptimize
 
     public function __construct()
     {
-
         // Actions to execute when the plugin is activated / deleted / upgraded
         register_activation_hook(__FILE__, [__CLASS__, 'lws_optimize_activation']);
+        register_deactivation_hook(__FILE__, [__CLASS__, 'lws_optimize_deactivation']);
         register_uninstall_hook(__FILE__, [__CLASS__, 'lws_optimize_deletion']);
         add_action('upgrader_process_complete', [$this, 'lws_optimize_upgrading'], 10, 2);
 
@@ -314,6 +314,7 @@ class LwsOptimize
             }
 
             add_action("wp_ajax_lws_clear_fb_cache", [$this, "lws_optimize_clear_cache"]);
+            add_action("wp_ajax_lws_clear_opcache", [$this, "lws_clear_opcache"]);
             add_action("wp_ajax_lws_clear_html_fb_cache", [$this, "lws_optimize_clear_htmlcache"]);
             add_action("wp_ajax_lws_clear_style_fb_cache", [$this, "lws_optimize_clear_stylecache"]);
             add_action("wp_ajax_lws_clear_currentpage_fb_cache", [$this, "lws_optimize_clear_currentcache"]);
@@ -332,8 +333,51 @@ class LwsOptimize
     // Actions to do when the plugin is activated
     public static function lws_optimize_activation()
     {
+        // Remove the cache folder
+        apply_filters("lws_optimize_clear_filebased_cache", false);
         // Unused
         set_transient('lwsop_remind_me', 691200);
+
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {
+            if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+            }
+            wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+        }
+
+        $media_convertion = get_option('lws_optimize_all_media_convertion', ['ongoing' => false]);
+        if (isset($media_convertion['ongoing']) && $media_convertion['ongoing']) {
+            if (wp_next_scheduled("lws_optimize_convert_media_cron")) {
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+            }
+            wp_schedule_event(time(), "lws_three_minutes", "lws_optimize_convert_media_cron");
+        }
+
+        if (isset($optimize_options['maintenance_db']) && $optimize_options['maintenance_db']['state'] == "true") {
+            if (wp_next_scheduled("lws_optimize_maintenance_db_weekly")) {
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+            }
+            wp_schedule_event(time() + 604800, 'weekly', "lws_optimize_maintenance_db_weekly");
+        }
+    }
+
+    // Actions to do when the plugin is deactivated
+    public static function lws_optimize_deactivation()
+    {
+        // Remove the cache folder
+        apply_filters("lws_optimize_clear_filebased_cache", false);
+        // Deactivate the cron of the preloading and convertion
+        wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+        wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+        // Deactivate cron for the maintenance
+        wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+        // Deactivate cron that revert the images
+        wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
+
+
+        // Unused
+        delete_transient('lwsop_remind_me');
     }
 
     // Actions to do when the plugin is to be deleted
@@ -425,14 +469,19 @@ class LwsOptimize
 
     public function lwsop_dump_dynamic_cache()
     {
-        global $lws_cache_admin;
         check_ajax_referer('lwsop_empty_d_cache_nonce', '_ajax_nonce');
+        wp_die($this->lwsop_dump_all_dynamic_caches());
+    }
+
+    public function lwsop_dump_all_dynamic_caches()
+    {
+        global $lws_cache_admin;
 
         if (!class_exists("LWSCache_Admin")) {
-            require_once plugin_dir_path((__FILE__)) . 'Classes/cache/class-lws-cache-admin.php';
+            require_once LWS_OP_DIR . 'Classes/cache/class-lws-cache-admin.php';
         }
         if (!class_exists("Purger")) {
-            require_once plugin_dir_path((__FILE__)) . 'Classes/cache/class-purger.php';
+            require_once LWS_OP_DIR . 'Classes/cache/class-purger.php';
         }
         $lws_cache_admin = new \LWSCache_Admin("LWSCache", "1.0");
 
@@ -440,33 +489,38 @@ class LwsOptimize
         if (!empty($lws_cache_admin->options['cache_method']) && 'enable_redis' === $lws_cache_admin->options['cache_method']) {
             if (class_exists('Redis')) { // Use PHP5-Redis extension if installed.
                 if (class_exists('PhpRedis_Purger')) {
-                    require_once plugin_dir_path((__FILE__)) . 'Classes/cache/class-phpredis-purger.php';
+                    require_once LWS_OP_DIR . 'Classes/cache/class-phpredis-purger.php';
                 }
                 $nginx_purger = new \PhpRedis_Purger();
             } else {
                 if (class_exists('Predis_Purger')) {
-                    require_once plugin_dir_path((__FILE__)) . 'Classes/cache/class-predis-purger.php';
+                    require_once LWS_OP_DIR . 'Classes/cache/class-predis-purger.php';
                 }
                 $nginx_purger = new \Predis_Purger();
             }
         } elseif (
-            isset($_SERVER['HTTP_X_CACHE_ENGINE_ENABLED']) && isset($_SERVER['HTTP_X_CACHE_ENGINE'])
-            && $_SERVER['HTTP_X_CACHE_ENGINE_ENABLED'] == '1' && $_SERVER['HTTP_X_CACHE_ENGINE'] == 'varnish'
+            isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])
+            && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish'
         ) {
             if (!class_exists("Varnish_Purger")) {
-                require_once plugin_dir_path((__FILE__)) . 'Classes/cache/class-varnish-purger.php';
+                require_once LWS_OP_DIR . 'Classes/cache/class-varnish-purger.php';
             }
             $nginx_purger = new \Varnish_Purger();
         } else {
             if (!class_exists("FastCGI_Purger")) {
-                require_once plugin_dir_path((__FILE__)) . 'Classes/cache/class-fastcgi-purger.php';
+                require_once LWS_OP_DIR . 'Classes/cache/class-fastcgi-purger.php';
             }
             $nginx_purger = new \FastCGI_Purger();
         }
 
         $return = $nginx_purger->purge_all();
 
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $return), JSON_PRETTY_PRINT));
+        return (json_encode(array('code' => "SUCCESS", 'data' => $return), JSON_PRETTY_PRINT));
+    }
+
+    public function lwsop_remove_opcache() {
+        opcache_reset();
+        return (json_encode(array('code' => "SUCCESS", 'data' => "Done"), JSON_PRETTY_PRINT));
     }
 
     public function lws_optimize_activate_cleaner()
@@ -767,6 +821,8 @@ class LwsOptimize
         $return = update_option('lws_optimize_config_array', $this->optimize_options);
         // If correctly added and updated
         if ($return) {
+            // Remove the dynamic cache when the cache change state
+            $this->lwsop_dump_all_dynamic_caches();
             wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element)), JSON_PRETTY_PRINT);
         } else {
             wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
@@ -871,18 +927,14 @@ class LwsOptimize
             } elseif (!$fastest_cache_status && !$lwscache_status) {
                 wp_die(json_encode(array('code' => "CPANEL_CACHE_OFF", "data" => "LWSCache is not activated on cPanel.")), JSON_PRETTY_PRINT);
             }
-        }
-
-        if ($element == "maintenance_db") {
+        } elseif ($element == "maintenance_db") {
             if (wp_next_scheduled('lws_optimize_maintenance_db_weekly')) {
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
             }
             if ($state == "true") {
                 wp_schedule_event(time() + 604800, 'weekly', 'lws_optimize_maintenance_db_weekly');
             }
-        }
-
-        if ($element == "memcached") {
+        } elseif ($element == "memcached") {
             if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
                 $this->optimize_options[$element]['state'] = "false";
                 update_option('lws_optimize_config_array', $this->optimize_options);
@@ -908,9 +960,7 @@ class LwsOptimize
                 }
                 wp_die(json_encode(array('code' => "MEMCACHE_NOT_FOUND", 'data' => "FAILURE", 'state' => "unknown")));
             }
-        }
-
-        if ($element == "gzip_compression") {
+        } elseif ($element == "gzip_compression") {
             if ($state == "true") {
                 exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
                 $htaccess = ABSPATH . "/.htaccess";
@@ -966,6 +1016,10 @@ class LwsOptimize
                     error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
                 }
             }
+        }
+        // If the action being changed is not one of the unique above, we remove all caches
+        else {
+            apply_filters("lws_optimize_clear_filebased_cache", false);
         }
 
         $temp_array = $this->optimize_options;
@@ -1174,6 +1228,12 @@ class LwsOptimize
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
     }
 
+    public function lws_clear_opcache() {
+        check_ajax_referer('clear_opcache_caching', '_ajax_nonce');
+        $this->lwsop_remove_opcache();
+        wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
+    }
+
     public function lws_optimize_clear_stylecache()
     {
         check_ajax_referer('clear_style_fb_caching', '_ajax_nonce');
@@ -1265,8 +1325,6 @@ class LwsOptimize
      */
     public function lws_optimize_clean_filebased_cache($directory = false)
     {
-        do_action('rt_lws_cache_purge_all');
-
         if ($directory) {
             $directory = esc_url($directory);
             if (is_dir($directory)) {
@@ -1294,6 +1352,8 @@ class LwsOptimize
         $url = str_replace("https://", "", get_site_url());
         $url = str_replace("http://", "", $url);
         $this->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+        $this->lwsop_dump_all_dynamic_caches();
+        $this->lwsop_remove_opcache();
 
         $this->lwsop_recalculate_stats("all");
     }
@@ -1979,7 +2039,7 @@ class LwsOptimize
                 $options['preload_font']['state'] = "true";
                 $options['deactivate_emoji']['state'] = "true";
                 $options['eliminate_requests']['state'] = "true";
-                $options['cache_mobile_user']['state'] = "true";
+                $options['cache_mobile_user']['state'] = "false";
                 $options['dynamic_cache']['state'] = "true";
 
                 update_option('lws_optimize_config_array', $options);
@@ -2027,6 +2087,7 @@ class LwsOptimize
             'exceptions' => $exceptions,
             'amount_per_run' => $amount_per_run,
             'convertible_mimetype' => $authorized_types,
+            'ongoing' => true
         ];
 
         // Add the data to the database for future access by the cron
@@ -2081,6 +2142,8 @@ class LwsOptimize
 
             // Nothing got converted, stop the cron
             if ($done == 0) {
+                // Remove the cache folder
+                apply_filters("lws_optimize_clear_filebased_cache", false);
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
             }
 
@@ -2107,6 +2170,11 @@ class LwsOptimize
     public function lws_optimize_stop_convertion()
     {
         check_ajax_referer('lwsop_stop_convertion_nonce', '_ajax_nonce');
+        $data = get_option('lws_optimize_all_media_convertion');
+
+        $data['ongoing'] = false;
+        update_option('lws_optimize_all_media_convertion', $data);
+
         wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
@@ -2178,6 +2246,8 @@ class LwsOptimize
             // Nothing got converted, stop the cron
             if (empty($data)) {
                 wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
+                // Remove the cache folder
+                apply_filters("lws_optimize_clear_filebased_cache", false);
             }
         }
     }

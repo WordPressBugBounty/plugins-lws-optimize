@@ -1,5 +1,4 @@
 <?php
-
 $tabs_list = array(
     array('frontend', __('Frontend', 'lws-optimize')),
     array('medias', __('Medias', 'lws-optimize')),

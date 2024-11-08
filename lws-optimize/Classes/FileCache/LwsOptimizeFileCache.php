@@ -78,6 +78,7 @@ class LwsOptimizeFileCache
 
     public function lwsop_launch_cache()
     {
+
         // Don't launch cache if checks have revealed that this URL should not be cached
         if (!$this->need_cache || !$this->cache_directory) {
             return false;
@@ -303,6 +304,8 @@ class LwsOptimizeFileCache
             } else {
                 $is_mobile = false;
             }
+
+            error_log($is_mobile);
 
             $this->lwsop_add_to_cache($modified, $cached_elements, $is_mobile);
         } elseif ($this->content_type === "xml") {

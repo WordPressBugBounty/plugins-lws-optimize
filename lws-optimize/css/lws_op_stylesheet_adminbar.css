@@ -1,4 +1,5 @@
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache > div,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearopcache > div,
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache_html > div,
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache_jscss > div,
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache_page > div {
@@ -6,6 +7,7 @@
 }
 
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache:hover,
+#wpadminbar li#wp-admin-bar-lws_optimize_clearopcache:hover,
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache_html:hover,
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache_jscss:hover,
 #wpadminbar li#wp-admin-bar-lws_optimize_clearcache_page:hover {

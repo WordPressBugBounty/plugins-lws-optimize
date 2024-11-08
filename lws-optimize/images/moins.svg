@@ -13,7 +13,6 @@
     </style>
   </defs>
   <path class="st1" d="M52,34H8c-2.2,0-4-1.8-4-4s1.8-4,4-4h44c2.2,0,4,1.8,4,4s-1.8,4-4,4Z"/>
-  <path class="st1" d="M30,56c-2.2,0-4-1.8-4-4V8c0-2.2,1.8-4,4-4s4,1.8,4,4v44c0,2.2-1.8,4-4,4Z"/>
   <rect class="st0" width="2.3" height="2.3"/>
   <rect class="st0" x="57.7" y="57.7" width="2.3" height="2.3"/>
 </svg>
