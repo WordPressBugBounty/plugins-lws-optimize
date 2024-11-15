@@ -16,6 +16,11 @@ class LwsOptimizeFileCache
     public function __construct($parent)
     {
         $this->base = $parent;
+        if (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])
+        && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
+            $this->base->lwsop_dump_all_dynamic_caches();
+        }
+        $this->base->lwsop_remove_opcache();
         include_once ABSPATH . "wp-includes/pluggable.php";
         $this->need_cache = $this->lwsop_check_need_cache();
         $this->lwsop_set_cachedir();
@@ -304,8 +309,6 @@ class LwsOptimizeFileCache
             } else {
                 $is_mobile = false;
             }
-
-            error_log($is_mobile);
 
             $this->lwsop_add_to_cache($modified, $cached_elements, $is_mobile);
         } elseif ($this->content_type === "xml") {
@@ -799,3 +802,4 @@ class LwsOptimizeFileCache
         }
     }
 }
+

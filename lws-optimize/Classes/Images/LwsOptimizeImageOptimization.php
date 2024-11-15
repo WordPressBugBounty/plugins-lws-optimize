@@ -38,10 +38,12 @@ class LwsOptimizeImageOptimization
         $timer = microtime(true);
         // Get the chosen mime-type from the database. If none found, default to webp convertion
         $config_array = get_option('lws_optimize_config_array', ['auto_update' => [
-            'state' => "true",
-            'convert_type' => "webp",
-            'quality' => 75,
-            'convertible_mimetype' => []
+            'state' => false,
+            'auto_convertion_format' => "auto",
+            'auto_convertion_quality' => "balanced",
+            'auto_image_format' => [],
+            'auto_image_maxsize' => 2560,
+            'auto_convertion_exceptions' => [],
         ]]);
 
         // Return the normal data if the auto_update is unset or false
@@ -50,9 +52,10 @@ class LwsOptimizeImageOptimization
         }
 
         // Get the accepted Mime-types ; Only images from this array can be converted
-        $convertion_type = $config_array['auto_update']['convertible_mimetype'] ?? [];
+        // if nothing is present, do not convert
+        $convertion_type = $config_array['auto_update']['auto_image_format'] ?? [];
         if (empty($convertion_type) || !is_array($convertion_type)) {
-            $convertion_type = ['jpg', 'jpeg', 'png', 'avif', 'webp'];
+            return $file;
         }
 
         if (in_array("jpg", $convertion_type) && !in_array("jpeg", $convertion_type)) {
@@ -63,8 +66,23 @@ class LwsOptimizeImageOptimization
         }
 
 
-        $quality = $config_array['auto_update']['quality'] ?? 75;
-        $convert_type = $config_array['auto_update']['convert_type'] ?? "webp";
+        $quality = $config_array['auto_update']['auto_convertion_quality'] ?? "balanced";
+        switch ($quality) {
+            case 'balanced':
+                $quality = 64;
+                break;
+            case 'low':
+                $quality = 30;
+                break;
+            case 'high':
+                $quality = 90;
+                break;
+            default:
+                $quality = 64;
+                break;
+        }
+
+        $convert_type = $config_array['auto_update']['auto_convertion_format'] ?? "auto";
 
 
         // Only convert if the file type is image ; otherwise just return the untouched $file array
@@ -83,6 +101,12 @@ class LwsOptimizeImageOptimization
                 update_option('lws_optimize_autooptimize_errors', $failed_convertion);
 
                 error_log(json_encode(['code' => 'CONVERT_FAIL', 'message' => 'File optimisation has failed.', 'data' => $file, 'time' => microtime(true) - $timer]));
+                return $file;
+            }
+
+
+            // The image has been excluded and should not be converted
+            if (in_array($file['name'], $config_array['auto_update']['auto_convertion_exceptions'])) {
                 return $file;
             }
 
@@ -141,7 +165,7 @@ class LwsOptimizeImageOptimization
      *
      * @return bool Either true on success or false on error
      */
-    public function lws_optimize_convert_image(string $image, string $output, int $quality = 75, string $origin = "jpeg", string $end = "webp")
+    public function lws_optimize_convert_image(string $image, string $output, int $quality = 64, string $origin = "jpeg", string $end = "webp", $max_size = 2560)
     {
         try {
             $timer = microtime(true);
@@ -193,6 +217,20 @@ class LwsOptimizeImageOptimization
                 return false;
             }
 
+
+            // Get current dimensions
+            $width = $img->getImageWidth();
+            $height = $img->getImageHeight();
+
+            // Check if the image width exceeds the maximum width
+            if ($width > $max_size) {
+                // Calculate the new dimensions while maintaining the aspect ratio
+                $newHeight = ($max_size / $width) * $height;
+
+                // Resize the image
+                $img->resizeImage($max_size, $newHeight, \Imagick::FILTER_LANCZOS, 1);
+            }
+
             // Change the compression quality of the new image. Between 0-100, 100 is better
             // By default set to 75/100
             $img->setImageCompressionQuality($quality);
@@ -215,6 +253,10 @@ class LwsOptimizeImageOptimization
                 error_log(json_encode(['code' => 'UNKNOWN_FUNCTION', 'message' => 'Imagick::writeImage or Imagick::writeImageFile not found. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
                 return false;
             }
+
+            // Clean up resources
+            $img->clear();
+            $img->destroy();
 
             return true;
         } catch (\Exception $e) {
@@ -239,8 +281,7 @@ class LwsOptimizeImageOptimization
         }
     }
 
-    // TODO : Ne semble plus convertir, je pense qu'il refait la même chose en boucle
-    public function convert_all_medias($quality = 75, $amount_per_run = 10)
+    public function convert_all_medias($quality = "balanced", $amount_per_run = 10, $max_size = 2560)
     {
         global $wpdb;
 
@@ -252,15 +293,25 @@ class LwsOptimizeImageOptimization
 
         // Get the maximum amount of successful convertion per run
         $amount_per_run = intval($amount_per_run);
-        if ($amount_per_run < 0 || $amount_per_run > 15) {
+        if ($amount_per_run < 0 || $amount_per_run > 20) {
             $amount_per_run = 10;
         }
 
         // Assure the quality will always be an int, no matter what
         // Also always between 1 and 100
-        $quality = intval($quality);
-        if ($quality < 1 || $quality > 100) {
-            $quality = 75;
+        switch ($quality) {
+            case 'balanced':
+                $quality = 64;
+                break;
+            case 'low':
+                $quality = 30;
+                break;
+            case 'high':
+                $quality = 90;
+                break;
+            default:
+                $quality = 64;
+                break;
         }
 
         foreach ($images_to_convert as $id => $image) {
@@ -268,10 +319,10 @@ class LwsOptimizeImageOptimization
                 break;
             }
 
-            // Do not process files that got an error_on_convertion before
-            if (isset($images_to_convert[$id]['error_on_convertion'])) {
-                continue;
-            }
+            // // Do not process files that got an error_on_convertion before
+            // if (isset($images_to_convert[$id]['error_on_convertion'])) {
+            //     continue;
+            // }
 
             if ($image['converted']) {
                 // If the original file does not exist, we remove the file from the convertion
@@ -292,6 +343,25 @@ class LwsOptimizeImageOptimization
             // We remove the file already there
             if (file_exists($image['path'])) {
                 unlink($image['path']);
+            }
+
+            // User want us to choose which, between original, AVIF and WebP, is the best for the given image
+            if (isset($image['extension']) && $image['extension'] == "auto") {
+                $best_type = $this->check_best_type($image['original_path'], $image['original_extension'], ['webp', 'avif'], $image['avif_capability']);
+
+                // Remove the current extension and replace it with the one to convert into
+                $attachment_url_converted = explode('.', $image['original_url']);
+                array_pop($attachment_url_converted);
+                $attachment_url_converted = implode('.', $attachment_url_converted) . ".$best_type";
+
+                $attachment_path_converted = explode('.', $image['original_path']);
+                array_pop($attachment_path_converted);
+                $attachment_path_converted = implode('.', $attachment_path_converted) . ".$best_type";
+
+                $image['url'] = $attachment_url_converted;
+                $image['path'] = $attachment_path_converted;
+                $image['mime'] = "image/$best_type";
+                $image['extension'] = $best_type;
             }
 
             // Get the metadata of the file
@@ -326,10 +396,12 @@ class LwsOptimizeImageOptimization
                         }
                     }
                 }
+                // Update the file sizes
+                wp_update_attachment_metadata($id, $metadata);
             }
 
             // Convert image to WebP using your preferred library (e.g., GD, Imagick)
-            $created = $this->lws_optimize_convert_image($image['original_path'], $image['path'], $quality, $image['original_mime'], $image['mime']);
+            $created = $this->lws_optimize_convert_image($image['original_path'], $image['path'], $quality, $image['original_mime'], $image['mime'], $max_size);
 
             // No image created, an error occured
             if (!$created) {
@@ -340,6 +412,7 @@ class LwsOptimizeImageOptimization
             $images_to_convert[$id]['converted'] = true;
             $images_to_convert[$id]['date_convertion'] = time();
             $images_to_convert[$id]['compression'] = number_format((filesize($image['original_path']) - filesize($image['path'])) * 100 / filesize($image['original_path']), 2, ".", '') . "%" . esc_html__(' smaller', 'lws-optimize');
+            $images_to_convert[$id]['size'] = filesize($image['path']);
 
             // Remove the original file if we do not keep it
             if (!$image['to_keep']) {
@@ -409,6 +482,11 @@ class LwsOptimizeImageOptimization
                 break;
             }
 
+            // Do not deconvert if it is not converted
+            if (!$media['converted']) {
+                continue;
+            }
+
             $base_path = $media['original_path'] ?? '';
 
             // If the original file does not exists anymore, we cannot revert it
@@ -434,7 +512,13 @@ class LwsOptimizeImageOptimization
 
                         $tmp = explode('/', $media['original_url']);
                         array_pop($tmp);
-                        $images[] = implode('/', $tmp) . "/$type";
+
+                        $actual_url = implode('/', $tmp) . "/$type";
+                        $original_url = explode('.', $actual_url);
+                        array_pop($original_url);
+                        $original_url = implode('.', $original_url) . ".{$media['original_extension']}";
+
+                        $images[] = ['original' => $original_url, 'current' => $actual_url];
                     }
                 }
             }
@@ -444,12 +528,12 @@ class LwsOptimizeImageOptimization
                 unlink($media['path']);
             }
 
-            $images[] = $media['url'];
+            $images[] = ['original' => $media['original_url'], 'current' => $media['url']];
 
             // Replace the attachment with the old data
             $attachment = array(
                 'ID' => $key,
-                'post_title' => $media['original_name'],
+                'post_title' => $media['name'],
                 'post_content' => '',
                 'post_mime_type' => $media['original_mime'],
             );
@@ -461,7 +545,7 @@ class LwsOptimizeImageOptimization
             }
 
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $base_path));
-            unset($media_data[$key]);
+            $media_data[$key]['converted'] = false;
             $state[] = ['id' => $key, 'state' => "REVERTED"];
             $done++;
         }
@@ -471,11 +555,11 @@ class LwsOptimizeImageOptimization
         foreach ($posts as $post) {
             $content = $post->post_content;
             foreach ($images as $image) {
-                if (strpos($content, $image)) {
-                    $new_image = explode('.', $image);
-                    array_pop($new_image);
-                    $new_image = implode('.', $new_image) . "." . $media['original_extension'];
-                    $content = str_replace($image, $new_image, $content);
+                $actual = $image['current'];
+                $original = $image['original'];
+
+                if (strpos($content, $actual)) {
+                    $content = str_replace($actual, $original, $content);
                 }
             }
 
@@ -507,6 +591,92 @@ class LwsOptimizeImageOptimization
                 // Generate the new sizes based on current settings
                 wp_update_attachment_metadata($attachment_id, wp_generate_attachment_metadata($attachment_id, $fullsizepath));
             }
+        }
+    }
+
+    public function check_best_type(string $original_path = null, string $original_extension = null, array $types = ['webp', 'avif'], $avif = false) {
+        // TODO TEMPS :
+        return "webp";
+
+        try {
+            $timer = microtime(true);
+
+            // Default to WebP if we cannot proceed
+            if ($original_path === null || $original_extension === null) {
+                error_log(json_encode(['code' => 'NO_PARAMETERS', 'message' => 'No/missing parameters. Cannot proceed.', 'data' => null, 'time' => microtime(true) - $timer]));
+                return "webp";
+            }
+
+            // Abort if the Imagick class is not installed
+            if (!class_exists("Imagick")) {
+                error_log(json_encode(['code' => 'IMAGICK_NOT_FOUND', 'message' => 'Imagick was not found on this server. This plugin relies on Imagick to optimize images and cannot work without.', 'data' => null, 'time' => microtime(true) - $timer]));
+                return "webp";
+            }
+
+            // Create an Imagick instance to create the new image
+            $img = new \Imagick();
+            // Get the list of all image format supported by Imagick. The most likely at present of not being found is AVIF
+            // but we check and abort if the type is not supported
+            $supported_formats = $img->queryFormats();
+
+
+            // If the current image type or the wanted image type are not supported by this version of Imagick, then abort
+            if (!in_array(strtoupper($original_extension), $supported_formats) || !in_array(strtoupper($ending_type), $supported_formats)) {
+                error_log(json_encode(['code' => 'UNSUPPORTED_FORMAT', 'message' => 'Selected image type is not usable with this version of Imagick. Either choose another type or update to a newer Imagick version.', 'data' => ['origin' => in_array(strtoupper($starting_type), $supported_formats), 'destination' => in_array(strtoupper($ending_type), $supported_formats)], 'time' => microtime(true) - $timer]));
+                return false;
+            }
+
+            // Try to read the given image ; If it fails, the image may be corrupted
+            if (!$img->readImage($image)) {
+                error_log(json_encode(['code' => 'IMAGE_UNREADABLE', 'message' => 'Could not read given image. Make sure the image exists and is readable.', 'data' => $image, 'time' => microtime(true) - $timer]));
+                return false;
+            }
+
+
+            // Get current dimensions
+            $width = $img->getImageWidth();
+            $height = $img->getImageHeight();
+
+            // Check if the image width exceeds the maximum width
+            if ($width > $max_size) {
+                // Calculate the new dimensions while maintaining the aspect ratio
+                $newHeight = ($max_size / $width) * $height;
+
+                // Resize the image
+                $img->resizeImage($max_size, $newHeight, \Imagick::FILTER_LANCZOS, 1);
+            }
+
+            // Change the compression quality of the new image. Between 0-100, 100 is better
+            // By default set to 75/100
+            $img->setImageCompressionQuality($quality);
+            if (!$img->setImageFormat($ending_type)) {
+                error_log(json_encode(['code' => 'CONVERTION_FAIL', 'message' => 'Could not convert the image into the given type.', 'data' => ['image' => $image, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                return false;
+            }
+
+            // Create the new image $img
+            // If the first time fail, try again using another function. If if fails again, abort
+            try {
+                if (!$img->writeImage($output)) {
+                    error_log(json_encode(['code' => 'WRITE_FAIL', 'message' => 'Failed to write the new image using writeImage', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                    if (!$img->writeImageFile(fopen($output, "wb"))) {
+                        error_log(json_encode(['code' => 'WRITE_IMAGE_FAIL', 'message' => 'Failed to write the new image using writeImageFile. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                        return false;
+                    }
+                }
+            } catch (\Exception $e) {
+                error_log(json_encode(['code' => 'UNKNOWN_FUNCTION', 'message' => 'Imagick::writeImage or Imagick::writeImageFile not found. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                return false;
+            }
+
+            // Clean up resources
+            $img->clear();
+            $img->destroy();
+
+            return true;
+        } catch (\Exception $e) {
+            error_log(json_encode(['code' => 'UNKNOWN', 'message' => $e->getMessage(), 'data' => func_get_args(), 'time' => microtime(true) - $timer]));
+            return false;
         }
     }
 }

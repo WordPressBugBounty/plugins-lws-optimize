@@ -30,7 +30,6 @@ class LwsOptimizeCloudFlare {
         $api_token = $config_array['cloudflare']['api'] ?? null;
 
         if ($zone_id === null || $api_token === null || $purge_type === null || $url === null || !is_array($url)) {
-            error_log(json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
             return json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT);
         }
 

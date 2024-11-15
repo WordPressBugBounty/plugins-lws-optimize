@@ -330,7 +330,7 @@ class LwsOptimizeJSManager
             return true;
         }
 
-        if (preg_match("/document\s*\).ready\s*\(/xs", (file_get_contents($url) ?? ''), $matches)) {
+        if (preg_match("/document\s*\).ready\s*\(/xs", (@file_get_contents($url) ?? ''), $matches)) {
             return true;
         }
 

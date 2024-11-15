@@ -1680,3 +1680,192 @@ msgstr "Momentanément indisponible"
 
 msgid "Due to many users experiencing issues with Memcached, this functionnality has been temporarily deactivated"
 msgstr "Suite à de nombreux utilisateurs rencontrant des problèmes avec Memcached, cette fonctionnalité a été temporairement désactivé"
+
+msgid "1 - Which image types do you wish to convert?"
+msgstr "1 - Quels formats d’images souhaitez-vous convertir ?"
+
+msgid "Select every MIME-Types to include in the convertion process."
+msgstr "Sélectionnez les types MIME à inclure dans le processus de conversion."
+
+msgid "Webp <b>(recommended)</b>"
+msgstr "Webp <b>(recommandé)</b>"
+
+msgid "JPEG <b>(recommended)</b>"
+msgstr "JPEG <b>(recommandé)</b>"
+
+msgid "2 - To which type do you wish to convert images?"
+msgstr "2 - Vers quels formats souhaitez-vous convertir les images ?"
+
+msgid "Select the target type for the convertion. Images already in said type will be ignored."
+msgstr "Sélectionnez le format cible pour optimiser vos images. Les images déjà dans ce format seront ignorées."
+
+msgid "Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>"
+msgstr "Automatique <b>(recommandé)</b> <span>Choisit le format le plus optimisé et léger pour chaque image</span>"
+
+msgid "3 - What quality do you wish for your converted images?"
+msgstr "3 - Quelle qualité souhaitez-vous pour les images converties ?"
+
+msgid "Define the quality of converted images. A lower qualite will result in lower sharpness but reduced size."
+msgstr "Définissez la qualité des images converties. Une qualité plus basse réduit le poids mais peut affecter la netteté."
+
+msgid "Balanced <b>(recommended)</b> <span>64% quality</span>"
+msgstr "Équilibré <b>(recommandé)</b> <span>Qualité de 64%</span>"
+
+msgid "Low <span>30% quality</span>"
+msgstr "Basse <span>Qualité de 30%</span>"
+
+msgid "High <span>90% quality</span>"
+msgstr "Haute <span>Qualité de 90%</span>"
+
+msgid "4 - Do you wish to resize images that are too big?"
+msgstr "4 - Souhaitez-vous redimensionner les images trop grandes ?"
+
+msgid "Define a maximum width to limit image size."
+msgstr "Définissez une largeur maximale pour limiter le poids des images."
+
+msgid "2560px <b>(recommended)</b>"
+msgstr "2560px <b>(recommandé)</b>"
+
+msgid "5 - How many images do you wish to convert each time?"
+msgstr "5 - Combien d’images souhaitez-vous convertir par lot ?"
+
+msgid "A higher number will speed up convertion but may use more resources."
+msgstr "Un nombre plus élevé accélère la conversion mais peut consommer plus de ressources."
+
+msgid "10 <b>(recommended)</b>"
+msgstr "10 <b>(recommandé)</b>"
+
+msgid "6 - Do you wish to keep original images?"
+msgstr "6 - Voulez-vous conserver les images originales ?"
+
+msgid "Keeping originals allows you to revert them to the initial type but increase used storage space."
+msgstr "Les conserver permet de restaurer les images au format initial mais augmente l’espace de stockage."
+
+msgid "Yes <b>(recommended)</b>"
+msgstr "Oui <b>(recommandé)</b>"
+
+msgid "Ongoing convertion..."
+msgstr "Conversion en cours…"
+
+msgid "Ongoing deconvertion..."
+msgstr "Déconversion en cours…"
+
+msgid "Active"
+msgstr "Actif"
+
+msgid "<b>Warning: </b> This operation will only works for images not converted automatically on upload and whose original copy was conserved."
+msgstr "<b>Important :</b> Cette opération fonctionne uniquement pour les images qui n’ont pas été converties automatiquement lors du téléversement et dont les copies originales ont été conservées."
+
+msgid "Warning: This convertion functionnality is in beta and may not work properly on all websites. Make sure to have a backup at the ready before using it."
+msgstr "Important: cette fonctionnalité de conversion est en version bêta et peut ne pas fonctionner correctement sur tous les sites. Assurez-vous d’avoir une sauvegarde de votre site avant utilisation."
+
+msgid "Warning about transparency: images may lose their transparency once converted to AVIF."
+msgstr "Attention à la transparence : Les images peuvent perdre leur transparence une fois converties en AVIF."
+
+msgid "Size limitations: AVIF convertion is only available on images smaller than 400Ko. Depending on the size and quantité of files, the process may take a while."
+msgstr "Limite de taille : La conversion AVIF est possible uniquement pour les images de moins de 400 Ko. Selon la quantité et la taille des fichiers, le processus peut prendre plusieurs minutes."
+
+msgid "Convert all images to the optimized format you chose."
+msgstr "Convertit toutes les images vers le format optimisé choisi."
+
+msgid "Images Convertion Tool"
+msgstr "Outil de conversion d’images"
+
+msgid "Stop"
+msgstr "Arrêter"
+
+msgid "Convertion format"
+msgstr "Format de conversion"
+
+msgid "Image total"
+msgstr "Images totales"
+
+msgid "Converted images"
+msgstr "Images converties"
+
+msgid "Remaining convertions"
+msgstr "Conversions restantes"
+
+msgid "Total size reduction"
+msgstr "Réduction totale de taille"
+
+msgid "Restore images"
+msgstr "Restaurer les images"
+
+msgid "Restore all converted images to their original format il the original copy is available."
+msgstr "Restaure toutes les images converties à leur format d’origine si la copie originale est disponible."
+
+msgid "Only works for images not automatically converted on upload (see below)"
+msgstr "Fonctionne uniquement pour les images qui n’ont pas été converties automatiquement au téléversement (voir ci-après)"
+
+msgid "Restore all images"
+msgstr "Restaurer les images"
+
+msgid "Automatic convertion on upload"
+msgstr "Conversion automatique au téléversement"
+
+msgid "Automatically convert new images uplaoded on your WordPress website."
+msgstr "Convertit automatiquement les nouvelles images ajoutées sur votre site WordPress."
+
+msgid "Configurate"
+msgstr "Configurer"
+
+msgid "Convertion options"
+msgstr "Options de conversion"
+
+msgid "7 - Do you wish to exclude images from the convertion?"
+msgstr "7 - Souhaitez-vous exclure des images de la conversion ?"
+
+msgid "Enter the name of each image to exclude below, separated by a comma (,). Those images will then be ignored and not be converted."
+msgstr "Entrez le nom de chaque image à exclure ci-dessous, séparé par une virgule (,). Ces images seront ignorées et non converties."
+
+msgid "5 - Do you wish to exclude images from the convertion?"
+msgstr "5 - Souhaitez-vous exclure des images de la conversion ?"
+
+msgid "Image restoration confirmation"
+msgstr "Confirmation de restauration des images"
+
+msgid "Are you sure you want to restore all converted images to their original format? It will replace converted images if their original copy is available."
+msgstr "Êtes-vous sûr de vouloir restaurer toutes les images converties à leur format d’origine ? Cette action remplacera les images converties par leurs copies originales si elles sont disponibles."
+
+msgid "Stop image restoration"
+msgstr "Arrêter la restauration d'images"
+
+msgid "Stop restoration"
+msgstr "Arrêter la restauration"
+
+msgid "Stop image convertion"
+msgstr "Arrêter la conversion d'images"
+
+msgid "Stop convertion"
+msgstr "Arrêter la conversion d'images"
+
+msgid "Stop image autoconvertion"
+msgstr "Arrêter la conversion d'images automatique"
+
+msgid "Stop autoconvertion"
+msgstr "Arrêter la conversion automatique"
+
+msgid "Failed to start the restoration"
+msgstr "Impossible de commencer la restauration"
+
+msgid "Failed to start converting images"
+msgstr "Impossible de commencer à convertir les images"
+
+msgid "Failed to stop the autoconvertion"
+msgstr "Impossible d'arrêter l'auto-conversion"
+
+msgid "The autoconvertion has been stopped."
+msgstr "L'auto-conversion a été arrêtée."
+
+msgid "Failed to stop the convertion"
+msgstr "Impossible d'arrêter la conversion"
+
+msgid "Images left: "
+msgstr "Images restantes : "
+
+msgid "Hide converted images"
+msgstr "Cacher les images converties"
+
+msgid "Image convertion cannot be used with your current PHP configuration"
+msgstr "La conversion d'image n'est pas utilisable avec votre configuration PHP actuelle"

@@ -2,8 +2,8 @@
 Contributors: aurelienlws
 Tags: LWS, Admin, Optimisation, Cache
 Requires at least: 6.0
-Tested up to: 6.6
-Stable tag: 3.2.0.7
+Tested up to: 6.7
+Stable tag: 3.2.1
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -144,6 +144,15 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 4. Activation / deactivation of caching systems
 
 == Changelog ==
+
+= 3.2.1 =
+* New design for the "Images" page
+* Bugfixes for the image conversion, especially the autoconvert and restoration
+* Fixed mobile cache not getting created on cPanel with Varnish
+* Better warnings when your website cannot use Image Conversion
+* Updated for WordPress 6.7
+
+
 = 3.2.0.6 =
 * Few bug fixes
 * Varnish can now be deleted
