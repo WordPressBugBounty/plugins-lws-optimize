@@ -139,11 +139,19 @@ class LwsOptimizeJSManager
             $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.js");
             $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
+            // Do not add into cache if the file already exists
+            $add_cache = false;
+            if (!file_exists($path)) {
+                $add_cache = true;
+            }
+
             // Minify and combine all files into one, saved in $path
             // If it worked, we can prepare the new <link> tag
             if ($minify->minify($path)) {
-                $this->files['file'] += 1;
-                $this->files['size'] += filesize($path) ?? 0;
+                if ($add_cache) {
+                    $this->files['file'] += 1;
+                    $this->files['size'] += filesize($path) ?? 0;
+                }
 
                 return $path_url;
             }
@@ -192,11 +200,19 @@ class LwsOptimizeJSManager
                 $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.js");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
+                // Do not add into cache if the file already exists
+                $add_cache = false;
+                if (!file_exists($path)) {
+                    $add_cache = true;
+                }
+
                 $minify = new Minify\JS($file_path);
 
                 if ($minify->minify($path) && file_exists($path)) {
-                    $this->files['file'] += 1;
-                    $this->files['size'] += filesize($path) ?? 0;
+                    if ($add_cache) {
+                        $this->files['file'] += 1;
+                        $this->files['size'] += filesize($path) ?? 0;
+                    }
                     // Create a new link with the newly combined URL and add it to the DOM
                     $newLink = preg_replace("/src\=[\'\"]([^\'\"]+)[\'\"]/", "src='$path_url'", $element);
                     $this->content = str_replace($element, $newLink, $this->content);

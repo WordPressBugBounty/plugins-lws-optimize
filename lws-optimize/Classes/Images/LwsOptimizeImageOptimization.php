@@ -28,6 +28,10 @@ class LwsOptimizeImageOptimization
                 $this->mimetypes = array_merge(['avif' => "AVIF"], $this->mimetypes);
             }
         }
+
+        add_filter('the_content', [$this, 'replace_images_with_newtype']);
+        add_filter('wp_filter_content_tags', [$this, 'replace_images_with_newtype']);
+        add_filter('post_thumbnail_html', [$this, 'replace_images_with_newtype']);
     }
 
     /**
@@ -217,7 +221,6 @@ class LwsOptimizeImageOptimization
                 return false;
             }
 
-
             // Get current dimensions
             $width = $img->getImageWidth();
             $height = $img->getImageHeight();
@@ -319,11 +322,6 @@ class LwsOptimizeImageOptimization
                 break;
             }
 
-            // // Do not process files that got an error_on_convertion before
-            // if (isset($images_to_convert[$id]['error_on_convertion'])) {
-            //     continue;
-            // }
-
             if ($image['converted']) {
                 // If the original file does not exist, we remove the file from the convertion
                 if (!file_exists($image['original_path'])) {
@@ -347,7 +345,11 @@ class LwsOptimizeImageOptimization
 
             // User want us to choose which, between original, AVIF and WebP, is the best for the given image
             if (isset($image['extension']) && $image['extension'] == "auto") {
-                $best_type = $this->check_best_type($image['original_path'], $image['original_extension'], ['webp', 'avif'], $image['avif_capability']);
+                if ($image['avif_capability'] && (filesize($image['original_path'])  / 1000) <= 402) {
+                    $best_type = $this->check_best_type($image['original_path'], $image['original_extension'], $quality, ['webp']);
+                } else {
+                    $best_type = $this->check_best_type($image['original_path'], $image['original_extension'], $quality, ['webp']);
+                }
 
                 // Remove the current extension and replace it with the one to convert into
                 $attachment_url_converted = explode('.', $image['original_url']);
@@ -367,6 +369,21 @@ class LwsOptimizeImageOptimization
             // Get the metadata of the file
             $metadata = wp_get_attachment_metadata($id);
 
+
+            // $image_width = $metadata['width'];
+            // $image_height = $metadata['height'];
+
+            // // Check if the image width exceeds the maximum width
+            // if ($image_width > $max_size) {
+            //     // Calculate the new dimensions while maintaining the aspect ratio
+            //     $image_height = ($max_size / $image_width) * $image_height;
+
+            //     $metadata['width'] = $image_width;
+            //     $metadata['height'] = $image_height;
+            // }
+
+            $size_to_remove = [];
+
             if (isset($metadata['sizes'])) {
                 foreach ($metadata['sizes'] as $sizes) {
                     foreach ($sizes as $key => $type_img) {
@@ -376,7 +393,7 @@ class LwsOptimizeImageOptimization
                             $filename = explode('/', $image['original_path']);
                             array_pop($filename);
                             $filename = implode('/', $filename) . "/$type_img";
-                            @unlink($filename);
+                            $size_to_remove[] = $filename;
 
                             // Create the URL to the current size
                             $url = explode('/', $image['original_url']);
@@ -387,17 +404,9 @@ class LwsOptimizeImageOptimization
                             $new_url = explode('.', $url);
                             array_pop($new_url);
                             $new_url = implode(".", $new_url) . ".{$image['extension']}";
-
-                            // The image 'original' will be replaced by 'new'
-                            $images_to_replace[] = [
-                                'original' => $url,
-                                'new' => $new_url
-                            ];
                         }
                     }
                 }
-                // Update the file sizes
-                wp_update_attachment_metadata($id, $metadata);
             }
 
             // Convert image to WebP using your preferred library (e.g., GD, Imagick)
@@ -409,6 +418,9 @@ class LwsOptimizeImageOptimization
                 continue;
             }
 
+            // Update the file sizes
+            wp_update_attachment_metadata($id, $metadata);
+
             $images_to_convert[$id]['converted'] = true;
             $images_to_convert[$id]['date_convertion'] = time();
             $images_to_convert[$id]['compression'] = number_format((filesize($image['original_path']) - filesize($image['path'])) * 100 / filesize($image['original_path']), 2, ".", '') . "%" . esc_html__(' smaller', 'lws-optimize');
@@ -417,13 +429,13 @@ class LwsOptimizeImageOptimization
             // Remove the original file if we do not keep it
             if (!$image['to_keep']) {
                 unlink($image['original_path']);
+                // Only remove the small sizes if the file got converted
+                foreach($size_to_remove as $remove) {
+                    if (file_exists($remove)) {
+                        unlink($remove);
+                    }
+                }
             }
-
-            // The image 'original' will be replaced by 'new'
-            $images_to_replace[] = [
-                'original' => $image['original_url'],
-                'new' => $image['url']
-            ];
 
             // Change attachment data with new image and regenerate thumbnails
             $attachment = array(
@@ -437,21 +449,6 @@ class LwsOptimizeImageOptimization
         }
 
         update_option('lws_optimize_images_convertion', $images_to_convert);
-
-        // Fetch all posts and update the images to the newest URL
-        $posts = get_posts(['post_type' => array('page', 'post')]);
-        foreach ($posts as $post) {
-            $content = $post->post_content;
-            foreach ($images_to_replace as $image) {
-                if (strpos($content, $image['original'])) {
-                    $content = str_replace($image['original'], $image['new'], $content);
-                }
-            }
-
-            $data = ['post_content' => $content];
-            $where = ['ID' => $post->ID];
-            $wpdb->update($wpdb->prefix . 'posts', $data, $where);
-        }
 
         $stats = get_option('lws_optimize_current_convertion_stats', []);
         $stats['converted'] += $converted;
@@ -482,8 +479,8 @@ class LwsOptimizeImageOptimization
                 break;
             }
 
-            // Do not deconvert if it is not converted
-            if (!$media['converted']) {
+            // Do not deconvert if it is not converted or has not been converted before
+            if (!$media['converted'] && !$media['previously_converted']) {
                 continue;
             }
 
@@ -491,7 +488,7 @@ class LwsOptimizeImageOptimization
 
             // If the original file does not exists anymore, we cannot revert it
             if (!file_exists($base_path)) {
-                // We delete it from the database
+                // We delete it from the database (it will then be considered originally in $type)
                 unset($media_data[$key]);
                 $state[] = ['id' => $key, 'state' => "NOT_EXISTS"];
                 continue;
@@ -528,8 +525,6 @@ class LwsOptimizeImageOptimization
                 unlink($media['path']);
             }
 
-            $images[] = ['original' => $media['original_url'], 'current' => $media['url']];
-
             // Replace the attachment with the old data
             $attachment = array(
                 'ID' => $key,
@@ -546,26 +541,9 @@ class LwsOptimizeImageOptimization
 
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $base_path));
             $media_data[$key]['converted'] = false;
+            $media_data[$key]['previously_converted'] = false;
             $state[] = ['id' => $key, 'state' => "REVERTED"];
             $done++;
-        }
-
-        // Replace image URLs in post content (optimize this for performance)
-        $posts = get_posts(['post_type' => array('page', 'post'),]);
-        foreach ($posts as $post) {
-            $content = $post->post_content;
-            foreach ($images as $image) {
-                $actual = $image['current'];
-                $original = $image['original'];
-
-                if (strpos($content, $actual)) {
-                    $content = str_replace($actual, $original, $content);
-                }
-            }
-
-            $data = ['post_content' => $content];
-            $where = ['ID' => $post->ID];
-            $wpdb->update($wpdb->prefix . 'posts', $data, $where);
         }
 
         update_option('lws_optimize_images_convertion', $media_data);
@@ -594,10 +572,7 @@ class LwsOptimizeImageOptimization
         }
     }
 
-    public function check_best_type(string $original_path = null, string $original_extension = null, array $types = ['webp', 'avif'], $avif = false) {
-        // TODO TEMPS :
-        return "webp";
-
+    private function check_best_type(string $original_path = null, string $original_extension = null, int $quality = 64, array $types = ['webp', 'avif']) {
         try {
             $timer = microtime(true);
 
@@ -619,64 +594,88 @@ class LwsOptimizeImageOptimization
             // but we check and abort if the type is not supported
             $supported_formats = $img->queryFormats();
 
-
             // If the current image type or the wanted image type are not supported by this version of Imagick, then abort
-            if (!in_array(strtoupper($original_extension), $supported_formats) || !in_array(strtoupper($ending_type), $supported_formats)) {
-                error_log(json_encode(['code' => 'UNSUPPORTED_FORMAT', 'message' => 'Selected image type is not usable with this version of Imagick. Either choose another type or update to a newer Imagick version.', 'data' => ['origin' => in_array(strtoupper($starting_type), $supported_formats), 'destination' => in_array(strtoupper($ending_type), $supported_formats)], 'time' => microtime(true) - $timer]));
-                return false;
+            if (!in_array(strtoupper($original_extension), $supported_formats)) {
+                return "webp";
             }
 
             // Try to read the given image ; If it fails, the image may be corrupted
-            if (!$img->readImage($image)) {
-                error_log(json_encode(['code' => 'IMAGE_UNREADABLE', 'message' => 'Could not read given image. Make sure the image exists and is readable.', 'data' => $image, 'time' => microtime(true) - $timer]));
-                return false;
-            }
-
-
-            // Get current dimensions
-            $width = $img->getImageWidth();
-            $height = $img->getImageHeight();
-
-            // Check if the image width exceeds the maximum width
-            if ($width > $max_size) {
-                // Calculate the new dimensions while maintaining the aspect ratio
-                $newHeight = ($max_size / $width) * $height;
-
-                // Resize the image
-                $img->resizeImage($max_size, $newHeight, \Imagick::FILTER_LANCZOS, 1);
+            if (!$img->readImage($original_path)) {
+                return "webp";
             }
 
             // Change the compression quality of the new image. Between 0-100, 100 is better
-            // By default set to 75/100
             $img->setImageCompressionQuality($quality);
-            if (!$img->setImageFormat($ending_type)) {
-                error_log(json_encode(['code' => 'CONVERTION_FAIL', 'message' => 'Could not convert the image into the given type.', 'data' => ['image' => $image, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
-                return false;
-            }
 
-            // Create the new image $img
-            // If the first time fail, try again using another function. If if fails again, abort
-            try {
-                if (!$img->writeImage($output)) {
-                    error_log(json_encode(['code' => 'WRITE_FAIL', 'message' => 'Failed to write the new image using writeImage', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
-                    if (!$img->writeImageFile(fopen($output, "wb"))) {
-                        error_log(json_encode(['code' => 'WRITE_IMAGE_FAIL', 'message' => 'Failed to write the new image using writeImageFile. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
-                        return false;
+            $sizes = [$original_extension => filesize($original_path)];
+            foreach ($types as $type) {
+                if (!in_array(strtoupper($type), $supported_formats)) {
+                    continue;
+                }
+
+                if (!$img->setImageFormat($type)) {
+                    continue;
+                }
+
+
+                $temp = tmpfile();
+
+                $meta_data = stream_get_meta_data($temp);
+                $filename = $meta_data["uri"];
+
+                if (!$img->writeImage($filename)) {
+                    if (!$img->writeImageFile($temp, "wb")) {
+                        continue;
                     }
                 }
-            } catch (\Exception $e) {
-                error_log(json_encode(['code' => 'UNKNOWN_FUNCTION', 'message' => 'Imagick::writeImage or Imagick::writeImageFile not found. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
-                return false;
+
+                $sizes[$type] = filesize($filename);
+                fclose($temp);
             }
 
             // Clean up resources
             $img->clear();
             $img->destroy();
 
-            return true;
+            // Return the most efficient format for the given image
+            $lowest_size = min($sizes);
+            return array_keys($sizes, $lowest_size)[0];
+
+
         } catch (\Exception $e) {
             error_log(json_encode(['code' => 'UNKNOWN', 'message' => $e->getMessage(), 'data' => func_get_args(), 'time' => microtime(true) - $timer]));
-            return false;
+            return "webp";
         }
+    }
+
+    function replace_images_with_newtype($content) {
+        // Get the format to change images into
+        $convertion_data = get_option('lws_optimize_all_media_convertion', []);
+        $type = $convertion_data['convertion_format'] ?? null;
+        if ($type == null) {
+            return $content;
+        }
+
+        // Use a regular expression to find all image URLs in the content
+        preg_match_all('/<img[^>]+src="([^"]+)"/i', $content, $matches);
+
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $image_url) {
+                // Get the file path from the URL
+                $image_path = str_replace(home_url('/'), ABSPATH, $image_url);
+
+                // Change the extension to .webp
+                $webp_path = preg_replace('/\.(jpg|jpeg|png)$/i', '.' . $type, $image_path);
+
+                // Check if the .webp file exists
+                if (file_exists($webp_path)) {
+                    // Replace the original image URL with the .webp URL
+                    $webp_url = preg_replace('/\.(jpg|jpeg|png)$/i', '.' . $type, $image_url);
+                    $content = str_replace($image_url, $webp_url, $content);
+                }
+            }
+        }
+
+        return $content;
     }
 }

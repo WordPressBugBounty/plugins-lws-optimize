@@ -1,9 +1,5 @@
 <?php
 
-// TODO : La restauration d'image semble se lancer tte seule (si activé puis active convertion puis désactive convertion)
-// Le bouton refresh se casse des fois
-// Ajouter une ligne comme pour la convertion (images + stats) pour la restauration
-
 // Check the exection_time and memory_limit. If values are < 120 or < 128M, then we do not activate the convertion
 $max_exec = ini_get('max_execution_time');
 $memory_limit = ini_get('memory_limit');
@@ -60,7 +56,7 @@ $convertion_options = [
         'title' => __('2 - To which type do you wish to convert images?', 'lws-optimize'),
         'description' => __('Select the target type for the convertion. Images already in said type will be ignored.', 'lws-optimize'),
         'select' => [
-            // 'auto' => __('Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>', 'lws-optimize'),
+            'auto' => __('Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>', 'lws-optimize'),
             'webp' => 'WebP',
             'avif' => 'AVIF'
         ],
@@ -84,7 +80,7 @@ $convertion_options = [
             '1600' => '1600px',
             '1024' => '1024px',
         ],
-        'deactivated' => true
+        'deactivated' => false
     ],
     'convertion_amount' => [
         'title' => __('5 - How many images do you wish to convert each time?', 'lws-optimize'),
@@ -120,7 +116,7 @@ $autoconvertion_options = [
         'title' => __('2 - To which type do you wish to convert images?', 'lws-optimize'),
         'description' => __('Select the target type for the convertion. Images already in said type will be ignored.', 'lws-optimize'),
         'select' => [
-            // 'auto' => __('Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>', 'lws-optimize'),
+            'auto' => __('Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>', 'lws-optimize'),
             'webp' => 'WebP',
             'avif' => 'AVIF'
         ]
@@ -144,7 +140,7 @@ $autoconvertion_options = [
             '1600' => '1600px',
             '1024' => '1024px',
         ],
-        'deactivated' => true
+        'deactivated' => false
     ],
 ];
 
@@ -353,7 +349,7 @@ if (!$memory_limit) {
                         <tr>
                             <td><?php echo esc_html($attachment['name']); ?></td>
                             <?php if ($attachment['converted']) : ?>
-                                <td><?php echo esc_html($attachment['mime']); ?></td>
+                                <td><?php echo esc_html($attachment['original_mime'] . " => " . $attachment['mime']); ?></td>
                                 <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
                                 <td><?php echo get_date_from_gmt(date('Y-m-d H:i:s', $attachment['date_convertion']), 'Y-m-d H:i:s'); ?></td>
                                 <td><?php echo esc_html(($attachment['compression'] ?? 0)) ?></td>
@@ -450,7 +446,7 @@ if (!$memory_limit) {
         </div>
     </div>
 
-    <?php $media_convertion_values = get_option('lws_optimize_all_media_convertion', []); $media_convertion_values = array_merge(['convertion_format' => 'webp', 'convertion_keeporiginal' => "keep", 'convertion_quality' => 'balanced', 'convertion_exceptions' => [], 'convertion_amount' => 10, 'image_format' => ['webp', 'jpg', 'jpeg'], 'image_maxsize' => 2560], $media_convertion_values);?>
+    <?php $media_convertion_values = get_option('lws_optimize_all_media_convertion', []); $media_convertion_values = array_merge(['convertion_format' => 'auto', 'convertion_keeporiginal' => "keep", 'convertion_quality' => 'balanced', 'convertion_exceptions' => [], 'convertion_amount' => 10, 'image_format' => ['auto', 'jpg', 'jpeg'], 'image_maxsize' => 2560], $media_convertion_values);?>
     <div class="modal fade" id="lws_optimize_image_convertion_modal" tabindex='-1'>
         <div class="modal-dialog lws_optimize_image_convertion_modal_dialog">
             <div class="modal-content lws_optimize_image_convertion_modal_content">
@@ -1551,7 +1547,7 @@ if (!$memory_limit) {
                                             listing.insertAdjacentHTML('afterbegin', `
                                         <tr>
                                             <td>` + data_listing[i]['name'] + `</td>
-                                            <td>` + data_listing[i]['mime'] + `</td>
+                                            <td>` + data_listing[i]['original_mime'] + " => " + data_listing[i]['mime'] + `</td>
                                             <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
                                             <td>` + (new Date(data_listing[i]['date_convertion'] * 1000).toLocaleString()).replaceAll('/', '-') + `</td>
                                             <td>` + (data_listing[i]['compression'] ?? 0) + `</td>

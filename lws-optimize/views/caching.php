@@ -330,20 +330,34 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $preload_state == "false" ? esc_attr('hidden') : ''; ?>">
             <span class="lwsop_contentblock_fbcache_preload_label">
                 <?php esc_html_e('Preloading status: ', 'lws-optimize'); ?>
-                <button id="lwsop_update_preloading_value" class="lwsop_update_info_button"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
+                <button id="lwsop_update_preloading_value" class="lws_optimize_image_convertion_refresh">
+                    <img src="<?php echo esc_url(plugins_url('images/rafraichir.svg', __DIR__)) ?>" alt="Logo Refresh" width="15px" height="15px">
+                    <span><?php esc_html_e('Refresh', 'lws-optimize'); ?></span>
+                </button>
             </span>
-            <div id="lwsop_preloading_status">
-                <div class="lwsop_preloading_status_info">
-                    <span><?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?></span>
-                    <span id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Up-to-date', 'lws-optimize'); ?>
+
+
+            <div class="lws_optimize_convertion_bar">
+                <div class="lws_optimize_convertion_bar_element">
+                    <span class="lws_optimize_convertion_bar_element_title">
+                        <img id="lws_optimize_preload_status_icon" src="<?php echo $fb_preloaddata['state'] == "true" ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
+                        <?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?>
+                    </span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Up-to-date', 'lws-optimize'); ?></span>
                 </div>
-                <div class="lwsop_preloading_status_info">
-                    <span><?php echo esc_html__('Next preloading: ', 'lws-optimize'); ?></span>
-                    <span id="lwsop_next_preload_info"><?php echo $next_preload ? esc_attr($local_timestamp) : esc_html__('/', 'lws-optimize'); ?>
+                <div class="lws_optimize_convertion_bar_element">
+                    <span class="lws_optimize_convertion_bar_element_title">
+                        <img src="<?php echo esc_url(plugins_url('images/horloge.svg', __DIR__)); ?>" alt="Logo Horloge" width="15px" height="15px">
+                        <?php echo esc_html__('Next preloading: ', 'lws-optimize'); ?>
+                    </span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_next_preload_info"><?php echo $next_preload ? esc_attr($local_timestamp) : esc_html__('/', 'lws-optimize'); ?></span>
                 </div>
-                <div class="lwsop_preloading_status_info">
-                    <span><?php esc_html_e('Page cached / Total pages: ', 'lws-optimize'); ?></span>
-                    <span id="lwsop_current_preload_done"><?php echo esc_html($fb_preloaddata['done'] . "/" . $fb_preloaddata['quantity']); ?></span>
+                <div class="lws_optimize_convertion_bar_element">
+                    <span class="lws_optimize_convertion_bar_element_title">
+                        <img src="<?php echo esc_url(plugins_url('images/page.svg', __DIR__)); ?>" alt="Logo Page" width="15px" height="15px">
+                        <?php esc_html_e('Page cached / Total pages: ', 'lws-optimize'); ?>
+                    </span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_current_preload_done"><?php echo esc_html($fb_preloaddata['done'] . "/" . $fb_preloaddata['quantity']); ?></span>
                 </div>
             </div>
         </div>
@@ -686,6 +700,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
                             if (p_info != null) {
                                 p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
+                                let image = document.getElementById('lws_optimize_preload_status_icon');
+                                if (image) {
+                                    image.src = "<?php echo esc_url(plugins_url('images/actif.svg', __DIR__)) ?>"
+                                }
                             }
                             var currentdate = new Date();
                             var datetime = currentdate.getDate() + "-" +
@@ -710,13 +728,18 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             let p_info = document.getElementById('lwsop_current_preload_info');
                             let p_done = document.getElementById('lwsop_current_preload_done');
 
-                            let block = document.getElementById('lwsop_preloading_status_block');
-                            if (block != null) {
-                                block.classList.add('hidden');
-                            }
 
                             if (p_info != null) {
                                 p_info.innerHTML = "<?php esc_html_e("Up-to-date", "lws-optimize"); ?>";
+                                let image = document.getElementById('lws_optimize_preload_status_icon');
+                                if (image) {
+                                    image.src = "<?php echo esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)) ?>"
+                                }
+                            }
+
+                            let block = document.getElementById('lwsop_preloading_status_block');
+                            if (block != null) {
+                                block.classList.add('hidden');
                             }
 
                             if (p_done != null) {
@@ -1288,8 +1311,8 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             let button = this;
             let old_text = this.innerHTML;
             this.innerHTML = `
-                <span name="loading" style="padding-left:5px">
-                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                <span name="loading">
+                    <img style="vertical-align:sub;" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
                 </span>
             `;
 
