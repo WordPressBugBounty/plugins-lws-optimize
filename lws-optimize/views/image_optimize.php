@@ -15,25 +15,10 @@ if ($max_exec < 120) {
     $max_exec = false;
 }
 
-// Fetch the configuration for each elements of LWSOptimize
-$config_array = $GLOBALS['lws_optimize']->optimize_options;
 
 // Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
 $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? null;
 $lwscache_status = $_SERVER['lwscache'] ?? null;
-
-// Whether LWSCache/FastestCache is active or not. If status is null : not a LWS Hosting
-if ($lwscache_status == "Off") {
-    $lwscache_status = false;
-} elseif ($lwscache_status == "On") {
-    $lwscache_status = true;
-}
-
-if ($fastest_cache_status == "0") {
-    $fastest_cache_status = false;
-} elseif ($fastest_cache_status == "1") {
-    $fastest_cache_status = true;
-}
 
 // If not on a LWS Hosting
 $lwscache_locked = false;
@@ -44,25 +29,16 @@ if ($lwscache_status === null && $fastest_cache_status === null) {
 // All options for the convertion modal
 $convertion_options = [
     'image_format' => [
-        'title' => __('1 - Which image types do you wish to convert?', 'lws-optimize'),
-        'description' => __('Select every MIME-Types to include in the convertion process.', 'lws-optimize'),
+        'title' => __('1 - Which image do you wish to convert?', 'lws-optimize'),
+        'description' => '',
         'checkboxes' => [
-            'webp' => __('Webp <b>(recommended)</b>', 'lws-optimize'),
             'jpg' => __('JPEG <b>(recommended)</b>', 'lws-optimize'),
-            'png' => 'PNG',
+            'png' => __('PNG <b>(not recommended)</b>', 'lws-optimize'),
         ]
     ],
-    'convertion_format' => [
-        'title' => __('2 - To which type do you wish to convert images?', 'lws-optimize'),
-        'description' => __('Select the target type for the convertion. Images already in said type will be ignored.', 'lws-optimize'),
-        'select' => [
-            'auto' => __('Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>', 'lws-optimize'),
-            'webp' => 'WebP',
-            'avif' => 'AVIF'
-        ],
-    ],
+
     'convertion_quality' => [
-        'title' => __('3 - What quality do you wish for your converted images?', 'lws-optimize'),
+        'title' => __('2 - What quality do you wish for your converted images?', 'lws-optimize'),
         'description' => __('Define the quality of converted images. A lower qualite will result in lower sharpness but reduced size.', 'lws-optimize'),
         'select' => [
             'balanced' => __('Balanced <b>(recommended)</b> <span>64% quality</span>', 'lws-optimize'),
@@ -71,7 +47,7 @@ $convertion_options = [
         ]
     ],
     'image_maxsize' => [
-        'title' => __('4 - Do you wish to resize images that are too big?', 'lws-optimize'),
+        'title' => __('3 - Do you wish to resize images that are too big?', 'lws-optimize'),
         'description' => __('Define a maximum width to limit image size.', 'lws-optimize'),
         'select' => [
             '2560' => __('2560px <b>(recommended)</b>', 'lws-optimize'),
@@ -82,18 +58,8 @@ $convertion_options = [
         ],
         'deactivated' => false
     ],
-    'convertion_amount' => [
-        'title' => __('5 - How many images do you wish to convert each time?', 'lws-optimize'),
-        'description' => __('A higher number will speed up convertion but may use more resources.', 'lws-optimize'),
-        'select' => [
-            '10' => __('10 <b>(recommended)</b>', 'lws-optimize'),
-            '5' => '5',
-            '15' => '15',
-            '20' => '20',
-        ]
-    ],
     'convertion_keeporiginal' => [
-        'title' => __('6 - Do you wish to keep original images?', 'lws-optimize'),
+        'title' => __('4 - Do you wish to keep original images?', 'lws-optimize'),
         'description' => __('Keeping originals allows you to revert them to the initial type but increase used storage space.', 'lws-optimize'),
         'select' => [
             'keep' => __('Yes <b>(recommended)</b>', 'lws-optimize'),
@@ -104,25 +70,15 @@ $convertion_options = [
 
 $autoconvertion_options = [
     'auto_image_format' => [
-        'title' => __('1 - Which image types do you wish to convert?', 'lws-optimize'),
-        'description' => __('Select every MIME-Types to include in the convertion process.', 'lws-optimize'),
+        'title' => __('1 - Which image do you wish to convert?', 'lws-optimize'),
+        'description' => '',
         'checkboxes' => [
-            'webp' => __('Webp <b>(recommended)</b>', 'lws-optimize'),
             'jpg' => __('JPEG <b>(recommended)</b>', 'lws-optimize'),
-            'png' => 'PNG',
-        ]
-    ],
-    'auto_convertion_format' => [
-        'title' => __('2 - To which type do you wish to convert images?', 'lws-optimize'),
-        'description' => __('Select the target type for the convertion. Images already in said type will be ignored.', 'lws-optimize'),
-        'select' => [
-            'auto' => __('Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>', 'lws-optimize'),
-            'webp' => 'WebP',
-            'avif' => 'AVIF'
+            'png' => __('PNG <b>(not recommended)</b>', 'lws-optimize'),
         ]
     ],
     'auto_convertion_quality' => [
-        'title' => __('3 - What quality do you wish for your converted images?', 'lws-optimize'),
+        'title' => __('2 - What quality do you wish for your converted images?', 'lws-optimize'),
         'description' => __('Define the quality of converted images. A lower qualite will result in lower sharpness but reduced size.', 'lws-optimize'),
         'select' => [
             'balanced' => __('Balanced <b>(recommended)</b> <span>64% quality</span>', 'lws-optimize'),
@@ -131,7 +87,7 @@ $autoconvertion_options = [
         ]
     ],
     'auto_image_maxsize' => [
-        'title' => __('4 - Do you wish to resize images that are too big?', 'lws-optimize'),
+        'title' => __('3 - Do you wish to resize images that are too big?', 'lws-optimize'),
         'description' => __('Define a maximum width to limit image size.', 'lws-optimize'),
         'select' => [
             '2560' => __('2560px <b>(recommended)</b>', 'lws-optimize'),
@@ -145,42 +101,25 @@ $autoconvertion_options = [
 ];
 
 
-$is_imagick = true;
-$avif_compatibility = false;
-
+$is_imagick = false;
 if (class_exists('Imagick')) {
-    global $wp_version;
     $is_imagick = true;
-    $img = new Imagick();
+}
 
-    $supported_formats = $img->queryFormats();
-    if (floatval($wp_version) > 6.5 && in_array("AVIF", $supported_formats)) {
-        $avif_compatibility = true;
-    }
+$autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
 
-    $autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
-
-    $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
-    if ($next_scheduled_all_convert) {
-        $next_scheduled_all_convert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_all_convert), 'Y-m-d H:i:s');
-    } else {
-        $next_scheduled_all_convert = false;
-    }
-
-    $next_scheduled_deconvert = wp_next_scheduled('lwsop_revertOptimization');
-    if ($next_scheduled_deconvert) {
-        $next_scheduled_deconvert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_deconvert), 'Y-m-d H:i:s');
-    } else {
-        $next_scheduled_deconvert = false;
-    }
+$next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
+if ($next_scheduled_all_convert) {
+    $next_scheduled_all_convert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_all_convert), 'Y-m-d H:i:s');
 } else {
-    $is_imagick = false;
-    $autoconvert_state = "false";
     $next_scheduled_all_convert = false;
-    $next_scheduled_deconvert = false;
+}
 
-    $latest_time = 0;
-    $local_timestamp = "-";
+$next_scheduled_deconvert = wp_next_scheduled('lwsop_revertOptimization');
+if ($next_scheduled_deconvert) {
+    $next_scheduled_deconvert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_deconvert), 'Y-m-d H:i:s');
+} else {
+    $next_scheduled_deconvert = false;
 }
 
 $current_convertion = get_option('lws_optimize_current_convertion_stats', ['type' => "-", 'original' => "0", 'converted' => "0"]);
@@ -208,7 +147,6 @@ if (!$memory_limit) {
     $memory_limit_text = esc_html__('A memory_limit of at least 128M is necessary to use this functionnality. Your currently have a value of ', 'lws-optimize') . ini_get('memory_limit') . ". <br>";
 }
 ?>
-<!-- TODO : Changer l'affichage si Imagick / max_execution_time / memory_limit -->
 <?php if (!$is_imagick) : ?>
     <div class="lwsop_noimagick_block">
         <?php esc_html_e('Imagick has not been found on this server. Please contact your hosting provider to learn more about the issue.', 'lws-optimize'); ?>
@@ -216,7 +154,7 @@ if (!$memory_limit) {
 <?php endif ?>
 
 <div class="lwsop_bluebanner">
-    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Images Convertion Tool', 'lws-optimize'); ?> [BETA]</h2>
+    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Images WebP Convertion Tool', 'lws-optimize'); ?> [BETA]</h2>
 </div>
 
 <div class="lwop_beta_cutout">
@@ -228,12 +166,7 @@ if (!$memory_limit) {
         <?php if (!$memory_limit) : ?>
             <li style="font-weight: 500;"><?php echo $memory_limit_text . $execution_time_text_resolution; ?></li>
         <?php endif ?>
-        <?php if (!$avif_compatibility) : ?>
-            <li><?php esc_html_e('AVIF convertion is not available on your website. Your WordPress needs to be updated to at least 6.5 and the installed Imagick version must be compatible with AVIF', 'lws-optimize'); ?></li>
-        <?php else : ?>
-            <li><?php esc_html_e('Warning about transparency: images may lose their transparency once converted to AVIF.', 'lws-optimize'); ?></li>
-            <li><?php esc_html_e('Size limitations: AVIF convertion is only available on images smaller than 400Ko. Depending on the size and quantité of files, the process may take a while.', 'lws-optimize'); ?></li>
-        <?php endif; ?>
+
         <?php if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <li>
                 <div>
@@ -244,11 +177,12 @@ if (!$memory_limit) {
                             esc_html_e('For more informations on how to setup server crons, contact your hosting provider.', 'lws-optimize');
                         } elseif ($lwscache_status !== null) {
                             esc_html_e('For more informations on how to setup server crons by using the WPManager, follow this ', 'lws-optimize');
-                        ?><a href="https://tutoriels.lws.fr/wordpress/wp-manager-de-lws-gerer-son-site-wordpress#Gerer_la_securite_et_les_parametres_generaux_de_votre_site_WordPress_avec_WP_Manager_LWS" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
-                                                                                                                                                                                                                                                                                            } elseif ($fastest_cache_status !== null) {
-                                                                                                                                                                                                                                                                                                esc_html_e('For more informations on how to setup server crons, follow this ', 'lws-optimize');
-                                                                                                                                                                                                                                                                                                ?><a href="https://support.cpanel.net/hc/en-us/articles/10687844130199-How-to-replace-wp-cron-with-cron-job-without-WP-Toolkit" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
-                                                                                                                                                                                                                                                                                            } ?>
+                            ?><a href="https://tutoriels.lws.fr/wordpress/wp-manager-de-lws-gerer-son-site-wordpress#Gerer_la_securite_et_les_parametres_generaux_de_votre_site_WordPress_avec_WP_Manager_LWS" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a>
+                            <?php
+                        } elseif ($fastest_cache_status !== null) {
+                            esc_html_e('For more informations on how to setup server crons, follow this ', 'lws-optimize');
+                            ?><a href="https://support.cpanel.net/hc/en-us/articles/10687844130199-How-to-replace-wp-cron-with-cron-job-without-WP-Toolkit" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
+                        } ?>
                     </span>
                 </div>
             </li>
@@ -260,13 +194,12 @@ if (!$memory_limit) {
     <div class="lws_optimize_image_convertion_main first">
         <div class="lws_optimize_image_convertion_main_left">
             <h2 class="lws_optimize_image_convertion_title">
-                <span><?php esc_html_e('Convert all images', 'lws-optimize'); ?></span>
+                <span><?php esc_html_e('Convert all images to WebP', 'lws-optimize'); ?></span>
                 <button id="lws_optimize_button_refresh_image_convertion" class="lws_optimize_image_convertion_refresh">
                     <img src="<?php echo esc_url(plugins_url('images/rafraichir.svg', __DIR__)) ?>" alt="Logo Refresh" width="15px" height="15px">
                     <span><?php esc_html_e('Refresh', 'lws-optimize'); ?></span>
                 </button>
             </h2>
-            <div class="lws_optimize_image_convertion_description"><?php esc_html_e('Convert all images to the optimized format you chose.', 'lws-optimize'); ?></div>
             <div class="lws_optimize_convertion_bar">
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
@@ -296,7 +229,6 @@ if (!$memory_limit) {
             </button>
         </div>
     </div>
-
 
     <div class="lws_optimize_convertion_details">
         <div class="lws_optimize_convertion_details_element">
@@ -347,7 +279,7 @@ if (!$memory_limit) {
                     <?php $attachments = get_option('lws_optimize_images_convertion', []); ?>
                     <?php foreach ($attachments as $attachment) : ?>
                         <tr>
-                            <td><?php echo esc_html($attachment['name']); ?></td>
+                            <td><?php echo esc_html($attachment['name'] . "." . $attachment['extension']); ?></td>
                             <?php if ($attachment['converted']) : ?>
                                 <td><?php echo esc_html($attachment['original_mime'] . " => " . $attachment['mime']); ?></td>
                                 <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
@@ -424,36 +356,25 @@ if (!$memory_limit) {
             <div class="lws_optimize_image_convertion_description">
                 <span><?php esc_html_e('Automatically convert new images uplaoded on your WordPress website.', 'lws-optimize'); ?></span>
             </div>
-            <div class="lws_optimize_convertion_bar">
-                <div class="lws_optimize_convertion_bar_element">
-                    <span class="lws_optimize_convertion_bar_element_title">
-                        <img id="lws_optimize_autoconvertion_status_icon" src="<?php echo $autoconvert_state == "true" ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
-                        <?php echo esc_html__('Status: ', 'lws-optimize'); ?>
-                    </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_autoconvertion_status"><?php echo $autoconvert_state == "true" ? esc_html__('Active', 'lws-optimize') : esc_html__('Inactive', 'lws-optimize'); ?></span>
-                </div>
-            </div>
         </div>
         <div class="lws_optimize_image_convertion_main_right">
-            <button type="button" class="lws_optimize_action_button" id="lws_optimize_image_autoconvertion_actionbutton" data-target="#<?php echo $autoconvert_state == "true" ? "lws_optimize_image_stop_autoconvertion_modal" : "lws_optimize_image_autoconvertion_modal"; ?>" data-toggle="modal">
-                <?php if ($autoconvert_state == "true") : ?>
-                    <img id="lws_optimize_image_autoconvertion_image" src="<?php echo esc_url(plugins_url('images/arreter.svg', __DIR__)) ?>" alt="Logo Stop" width="15px" height="15px">
-                    <span id="lws_optimize_image_autoconvertion_text"><?php esc_html_e('Stop', 'lws-optimize'); ?></span>
-                <?php else : ?>
-                    <span id="lws_optimize_image_autoconvertion_text"><?php esc_html_e('Configurate', 'lws-optimize'); ?></span>
-                <?php endif; ?>
+            <button type="button" class="lws_optimize_action_button" id="lws_optimize_image_autoconvertion_actionbutton" data-target="#lws_optimize_image_autoconvertion_modal" data-toggle="modal">
+                <span id="lws_optimize_image_autoconvertion_text"><?php esc_html_e('Configurate', 'lws-optimize'); ?></span>
             </button>
+            <label class="lwsop_checkbox">
+                <input type="checkbox" id="lwsop_image_autoconvertion_check" <?php echo $autoconvert_state == "true" ? esc_attr('checked') : ''; ?>>
+                <span class="slider round"></span>
+            </label>
         </div>
     </div>
 
-    <?php $media_convertion_values = get_option('lws_optimize_all_media_convertion', []); $media_convertion_values = array_merge(['convertion_format' => 'auto', 'convertion_keeporiginal' => "keep", 'convertion_quality' => 'balanced', 'convertion_exceptions' => [], 'convertion_amount' => 10, 'image_format' => ['auto', 'jpg', 'jpeg'], 'image_maxsize' => 2560], $media_convertion_values);?>
+    <?php $media_convertion_values = get_option('lws_optimize_all_media_convertion', []); $media_convertion_values = array_merge(['convertion_keeporiginal' => "keep", 'convertion_quality' => 'balanced', 'image_format' => ['jpg', 'jpeg'], 'image_maxsize' => 2560], $media_convertion_values);?>
     <div class="modal fade" id="lws_optimize_image_convertion_modal" tabindex='-1'>
         <div class="modal-dialog lws_optimize_image_convertion_modal_dialog">
             <div class="modal-content lws_optimize_image_convertion_modal_content">
                 <form id="lws_optimize_image_convertion_form" class="lws_optimize_image_convertion_modal_form">
-                    <h2 class="lws_optimize_image_convertion_modal_title"><?php esc_html_e('Convertion options', 'lws-optimize'); ?></h2>
+                    <h2 class="lws_optimize_image_convertion_modal_title"><?php esc_html_e('WebP convertion options', 'lws-optimize'); ?></h2>
                     <?php foreach ($convertion_options as $option_id => $option) : ?>
-
                         <span class="lws_optimize_image_convertion_modal_element">
                             <h3 class="lws_optimize_image_convertion_modal_element_title"><?php echo esc_html($option['title']); ?></h3>
                             <span class="lws_optimize_image_convertion_modal_element_description"><?php echo esc_html($option['description']); ?></span>
@@ -463,22 +384,13 @@ if (!$memory_limit) {
                                     <label for="lwsop_image_convertion_checkbox_<?php echo esc_attr($checkbox_id); ?>">
                                         <input type="checkbox" class="lws_optimize_custom_checkboxes" id="lwsop_image_convertion_checkbox_<?php echo esc_attr($checkbox_id); ?>" name="lws_optimize_image_convertion_checkbox_<?php echo esc_html($checkbox_id); ?>" <?php echo in_array($checkbox_id, $media_convertion_values[$option_id]) ? esc_attr("checked") : ""; ?>>
                                         <span><?php echo wp_kses($checkbox, ['b' => [], 'span' => []]); ?></span>
+                                        <?php if ($checkbox_id == "png") : ?>
+                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency.", "lws-optimize"); ?>">
+                                        <?php endif; ?>
                                     </label>
                                 <?php endforeach; ?>
                                 </span>
                             <?php else : ?>
-                                <?php if (isset($option['deactivated']) && $option['deactivated']) : ?>
-                                    <div class="lwsop_deactivated"><?php esc_html_e('Coming soon', 'lws-optimize'); ?></div>
-                                    <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>">
-                                        <span id="lws_optimize_image_convertion_select_<?php echo esc_html($option_id); ?>" class="lwsop_custom_option image_optimization">
-                                            <div class="custom_option_content image_optimization">
-                                                <span class="custom_option_content_text image_optimization" value="<?php echo $media_convertion_values[$option_id]; ?>"><?php echo wp_kses($option['select'][$media_convertion_values[$option_id]], ['b' => [], 'span' => []]); ?></span>
-                                                <input type="hidden" id="lws_optimize_image_convertion_select_options_<?php echo esc_html($option_id); ?>" value="<?php echo $media_convertion_values[$option_id]; ?>">
-                                            </div>
-                                            <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
-                                        </span>
-                                    </div>
-                                <?php else : ?>
                                     <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>">
                                         <span id="lws_optimize_image_convertion_select_<?php echo esc_html($option_id); ?>" class="lwsop_custom_option image_optimization">
                                             <div class="custom_option_content image_optimization">
@@ -525,15 +437,9 @@ if (!$memory_limit) {
                                             }
                                         });
                                     </script>
-                                <?php endif; ?>
                             <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
-                    <span class="lws_optimize_image_convertion_modal_element">
-                        <h3 class="lws_optimize_image_convertion_modal_element_title"><?php esc_html_e('7 - Do you wish to exclude images from the convertion?', 'lws-optimize'); ?></h3>
-                        <span class="lws_optimize_image_convertion_modal_element_description"><?php esc_html_e('Enter the name of each image to exclude below, separated by a comma (,). Those images will then be ignored and not be converted.', 'lws-optimize'); ?></span>
-                        <textarea id="lwsop_image_convertion_textarea_exceptions" style="width: 100%; height: 100px;" placeholder="image_1.png,image.png,wordpress_3.jpeg"><?php echo implode(',', $media_convertion_values['convertion_exceptions']) ?? ""; ?></textarea>
-                    </span>
 
                     <div class="lws_optimize_modal_button_block">
                         <button type="button" class="lws_optimize_modal_close_button" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
@@ -544,12 +450,12 @@ if (!$memory_limit) {
         </div>
     </div>
 
-    <?php $media_convertion_values = $GLOBALS['lws_optimize']->optimize_options['auto_update'] ?? []; $media_convertion_values = array_merge(['auto_convertion_format' => 'webp', 'auto_convertion_quality' => 'balanced', 'auto_convertion_exceptions' => [], 'auto_image_format' => ['webp', 'jpg', 'jpeg'], 'auto_image_maxsize' => 2560], $media_convertion_values);?>
+    <?php $media_convertion_values = $GLOBALS['lws_optimize']->optimize_options['auto_update'] ?? []; $media_convertion_values = array_merge(['auto_convertion_quality' => 'balanced', 'auto_image_format' => ['jpg', 'jpeg'], 'auto_image_maxsize' => 2560], $media_convertion_values);?>
     <div class="modal fade" id="lws_optimize_image_autoconvertion_modal" tabindex='-1'>
         <div class="modal-dialog lws_optimize_image_convertion_modal_dialog">
             <div class="modal-content lws_optimize_image_convertion_modal_content">
                 <form id="lws_optimize_image_autoconvertion_form" class="lws_optimize_image_convertion_modal_form">
-                    <h2 class="lws_optimize_image_convertion_modal_title"><?php esc_html_e('Convertion options', 'lws-optimize'); ?></h2>
+                    <h2 class="lws_optimize_image_convertion_modal_title"><?php esc_html_e('WebpP autoconvertion options', 'lws-optimize'); ?></h2>
                     <?php foreach ($autoconvertion_options as $option_id => $option) : ?>
                         <span class="lws_optimize_image_convertion_modal_element">
                             <h3 class="lws_optimize_image_convertion_modal_element_title"><?php echo esc_html($option['title']); ?></h3>
@@ -560,22 +466,13 @@ if (!$memory_limit) {
                                     <label for="lwsop_image_autoconvertion_checkbox_<?php echo esc_attr($checkbox_id); ?>">
                                         <input type="checkbox" class="lws_optimize_custom_checkboxes" id="lwsop_image_autoconvertion_checkbox_<?php echo esc_attr($checkbox_id); ?>" name="lws_optimize_image_autoconvertion_checkbox_<?php echo esc_html($checkbox_id); ?>" <?php echo in_array($checkbox_id, $media_convertion_values[$option_id]) ? esc_attr("checked") : ""; ?>>
                                         <span><?php echo wp_kses($checkbox, ['b' => [], 'span' => []]); ?></span>
+                                        <?php if ($checkbox_id == "png") : ?>
+                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency.", "lws-optimize"); ?>">
+                                        <?php endif; ?>
                                     </label>
                                 <?php endforeach; ?>
                                 </span>
                             <?php else : ?>
-                                <?php if (isset($option['deactivated']) && $option['deactivated']) : ?>
-                                    <div class="lwsop_deactivated"><?php esc_html_e('Coming soon', 'lws-optimize'); ?></div>
-                                    <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>">
-                                        <span id="lws_optimize_image_convertion_select_<?php echo esc_html($option_id); ?>" class="lwsop_custom_option image_optimization">
-                                            <div class="custom_option_content image_optimization">
-                                                <span class="custom_option_content_text image_optimization" value="<?php echo $media_convertion_values[$option_id]; ?>"><?php echo wp_kses($option['select'][$media_convertion_values[$option_id]], ['b' => [], 'span' => []]); ?></span>
-                                                <input type="hidden" id="lws_optimize_image_convertion_select_options_<?php echo esc_html($option_id); ?>" value="<?php echo $media_convertion_values[$option_id]; ?>">
-                                            </div>
-                                            <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
-                                        </span>
-                                    </div>
-                                <?php else : ?>
                                     <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>">
                                         <span id="lws_optimize_image_autoconvertion_select_<?php echo esc_html($option_id); ?>" class="lwsop_custom_option image_optimization">
                                             <div class="custom_option_content image_optimization">
@@ -621,19 +518,13 @@ if (!$memory_limit) {
                                             }
                                         });
                                     </script>
-                                <?php endif ?>
                             <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
-                    <span class="lws_optimize_image_convertion_modal_element">
-                        <h3 class="lws_optimize_image_convertion_modal_element_title"><?php esc_html_e('5 - Do you wish to exclude images from the convertion?', 'lws-optimize'); ?></h3>
-                        <span class="lws_optimize_image_convertion_modal_element_description"><?php esc_html_e('Enter the name of each image to exclude below, separated by a comma (,). Those images will then be ignored and not be converted.', 'lws-optimize'); ?></span>
-                        <textarea id="lwsop_image_autoconvertion_textarea_exceptions" style="width: 100%; height: 100px;" placeholder="image_1.png,image.png,wordpress_3.jpeg"><?php echo implode(',', $media_convertion_values['auto_convertion_exceptions']) ?? ""; ?></textarea>
-                    </span>
 
                     <div class="lws_optimize_modal_button_block">
                         <button type="button" class="lws_optimize_modal_close_button" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
-                        <button type="button" id="lws_optimize_start_image_autoconvertion" class="lws_optimize_validate_button"><?php echo esc_html_e('Convert images', 'lws-optimize'); ?></button>
+                        <button type="button" id="lws_optimize_start_image_autoconvertion" class="lws_optimize_validate_button"><?php echo esc_html_e('Validate', 'lws-optimize'); ?></button>
                     </div>
                 </form>
             </div>
@@ -728,11 +619,8 @@ if (!$memory_limit) {
                     let old = element.innerHTML;
                     element.innerHTML = `<div class="loading_animation"><img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="30px" height="auto"></div>`;
 
-                    let media_type = document.getElementById('lws_optimize_image_convertion_select_options_convertion_format');
                     let media_quality = document.getElementById('lws_optimize_image_convertion_select_options_convertion_quality');
                     let media_keepcopy = document.getElementById('lws_optimize_image_convertion_select_options_convertion_keeporiginal');
-                    let media_exceptions = document.getElementById('lwsop_image_convertion_textarea_exceptions');
-                    let amount_per_patch = document.getElementById('lws_optimize_image_convertion_select_options_convertion_amount');
                     let image_size = document.getElementById('lws_optimize_image_convertion_select_options_image_maxsize');
 
                     let mimetypes = [];
@@ -743,20 +631,14 @@ if (!$memory_limit) {
                         }
                     });
 
-                    media_type = media_type != null ? media_type.value : "auto";
                     media_quality = media_quality != null ? media_quality.value : "balanced";
                     media_keepcopy = media_keepcopy != null ? media_keepcopy.value : "keep";
-                    media_exceptions = media_exceptions != null ? media_exceptions.value : "";
-                    amount_per_patch = amount_per_patch != null ? amount_per_patch.value : 10;
                     image_size = image_size != null ? image_size.value : 2560;
 
 
                     let data = {
-                        'type': media_type,
                         'quality': media_quality,
                         'keepcopy': media_keepcopy,
-                        'exceptions': media_exceptions,
-                        'amount_per_patch': amount_per_patch,
                         'mimetypes': mimetypes,
                         'size': image_size
                     };
@@ -847,12 +729,110 @@ if (!$memory_limit) {
                 });
             }
 
+            if (document.getElementById('lwsop_image_autoconvertion_check')) {
+                document.getElementById('lwsop_image_autoconvertion_check').addEventListener('change', function() {
+                    let element = this;
+                    if (this.checked) {
+                        let ajaxRequest = jQuery.ajax({
+                            url: ajaxurl,
+                            type: "POST",
+                            timeout: 120000,
+                            context: document.body,
+                            data: {
+                                _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_start_autoconvertion_nonce")); ?>",
+                                action: "lwsop_start_autoconvertion",
+                            },
+                            success: function(data) {
+                                element.checked = false;
+                                if (data === null || typeof data != 'string') {
+                                    return 0;
+                                }
+
+                                try {
+                                    var returnData = JSON.parse(data);
+                                } catch (e) {
+                                    console.log(e);
+                                    returnData = {
+                                        'code': "NOT_JSON",
+                                        'data': "FAIL"
+                                    };
+                                }
+
+                                switch (returnData['code']) {
+                                    case 'SUCCESS':
+                                        element.checked = true;
+                                        callPopup('success', "<?php esc_html_e('The autoconvertion has been started.', 'lws-optimize'); ?>");
+                                        break;
+                                    default:
+                                        callPopup('error', "<?php esc_html_e('Failed to start the autoconvertion', 'lws-optimize'); ?>");
+                                        break;
+                                }
+                            },
+                            error: function(error) {
+                                element.checked = false;
+                                callPopup("error", "<?php esc_html_e('Failed to start the autoconvertion', 'lws-optimize'); ?>");
+                                console.log(error);
+                                return -1;
+                            }
+                        });
+                    } else {
+                        let ajaxRequest = jQuery.ajax({
+                            url: ajaxurl,
+                            type: "POST",
+                            timeout: 120000,
+                            context: document.body,
+                            data: {
+                                _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_stop_autoconvertion_nonce")); ?>",
+                                action: "lwsop_stop_autoconvertion",
+                            },
+                            success: function(data) {
+                                element.checked = true;
+                                if (data === null || typeof data != 'string') {
+                                    return 0;
+                                }
+
+                                try {
+                                    var returnData = JSON.parse(data);
+                                } catch (e) {
+                                    console.log(e);
+                                    returnData = {
+                                        'code': "NOT_JSON",
+                                        'data': "FAIL"
+                                    };
+                                }
+
+                                switch (returnData['code']) {
+                                    case 'SUCCESS':
+                                        element.checked = false;
+                                        callPopup('success', "<?php esc_html_e('The autoconvertion has been stopped.', 'lws-optimize'); ?>");
+                                        break;
+                                    default:
+                                        callPopup('error', "<?php esc_html_e('Failed to stop the autoconvertion', 'lws-optimize'); ?>");
+                                        break;
+                                }
+                            },
+                            error: function(error) {
+                                element.checked = true;
+                                callPopup("error", "<?php esc_html_e('Failed to stop the autoconvertion', 'lws-optimize'); ?>");
+                                console.log(error);
+                                return -1;
+                            }
+                        });
+                    }
+
+                    let convert_check_button = document.getElementById('lws_optimize_button_refresh_image_deconvertion');
+                    if (convert_check_button != null) {
+                        convert_check_button.dispatchEvent(new Event('click'));
+                    }
+                });
+            }
+
             if (document.getElementById('lws_optimize_start_image_autoconvertion')) {
                 document.getElementById('lws_optimize_start_image_autoconvertion').addEventListener('click', function() {
                     let element = document.getElementById('lws_optimize_image_autoconvertion_actionbutton');
                     if (!element) {
                         jQuery(document.getElementById('lws_optimize_image_convertion_modal')).modal('hide');
-                        callPopup('error', "<?php esc_html_e('Failed to start the restoration', 'lws-optimize'); ?>");
+                        callPopup('error', "<?php esc_html_e('Failed to configurate the restoration', 'lws-optimize'); ?>");
                         return -1;
                     }
 
@@ -861,9 +841,7 @@ if (!$memory_limit) {
                     element.innerHTML = `<div class="loading_animation"><img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="30px" height="auto"></div>`;
 
 
-                    let media_type = document.getElementById('lws_optimize_image_autoconvertion_select_options_auto_convertion_format');
                     let media_quality = document.getElementById('lws_optimize_image_autoconvertion_select_options_auto_convertion_quality');
-                    let media_exceptions = document.getElementById('lwsop_image_autoconvertion_textarea_exceptions');
                     let image_size = document.getElementById('lws_optimize_image_autoconvertion_select_options_auto_image_maxsize');
 
                     let mimetypes = [];
@@ -874,15 +852,11 @@ if (!$memory_limit) {
                         }
                     });
 
-                    media_type = media_type !== null ? media_type.value : "auto";
                     media_quality = media_quality !== null ? media_quality.value : "balanced";
-                    media_exceptions = media_exceptions !== null ? media_exceptions.value : "";
                     image_size = image_size !== null ? image_size.value : 2560;
 
                     let data = {
-                        'type': media_type,
                         'quality': media_quality,
-                        'exceptions': media_exceptions,
                         'mimetypes': mimetypes,
                         'size': image_size
                     };
@@ -919,34 +893,12 @@ if (!$memory_limit) {
 
                             switch (returnData['code']) {
                                 case 'SUCCESS':
-                                    callPopup('success', "<?php esc_html_e('Image convertion will now be done for each images uploaded. It may slightly lengthen the upload time', 'lws-optimize'); ?>");
-
-                                    let convert_check_button = document.getElementById('lws_optimize_button_refresh_image_deconvertion');
-                                    if (convert_check_button != null) {
-                                        convert_check_button.dispatchEvent(new Event('click'));
-                                    }
-
-                                    let image_status = document.getElementById('lws_optimize_autoconvertion_status_icon');
-                                    let text_status = document.getElementById('lws_optimize_autoconvertion_status');
-
-                                    if (image_status) {
-                                        image_status.src = "<?php echo esc_url(plugins_url('images/actif.svg', __DIR__)) ?>"
-                                    }
-                                    if (text_status) {
-                                        text_status.innerHTML = "<?php echo esc_html__('Active', 'lws-optimize'); ?>";
-                                    }
-
-
-                                    element.setAttribute('data-target', '#lws_optimize_image_stop_autoconvertion_modal');
-                                    element.innerHTML = `
-                                        <img id="lws_optimize_image_autoconvertion_image" src="<?php echo esc_url(plugins_url('images/arreter.svg', __DIR__)) ?>" alt="Logo Stop" width="15px" height="15px">
-                                        <span id="lws_optimize_image_autoconvertion_text"><?php esc_html_e('Stop', 'lws-optimize'); ?></span>
-                                    `;
+                                    callPopup('success', "<?php esc_html_e('Image convertion has been configurated', 'lws-optimize'); ?>");
                                     break;
                                 case 'FAILED':
                                 default:
                                     console.log(returnData);
-                                    callPopup('error', "<?php esc_html_e('Failed to start converting images', 'lws-optimize'); ?>");
+                                    callPopup('error', "<?php esc_html_e('Failed to configurate', 'lws-optimize'); ?>");
                                     break;
                             }
                         },
@@ -955,81 +907,7 @@ if (!$memory_limit) {
                             document.body.style.pointerEvents = "all";
 
                             console.log(error);
-                            callPopup("error", "<?php esc_html_e('Failed to start converting images', 'lws-optimize'); ?>");
-                            return -1;
-                        }
-                    });
-                });
-            }
-
-            if (document.getElementById('lwsop_deactivate_autoconvertion') != null) {
-                document.getElementById('lwsop_deactivate_autoconvertion').addEventListener('click', function() {
-                    var element = document.getElementById('lws_optimize_image_autoconvertion_actionbutton');
-                    if (!element) {
-                        jQuery(document.getElementById('lws_optimize_image_stop_autoconvertion_modal')).modal('hide');
-                        callPopup('error', "<?php esc_html_e('Failed to stop the autoconvertion', 'lws-optimize'); ?>");
-                        return -1;
-                    }
-
-                    jQuery(document.getElementById('lws_optimize_image_stop_autoconvertion_modal')).modal('hide');
-
-                    document.body.style.pointerEvents = "none";
-                    let old = element.innerHTML;
-                    element.innerHTML = `<div class="loading_animation"><img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="30px" height="auto"></div>`;
-
-                    let ajaxRequest = jQuery.ajax({
-                        url: ajaxurl,
-                        type: "POST",
-                        timeout: 120000,
-                        context: document.body,
-                        data: {
-                            _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_stop_autoconvertion_nonce")); ?>",
-                            action: "lwsop_stop_autoconvertion",
-                        },
-                        success: function(data) {
-                            element.innerHTML = old;
-                            document.body.style.pointerEvents = "all";
-
-                            if (data === null || typeof data != 'string') {
-                                return 0;
-                            }
-
-                            try {
-                                var returnData = JSON.parse(data);
-                            } catch (e) {
-                                console.log(e);
-                                returnData = {
-                                    'code': "NOT_JSON",
-                                    'data': "FAIL"
-                                };
-                            }
-
-                            switch (returnData['code']) {
-                                case 'SUCCESS':
-                                    callPopup('success', "<?php esc_html_e('The autoconvertion has been stopped.', 'lws-optimize'); ?>");
-
-                                    let image_status = document.getElementById('lws_optimize_autoconvertion_status_icon');
-                                    let text_status = document.getElementById('lws_optimize_autoconvertion_status');
-                                    if (image_status) {
-                                        image_status.src = "<?php echo esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)) ?>"
-                                    }
-                                    if (text_status) {
-                                        text_status.innerHTML = "<?php echo esc_html__('Inactive', 'lws-optimize'); ?>";
-                                    }
-
-                                    element.setAttribute('data-target', '#lws_optimize_image_autoconvertion_modal');
-                                    element.innerHTML = `<span id="lws_optimize_image_autoconvertion_text"><?php esc_html_e('Configurate', 'lws-optimize'); ?></span>`;
-                                    break;
-                                default:
-                                    callPopup('error', "<?php esc_html_e('Failed to stop the autoconvertion', 'lws-optimize'); ?>");
-                                    break;
-                            }
-                        },
-                        error: function(error) {
-                            element.innerHTML = old;
-                            document.body.style.pointerEvents = "all";
-                            callPopup("error", "<?php esc_html_e('Failed to stop the autoconvertion', 'lws-optimize'); ?>");
-                            console.log(error);
+                            callPopup("error", "<?php esc_html_e('Failed to configurate', 'lws-optimize'); ?>");
                             return -1;
                         }
                     });
@@ -1546,7 +1424,7 @@ if (!$memory_limit) {
                                         if (data_listing[i]['converted']) {
                                             listing.insertAdjacentHTML('afterbegin', `
                                         <tr>
-                                            <td>` + data_listing[i]['name'] + `</td>
+                                            <td>` + data_listing[i]['name'] + "." + data_listing[i]['extension'] + `</td>
                                             <td>` + data_listing[i]['original_mime'] + " => " + data_listing[i]['mime'] + `</td>
                                             <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
                                             <td>` + (new Date(data_listing[i]['date_convertion'] * 1000).toLocaleString()).replaceAll('/', '-') + `</td>
@@ -1556,7 +1434,7 @@ if (!$memory_limit) {
                                         } else {
                                             listing.insertAdjacentHTML('afterbegin', `
                                         <tr>
-                                            <td>` + data_listing[i]['name'] + `</td>
+                                            <td>` + data_listing[i]['name'] + "." + data_listing[i]['extension'] + `</td>
                                             <td>` + data_listing[i]['original_mime'] + `</td>
                                             <td><?php echo esc_html__('Pending', 'lws-optimize'); ?></td>
                                             <td>/</td>

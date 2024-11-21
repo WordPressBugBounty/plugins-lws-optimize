@@ -99,7 +99,7 @@ class LwsOptimizeManageAdmin
                 'id' => "lws_optimize_managecache",
                 'parent' => null,
                 'href' => admin_url("admin.php?page=lws-op-config"),
-                'title' => __('LWSOptimize', 'lws-optimize')
+                'title' => '<span class="lws_optimize_admin_icon"></span>' . __('LWS Optimize', 'lws-optimize'),
             ]
         );
         $Wp_Admin_Bar->add_menu(

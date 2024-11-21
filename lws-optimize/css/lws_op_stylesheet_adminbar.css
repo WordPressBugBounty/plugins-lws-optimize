@@ -15,6 +15,18 @@
     background-color: #2271B1;
 }
 
+#wpadminbar li#wp-admin-bar-lws_optimize_managecache span.lws_optimize_admin_icon:before {
+    content: url('../images/plugin_lws_optimize.svg');
+    position: relative;
+    float: left;
+    speak: never;
+    padding: 4px 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-image: none !important;
+    margin-right: 6px;
+}
+
 /* MODALE (NEW POPUP) */
 #modal_popup div.container-modal {
     text-align: center;

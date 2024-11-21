@@ -340,10 +340,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <div class="lws_optimize_convertion_bar">
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
-                        <img id="lws_optimize_preload_status_icon" src="<?php echo $fb_preloaddata['state'] == "true" ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
                         <?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Up-to-date', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Done', 'lws-optimize'); ?></span>
                 </div>
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
@@ -700,10 +699,6 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
                             if (p_info != null) {
                                 p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
-                                let image = document.getElementById('lws_optimize_preload_status_icon');
-                                if (image) {
-                                    image.src = "<?php echo esc_url(plugins_url('images/actif.svg', __DIR__)) ?>"
-                                }
                             }
                             var currentdate = new Date();
                             var datetime = currentdate.getDate() + "-" +
@@ -730,11 +725,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
 
                             if (p_info != null) {
-                                p_info.innerHTML = "<?php esc_html_e("Up-to-date", "lws-optimize"); ?>";
-                                let image = document.getElementById('lws_optimize_preload_status_icon');
-                                if (image) {
-                                    image.src = "<?php echo esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)) ?>"
-                                }
+                                p_info.innerHTML = "<?php esc_html_e("Done", "lws-optimize"); ?>";
                             }
 
                             let block = document.getElementById('lwsop_preloading_status_block');

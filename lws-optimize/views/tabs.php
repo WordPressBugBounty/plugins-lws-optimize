@@ -1,9 +1,9 @@
 <?php
 $tabs_list = array(
     array('frontend', __('Frontend', 'lws-optimize')),
+    array('caching', __('Caching', 'lws-optimize')),
     array('medias', __('Medias', 'lws-optimize')),
     array('image_optimize', __('Images', 'lws-optimize')),
-    array('caching', __('Caching', 'lws-optimize')),
     array('cdn', __('CDN', 'lws-optimize')),
     array('database', __('Database', 'lws-optimize')),
     array('pagespeed', __('Pagespeed test', 'lws-optimize')),

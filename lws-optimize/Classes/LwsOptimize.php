@@ -303,6 +303,7 @@ class LwsOptimize
 
                 // Activate or deactivate the auto-convertion of upload medias
                 add_action("wp_ajax_lwsop_autoconvert_all_images_activate", [$this, "lwsop_start_autoconvert_media"]);
+                add_action("wp_ajax_lwsop_start_autoconvertion", [$this, "lwsop_start_autoconvertion"]);
                 add_action("wp_ajax_lwsop_stop_autoconvertion", [$this, "lwsop_stop_autoconvertion"]);
 
                 add_action("wp_ajax_lwsop_check_convert_images_update", [$this, "lwsop_check_convert_images_update"]);
@@ -400,7 +401,7 @@ class LwsOptimize
         if ($options['action'] == 'update' && $options['type'] == 'plugin') {
             foreach ($options['plugins'] as $each_plugin) {
                 // If the plugin getting updated is LWS Optimize
-                if ($each_plugin == plugin_basename( __FILE__ )) {
+                if ($each_plugin == plugin_basename(__FILE__)) {
                     global $wpdb;
 
                     // Force deactivate memcached for everyone
@@ -451,7 +452,7 @@ class LwsOptimize
      */
     public function lws_optimize_init()
     {
-        load_textdomain( 'lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo' );
+        load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
 
         // Add all options referring to the WPAdmin page or the AdminBar
         $admin_manager = new LwsOptimizeManageAdmin();
@@ -538,7 +539,8 @@ class LwsOptimize
         return (json_encode(array('code' => "SUCCESS", 'data' => $return), JSON_PRETTY_PRINT));
     }
 
-    public function lwsop_remove_opcache() {
+    public function lwsop_remove_opcache()
+    {
         if (function_exists("opcache_reset")) {
             opcache_reset();
         }
@@ -1250,7 +1252,8 @@ class LwsOptimize
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
     }
 
-    public function lws_clear_opcache() {
+    public function lws_clear_opcache()
+    {
         check_ajax_referer('clear_opcache_caching', '_ajax_nonce');
         $this->lwsop_remove_opcache();
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
@@ -2082,21 +2085,13 @@ class LwsOptimize
         check_ajax_referer('lwsop_convert_all_images_nonce', '_ajax_nonce');
 
         // Fetch data from the form
-        $type = $_POST['data']['type'] != null ? sanitize_text_field($_POST['data']['type']) : "auto";
         $quality = $_POST['data']['quality'] != null ? sanitize_text_field($_POST['data']['quality']) : "balanced";
         $keepcopy = $_POST['data']['keepcopy'] != null ? sanitize_text_field($_POST['data']['keepcopy']) : "keep";
-        $exceptions = $_POST['data']['exceptions'] != null ? sanitize_textarea_field($_POST['data']['exceptions']) : '';
-        $amount_per_run = $_POST['data']['amount_per_patch'] != null ? intval($_POST['data']['amount_per_patch']) : 10;
-        $mimetypes = $_POST['data']['mimetypes'] != null ? $_POST['data']['mimetypes'] : ['jpeg', 'jpg', 'webp'];
+        $mimetypes = $_POST['data']['mimetypes'] != null ? $_POST['data']['mimetypes'] : ['jpeg', 'jpg'];
         $size = $_POST['data']['size'] != null ? intval($_POST['data']['size']) : 2560;
 
         if ($keepcopy != "keep") {
             $keepcopy = "not_keep";
-        }
-
-        // TODO : Temp default to webp
-        if ($type == "auto") {
-            $type = "webp";
         }
 
         $authorized_types = [];
@@ -2111,16 +2106,12 @@ class LwsOptimize
             $authorized_types[] = "jpg";
         }
 
-        // Get the string containing exceptions and transform it into an array
-        $exceptions = explode(',', $exceptions);
-
         // Fetch and store all necessary infos to proceed with the conversion
         $data = [
-            'convertion_format' => $type,
+            'convertion_format' => "webp",
             'convertion_keeporiginal' => $keepcopy,
             'convertion_quality' => $quality,
-            'convertion_exceptions' => $exceptions,
-            'convertion_amount' => $amount_per_run,
+            'convertion_amount' => 15,
             'image_format' => $authorized_types,
             'image_maxsize' => $size,
             'ongoing' => true
@@ -2132,7 +2123,7 @@ class LwsOptimize
         $current_data = $this->lwsop_update_current_media_convertion_database();
 
         // Update the stats about the current convertion
-        update_option('lws_optimize_current_convertion_stats', ['type' => $type, 'original' => $current_data['max'], 'converted' => $current_data['converted']]);
+        update_option('lws_optimize_current_convertion_stats', ['type' => "webp", 'original' => $current_data['max'], 'converted' => $current_data['converted']]);
 
         $scheduled = false;
         // Deactivate the deconvertion if activated before converting anything
@@ -2175,14 +2166,6 @@ class LwsOptimize
         $response = json_decode($response, true);
         if (json_last_error() === JSON_ERROR_NONE) {
             $data = $response['data'];
-            $done = $response['evolution'] ?? 0;
-
-            // Nothing got converted, stop the cron
-            if ($done == 0) {
-                // Remove the cache folder
-                apply_filters("lws_optimize_clear_filebased_cache", false);
-                wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-            }
 
             // Update the data array with info on what has been done and what is left
             $options = [
@@ -2196,6 +2179,8 @@ class LwsOptimize
                 ]
             ];
             update_option('lws_optimize_current_media_convertion', $options);
+
+            apply_filters("lws_optimize_clear_filebased_cache", false);
         }
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
@@ -2230,12 +2215,17 @@ class LwsOptimize
     }
 
 
-    public function lws_optimize_get_revertion_stats() {
+    public function lws_optimize_get_revertion_stats()
+    {
         $images = get_option('lws_optimize_images_convertion', []);
         $to_unconvert = [];
         foreach ($images as $image) {
-            if ( ( (isset($image['converted']) && $image['converted']) || (isset($image['previously_converted']) && $image['previously_converted']) ) && isset($image['original_path']) && file_exists($image['original_path']) && isset($image['to_keep']) && $image['to_keep']) {
-                // We add it for deconvertion
+            if (!isset($image['converted']) || !isset($image['original_path']) || !isset($image['to_keep'])) {
+                continue;
+            }
+
+            // If the image is converted, has the original file and is supposed to be kept
+            if ($image['converted'] && file_exists($image['original_path']) && $image['to_keep']) {
                 $to_unconvert[] = $image;
             }
         }
@@ -2258,7 +2248,7 @@ class LwsOptimize
         $to_unconvert = [];
         foreach ($images as $image) {
             // If the original file of the image still exists, the option to keep it is activated and the image is converted or has been converted by our plugin
-            if ( ( (isset($image['converted']) && $image['converted']) || (isset($image['previously_converted']) && $image['previously_converted']) ) && isset($image['original_path']) && file_exists($image['original_path']) && isset($image['to_keep']) && $image['to_keep']) {
+            if (((isset($image['converted']) && $image['converted']) || (isset($image['previously_converted']) && $image['previously_converted'])) && isset($image['original_path']) && file_exists($image['original_path']) && isset($image['to_keep']) && $image['to_keep']) {
                 // We add it for deconvertion
                 $to_unconvert[] = $image;
             }
@@ -2285,47 +2275,54 @@ class LwsOptimize
     }
 
     /**
-     * Activate the auto-convert-on-upload feature for medias (images) and store the data for how to
-     * convert the images
+     * Configurate the autoconvertion
      */
     public function lwsop_start_autoconvert_media()
     {
         check_ajax_referer('lwsop_convert_all_images_on_upload_nonce', '_ajax_nonce');
 
         // Fetch data from the form
-        $type = $_POST['data']['type'] != null ? sanitize_text_field($_POST['data']['type']) : "auto";
         $quality = $_POST['data']['quality'] != null ? sanitize_text_field($_POST['data']['quality']) : "balanced";
-        $exceptions = $_POST['data']['exceptions'] != null ? sanitize_textarea_field($_POST['data']['exceptions']) : '';
-        $mimetypes = $_POST['data']['mimetypes'] != null ? $_POST['data']['mimetypes'] : ['jpeg', 'jpg', 'webp'];
+        $mimetypes = $_POST['data']['mimetypes'] != null ? $_POST['data']['mimetypes'] : ['jpeg', 'jpg'];
         $size = $_POST['data']['size'] != null ? intval($_POST['data']['size']) : 2560;
-
-        // TODO : Temp default to webp
-        if ($type == "auto") {
-            $type = "webp";
-        }
 
         $authorized_types = [];
         foreach ($mimetypes as $mimetype) {
             $authorized_types[] = sanitize_text_field($mimetype);
         }
 
-        $exceptions = explode(',', $exceptions);
-
-
         // Fetch and store all necessary infos to proceed with the conversion
         $data = [
-            'auto_convertion_format' => $type,
+            'auto_convertion_format' => "webp",
             'auto_convertion_quality' => $quality,
-            'auto_convertion_exceptions' => $exceptions,
             'auto_image_format' => $authorized_types,
             'auto_image_maxsize' => $size,
-            'state' => "true"
         ];
 
         $this->optimize_options['auto_update'] = $data;
 
         update_option('lws_optimize_config_array', $this->optimize_options);
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * Start the auto-convert-on-upload feature
+     */
+    public function lwsop_start_autoconvertion()
+    {
+        check_ajax_referer('lwsop_start_autoconvertion_nonce', '_ajax_nonce');
+
+        $this->optimize_options['auto_update'] = array_merge([
+            'auto_convertion_format' => "webp",
+            'auto_convertion_quality' => "balanced",
+            'auto_image_format' => ['jpeg', 'jpg'],
+            'auto_image_maxsize' => 2560,
+        ], $this->optimize_options['auto_update']);
+
+        $this->optimize_options['auto_update']['state'] = "true";
+
+        update_option('lws_optimize_config_array', $this->optimize_options);
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
     /**
@@ -2374,36 +2371,10 @@ class LwsOptimize
     {
         $data = get_option('lws_optimize_all_media_convertion');
 
-        $type = $data['convertion_format'] ?? null;
         $keepcopy = $data['convertion_keeporiginal'] ?? null;
-        $exceptions = $data['convertion_exceptions'] ?? null;
         $authorized_types = $data['image_format'] ?? null;
 
-        if ($type == null || $keepcopy == null || $exceptions == null || $authorized_types == null) {
-            return [
-                'max' => 0,
-                'to_convert' => 0,
-                'converted' => 0,
-                'left' => 0,
-                'type' => "-",
-                'gains' => "0%"
-            ];
-        }
-
-        $avif_capabilities = false;
-        if (class_exists("Imagick")) {
-            global $wp_version;
-            $img = new \Imagick();
-
-            $supported_formats = $img->queryFormats();
-            if (floatval($wp_version) > 6.5 && in_array("AVIF", $supported_formats)) {
-                $avif_capabilities = true;
-            }
-        }
-
-        // If AVIF is not available but user still chose it, then abort
-        if ($type == "avif" && !$avif_capabilities) {
-            wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+        if ($keepcopy == null || $authorized_types == null) {
             return [
                 'max' => 0,
                 'to_convert' => 0,
@@ -2432,14 +2403,23 @@ class LwsOptimize
         );
         $attachments = get_posts($args);
 
+        $type = "webp";
+
         // Go through each image, verify its status and update the array
         // Also fetch $data on how many images are $converted and how many are still $original
         foreach ($attachments as $attachment) {
-            $post_type = $type;
 
             // Get the URL and PATH of the image
             $attachment_url = wp_get_attachment_url($attachment->ID);
             $attachment_path = get_attached_file($attachment->ID);
+
+            $tmp = explode('.', $attachment_url);
+            array_pop($tmp);
+            $attachment_url_converted = implode('.', $tmp) . ".$type";
+
+            $tmp = explode('.', $attachment_path);
+            array_pop($tmp);
+            $attachment_path_converted = implode('.', $tmp) . ".$type";
 
             $mimetype = $attachment->post_mime_type;
             $name = $attachment->post_name;
@@ -2449,49 +2429,28 @@ class LwsOptimize
                 continue;
             }
 
-            // If AVIF is not activated, just use webp | If AVIF and size is too big, use webp
-            if ($post_type == "auto" && (!$avif_capabilities || (filesize($attachment_path)  / 1000) > 402)) {
-                $post_type = "webp";
-            }
-
             // Get size of the file
-            $size_attachment = filesize($attachment_path);
+            $size_attachment = filesize($attachment_path) ?? 0;
 
-            // Get the extension on the current file as well as its PATH with the new extension
+            // Get the extension on the current file
             $tmp = explode(".", $attachment_path);
             $extension = array_pop($tmp);
-
-            $new_extension_path = implode('.', $tmp) . "." . $post_type;
-
-            // Get the URL with the new extension
-            $tmp = explode(".", $attachment_url);
-            array_pop($tmp);
-            $new_extension_url = implode('.', $tmp) . $post_type;
-
-            // Do not convert images that are too big (more than 400Ko) to AVIF
-            if ($post_type == "avif" && (filesize($attachment_path)  / 1000) > 402) {
-                continue;
-            }
-
-            // Only process images which mimetype is supported
-            if (!in_array($extension, $authorized_types)) {
-                continue;
-            }
 
             // Do not bother with this attachment if the file does not exists
             if (!file_exists($attachment_path)) {
                 continue;
             }
 
-            // The image has been excluded and should not be converted
-            if (in_array("$name.$extension", $exceptions)) {
-                continue;
-            }
-
+            // Get, if it exists, its values in the array
             $inlist_attachment = $all_medias_to_convert[$attachment->ID] ?? null;
 
             // If the attachment is not in our array
             if ($inlist_attachment == null) {
+
+                // If the original and the converted version are the same, it means it already was in $type
+                if ($attachment_path == $attachment_path_converted) {
+                    continue;
+                }
 
                 // We add it to the array with infos about the original file
                 $all_medias_to_convert[$attachment->ID] = [
@@ -2501,31 +2460,29 @@ class LwsOptimize
                     'original_path' => $attachment_path,
                     'original_mime' => $mimetype,
                     'original_extension' => $extension,
-                    'original_size' => $size_attachment ?? 0,
-                    'size' => $size_attachment ?? 0,
-                    'path' => $new_extension_path,
-                    'mime' => "image/$post_type",
-                    'extension' => $post_type,
+                    'original_size' => $size_attachment,
+                    'url' => $attachment_url_converted,
+                    'path' => $attachment_path_converted,
+                    'mime' => "image/$type",
+                    'extension' => $type,
+                    'size' => $size_attachment,
                     'to_keep' => $keepcopy,
                     'converted' => false,
-                    'previously_converted' => false,
                     'date_convertion' => false,
-                    'avif_capability' => $avif_capabilities
                 ];
 
                 // If the file is already converted
-                if (file_exists($new_extension_path)) {
+                if (file_exists($attachment_path_converted)) {
                     $converted++;
-                    array_merge($all_medias_to_convert[$attachment->ID],
-                    [
-                        'size' => filesize($new_extension_path) ?? 0,
-                        'converted' => true,
-                        'date_convertion' => time(),
-                        'path' => $new_extension_path,
-                        'url' => $new_extension_url
-                    ]);
+                    $all_medias_to_convert[$attachment->ID] = array_merge(
+                        $all_medias_to_convert[$attachment->ID],
+                        [
+                            'size' => filesize($attachment_path_converted) ?? $size_attachment,
+                            'converted' => true,
+                            'date_convertion' => time(),
+                        ]
+                    );
                 }
-
             } else {
                 // The attachment is already in our array
 
@@ -2535,41 +2492,17 @@ class LwsOptimize
                     continue;
                 }
 
-                // The image has already been converted by this plugin
-                if ($inlist_attachment['converted']) {
-                    // It is already converted to the right format, the converted file exists
-                    if ($inlist_attachment['extension'] == $post_type && file_exists($inlist_attachment['path'])) {
-                            $converted++;
-                    } else {
-                        // The file "converted" cannot be found, we consider it not to be converted, then
-                        $all_medias_to_convert[$attachment->ID] = array_merge($all_medias_to_convert[$attachment->ID], [
-                            'converted' => false,
-                            'previously_converted' => true,
-                            'date_convertion' => false,
-                        ]);
-                    }
+                // It is already converted to the right format, the converted file exists
+                if (file_exists($inlist_attachment['path'])) {
+                    $all_medias_to_convert[$attachment->ID]['converted'] = true;
+                    $all_medias_to_convert[$attachment->ID]['date_convertion'] = $all_medias_to_convert[$attachment->ID]['date_convertion'] ?? time();
+                    $converted++;
                 } else {
-                    // If the file is already converted
-                    if (file_exists($new_extension_path)) {
-                        $converted++;
-                        array_merge($all_medias_to_convert[$attachment->ID],
-                        [
-                            'size' => filesize($new_extension_path) ?? 0,
-                            'converted' => true,
-                            'date_convertion' => time(),
-                            'path' => $new_extension_path,
-                            'url' => $new_extension_url
-                        ]);
-                    } else {
-                        // Update the data of the image to reflect the present
-                        $all_medias_to_convert[$attachment->ID] = array_merge($all_medias_to_convert[$attachment->ID], [
-                            'size' => $size_attachment ?? 0,
-                            'to_keep' => $keepcopy,
-                            'converted' => false,
-                            'date_convertion' => false,
-                            'avif_capability' => $avif_capabilities
-                        ]);
-                    }
+                    // The file "converted" cannot be found, we consider it not to be converted, then
+                    $all_medias_to_convert[$attachment->ID] = array_merge($all_medias_to_convert[$attachment->ID], [
+                        'converted' => false,
+                        'date_convertion' => false,
+                    ]);
                 }
             }
             $original++;

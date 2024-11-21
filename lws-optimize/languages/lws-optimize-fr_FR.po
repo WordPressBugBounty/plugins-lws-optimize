@@ -1438,6 +1438,9 @@ msgstr "Nombre d'images converties : "
 msgid "Convert all images"
 msgstr "Convertir toutes les images"
 
+msgid "Convert all images to WebP"
+msgstr "Convertir toutes les images en WebP"
+
 msgid "Convert all images on your website to another Mime-Type"
 msgstr "Convertit toutes les images sur votre site vers un autre format"
 
@@ -1681,8 +1684,8 @@ msgstr "Momentanément indisponible"
 msgid "Due to many users experiencing issues with Memcached, this functionnality has been temporarily deactivated"
 msgstr "Suite à de nombreux utilisateurs rencontrant des problèmes avec Memcached, cette fonctionnalité a été temporairement désactivé"
 
-msgid "1 - Which image types do you wish to convert?"
-msgstr "1 - Quels formats d’images souhaitez-vous convertir ?"
+msgid "1 - Which image do you wish to convert?"
+msgstr "1 - Quelles images souhaitez-vous convertir ?"
 
 msgid "Select every MIME-Types to include in the convertion process."
 msgstr "Sélectionnez les types MIME à inclure dans le processus de conversion."
@@ -1693,6 +1696,9 @@ msgstr "Webp <b>(recommandé)</b>"
 msgid "JPEG <b>(recommended)</b>"
 msgstr "JPEG <b>(recommandé)</b>"
 
+msgid "PNG <b>(not recommended)</b>"
+msgstr "PNG <b>(non recommandé)</b>"
+
 msgid "2 - To which type do you wish to convert images?"
 msgstr "2 - Vers quels formats souhaitez-vous convertir les images ?"
 
@@ -1702,8 +1708,8 @@ msgstr "Sélectionnez le format cible pour optimiser vos images. Les images déj
 msgid "Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>"
 msgstr "Automatique <b>(recommandé)</b> <span>Choisit le format le plus optimisé et léger pour chaque image</span>"
 
-msgid "3 - What quality do you wish for your converted images?"
-msgstr "3 - Quelle qualité souhaitez-vous pour les images converties ?"
+msgid "2 - What quality do you wish for your converted images?"
+msgstr "2 - Quelle qualité souhaitez-vous pour les images converties ?"
 
 msgid "Define the quality of converted images. A lower qualite will result in lower sharpness but reduced size."
 msgstr "Définissez la qualité des images converties. Une qualité plus basse réduit le poids mais peut affecter la netteté."
@@ -1717,8 +1723,8 @@ msgstr "Basse <span>Qualité de 30%</span>"
 msgid "High <span>90% quality</span>"
 msgstr "Haute <span>Qualité de 90%</span>"
 
-msgid "4 - Do you wish to resize images that are too big?"
-msgstr "4 - Souhaitez-vous redimensionner les images trop grandes ?"
+msgid "3 - Do you wish to resize images that are too big?"
+msgstr "3 - Souhaitez-vous redimensionner les images trop grandes ?"
 
 msgid "Define a maximum width to limit image size."
 msgstr "Définissez une largeur maximale pour limiter le poids des images."
@@ -1735,8 +1741,8 @@ msgstr "Un nombre plus élevé accélère la conversion mais peut consommer plus
 msgid "10 <b>(recommended)</b>"
 msgstr "10 <b>(recommandé)</b>"
 
-msgid "6 - Do you wish to keep original images?"
-msgstr "6 - Voulez-vous conserver les images originales ?"
+msgid "4 - Do you wish to keep original images?"
+msgstr "4 - Voulez-vous conserver les images originales ?"
 
 msgid "Keeping originals allows you to revert them to the initial type but increase used storage space."
 msgstr "Les conserver permet de restaurer les images au format initial mais augmente l’espace de stockage."
@@ -1768,8 +1774,8 @@ msgstr "Limite de taille : La conversion AVIF est possible uniquement pour les i
 msgid "Convert all images to the optimized format you chose."
 msgstr "Convertit toutes les images vers le format optimisé choisi."
 
-msgid "Images Convertion Tool"
-msgstr "Outil de conversion d’images"
+msgid "Images WebP Convertion Tool"
+msgstr "Outil de conversion d’images en WebP"
 
 msgid "Stop"
 msgstr "Arrêter"
@@ -1810,8 +1816,11 @@ msgstr "Convertit automatiquement les nouvelles images ajoutées sur votre site 
 msgid "Configurate"
 msgstr "Configurer"
 
-msgid "Convertion options"
-msgstr "Options de conversion"
+msgid "WebP convertion options"
+msgstr "Options de conversion WebP"
+
+msgid "WebP autoconvertion options"
+msgstr "Options d'autoconversion WebP"
 
 msgid "7 - Do you wish to exclude images from the convertion?"
 msgstr "7 - Souhaitez-vous exclure des images de la conversion ?"
@@ -1843,8 +1852,14 @@ msgstr "Arrêter la conversion d'images"
 msgid "Stop image autoconvertion"
 msgstr "Arrêter la conversion d'images automatique"
 
+msgid "Start image autoconvertion"
+msgstr "Lancer la conversion d'images automatique"
+
 msgid "Stop autoconvertion"
 msgstr "Arrêter la conversion automatique"
+
+msgid "Start autoconvertion"
+msgstr "Lancer la conversion automatique"
 
 msgid "Failed to start the restoration"
 msgstr "Impossible de commencer la restauration"
@@ -1855,8 +1870,14 @@ msgstr "Impossible de commencer à convertir les images"
 msgid "Failed to stop the autoconvertion"
 msgstr "Impossible d'arrêter l'auto-conversion"
 
+msgid "Failed to start the autoconvertion"
+msgstr "Impossible de lancer l'auto-conversion"
+
 msgid "The autoconvertion has been stopped."
 msgstr "L'auto-conversion a été arrêtée."
+
+msgid "The autoconvertion has been started."
+msgstr "L'auto-conversion a été lancée."
 
 msgid "Failed to stop the convertion"
 msgstr "Impossible d'arrêter la conversion"
@@ -1869,3 +1890,6 @@ msgstr "Cacher les images converties"
 
 msgid "Image convertion cannot be used with your current PHP configuration"
 msgstr "La conversion d'image n'est pas utilisable avec votre configuration PHP actuelle"
+
+msgid "PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency."
+msgstr "Les PNG avec transparence peuvent, dans de rares cas, perdre leur transparence après conversion. Utilisez cette option en connaissance de causes ou si vous n'avez pas besoin de la transparence."
