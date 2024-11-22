@@ -279,7 +279,7 @@ if (!$memory_limit) {
                     <?php $attachments = get_option('lws_optimize_images_convertion', []); ?>
                     <?php foreach ($attachments as $attachment) : ?>
                         <tr>
-                            <td><?php echo esc_html($attachment['name'] . "." . $attachment['extension']); ?></td>
+                            <td><?php echo esc_html($attachment['name'] . "." . $attachment['original_extension']); ?></td>
                             <?php if ($attachment['converted']) : ?>
                                 <td><?php echo esc_html($attachment['original_mime'] . " => " . $attachment['mime']); ?></td>
                                 <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
@@ -1424,7 +1424,7 @@ if (!$memory_limit) {
                                         if (data_listing[i]['converted']) {
                                             listing.insertAdjacentHTML('afterbegin', `
                                         <tr>
-                                            <td>` + data_listing[i]['name'] + "." + data_listing[i]['extension'] + `</td>
+                                            <td>` + data_listing[i]['name'] + "." + data_listing[i]['original_extension'] + `</td>
                                             <td>` + data_listing[i]['original_mime'] + " => " + data_listing[i]['mime'] + `</td>
                                             <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
                                             <td>` + (new Date(data_listing[i]['date_convertion'] * 1000).toLocaleString()).replaceAll('/', '-') + `</td>
@@ -1434,7 +1434,7 @@ if (!$memory_limit) {
                                         } else {
                                             listing.insertAdjacentHTML('afterbegin', `
                                         <tr>
-                                            <td>` + data_listing[i]['name'] + "." + data_listing[i]['extension'] + `</td>
+                                            <td>` + data_listing[i]['name'] + "." + data_listing[i]['original_extension'] + `</td>
                                             <td>` + data_listing[i]['original_mime'] + `</td>
                                             <td><?php echo esc_html__('Pending', 'lws-optimize'); ?></td>
                                             <td>/</td>

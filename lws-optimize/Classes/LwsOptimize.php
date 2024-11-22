@@ -2180,7 +2180,11 @@ class LwsOptimize
             ];
             update_option('lws_optimize_current_media_convertion', $options);
 
-            apply_filters("lws_optimize_clear_filebased_cache", false);
+            $stats = $this->lwsop_update_current_media_convertion_database();
+            if ($stats['left'] == 0) {
+                apply_filters("lws_optimize_clear_filebased_cache", false);
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+            }
         }
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
@@ -2447,6 +2451,11 @@ class LwsOptimize
             // If the attachment is not in our array
             if ($inlist_attachment == null) {
 
+                // Do not convert images not on the authorized_type table
+                if (!in_array($extension, $authorized_types)) {
+                    continue;
+                }
+
                 // If the original and the converted version are the same, it means it already was in $type
                 if ($attachment_path == $attachment_path_converted) {
                     continue;
@@ -2487,8 +2496,16 @@ class LwsOptimize
                 // The attachment is already in our array
 
                 // Remove the attachment from the listing if it does not exists anymore (and should still exists)
-                if ((!file_exists($attachment_path) && $inlist_attachment['to_keep'] == "true") || ($inlist_attachment['to_keep'] == "false" && isset($all_medias_to_convert['path']) && !file_exists($all_medias_to_convert['path']))) {
+                if ((!file_exists($inlist_attachment['original_path']) && $inlist_attachment['to_keep'] == "true") || ($inlist_attachment['to_keep'] == "false" && isset($inlist_attachment['original_path']) && !file_exists($inlist_attachment['original_path']))) {
                     unset($all_medias_to_convert[$attachment->ID]);
+                    continue;
+                }
+
+                // Do not convert images not on the authorized_type table
+                if (!in_array($inlist_attachment['original_extension'], $authorized_types)) {
+                    if (!$inlist_attachment['converted']) {
+                        unset($all_medias_to_convert[$attachment->ID]);
+                    }
                     continue;
                 }
 

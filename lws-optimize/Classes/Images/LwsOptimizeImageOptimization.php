@@ -426,6 +426,7 @@ class LwsOptimizeImageOptimization
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $base_path));
             $media_data[$key]['converted'] = false;
             $media_data[$key]['previously_converted'] = false;
+            $media_data[$key]['size'] = $media_data[$key]['original_size'];
             $state[] = ['id' => $key, 'state' => "REVERTED"];
             $done++;
         }
