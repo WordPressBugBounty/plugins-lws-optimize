@@ -1893,3 +1893,9 @@ msgstr "La conversion d'image n'est pas utilisable avec votre configuration PHP 
 
 msgid "PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency."
 msgstr "Les PNG avec transparence peuvent, dans de rares cas, perdre leur transparence après conversion. Utilisez cette option en connaissance de causes ou si vous n'avez pas besoin de la transparence."
+
+msgid "Cache dynamic pages"
+msgstr "Mettre en cache les pages dynamiques"
+
+msgid "Pages whose URL contains parameters (e.g. my_page/?et_fb=1) will be cached. By default, thoses pages are ignored as they are serving dynamic content, content that needs to be always up-to-date. Performances on those pages will be improved at the expense of increased size (multiple additional caches have to be made) and loss of dynamicity (as dynamic pages will become static)"
+msgstr "Les pages dont l'URL contient des paramètres (i.e. ma_page/?et_fb=1) seront mises en cache. Par défaut, ces pages sont ignorées car elles servent du contenu dynamique, qui doit être constemment à jour. Les performances de ces pages seront améliorées au prix d'une augmentation de taille (plusieurs fichiers de cache additionnels devant être crées) et d'une perte de dynamicité (les pages devenant statiques)"

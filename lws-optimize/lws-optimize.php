@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimize;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.2.1.3
+ * Version:           3.2.1.4
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.7
@@ -25,6 +25,174 @@ use Lws\Classes\LwsOptimize;
 if (!defined('ABSPATH')) {
     exit; //Exit if accessed directly
 }
+
+// Actions to execute when the plugin is activated / deleted / upgraded
+register_activation_hook(__FILE__, 'lws_optimize_activation');
+register_deactivation_hook(__FILE__, 'lws_optimize_deactivation');
+register_uninstall_hook(__FILE__, 'lws_optimize_deletion');
+add_action('upgrader_process_complete', 'lws_optimize_upgrading', 10, 2);
+
+
+// Actions to do when the plugin is activated
+function lws_optimize_activation()
+{
+    // Remove the cache folder
+    apply_filters("lws_optimize_clear_filebased_cache", false);
+    // Unused
+    set_transient('lwsop_remind_me', 691200);
+
+    $optimize_options = get_option('lws_optimize_config_array', []);
+    if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {
+        if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+            wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+        }
+
+        $optimize_options['filebased_cache']['preload'] = "true";
+        $optimize_options['filebased_cache']['preload_done'] =  0;
+        $optimize_options['filebased_cache']['preload_ongoing'] = "true";
+
+        $sitemap = get_sitemap_url("index");
+        $headers = get_headers($sitemap);
+        if (substr($headers[0], 9, 3) == 404) {
+            $sitemap = home_url('/sitemap_index.xml');
+        }
+
+        function fetch_urls_amount($url, $data)
+        {
+            $sitemap_content = file_get_contents($url);
+            // Check if content is retrieved
+            if ($sitemap_content !== false) {
+                // Load the XML content into SimpleXML
+                $sitemap = simplexml_load_string($sitemap_content);
+                if ($sitemap == null) {
+                    return $data;
+                }
+
+                foreach ($sitemap->url as $url) {
+                    $data[] = (string)$url->loc;
+                }
+                foreach ($sitemap->sitemap as $entry) {
+                    // If the file end in ".xml", then it is most likely a sitemap link
+                    $loc = $entry->loc;
+                    $tmp_loc = explode('.', $loc);
+                    if (array_pop($tmp_loc) == "xml") {
+                        $data = fetch_urls_amount((string)$loc, $data);
+                    }
+                }
+            }
+
+            return $data;
+        }
+
+        $urls = fetch_urls_amount($sitemap, []);
+
+        $optimize_options['filebased_cache']['preload_quantity'] = count($urls);
+        update_option('lws_optimize_config_array', $optimize_options);
+
+        wp_schedule_event(time() + 3, "lws_minute", "lws_optimize_start_filebased_preload");
+    }
+
+    $media_convertion = get_option('lws_optimize_all_media_convertion', ['ongoing' => false]);
+    if (isset($media_convertion['ongoing']) && $media_convertion['ongoing']) {
+        if (wp_next_scheduled("lws_optimize_convert_media_cron")) {
+            wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+        }
+        wp_schedule_event(time(), "lws_three_minutes", "lws_optimize_convert_media_cron");
+    }
+
+    if (isset($optimize_options['maintenance_db']) && $optimize_options['maintenance_db']['state'] == "true") {
+        if (wp_next_scheduled("lws_optimize_maintenance_db_weekly")) {
+            wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+        }
+        wp_schedule_event(time() + 604800, 'weekly', "lws_optimize_maintenance_db_weekly");
+    }
+}
+
+// Actions to do when the plugin is deactivated
+function lws_optimize_deactivation()
+{
+    // Remove the cache folder
+    apply_filters("lws_optimize_clear_filebased_cache", false);
+    // Deactivate the cron of the preloading and convertion
+    wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+    wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+    // Deactivate cron for the maintenance
+    wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+    // Deactivate cron that revert the images
+    wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
+
+
+    // Unused
+    delete_transient('lwsop_remind_me');
+}
+
+// Actions to do when the plugin is to be deleted
+function lws_optimize_deletion()
+{
+    // Remove the cache folder
+    apply_filters("lws_optimize_clear_filebased_cache", false);
+
+    // Remove all options on delete
+    if (get_option('lws_optimize_config_array', null) !== null) {
+        delete_option('lws_optimize_config_array');
+    }
+
+    // Unused
+    delete_transient('lwsop_remind_me');
+}
+
+// Actions to do when the plugin is updated
+function lws_optimize_upgrading($upgrader_object, $options)
+{
+    if ($options['action'] == 'update' && $options['type'] == 'plugin') {
+        foreach ($options['plugins'] as $each_plugin) {
+            // If the plugin getting updated is LWS Optimize
+            if ($each_plugin == plugin_basename(__FILE__)) {
+                global $wpdb;
+
+                // Force deactivate memcached for everyone
+                $options = get_option('lws_optimize_config_array', []);
+                $options['memcached']['state'] = false;
+                update_option('lws_optimize_config_array', $options);
+
+                // Remove old, unused options
+                delete_option('lwsop_do_not_ask_again');
+                delete_transient('lwsop_remind_me');
+                delete_option('lws_optimize_offline');
+                delete_option('lws_opti_memcaching_on');
+                delete_option('lwsop_autopurge');
+                delete_option('lws_op_deactivated');
+                delete_option('lws_op_change_max_width_media');
+                delete_option('lws_op_fb_cache');
+                delete_option('lws_op_fb_exclude');
+                delete_option('lws_op_fb_preload_state');
+
+                apply_filters("lws_optimize_clear_filebased_cache", false);
+
+                $all_medias_to_convert = get_option('lws_optimize_images_convertion', []);
+                $posts = get_posts(['post_type' => array('page', 'post')]);
+                foreach ($posts as $post) {
+                    $content = $post->post_content;
+                    foreach ($all_medias_to_convert as $image) {
+                        $actual = explode('.', $image['original_url']);
+                        array_pop($actual);
+                        $actual = implode('.', $actual) . "." . $image['extension'];
+                        $original = $image['original_url'];
+
+                        if (strpos($content, $actual)) {
+                            $content = str_replace($actual, $original, $content);
+                        }
+                    }
+
+                    $data = ['post_content' => $content];
+                    $where = ['ID' => $post->ID];
+                    $wpdb->update($wpdb->prefix . 'posts', $data, $where);
+                }
+            }
+        }
+    }
+}
+
 
 // https://example.fr/wp-content/plugins/lws-optimize/
 if (!defined('LWS_OP_URL')) {

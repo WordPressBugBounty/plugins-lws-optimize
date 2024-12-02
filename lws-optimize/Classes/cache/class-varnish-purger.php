@@ -3,24 +3,27 @@
 /**
  * The admin-specific functionality of the plugin.
  *
- * @package    
+ * @package
  */
 
 /**
  * Description of Varnish_Purger
  *
- * @package    
+ * @package
  * @subpackage /admin
  * @author     LWS
  */
 class Varnish_Purger extends Purger
 {
+    private $ipxchange;
     /**
      * Initialize the class and set its properties.
      *
      * @since    2.0.0
      */
-    public function __construct() {}
+    public function __construct($ipxchange = false) {
+        $this->ipxchange = $ipxchange;
+    }
 
     /**
      * Purge all.
@@ -29,7 +32,17 @@ class Varnish_Purger extends Purger
     {
         // Flush original WP domain
         //wp_remote_request(get_site_url(), array('method' => 'PURGEALL'));
-        wp_remote_request(get_site_url(), array('method' => 'FULLPURGE'));
+        if ($this->ipxchange) {
+            $ipXchange_IP = dns_get_record("cron.kghkhkhkh.fr")[0]['ip'] ?? false;
+            $host = $_SERVER['SERVER_NAME'] ?? false;
+
+            if ($ipXchange_IP && $host) {
+                wp_remote_request(str_replace($host, $ipXchange_IP, get_site_url()), array('method' => 'FULLPURGE', 'Host' => $host));
+
+            }
+        } else {
+            wp_remote_request(get_site_url(), array('method' => 'FULLPURGE'));
+        }
     }
 
     /**
@@ -59,7 +72,17 @@ class Varnish_Purger extends Purger
             $parse['path'] = '';
         }
 
-        wp_remote_request($url . '/', array('method' => 'PURGE'));
+        if ($this->ipxchange) {
+            $ipXchange_IP = dns_get_record("cron.kghkhkhkh.fr")[0]['ip'] ?? false;
+            $host = $_SERVER['SERVER_NAME'] ?? false;
+
+            if ($ipXchange_IP && $host) {
+                wp_remote_request(str_replace($host, $ipXchange_IP, $url), array('method' => 'PURGE', 'Host' => $host));
+
+            }
+        } else {
+            wp_remote_request($url . '/', array('method' => 'PURGE'));
+        }
     }
 
     /**

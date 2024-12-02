@@ -1,9 +1,9 @@
 === LWS Optimize ===
 Contributors: aurelienlws
-Tags: LWS, Admin, Optimisation, Cache
+Tags: LWS, admin, optimisation, cache
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 3.2.1.3
+Stable tag: 3.2.1.4
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -144,6 +144,15 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 4. Activation / deactivation of caching systems
 
 == Changelog ==
+
+= 3.2.1.4 =
+* Better compatibility with Varnish/LiteSpeed for the dynamic cache
+* Changed default state of the plugin to "OFF"
+- Actions on (de)activation fixed
+- Added expiration headers
+- fix preload counter not being accurate
+- fixed pre-load cron stopping
+- added a way to manage dynamic pages (with parameters such as ?param=1)
 
 = 3.2.1.3 =
 * Fix minor issues with image convertion

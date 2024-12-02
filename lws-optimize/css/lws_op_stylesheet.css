@@ -3651,7 +3651,7 @@ button.lws_optimize_image_convertion_refresh {
     border: 1px solid #1C469D;
     border-radius: 22px;
     background: none;
-    padding: 10px 15px 8px 20px;
+    padding: 10px 15px 8px 15px;
     font: normal normal normal 14px/24px Poppins, sans-serif;
     color: #1C469D;
     display: flex;

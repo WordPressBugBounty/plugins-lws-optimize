@@ -1,5 +1,4 @@
 <?php
-
 $tabs_list = array(
     array('frontend', __('Frontend', 'lws-optimize')),
     array('caching', __('Caching', 'lws-optimize')),
@@ -29,6 +28,9 @@ if (class_exists('Memcached')) {
 
 // Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
 $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? null;
+if ($fastest_cache_status === null) {
+    $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'] ?? null;
+}
 $lwscache_status = $_SERVER['lwscache'] ?? null;
 
 // Whether LWSCache/FastestCache is active or not. If status is null : not a LWS Hosting

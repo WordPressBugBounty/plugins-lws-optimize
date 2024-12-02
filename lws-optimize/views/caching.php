@@ -405,6 +405,25 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
 </div>
 
+<div class="lwsop_contentblock">
+    <div class="lwsop_contentblock_leftside">
+        <h2 class="lwsop_contentblock_title">
+            <?php esc_html_e('Cache dynamic pages', 'lws-optimize');
+            ?>
+        </h2>
+        <div class="lwsop_contentblock_description">
+            <?php esc_html_e('Pages whose URL contains parameters (e.g. my_page/?et_fb=1) will be cached. By default, thoses pages are ignored as they are serving dynamic content, content that needs to be always up-to-date. Performances on those pages will be improved at the expense of increased size (multiple additional caches have to be made) and loss of dynamicity (as dynamic pages will become static)', 'lws-optimize');
+            ?>
+        </div>
+    </div>
+    <div class="lwsop_contentblock_rightside">
+        <label class="lwsop_checkbox" for="lws_optimize_no_parameters_check">
+            <input type="checkbox" name="lws_optimize_no_parameters_check" id="lws_optimize_no_parameters_check" <?php echo isset($config_array['no_parameters']) && $config_array['no_parameters']['state'] == "true" ? esc_attr("checked") : ""; ?>>
+            <span class="slider round"></span>
+        </label>
+    </div>
+</div>
+
 <div class="modal fade" id="lwsop_exclude_urls" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1375,7 +1394,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
         setInterval(function(){
                 preload_check_button.dispatchEvent(new Event('click'));
-            }, 60000);
+            }, 80000);
     }
 </script>
 

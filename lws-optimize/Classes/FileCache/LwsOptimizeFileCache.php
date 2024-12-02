@@ -95,6 +95,7 @@ class LwsOptimizeFileCache
             $extension = "html";
             if (file_exists($this->cache_directory . "index_$user_id.html")) {
                 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($this->cache_directory . "index_$user_id.html")) . ' GMT', true, 200);
+                header('Cache-Control: public, max-age=750', true, 200);
                 $extension = "html";
             } elseif (file_exists($this->cache_directory . "index_$user_id.xml")) {
                 header('Content-type: text/xml');
@@ -720,8 +721,6 @@ class LwsOptimizeFileCache
         }
 
         $uri = preg_replace("/^(http|https):\/\//sx", "", $uri);
-        // Remove the parameters from an URL
-        $uri = preg_replace('/\?.+$/', '', $uri);
 
         // By default, "cache";
         $dir = "cache";
@@ -741,6 +740,7 @@ class LwsOptimizeFileCache
         }
 
         $this->cache_directory .= $uri;
+
         $this->cache_directory = rtrim(rtrim($this->cache_directory), "\/") . "/" ?? "";
 
         // Remove the query parameters from the URL if it has any ; Only if the parameters are from GoogleAnalytics, Google Click Identifier, Yandex, Facebook #WPFC
@@ -756,14 +756,23 @@ class LwsOptimizeFileCache
             $this->cache_directory = false;
         }
 
-
-        /*
-        This code snippet suggests logic for selective caching based on URL structure,
-        file types, and specific query string parameters. It aims to avoid caching for dynamic content influenced by these parameters.
-        */
-        // for the sub-pages
-        if (strlen($uri) > 1 && !preg_match("/\.(html|xml)/i", $uri) && $this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', "")) && !preg_match("/\/$/", $uri) && (!isset($_SERVER["QUERY_STRING"]) || !$_SERVER["QUERY_STRING"] || !preg_match("/y(ad|s)?clid\=/i", $this->cache_directory) || !preg_match("/gclid\=/i", $this->cache_directory) || !preg_match("/fbclid\=/i", $this->cache_directory) || !preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory))) {
-            $this->cache_directory = false;
+        if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {
+            if (strlen($uri) > 1) { // for the sub-pages
+                if (!preg_match("/\.(html|xml)/i", $uri)) {
+                    if ($this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', ""))) {
+                        if (!preg_match("/\/$/", $uri)) {
+                            if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
+                            } elseif (preg_match("/y(ad|s)?clid\=/i", $this->cache_directory)) {
+                            } elseif (preg_match("/gclid\=/i", $this->cache_directory)) {
+                            } elseif (preg_match("/fbclid\=/i", $this->cache_directory)) {
+                            } elseif (preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)) {
+                            } else {
+                                $this->cache_directory = false;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if ($this->_lwsop_is_mobile() && $this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {

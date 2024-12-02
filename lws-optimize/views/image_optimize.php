@@ -239,17 +239,17 @@ if (!$memory_limit) {
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/images.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Image total', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_max" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['original']) ?? 0; ?></span>
+            <span id="lws_optimize_convertion_max" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['original'] ?? 0); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/images_optimisees.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Converted images', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_done" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['converted']) ?? 0; ?></span>
+            <span id="lws_optimize_convertion_done" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['converted'] ?? 0); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/temps.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Remaining convertions', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_left" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['original'] - $current_convertion['converted']) ?? 0; ?></span>
+            <span id="lws_optimize_convertion_left" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html(($current_convertion['original'] ?? 0) - ($current_convertion['converted'] ?? 0)); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/reduction_pourcentage.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
@@ -586,7 +586,6 @@ if (!$memory_limit) {
     <script>
         if (document.getElementById('show_images_converted_action') != null) {
             document.getElementById('show_images_converted_action').addEventListener('click', function() {
-                // TODO : Ajouter le changement de texte + changer d'un + vers -
                 let content = document.getElementById('show_images_converted');
                 if (content != null) {
                     content.classList.toggle('hidden');
