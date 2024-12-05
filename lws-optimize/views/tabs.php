@@ -1,4 +1,5 @@
 <?php
+
 $tabs_list = array(
     array('frontend', __('Frontend', 'lws-optimize')),
     array('caching', __('Caching', 'lws-optimize')),
@@ -1554,3 +1555,4 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
         }
     </script>
 <?php endif ?>
+
