@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: LWS, admin, optimisation, cache
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 3.2.1.5
+Stable tag: 3.2.2.0
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -144,6 +144,13 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 4. Activation / deactivation of caching systems
 
 == Changelog ==
+
+= 3.2.2 =
+* Now using .htaccess for managing cache and redirections, resulting in better performances
+* More strict caching, refusing to cache empty pages and pages with code != 200
+* Bug fixes
+* More options
+
 = 3.2.1.5 =
 * Fixed issue where cache would not get created if SSL plugins were on
 

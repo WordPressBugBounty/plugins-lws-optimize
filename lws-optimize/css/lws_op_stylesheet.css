@@ -1804,13 +1804,15 @@ button.lwsoptimize_validatebutton {
 }
 
 div#lwsop_specify_urls .modal-dialog,
-div#lwsop_exclude_urls .modal-dialog {
+div#lwsop_exclude_urls .modal-dialog,
+div#lwsop_exclude_cookies .modal-dialog {
     width: fit-content;
     top: 20%;
 }
 
 div#lwsop_specify_urls .modal-content,
-div#lwsop_exclude_urls .modal-content {
+div#lwsop_exclude_urls .modal-content,
+div#lwsop_exclude_cookies .modal-content {
     padding: 30px;
 }
 
@@ -1888,7 +1890,8 @@ form#lws_optimize_exclusion_lazyload_form {
 }
 
 form#lwsop_form_specify_urls,
-form#lwsop_form_exclude_urls {
+form#lwsop_form_exclude_urls,
+form#lwsop_form_exclude_cookies {
     display: flex;
     gap: 30px;
     flex-direction: column;
@@ -2142,6 +2145,11 @@ button.lwsop_blue_button>span {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+button.lwsop_blue_button:hover:disabled,
+button.lwsop_blue_button:disabled {
+    background: #2893e98a 0% 0% no-repeat padding-box;
 }
 
 .lwsop_contentblock_button_row {
@@ -3719,6 +3727,12 @@ span.lws_optimize_convertion_bar_element_title {
     align-items: center;
     gap: 8px;
     font-weight: 600;
+}
+
+span.lws_optimize_convertion_bar_dynamic_element {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .lws_optimize_convertion_details {

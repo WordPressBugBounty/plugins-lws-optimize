@@ -373,6 +373,8 @@ class LwsOptimizeManageAdmin
         }
 
         // Remove Dynamic Cache at the same time
+        $GLOBALS['lws_optimize']->lws_optimize_set_cache_htaccess();
+        $GLOBALS['lws_optimize']->lws_optimize_reset_header_htaccess();
         $GLOBALS['lws_optimize']->lwsop_dump_all_dynamic_caches();
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $result)), JSON_PRETTY_PRINT);

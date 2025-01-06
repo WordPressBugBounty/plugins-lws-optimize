@@ -39,82 +39,45 @@ class LwsOptimize
 
         // Get all the options for LWSOptimize. If none are found (first start, erased from DB), recreate the array
         $this->optimize_options = get_option('lws_optimize_config_array', []);
-        if ($this->optimize_options === null || empty($this->optimize_options)) {
+        if (empty($this->optimize_options)) {
             $this->optimize_options = [
-                'filebased_cache' => ['state' => "true", "preload" => "true", "preload_amount" => "5"],
+                'filebased_cache' => ['state' => "true", "preload" => "true", "preload_amount" => "5", 'timer' => 'lws_thrice_monthly'],
                 'autopurge' => ['state' => "true"],
                 'cache_logged_user' => ['state' => "true"],
+                'htaccess_rules' => ['state' => "true"]
             ];
 
-            // ADD EXPIRATION HEADERS
-            $date = '3 months';
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-            $htaccess = ABSPATH . "/.htaccess";
+            $this->lws_optimize_reset_header_htaccess();
 
-            $hta = '';
-            $hta .= "<IfModule mod_expires.c>\n";
-            $hta .= "ExpiresActive On\n";
-            $hta .= "AddOutputFilterByType DEFLATE application/json\n";
-            $hta .= "ExpiresByType image/jpg \"access $date\"\n";
-            $hta .= "ExpiresByType image/jpeg \"access $date\"\n";
-            $hta .= "ExpiresByType image/gif \"access $date\"\n";
-            $hta .= "ExpiresByType image/png \"access $date\"\n";
-            $hta .= "ExpiresByType image/svg \"access $date\"\n";
-            $hta .= "ExpiresByType image/x-icon \"access $date\"\n";
-            $hta .= "ExpiresByType text/css \"access $date\"\n";
-            $hta .= "ExpiresByType application/pdf \"access $date\"\n";
-            $hta .= "ExpiresByType application/javascript \"access $date\"\n";
-            $hta .= "ExpiresByType application/x-javascript \"access $date\"\n";
-            $hta .= "ExpiresByType application/x-shockwave-flash \"access $date\"\n";
-            $hta .= "ExpiresDefault \"access $date\"\n";
-            $hta .= "</IfModule>\n";
-
-            if ($hta != '') {
-                $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta #END LWS OPTIMIZE - EXPIRE HEADER\n";
-
-                if (is_file($htaccess)) {
-                    $hta .= file_get_contents($htaccess);
-                }
-
-                if (($f = fopen($htaccess, 'w+')) !== false) {
-                    if (!fwrite($f, $hta)) {
-                        fclose($f);
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                    } else {
-                        fclose($f);
-                    }
-                } else {
-                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-                }
-            }
             update_option('lws_optimize_config_array', $this->optimize_options);
 
             // Deactivate the plugin on activation
             update_option('lws_optimize_offline', 'ON');
+            delete_option('lws_optimize_preload_is_ongoing');
+
+            $this->lws_optimize_set_cache_htaccess();
 
             if (!wp_next_scheduled("lws_optimize_start_filebased_preload") && $this->lwsop_check_option('filebased_cache')['state'] === "true") {
                 wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
             }
         }
 
-        if ($this->lwsop_check_option('dynamic_cache')['state'] === "true") {
-            // Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
-            $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? null;
-            if ($fastest_cache_status === null) {
-                $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'] ?? null;
-            }
-            $lwscache_status = $_SERVER['lwscache'] ?? null;
-
-            if (($lwscache_status === null && $fastest_cache_status === null) || ($lwscache_status === "Off" && $fastest_cache_status === "0")) {
-                $this->optimize_options['dynamic_cache']['state'] = "false";
-                update_option('lws_optimize_config_array', $this->optimize_options);
-            }
+        // If it got installed by the LWS Auto-installer, then proceed to activate it on recommended by default
+        $auto_installer_mode = get_option('lws_from_autoinstall_optimize', false);
+        if ($auto_installer_mode) {
+            $this->lwsop_auto_setup_optimize();
+            delete_option("lws_from_autoinstall_optimize");
+            delete_option('lws_optimize_offline');
         }
 
+        // Init the FileCache Class
         $this->lwsOptimizeCache = new LwsOptimizeFileCache($this);
 
 
         if (!$this->state) {
+            // If the plugin was updated...
+            add_action('plugins_loaded', [$this, 'lws_optimize_after_update_actions']);
+
             if (!in_array('lwscache/lwscache.php', apply_filters('active_plugins', get_option('active_plugins')))) {
                 if (!class_exists("LWSCache")) {
                     require_once LWS_OP_DIR . 'Classes/cache/class-lws-cache.php';
@@ -125,7 +88,7 @@ class LwsOptimize
                     'iframe_video_lazyload' => array('state' => true),
                 ));
 
-                if (isset($config_array['dynamic_cache']['state']) && $config_array['dynamic_cache']['state'] == "true" && (!isset($config_array['cloudflare']['tools']['dynamic_cache']) || $config_array['cloudflare']['tools']['dynamic_cache'] === false)) {
+                if (!isset($config_array['cloudflare']['tools']['dynamic_cache']) || $config_array['cloudflare']['tools']['dynamic_cache'] === false) {
                     if (!function_exists("run_lws_cache")) {
                         function run_lws_cache()
                         {
@@ -197,7 +160,7 @@ class LwsOptimize
                 }
 
                 if (!$gzip_ok) {
-                    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+                    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
                     $htaccess = ABSPATH . "/.htaccess";
 
                     $hta = '';
@@ -323,6 +286,8 @@ class LwsOptimize
                 add_action("wp_ajax_lwsop_start_preload_fb", [$this, "lwsop_preload_fb"]);
                 add_action("wp_ajax_lwsop_change_preload_amount", [$this, "lwsop_change_preload_amount"]);
 
+                add_action("wp_ajax_lwsop_regenerate_cache", [$this, "lwsop_regenerate_cache"]);
+
                 add_action("wp_ajax_lwsop_convert_all_images", [$this, "lwsop_convert_all_media"]);
 
                 // Fetch an array containing every URLs that should get purged each time an autopurge starts
@@ -331,8 +296,10 @@ class LwsOptimize
                 add_action("wp_ajax_lwsop_save_specified_url", [$this, "lwsop_save_specified_urls_fb"]);
                 // Fetch an array containing every URLs that should not be cached
                 add_action("wp_ajax_lwsop_get_excluded_url", [$this, "lwsop_exclude_urls_fb"]);
+                add_action("wp_ajax_lwsop_get_excluded_cookies", [$this, "lwsop_exclude_cookies_fb"]);
                 // Update the excluded-URLs array
                 add_action("wp_ajax_lwsop_save_excluded_url", [$this, "lwsop_save_urls_fb"]);
+                add_action("wp_ajax_lwsop_save_excluded_cookies", [$this, "lwsop_save_cookies_fb"]);
 
                 // Get or set the URLs that should get preloaded on the website
                 add_action("wp_ajax_lws_optimize_add_url_to_preload", [$this, "lwsop_get_url_preload"]);
@@ -400,6 +367,59 @@ class LwsOptimize
             }
         } elseif ($this->state || $this->lwsop_check_option('filebased_cache')['state'] === "false") {
             wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
+        }
+    }
+
+    public function lws_optimize_after_update_actions() {
+        if (get_transient('wp_lwsoptimize_post_update') && !$this->state) {
+            // Remove old, unused options
+            delete_option('lwsop_do_not_ask_again');
+            delete_transient('lwsop_remind_me');
+            delete_option('lws_optimize_offline');
+            delete_option('lws_opti_memcaching_on');
+            delete_option('lwsop_autopurge');
+            delete_option('lws_op_deactivated');
+            delete_option('lws_op_change_max_width_media');
+            delete_option('lws_op_fb_cache');
+            delete_option('lws_op_fb_exclude');
+            delete_option('lws_op_fb_preload_state');
+
+            delete_option('lws_optimize_preload_is_ongoing');
+            global $wpdb;
+
+            // Force deactivate memcached for everyone
+            $options = get_option('lws_optimize_config_array', []);
+            $options['memcached']['state'] = false;
+            update_option('lws_optimize_config_array', $options);
+
+            if (isset($options['htaccess_rules']['state']) && $options['htaccess_rules']['state'] == "true") {
+                $this->lws_optimize_set_cache_htaccess();
+            }
+            $this->lws_optimize_reset_header_htaccess();
+
+            apply_filters("lws_optimize_clear_filebased_cache", false);
+
+            $all_medias_to_convert = get_option('lws_optimize_images_convertion', []);
+            $posts = get_posts(['post_type' => array('page', 'post')]);
+            foreach ($posts as $post) {
+                $content = $post->post_content;
+                foreach ($all_medias_to_convert as $image) {
+                    $actual = explode('.', $image['original_url']);
+                    array_pop($actual);
+                    $actual = implode('.', $actual) . "." . $image['extension'];
+                    $original = $image['original_url'];
+
+                    if (strpos($content, $actual)) {
+                        $content = str_replace($actual, $original, $content);
+                    }
+                }
+
+                $data = ['post_content' => $content];
+                $where = ['ID' => $post->ID];
+                $wpdb->update($wpdb->prefix . 'posts', $data, $where);
+            }
+
+            delete_transient('wp_lwsoptimize_post_update');
         }
     }
 
@@ -654,6 +674,9 @@ class LwsOptimize
     {
         check_ajax_referer('update_fb_preload', '_ajax_nonce');
 
+        delete_option('lws_optimize_sitemap_urls');
+        delete_option('lws_optimize_preload_is_ongoing');
+
         if (isset($_POST['action']) && isset($_POST['state'])) {
             $amount = $_POST['amount'] ? sanitize_text_field($_POST['amount']) : 3;
 
@@ -678,7 +701,20 @@ class LwsOptimize
                 $sitemap = home_url('/sitemap_index.xml');
             }
 
-            $urls = $this->fetch_url_sitemap($sitemap, []);
+            $urls = get_option('lws_optimize_sitemap_urls', ['time' => 0, 'urls' => []]);
+            $time = $urls['time'] ?? 0;
+
+            // It has been more than an hour since the latest fetch from the sitemap
+            if ($time +  3600 < time()) {
+                // We get the freshest data
+                $urls = $this->fetch_url_sitemap($sitemap, []);
+                if (!empty($urls)) {
+                    update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
+                }
+            } else {
+                // We get the ones currently saved in base
+                $urls = $urls['urls'] ?? [];
+            }
 
             $this->optimize_options['filebased_cache']['preload_quantity'] = count($urls);
 
@@ -693,7 +729,9 @@ class LwsOptimize
                     wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache'])));
                 }
 
-                wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                if (!wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                }
                 wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache'])));
             }
         }
@@ -721,6 +759,15 @@ class LwsOptimize
             }
         }
         wp_die(json_encode(array('code' => "FAILED_ACTIVATE", 'data' => "FAIL")));
+    }
+
+    // Start regenerating file-based cache (from 0 instead of just adding)
+    // Useful if stats are broken for some reasons
+    public function lwsop_regenerate_cache() {
+        check_ajax_referer('lws_regenerate_nonce_cache_fb', '_ajax_nonce');
+        $stats = $this->lwsop_recalculate_stats('regenerate');
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $stats)));
+
     }
 
     public function lwsop_do_pagespeed_test()
@@ -801,80 +848,16 @@ class LwsOptimize
         $this->optimize_options['filebased_cache']['timer'] = $timer;
 
         if ($state == "true") {
-            switch ($timer) {
-                case 'lws_daily':
-                    $date = '1 day';
-                    break;
-                case 'lws_weekly':
-                    $date = '7 days';
-                    break;
-                case 'lws_monthly':
-                    $date = '1 month';
-                    break;
-                case 'lws_thrice_monthly':
-                    $date = '3 months';
-                    break;
-                case 'lws_biyearly':
-                    $date = '6 months';
-                    break;
-                case 'lws_yearly':
-                    $date = '1 year';
-                    break;
-                case 'lws_two_years':
-                    $date = '2 years';
-                    break;
-                case 'lws_never':
-                    $date = '3 years';
-                    break;
-                default:
-                    $date = '3 months';
-                    break;
-            }
-
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-            $htaccess = ABSPATH . "/.htaccess";
-
-            $hta = '';
-            $hta .= "<IfModule mod_expires.c>\n";
-            $hta .= "ExpiresActive On\n";
-            $hta .= "AddOutputFilterByType DEFLATE application/json\n";
-            $hta .= "ExpiresByType image/jpg \"access $date\"\n";
-            $hta .= "ExpiresByType image/jpeg \"access $date\"\n";
-            $hta .= "ExpiresByType image/gif \"access $date\"\n";
-            $hta .= "ExpiresByType image/png \"access $date\"\n";
-            $hta .= "ExpiresByType image/svg \"access $date\"\n";
-            $hta .= "ExpiresByType image/x-icon \"access $date\"\n";
-            $hta .= "ExpiresByType text/css \"access $date\"\n";
-            $hta .= "ExpiresByType application/pdf \"access $date\"\n";
-            $hta .= "ExpiresByType application/javascript \"access $date\"\n";
-            $hta .= "ExpiresByType application/x-javascript \"access $date\"\n";
-            $hta .= "ExpiresByType application/x-shockwave-flash \"access $date\"\n";
-            $hta .= "ExpiresDefault \"access $date\"\n";
-            $hta .= "</IfModule>\n";
-
-            if ($hta != '') {
-                $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta #END LWS OPTIMIZE - EXPIRE HEADER\n";
-
-                if (is_file($htaccess)) {
-                    $hta .= file_get_contents($htaccess);
-                }
-
-                if (($f = fopen($htaccess, 'w+')) !== false) {
-                    if (!fwrite($f, $hta)) {
-                        fclose($f);
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                    } else {
-                        fclose($f);
-                    }
-                } else {
-                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-                }
-            }
+            $this->lws_optimize_reset_header_htaccess();
         } else {
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
             if ($eCode != 0) {
                 error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
             }
+        }
+
+        if (isset($this->optimize_options['htaccess_rules']['state']) && $this->optimize_options['htaccess_rules']['state'] == "true") {
+            $this->lws_optimize_set_cache_htaccess();
         }
 
         // Just return if the array did not change
@@ -891,6 +874,303 @@ class LwsOptimize
         } else {
             wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
         }
+    }
+
+    public function lws_optimize_set_cache_htaccess() {
+        // Get all username of admin users
+        $usernames = get_users(array("role" => "administrator", "fields" => array("user_login")));
+        $admin_users = [];
+        foreach ($usernames as $user) {
+            $admin = sanitize_user(wp_unslash($user->user_login), true);
+            $admin_users[] = preg_replace("/\s/", "%20", $admin);
+        }
+
+        // Get domain name of the current website
+        $urlparts = wp_parse_url(home_url());
+        $http_host = $urlparts['host'];
+        $http_path = $urlparts['path'];
+
+        // Get path to the cache directory
+        $path = "cache";
+        if ($path && preg_match("/(cache|cache-mobile|cache-css|cache-js)/", $path)) {
+            // Add additional subdirectories to the PATH depending on the plugins installed
+            $additional = "";
+            if ($this->lwsop_plugin_active("sitepress-multilingual-cms/sitepress.php")) {
+                switch (apply_filters('wpml_setting', false, 'language_negotiation_type')) {
+                    case 2:
+                        $my_home_url = apply_filters('wpml_home_url', get_option('home'));
+                        $my_home_url = preg_replace("/https?\:\/\//i", "", $my_home_url);
+                        $my_home_url = trim($my_home_url, "/");
+
+                        $additional = $my_home_url;
+                        break;
+                    case 1:
+                        $my_current_lang = apply_filters('wpml_current_language', null);
+                        if ($my_current_lang) {
+                            $additional = $my_current_lang;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            if ($this->lwsop_plugin_active('multiple-domain-mapping-on-single-site/multidomainmapping.php') || $this->lwsop_plugin_active('multiple-domain/multiple-domain.php') || is_multisite()) {
+                $additional = $_SERVER['HTTP_HOST'];
+            }
+
+            if ($this->lwsop_plugin_active('polylang/polylang.php')) {
+                $polylang_settings = get_option("polylang");
+                if (isset($polylang_settings["force_lang"]) && ($polylang_settings["force_lang"] == 2 || $polylang_settings["force_lang"] == 3)) {
+                    $additional = $_SERVER['HTTP_HOST'];
+                }
+            }
+
+            if (!empty($additional)) {
+                $additional = rtrim($additional) . "/";
+            }
+            $cache_path = "/cache/lwsoptimize/$additional" . $path;
+            $cache_path_mobile = "/cache/lwsoptimize/$additional" . "cache-mobile";
+        } else {
+            $cache_path = "/cache/lwsoptimize/cache";
+            $cache_path_mobile = "/cache/lwsoptimize/cache-mobile";
+        }
+
+        // Current date at the time of modification
+        $current_date = date("d/m/Y H:i:s", time());
+
+        // Path to .htaccess
+        $htaccess = ABSPATH . "/.htaccess";
+
+        // Get the directory (wp-content, by default)
+        $wp_content_directory = explode('/', WP_CONTENT_DIR);
+        $wp_content_directory = array_pop($wp_content_directory);
+
+        // Remove the htaccess related to caching
+        exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+        // Content
+        $hta = '';
+
+        // Add instructions to load cache file without starting PHP
+        $hta .= "#Last Modification: $current_date\n";
+        $hta .= "<IfModule mod_rewrite.c>"."\n";
+        $hta .= "RewriteEngine On"."\n";
+        $hta .= "RewriteBase " . rtrim($http_path, '/') . "/\n";
+
+        // If connected users have their own cache
+        if ($this->lwsop_check_option('cache_logged_user')['state'] === "false") {
+            $hta .= "## Connected desktop ##\n";
+            $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
+            $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
+            $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+            $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_2.html -f\n";
+            $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_2.html [L]\n\n";
+
+            // If connected users on mobile have their own cache
+            if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
+                $hta .= "## Connected mobile ##\n";
+                $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
+                $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
+                $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+                $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_2.html -f\n";
+                $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_2.html [L]\n\n";
+            }
+        }
+
+        // If not connected users on mobile have cache
+        if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
+            $hta .= "## Anonymous mobile ##\n";
+            $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
+            $hta .= "RewriteCond %{HTTP_COOKIE} !wordpress_logged_in_ [NC]\n";
+            $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+            $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_0.html -f\n";
+            $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_0.html [L]\n\n";
+        }
+
+        // Non connected and non-mobile users
+        $hta .= "## Anonymous desktop ##\n";
+        $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
+        $hta .= "RewriteCond %{HTTP:Cookie} !wordpress_logged_in [NC]\n";
+        $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+        $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_0.html -f\n";
+        $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_0.html [L]\n\n";
+
+        $hta .= "Header set Edge-Cache-Platform 'lwsoptimize' env=REDIRECT_STATUS\n";
+        // Remove eTag to fix broken 304 Not Modified
+        $hta .= "FileETag None\nHeader unset ETag\n";
+        $hta .= "</IfModule>\n";
+
+        $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n\n";
+
+        if (is_file($htaccess)) {
+            $hta .= file_get_contents($htaccess);
+        }
+
+        if (($f = fopen($htaccess, 'w+')) !== false) {
+            if (!fwrite($f, $hta)) {
+                fclose($f);
+                error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
+            } else {
+                fclose($f);
+            }
+        } else {
+            error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
+        }
+    }
+
+    public function lws_optimize_basic_htaccess_conditions($http_host, $admin_users) {
+        $hta = '';
+
+        // No redirections for special query strings
+        $hta .= "RewriteCond %{QUERY_STRING} !^((gclid|fbclid|y(ad|s)?clid|utm_(source|medium|campaign|content|term)=[^&]+)+)$ [NC]\n";
+
+        // Only if on the right domain
+        $hta .= "RewriteCond %{HTTP_HOST} ^$http_host\n";
+
+        // Do not redirect to show cache for admins (at the time of the modification)
+        $hta .= "RewriteCond %{HTTP:Cookie} !wordpress_logged_in_[^\=]+\=".implode("|", $admin_users)."\n";
+
+        // Do nothing if preloading
+        $hta .= "RewriteCond %{HTTP_USER_AGENT} '!(LWS_Optimize_Preload|LWS_Optimize_Preload_Mobile)' [NC]\n";
+
+        // // Check if HTTPS
+        // if(preg_match("/^https:\/\//", home_url())){
+        //     $hta .= "RewriteCond %{HTTPS} =on\n";
+        // }
+
+        // Not on POST (only GET)
+        $hta .= "RewriteCond %{REQUEST_METHOD} !POST"."\n";
+
+        // No redirect if consecutive "/" in request
+        $hta .= "RewriteCond %{REQUEST_URI} !(\/){2,}\n";
+        $hta .= "RewriteCond %{THE_REQUEST} !(\/){2,}\n";
+
+        if (!$this->lwsop_plugin_active('custom-permalinks/custom-permalinks.php') && $permalink_structure = get_option('permalink_structure')) {
+            if(preg_match("/\/$/", $permalink_structure)){
+                $hta .= "RewriteCond %{REQUEST_URI} \/$"."\n";
+            } else {
+                $hta .= "RewriteCond %{REQUEST_URI} ![^\/]+\/$"."\n";
+            }
+        } else {
+            $hta .= "RewriteCond %{REQUEST_URI} ![^\/]+\/$"."\n";
+        }
+
+        $hta .= "RewriteCond %{QUERY_STRING} !.+\n";
+        $hta .= "RewriteCond %{HTTP:Cookie} !comment_author_"."\n";
+        $hta .= 'RewriteCond %{HTTP:Profile} !^[a-z0-9\"]+ [NC]'."\n";
+
+        return $hta;
+    }
+
+    /**
+     * Set the expiration headers in the .htaccess. Will remove it before adding it back.
+     * If the cache is not active or an error occurs, headers won't be added
+     */
+    function lws_optimize_reset_header_htaccess() {
+        $state = $this->optimize_options['filebased_cache']['state'] ?? "false";
+        $timer = $this->optimize_options['filebased_cache']['timer'] ?? "lws_thrice_monthly";
+
+        // Path to .htaccess
+        $htaccess = ABSPATH . "/.htaccess";
+
+        if ($state != "true") {
+            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d'" . escapeshellarg($htaccess) . "'", $eOut, $eCode);
+            error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut)));
+            return json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut));
+        }
+
+        switch ($timer) {
+            case 'lws_daily':
+                $date = '1 day';
+                $cdn_date = "86400";
+                break;
+            case 'lws_weekly':
+                $date = '7 days';
+                $cdn_date = "604800";
+                break;
+            case 'lws_monthly':
+                $date = '1 month';
+                $cdn_date = "2592000";
+                break;
+            case 'lws_thrice_monthly':
+                $date = '3 months';
+                $cdn_date = "7776000";
+                break;
+            case 'lws_biyearly':
+                $date = '6 months';
+                $cdn_date = "15552000";
+                break;
+            case 'lws_yearly':
+                $date = '1 year';
+                $cdn_date = "31104000";
+                break;
+            case 'lws_two_years':
+                $date = '2 years';
+                $cdn_date = "62208000";
+                break;
+            case 'lws_never':
+                $date = '3 years';
+                $cdn_date = "93312000";
+                break;
+            default:
+                $date = '3 months';
+                $cdn_date = "7776000";
+                break;
+        }
+
+        // Remove the old htaccess related to HEADER before adding it back updated
+        if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d'" . escapeshellarg($htaccess) . "'", $eOut, $eCode) || !$eCode) {
+            error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "[$eCode] - " . json_encode($eOut))));
+        }
+
+
+        // Set expiration date for the cache, based on selected value (in the "Cache" tab)
+        $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n
+        <IfModule mod_expires.c>
+        ExpiresActive On
+        AddOutputFilterByType DEFLATE application/json
+        ExpiresByType image/jpg \"access $date\"
+        ExpiresByType image/jpeg \"access $date\"
+        ExpiresByType image/gif \"access $date\"
+        ExpiresByType image/png \"access $date\"
+        ExpiresByType image/svg \"access $date\"
+        ExpiresByType image/x-icon \"access $date\"
+        ExpiresByType text/css \"access $date\"
+        ExpiresByType application/pdf \"access $date\"
+        ExpiresByType application/javascript \"access $date\"
+        ExpiresByType application/x-javascript \"access $date\"
+        ExpiresByType application/x-shockwave-flash \"access $date\"
+        ExpiresByType text/html A0
+        ExpiresDefault \"access $date\"
+        </IfModule>
+        <FilesMatch \"index_[0-2]\.(html|htm)$\">
+        <IfModule mod_headers.c>
+            Header set Cache-Control \"public, max-age=0, no-cache, must-revalidate\"
+            Header set CDN-Cache-Control \"public, maxage=$cdn_date\"
+            Header set Pragma \"no-cache\"
+            Header set Expires \"Mon, 29 Oct 1923 20:30:00 GMT\"
+        </IfModule>
+        </FilesMatch>
+
+        #END LWS OPTIMIZE - EXPIRE HEADER\n\n";
+
+        if (is_file($htaccess)) {
+            $hta .= file_get_contents($htaccess);
+        }
+
+        if (($f = fopen($htaccess, 'w+')) !== false) {
+            if (!fwrite($f, $hta)) {
+                fclose($f);
+                error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
+                return json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable"));
+            }
+            fclose($f);
+        } else {
+            error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
+            return json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable"));
+        }
+
+        return json_encode(array('code' => 'SUCCESS', 'data' => ""));
     }
 
     /**
@@ -921,80 +1201,16 @@ class LwsOptimize
         }
 
         if ($fb_options['state'] == "true") {
-            switch ($timer) {
-                case 'lws_daily':
-                    $date = '1 day';
-                    break;
-                case 'lws_weekly':
-                    $date = '7 days';
-                    break;
-                case 'lws_monthly':
-                    $date = '1 month';
-                    break;
-                case 'lws_thrice_monthly':
-                    $date = '3 months';
-                    break;
-                case 'lws_biyearly':
-                    $date = '6 months';
-                    break;
-                case 'lws_yearly':
-                    $date = '1 year';
-                    break;
-                case 'lws_two_years':
-                    $date = '2 years';
-                    break;
-                case 'lws_never':
-                    $date = '3 years';
-                    break;
-                default:
-                    $date = '3 months';
-                    break;
-            }
-
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-            $htaccess = ABSPATH . "/.htaccess";
-
-            $hta = '';
-            $hta .= "<IfModule mod_expires.c>\n";
-            $hta .= "ExpiresActive On\n";
-            $hta .= "AddOutputFilterByType DEFLATE application/json\n";
-            $hta .= "ExpiresByType image/jpg \"access $date\"\n";
-            $hta .= "ExpiresByType image/jpeg \"access $date\"\n";
-            $hta .= "ExpiresByType image/gif \"access $date\"\n";
-            $hta .= "ExpiresByType image/png \"access $date\"\n";
-            $hta .= "ExpiresByType image/svg \"access $date\"\n";
-            $hta .= "ExpiresByType image/x-icon \"access $date\"\n";
-            $hta .= "ExpiresByType text/css \"access $date\"\n";
-            $hta .= "ExpiresByType application/pdf \"access $date\"\n";
-            $hta .= "ExpiresByType application/javascript \"access $date\"\n";
-            $hta .= "ExpiresByType application/x-javascript \"access $date\"\n";
-            $hta .= "ExpiresByType application/x-shockwave-flash \"access $date\"\n";
-            $hta .= "ExpiresDefault \"access $date\"\n";
-            $hta .= "</IfModule>\n";
-
-            if ($hta != '') {
-                $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta #END LWS OPTIMIZE - EXPIRE HEADER\n";
-
-                if (is_file($htaccess)) {
-                    $hta .= file_get_contents($htaccess);
-                }
-
-                if (($f = fopen($htaccess, 'w+')) !== false) {
-                    if (!fwrite($f, $hta)) {
-                        fclose($f);
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                    } else {
-                        fclose($f);
-                    }
-                } else {
-                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-                }
-            }
+           $this->lws_optimize_reset_header_htaccess();
         } else {
             exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
             if ($eCode != 0) {
                 error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
             }
+        }
+
+        if (isset($this->optimize_options['htaccess_rules']['state']) && $this->optimize_options['htaccess_rules']['state'] == "true") {
+            $this->lws_optimize_set_cache_htaccess();
         }
 
         $this->optimize_options['filebased_cache']['timer'] = $timer;
@@ -1029,6 +1245,7 @@ class LwsOptimize
 
         $id = sanitize_text_field($_POST['data']['type']);
         $state = sanitize_text_field($_POST['data']['state']);
+        $tab = sanitize_text_field($_POST['data']['tab']);
 
         if ($state !== "false" && $state !== "true") {
             $state = "false";
@@ -1068,14 +1285,16 @@ class LwsOptimize
                 wp_die(json_encode(array('code' => "INCOMPATIBLE", "data" => "LWSCache is incompatible with this hosting. Use LWS.")), JSON_PRETTY_PRINT);
             }
 
-            if (!$lwscache_status && $fastest_cache_status === null) {
+            if ($lwscache_status == false && $fastest_cache_status === null) {
                 $this->optimize_options[$element]['state'] = "false";
                 update_option('lws_optimize_config_array', $this->optimize_options);
                 wp_die(json_encode(array('code' => "PANEL_CACHE_OFF", "data" => "LWSCache is not activated on LWSPanel.")), JSON_PRETTY_PRINT);
-            } elseif (!$fastest_cache_status && $lwscache_status === null) {
+            }
+
+            if ($lwscache_status === null && $fastest_cache_status == false) {
                 $this->optimize_options[$element]['state'] = "false";
                 update_option('lws_optimize_config_array', $this->optimize_options);
-                wp_die(json_encode(array('code' => "CPANEL_CACHE_OFF", "data" => "LWSCache is not activated on cPanel.")), JSON_PRETTY_PRINT);
+                wp_die(json_encode(array('code' => "CPANEL_CACHE_OFF", "data" => "Varnish is not activated on cPanel.")), JSON_PRETTY_PRINT);
             }
         } elseif ($element == "maintenance_db") {
             if (wp_next_scheduled('lws_optimize_maintenance_db_weekly')) {
@@ -1166,9 +1385,17 @@ class LwsOptimize
                     error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
                 }
             }
+        } elseif ($element == "htaccess_rules") {
+            if ($state == "false") {
+                exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            } else {
+                $this->lws_optimize_set_cache_htaccess();
+            }
         }
-        // If the action being changed is not one of the unique above, we remove all caches
-        else {
+
+        // If the tab where the option comes from is frontend, we clear the cache
+        // as those options needs the cache to be emptied to work properly
+        if (isset($tab) && $tab == "frontend") {
             apply_filters("lws_optimize_clear_filebased_cache", false);
         }
 
@@ -1182,13 +1409,66 @@ class LwsOptimize
         if ($temp_array == $this->optimize_options) {
             wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'type' => $element)), JSON_PRETTY_PRINT);
         }
+
         $return = update_option('lws_optimize_config_array', $this->optimize_options);
+
+        if ($element == "cache_mobile_user" || $element == "cache_logged_user") {
+            if (isset($this->optimize_options['htaccess_rules']['state']) && $this->optimize_options['htaccess_rules']['state'] == "true") {
+                $this->lws_optimize_set_cache_htaccess();
+            }
+        }
+
         // If correctly added and updated
         if ($return) {
             wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'type' => $element)), JSON_PRETTY_PRINT);
         } else {
             wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options, 'type' => $element)), JSON_PRETTY_PRINT);
         }
+    }
+
+
+    public function activateVarnishCache(bool $state = true) {
+        $array = (explode('/', ABSPATH));
+        $directory = implode('/', array($array[0], $array[1], $array[2]));
+        $directory .= "/tmp/";
+        $latestFile = null;
+        $latestTime = 0;
+
+        // Open the directory and read its contents
+        if (is_dir($directory)) {
+            $files = scandir($directory);
+
+            foreach ($files as $file) {
+                // Skip if it's not a file or doesn't start with "fc_token_api"
+                if (!is_file($directory . '/' . $file) || strpos($file, 'fc_token_api') !== 0) {
+                    continue;
+                }
+
+                // Get the file's modification time
+                $fileTime = filemtime($directory . '/' . $file);
+
+                // Check if this file is more recent than the current latest file
+                if ($fileTime > $latestTime) {
+                    $latestFile = $file;
+                    $latestTime = $fileTime;
+                }
+            }
+        }
+
+        $api_key = file_get_contents($directory . '/' . $latestFile);
+        wp_remote_post(
+            "https://127.0.0.1:8443/api/domains/" . $_SERVER['HTTP_HOST'],
+            array(
+                'method'      => 'PUT',
+                'headers'     => array('Authorization' => 'Bearer ' . $api_key, 'Content-Type' => "application/x-www-form-urlencoded"),
+                'body'          => array(
+                    'template' => "default",
+                    'cache-enabled' => $state,
+                    'cache-engine' => 'varnish'
+                ),
+                'sslverify' => false
+            )
+        );
     }
 
     /**
@@ -1373,8 +1653,9 @@ class LwsOptimize
     {
         check_ajax_referer('clear_fb_caching', '_ajax_nonce');
         apply_filters("lws_optimize_clear_filebased_cache", false);
-
+        delete_option('lws_optimize_sitemap_urls');
         $this->lwsop_recalculate_stats("all");
+        delete_option('lws_optimize_preload_is_ongoing');
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
     }
 
@@ -1483,16 +1764,18 @@ class LwsOptimize
             }
         } else {
             $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
+            $this->lwsop_recalculate_stats("all");
         }
 
         if ($array = get_option('lws_optimize_config_array', [])) {
             $array['filebased_cache']['preload_done'] =  0;
             if (isset($array['filebased_cache']['preload']) && $array['filebased_cache']['preload'] == "true") {
                 $array['filebased_cache']['preload_ongoing'] = "true";
-                if (!wp_next_scheduled("lws_optimize_start_filebased_preload")) {
-                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
-                } else {
+                if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                     wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
+                }
+
+                if (!wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                     wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
                 }
             }
@@ -1503,8 +1786,6 @@ class LwsOptimize
         $this->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
         $this->lwsop_dump_all_dynamic_caches();
         $this->lwsop_remove_opcache();
-
-        $this->lwsop_recalculate_stats("all");
     }
 
     /**
@@ -1512,6 +1793,18 @@ class LwsOptimize
      */
     public function lws_optimize_start_filebased_preload()
     {
+        $ongoing = get_option('lws_optimize_preload_is_ongoing', false);
+        if ($ongoing) {
+            // Do not continue if the cron is ongoing BUT force if it has been ~10m
+            if (time() - $ongoing > 36000) {
+                delete_option('lws_optimize_preload_is_ongoing');
+            } else {
+                exit;
+            }
+        }
+
+        update_option('lws_optimize_preload_is_ongoing', time());
+
         $lws_filebased = new LwsOptimizeFileCache($GLOBALS['lws_optimize']);
 
         $sitemap = get_sitemap_url("index");
@@ -1528,7 +1821,20 @@ class LwsOptimize
             $sitemap = home_url('/sitemap_index.xml');
         }
 
-        $urls = $this->fetch_url_sitemap($sitemap, []);
+        $urls = get_option('lws_optimize_sitemap_urls', ['time' => 0, 'urls' => []]);
+        $time = $urls['time'] ?? 0;
+
+        // It has been more than an hour since the latest fetch from the sitemap
+        if ($time +  3600 < time()) {
+            // We get the freshest data
+            $urls = $this->fetch_url_sitemap($sitemap, []);
+            if (!empty($urls)) {
+                update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
+            }
+        } else {
+            // We get the ones currently saved in base
+            $urls = $urls['urls'] ?? [];
+        }
 
         if ($array = get_option('lws_optimize_config_array', [])) {
             $max_try = intval($array['filebased_cache']['preload_amount'] ?? 5);
@@ -1540,14 +1846,29 @@ class LwsOptimize
 
             $first_run = $done == 0 ? true : false;
 
-            foreach ($urls as $key => $url) {
+            $userAgents = [
+                'desktop' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36; compatible; LWSOptimizePreload/1.0',
+                'mobile' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1; compatible; LWSOptimizePreload/1.0'
+            ];
 
+            foreach ($urls as $key => $url) {
                 // Don't do more than $max_try
                 if ($current_try < $max_try) {
+                    $query = parse_url($url, PHP_URL_QUERY);
+
+                    // Returns a string if the URL has parameters or NULL if not
+                    if ($query) {
+                        $url .= '&nocache=' . time();
+                    } else {
+                        $url .= '?nocache=' . time();
+                    }
+
                     $parsed_url = parse_url($url);
                     $parsed_url = isset($parsed_url['path']) ? $parsed_url['path'] : '';
 
                     $path = $lws_filebased->lwsop_set_cachedir($parsed_url);
+                    $path_mobile = $lws_filebased->lwsop_set_cachedir($parsed_url, true);
+
 
                     if (!$path) {
                         // Failed to set a PATH to save the file ; do not cache
@@ -1565,38 +1886,33 @@ class LwsOptimize
                             $done++;
                         }
                     } else {
-                        // Load the URL to add it to cache
-                        $response = wp_remote_get($url, array(
-                            'user-agent' => "LWSOptimize Preloading cURL",
-                            'timeout' => 30,
-                            'sslverify' => false,
-                            'headers' => array("Cache-Control" => "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0")
-                        ));
+                        foreach ($userAgents as $type => $agent) {
+                            // Fetch the page content
+                            $context = stream_context_create([
+                                'http' => [
+                                    'header' => "User-Agent: $agent\r\n" .
+                                                "Cache-Control: no-cache, no-store, must-revalidate\r\n" .
+                                                "Pragma: no-cache\r\n" .
+                                                "Expires: 0\r\n",
+                                    'follow_location' => 1
+                                ]
+                            ]);
 
-                        if (!$response || is_wp_error($response)) {
-                            error_log($response->get_error_message() . " - ");
+                            file_get_contents($url, false, $context);
+                            sleep(1);
+                        }
+
+                        $file_exists = glob($path . "index*") ?? [];
+
+                        // If the cache has been created, all good
+                        // Otherwise, we consider that the file should not be cached (like some WC pages)
+                        if (!empty($file_exists)) {
+                            $done++;
+                            $current_try++;
+                            $saved_urls[$url] = true;
                         } else {
-                            $file_exists = glob($path . "index*") ?? [];
-
-                            // If the cache has been created, all good
-                            // Otherwise, we consider that the file should not be cached (like some WC pages)
-                            if (!empty($file_exists)) {
-                                $done++;
-                                $current_try++;
-                                $saved_urls[$url] = true;
-
-                                wp_remote_get($url, array(
-                                    'user-agent' => "Mozilla/5.0 (Linux; Android 11; Pixel 5 Build/RQ3A.210805.001.A1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.92 Mobile Safari/537.36",
-                                    'timeout' => 30,
-                                    'sslverify' => false,
-                                    'headers' => array(
-                                        "Cache-Control" => "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
-                                    )
-                                ));
-                            } else {
-                                $saved_urls[$url] = false;
-                                unset($urls[$key]);
-                            }
+                            $saved_urls[$url] = false;
+                            unset($urls[$key]);
                         }
                     }
                 }
@@ -1613,6 +1929,7 @@ class LwsOptimize
             $array['filebased_cache']['saved_urls'] = $saved_urls;
 
             update_option('lws_optimize_config_array', $array);
+            delete_option('lws_optimize_preload_is_ongoing');
         }
     }
 
@@ -1663,6 +1980,16 @@ class LwsOptimize
         }
     }
 
+    public function lwsop_exclude_cookies_fb()
+    {
+        check_ajax_referer('lwsop_get_excluded_cookies_nonce', '_ajax_nonce');
+        if (isset($this->optimize_options['filebased_cache']) && isset($this->optimize_options['filebased_cache']['exclusions_cookies'])) {
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache']['exclusions_cookies'], 'domain' => site_url()), JSON_PRETTY_PRINT));
+        } else {
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => array(), 'domain' => site_url()), JSON_PRETTY_PRINT));
+        }
+    }
+
     public function lwsop_save_urls_fb()
     {
         // Add all URLs to an array, but ignore empty URLs
@@ -1682,6 +2009,40 @@ class LwsOptimize
 
             $old = $this->optimize_options;
             $this->optimize_options['filebased_cache']['exclusions'] = $urls;
+
+            if ($old === $this->optimize_options) {
+                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
+            }
+            $return = update_option('lws_optimize_config_array', $this->optimize_options);
+            // If correctly added and updated
+            if ($return) {
+                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
+            } else {
+                wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
+            }
+        }
+        wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()), JSON_PRETTY_PRINT));
+    }
+
+    public function lwsop_save_cookies_fb()
+    {
+        // Add all Cookies to an array, but ignore empty cookies
+        // If all fields are empty, remove the option from DB
+        check_ajax_referer('lwsop_save_excluded_cookies_nonce', '_ajax_nonce');
+
+        if (isset($_POST['data'])) {
+            $urls = array();
+
+            foreach ($_POST['data'] as $data) {
+                $value = sanitize_text_field($data['value']);
+                if ($value == "" || empty($value)) {
+                    continue;
+                }
+                $urls[] = $value;
+            }
+
+            $old = $this->optimize_options;
+            $this->optimize_options['filebased_cache']['exclusions_cookies'] = $urls;
 
             if ($old === $this->optimize_options) {
                 wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
@@ -1934,6 +2295,38 @@ class LwsOptimize
                 $stats['mobile']['amount'] = 0;
                 $stats['mobile']['size'] = 0;
                 break;
+            case 'regenerate':
+                $paths = [
+                    'desktop' => $this->lwsop_get_content_directory("cache"),
+                    'mobile' => $this->lwsop_get_content_directory("cache-mobile"),
+                    'css' => $this->lwsop_get_content_directory("cache-css"),
+                    'js' => $this->lwsop_get_content_directory("cache-js")
+                ];
+
+
+                foreach ($paths as $type => $path) {
+                    $totalSize = 0;
+                    $fileCount = 0;
+                    if (is_dir($path)) {
+                        $iterator = new \RecursiveIteratorIterator(
+                            new \RecursiveDirectoryIterator($path),
+                            \RecursiveIteratorIterator::SELF_FIRST
+                        );
+
+                        foreach ($iterator as $file) {
+                            if ($file->isFile()) {
+                                $totalSize += $file->getSize();
+                                $fileCount++;
+                            }
+                        }
+                    }
+
+                    $stats[$type] = [
+                        'amount' => $fileCount,
+                        'size' => $totalSize
+                    ];
+                }
+                break;
             default:
                 break;
         }
@@ -2145,6 +2538,7 @@ class LwsOptimize
                 $options['cache_mobile_user']['state'] = "false";
                 $options['cache_logged_user']['state'] = "true";
                 $options['dynamic_cache']['state'] = "true";
+                $options['htaccess_rules']['state'] = "true";
 
                 update_option('lws_optimize_config_array', $options);
 
@@ -2155,7 +2549,7 @@ class LwsOptimize
             case 'advanced':
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "7";
+                $options['filebased_cache']['preload_amount'] = "20";
                 $options['filebased_cache']['timer'] = "lws_thrice_monthly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
@@ -2176,13 +2570,14 @@ class LwsOptimize
                 $options['cache_mobile_user']['state'] = "false";
                 $options['cache_logged_user']['state'] = "true";
                 $options['dynamic_cache']['state'] = "true";
+                $options['htaccess_rules']['state'] = "true";
 
                 update_option('lws_optimize_config_array', $options);
                 break;
             case 'full':
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "8";
+                $options['filebased_cache']['preload_amount'] = "30";
                 $options['filebased_cache']['timer'] = "lws_biyearly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
@@ -2203,12 +2598,16 @@ class LwsOptimize
                 $options['cache_mobile_user']['state'] = "false";
                 $options['cache_logged_user']['state'] = "true";
                 $options['dynamic_cache']['state'] = "true";
+                $options['htaccess_rules']['state'] = "true";
 
                 update_option('lws_optimize_config_array', $options);
                 break;
             default:
                 break;
         }
+
+        $this->lws_optimize_set_cache_htaccess();
+        $this->lws_optimize_reset_header_htaccess();
 
         apply_filters("lws_optimize_clear_filebased_cache", false);
         $this->lwsop_recalculate_stats("all");
@@ -2496,8 +2895,26 @@ class LwsOptimize
             $sitemap = home_url('/sitemap_index.xml');
         }
 
-        $urls = $this->fetch_url_sitemap($sitemap, []);
+        $urls = get_option('lws_optimize_sitemap_urls', ['time' => 0, 'urls' => []]);
+        $time = $urls['time'] ?? 0;
+
+        // It has been more than an hour since the latest fetch from the sitemap
+        if ($time + 300 < time()) {
+            // We get the freshest data
+            $urls = $this->fetch_url_sitemap($sitemap, []);
+            if (!empty($urls)) {
+                update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
+            }
+        } else {
+            // We get the ones currently saved in base
+            $urls = $urls['urls'] ?? [];
+        }
+
         $done = 0;
+
+        if (empty($urls)){
+            wp_die(json_encode(array('code' => "ERROR", "data" => $sitemap, 'message' => "Failed to get some of the datas", 'domain' => site_url())), JSON_PRETTY_PRINT);
+        }
 
         foreach ($urls as $url) {
             $parsed_url = parse_url($url);
@@ -2519,7 +2936,9 @@ class LwsOptimize
         if ($next != null) {
             $next = get_date_from_gmt(date('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
         } else {
-            wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+            if (!wp_next_scheduled('lws_optimize_start_filebased_preload')) {
+                wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+            }
         }
 
         $next = wp_next_scheduled('lws_optimize_start_filebased_preload') ?? null;

@@ -919,6 +919,9 @@ msgstr "Préchargement"
 msgid "Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while. Please be aware that the total amount of page may include dynamic pages that will not be cached, such as excluded URLs or WooCommerce checkout page."
 msgstr "Démarre automatiquement le préchargement du cache de fichiers de votre site et le maintient à jour. Garantit que les pages sont mises en cache avant la première visite d'un utilisateur. Selon la quantité de pages à mettre en cache, cela peut prendre du temps. Veuillez noter que le nombre total de pages peut inclure des pages dynamiques ou exclues, tel que le Panier de WooCommerce, qui ne seront alors jamais mises en cache."
 
+msgid "This option uses WordPress sitemap to work. If you encounter issues such as the preloading not starting, make sure the sitemap is activated."
+msgstr "Cette option requiert la sitemap WordPress afin de fonctionner. En cas de problèmes, tel que le préchargement qui ne démarre pas, assurez-vous que la sitemap est active."
+
 msgid "Exclude URLs from the cache"
 msgstr "Exclure des URLs de la mise en cache"
 
@@ -1231,8 +1234,8 @@ msgstr "En savoir plus sur les Offres LWS"
 msgid "This action is managed by LWSCache and cannot be activated. Deactivate LWSCache to manage the server cache from here."
 msgstr "Cette action est gérée par LWSCache et ne peut être activée. Désactivez LWSCache pour gérer le cache serveur d'ici."
 
-msgid "LWSCache, accessible to all clients, speed up websites by storing content on the server memory. While a manual purge is available, an autopurge is activated by default, making this option often redundant."
-msgstr "LWSCache, disponible pour tout les clients, accélère vos sites en stockant le contenu dans la mémoire serveur. Bien qu'une purge manuelle soit disponible, une purge automatique est activée par défaut, rendant cette option redondante."
+msgid "Each time a page or post is modified on your website, their cache (LWSCache or Varnish Cache) will be purged automatically to always serve the most recent one to the users. For best performances, we recommend using a LWS-hosted website."
+msgstr "Chaque fois qu'une page ou article est modifié sur votre site, leur cache (LWSCache ou Varnish Cache) sera purgé automatiquement afin de toujours servir la version la plus à jour aux utilisateurs. Pour de meilleures performances, nous recommandons d'utiliser un hébergement LWS."
 
 msgid "Clear cache"
 msgstr "Vider le cache"
@@ -1899,3 +1902,54 @@ msgstr "Mettre en cache les pages dynamiques"
 
 msgid "Pages whose URL contains parameters (e.g. my_page/?et_fb=1) will be cached. By default, thoses pages are ignored as they are serving dynamic content, content that needs to be always up-to-date. Performances on those pages will be improved at the expense of increased size (multiple additional caches have to be made) and loss of dynamicity (as dynamic pages will become static)"
 msgstr "Les pages dont l'URL contient des paramètres (i.e. ma_page/?et_fb=1) seront mises en cache. Par défaut, ces pages sont ignorées car elles servent du contenu dynamique, qui doit être constemment à jour. Les performances de ces pages seront améliorées au prix d'une augmentation de taille (plusieurs fichiers de cache additionnels devant être crées) et d'une perte de dynamicité (les pages devenant statiques)"
+
+msgid "WebpP autoconvertion options"
+msgstr "Options d'autoconversion WeBP"
+
+msgid "Validate"
+msgstr "Valider"
+
+msgid "Image convertion has been configurated"
+msgstr "La conversion d'image a été configuré"
+
+msgid "No supported cache found"
+msgstr "Aucun cache compatible détecté"
+
+msgid "Regenerate"
+msgstr "Régénérer"
+
+msgid "Regenerate cache statistics"
+msgstr "Régénérer les statistiques de cache"
+
+msgid "If the statistics for the file-based cache are broken, they can be fixed by regenerating them again. This option may negatively affects performances, especially on large caches, while it is ongoing."
+msgstr "Si les statistiques pour le cache de fichiers sont incorrectes, elles peuvent être réparées en les régénérant. Cette option peut affecter négativement les performances, surtout sur de gros caches, pendant son exécution."
+
+msgid "Cache type: "
+msgstr "Type de cache : "
+
+msgid "Cache status: "
+msgstr "Status du cache : "
+
+msgid "Unknown"
+msgstr "Inconnu"
+
+msgid "Use .htaccess for caching"
+msgstr "Utiliser le .htaccess pour la mise en cache"
+
+msgid "Using .htaccess rules to manage the caching of your website will result in a decreased memory usage by PHP, improving performances, as well as faster loading times than with the default method."
+msgstr "Utiliser les règles .htaccess pour gérer la mise en cache de votre site peut résulter en une diminution de la consommation de mémoire de PHP, améliorant les performances, ainsi qu'en des chargements plus rapides qu'avec la méthode par défaut."
+
+msgid "You can also manually clear the cache at any moment."
+msgstr "Vous pouvez également vider le cache à tout moment."
+
+msgid "Exclude Cookies"
+msgstr "Exclure des Cookies"
+
+msgid "Exclude Cookies from the cache"
+msgstr "Exclure des Cookies de la mise en cache"
+
+msgid "You can exclude specifics Cookies from the caching process. To exclude cookies starting with the same base, use \".*\", such as : \"wordpress_logged_in_.*\""
+msgstr "Vous pouvez exclure des Cookies spécifiques du processus de mise en cache. Pour exclure des cookies commençant par la même base, utilisez \".*\", tel que : \"wordpress_logged_in.*\""
+
+msgid "File-based cache statistics have been synchronized"
+msgstr "Les statistiques du cache de fichiers ont été synchronizées"

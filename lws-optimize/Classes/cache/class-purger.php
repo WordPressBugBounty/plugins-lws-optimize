@@ -186,7 +186,7 @@ abstract class Purger
 	{
 
 		// If WooCommerce is active, then remove the shop cache when adding/modifying new products
-		if (is_plugin_active('woocommerce/woocommerce.php')) {
+		if (in_array('woocommerce/woocommerce.php', (array) get_option('active_plugins', array()), true)) {
 			if ($post->post_type == "product") {
 				$shop_id = wc_get_page_id('shop');
 				$shop = get_post($shop_id)->post_name;
@@ -204,7 +204,7 @@ abstract class Purger
 		$this->purge_post($post_id);
 
 		// If WooCommerce is active, then remove the shop cache when removing products
-		if (is_plugin_active('woocommerce/woocommerce.php')) {
+		if (in_array('woocommerce/woocommerce.php', (array) get_option('active_plugins', array()), true)) {
 			if ($post->post_type == "product") {
 				$shop_id = wc_get_page_id('shop');
 				$this->purge_post($shop_id);

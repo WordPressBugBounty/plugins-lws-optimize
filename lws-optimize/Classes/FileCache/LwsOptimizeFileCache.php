@@ -16,11 +16,18 @@ class LwsOptimizeFileCache
     public function __construct($parent)
     {
         $this->base = $parent;
-        if (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])
-        && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
-            $this->base->lwsop_dump_all_dynamic_caches();
-        }
-        $this->base->lwsop_remove_opcache();
+        // $actual_link = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        // if (in_array("Edge-Cache-Platform: lwsoptimize", get_headers($actual_link))) {
+        //     exit;
+        // }
+
+        // TODO :
+        // if (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])
+        // && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
+        //     $this->base->lwsop_dump_all_dynamic_caches();
+        // }
+
+        // $this->base->lwsop_remove_opcache();
         include_once ABSPATH . "wp-includes/pluggable.php";
         $this->need_cache = $this->lwsop_check_need_cache();
         $this->lwsop_set_cachedir();
@@ -92,10 +99,19 @@ class LwsOptimizeFileCache
         // If there is already a cache file for this URL, then get it and echo it
         if (!empty(glob($this->cache_directory))) {
             $user_id = get_current_user_id();
+            $user = wp_get_current_user();
+            if ( array_intersect( ['administrator'], $user->roles ) ) {
+                $user_id = 1;
+            } else {
+                if ($user_id != 0) {
+                    $user_id = 2;
+                }
+            }
+
+
             $extension = "html";
             if (file_exists($this->cache_directory . "index_$user_id.html")) {
                 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($this->cache_directory . "index_$user_id.html")) . ' GMT', true, 200);
-                header('Cache-Control: public, max-age=750', true, 200);
                 $extension = "html";
             } elseif (file_exists($this->cache_directory . "index_$user_id.xml")) {
                 header('Content-type: text/xml');
@@ -136,6 +152,11 @@ class LwsOptimizeFileCache
 
     public function callback($buffer)
     {
+        // Do NOT cache if the content is null
+        if (empty($buffer)) {
+            return $buffer;
+        }
+
         // Get the Content-Type of the current page (xml, json, html)
         $this->lwsop_detect_page_content_type($buffer);
 
@@ -144,8 +165,13 @@ class LwsOptimizeFileCache
             return $buffer;
         }
 
+        // If not a 200, do NOT cache
+        if ((function_exists("http_response_code") && http_response_code() !== 200)) {
+            return $buffer;
+        }
+
         // We cannot cache the error page, otherwise even once the error is resolved or the page created, it won't appear
-        if ((function_exists("http_response_code") && (http_response_code() === 404)) || is_404() || preg_match("/<body\sid\=\"error-page\">\s*<div\sclass\=\"wp-die-message\">/i", $buffer)) {
+        if ((function_exists("http_response_code") && (http_response_code() === 404 || http_response_code() !== 200)) || is_404() || preg_match("/<body\sid\=\"error-page\">\s*<div\sclass\=\"wp-die-message\">/i", $buffer)) {
             return $buffer;
         }
 
@@ -159,10 +185,10 @@ class LwsOptimizeFileCache
             return $buffer . "<!-- wp-login.php -->";
         }
 
-        // Do not cache the page if the DONOTCACHEPAGE is defined (can be defined by a few plugins, like Wordfence or iThemes)
-        if (defined('DONOTCACHEPAGE')) {
-            return $buffer . "<!-- DONOTCACHEPAGE is defined as TRUE -->";
-        }
+        // // Do not cache the page if the DONOTCACHEPAGE is defined (can be defined by a few plugins, like Wordfence or iThemes)
+        // if (defined('DONOTCACHEPAGE')) {
+        //     return $buffer . "<!-- DONOTCACHEPAGE is defined as TRUE -->";
+        // }
 
         if ((is_single() || is_page()) && preg_match("/<input[^\>]+_wpcf7_captcha[^\>]+>/i", $buffer)) {
             return $buffer . "<!-- This page was not cached because ContactForm7's captcha -->";
@@ -188,7 +214,7 @@ class LwsOptimizeFileCache
             return $buffer;
         }
 
-        // If the page is a redirection (temp/permanent), do not cache the page. Otherwise,
+        // If the page is a redirection (temp/permanent), do not cache the page.
         if (http_response_code() == 301 || http_response_code() == 302) {
             return $buffer;
         }
@@ -309,6 +335,7 @@ class LwsOptimizeFileCache
                 $is_mobile = true;
             } else {
                 $is_mobile = false;
+
             }
 
             $this->lwsop_add_to_cache($modified, $cached_elements, $is_mobile);
@@ -330,6 +357,15 @@ class LwsOptimizeFileCache
 
         if (!empty($content) && $this->cache_directory !== false) {
             $user_id = get_current_user_id();
+            $user = wp_get_current_user();
+            if ( array_intersect( ['administrator'], $user->roles ) ) {
+                $user_id = 1;
+            } else {
+                if ($user_id != 0) {
+                    $user_id = 2;
+                }
+            }
+
             $name = "index_$user_id.";
 
             // If the file is html/xml/json, add it to /wp-content/cache/
@@ -346,6 +382,7 @@ class LwsOptimizeFileCache
                     $cached['html']['size'] = filesize($this->cache_directory . $name . $this->content_type);
 
                     $GLOBALS['lws_optimize']->lwsop_recalculate_stats("plus", $cached, $mobile);
+
                 }
             }
         }
@@ -485,11 +522,29 @@ class LwsOptimizeFileCache
         }
     }
 
+    public function lwsop_page_has_excluded_cookies()
+    {
+        if (!isset($GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions_cookies'])) {
+            return false;
+        }
+
+        $excluded_cookies = $GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions_cookies'];
+        foreach ($excluded_cookies as $cookie) {
+            foreach ($_COOKIE as $key => $value) {
+            if (preg_match("/^$cookie$/", $key)) {
+                return true;
+            }
+            }
+        }
+
+        return false;
+    }
+
     public function lwsop_page_has_been_excluded($buffer = null)
     {
         $url = urldecode($_SERVER["REQUEST_URI"]);
 
-        $exclusions = $this->optimize_options['filebased_cache']['exclusions'] ?? [];
+        $exclusions = $GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions'] ?? [];
 
         foreach ($exclusions as $page) {
             $type = $page['type'] ?? null;
@@ -599,11 +654,15 @@ class LwsOptimizeFileCache
      */
     public function lwsop_check_need_cache($uri = false)
     {
+
         if (!$uri) {
             $uri = $_SERVER['REQUEST_URI'];
         } else {
             $uri = esc_url($uri);
         }
+
+
+        // var_dump($this->base->lwsop_check_option('cache_logged_user')['state']);
 
         // First check if the user is connected ; There is no point in doing checks even though the user is connected
         if ((is_user_logged_in() && $this->base->lwsop_check_option('cache_logged_user')['state'] == "true") || is_user_admin()) {
@@ -615,8 +674,23 @@ class LwsOptimizeFileCache
             return false;
         }
 
+        // If the page has excluded cookies, do not cache
+        if ($this->lwsop_page_has_excluded_cookies()) {
+            return false;
+        }
+
+        // To prevent issues with requests and their data, no cache when sending POST requests
+        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== "GET") {
+            return false;
+        }
+
         // To prevent issues with requests and their data, no cache when sending POST requests
         if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == "POST") {
+            return false;
+        }
+
+        // If the request is HEAD, then do not cache
+        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'HEAD') {
             return false;
         }
 
@@ -687,20 +761,21 @@ class LwsOptimizeFileCache
 
         // Do not cache if SSL parameters do not match
         // In case a plugin doing HTTPS redirection is active, proceed with the caching (this part if from #WPFC)
-        if ((preg_match("/^https/i", get_option("home")) && !is_ssl()) || (!preg_match("/^https/i", get_option("home")) && is_ssl())
-            || (
-                !is_ssl()
-                || (
-                    $GLOBALS['lws_optimize']->lwsop_plugin_active('really-simple-ssl/rlrsssl-really-simple-ssl.php')
-                    || $GLOBALS['lws_optimize']->lwsop_plugin_active('really-simple-ssl-on-specific-pages/really-simple-ssl-on-specific-pages.php')
-                    || $GLOBALS['lws_optimize']->lwsop_plugin_active('ssl-insecure-content-fixer/ssl-insecure-content-fixer.php')
-                    || $GLOBALS['lws_optimize']->lwsop_plugin_active('https-redirection/https-redirection.php')
-                    || $GLOBALS['lws_optimize']->lwsop_plugin_active('better-wp-security/better-wp-security.php')
-                )
-            )
-        ) {
-            return false;
-        }
+
+		if(preg_match("/^https/i", get_option("home")) && !is_ssl()){
+			return false;
+		}
+
+		if(!preg_match("/^https/i", get_option("home")) && is_ssl()) {
+			//must be normal connection
+			if ($GLOBALS['lws_optimize']->lwsop_plugin_active('really-simple-ssl/rlrsssl-really-simple-ssl.php')
+            || $GLOBALS['lws_optimize']->lwsop_plugin_active('really-simple-ssl-on-specific-pages/really-simple-ssl-on-specific-pages.php')
+            || $GLOBALS['lws_optimize']->lwsop_plugin_active('ssl-insecure-content-fixer/ssl-insecure-content-fixer.php')
+            || $GLOBALS['lws_optimize']->lwsop_plugin_active('https-redirection/https-redirection.php')
+            || $GLOBALS['lws_optimize']->lwsop_plugin_active('better-wp-security/better-wp-security.php')) {
+                return false;
+            }
+		}
 
         return true;
     }
@@ -712,7 +787,7 @@ class LwsOptimizeFileCache
      *
      * @return string PATH to the cachefile. If it does not exist,
      */
-    public function lwsop_set_cachedir($uri = false)
+    public function lwsop_set_cachedir($uri = false, $mobile = false)
     {
         if (!$uri) {
             $uri = $_SERVER['REQUEST_URI'];
@@ -720,12 +795,26 @@ class LwsOptimizeFileCache
             $uri = esc_url($uri);
         }
 
+        $parsed = parse_url($uri);
+        $parsed_full = parse_url($uri, PHP_URL_PATH);
+        $query = $parsed['query'] ?? '';
+
+        parse_str($query, $params);
+        unset($params['nocache']);
+        $string = http_build_query($params);
+
+        if (!empty($string)) {
+            $uri = "$parsed_full?$string";
+        } else {
+            $uri = $parsed_full;
+        }
+
         $uri = preg_replace("/^(http|https):\/\//sx", "", $uri);
 
         // By default, "cache";
         $dir = "cache";
         // If the user is on mobile and the site has mobile cache, then "cache_mobile"
-        if ($this->_lwsop_is_mobile()) {
+        if ($this->_lwsop_is_mobile() || $mobile) {
             $dir = "cache-mobile";
         }
 

@@ -1,6 +1,4 @@
 <?php
-$config_array = $GLOBALS['lws_optimize']->optimize_options;
-
 $fb_preloaddata = [
     'state' => $config_array['filebased_cache']['preload_ongoing'] ?? "false",
     'quantity' => $config_array['filebased_cache']['preload_quantity'] ?? 0,
@@ -10,22 +8,18 @@ $fb_preloaddata = [
 $filebased_cache_options = $GLOBALS['lws_optimize']->lwsop_check_option("filebased_cache");
 $filebased_timer = $filebased_cache_options['data']['timer'] ?? "lws_thrice_monthly";
 
-if ($filebased_cache_options['state'] === "true") {
-    $specified = isset($filebased_cache_options['data']['specified']) ? count($filebased_cache_options['data']['specified']) : "0";
-} else {
-    $specified = "0";
+$specified = "0";
+if ($filebased_cache_options['state'] === "true" && !empty($filebased_cache_options['data']['specified'])) {
+    $specified = count($filebased_cache_options['data']['specified']);
 }
 
-$preload_state = @$filebased_cache_options['data']['preload'] == "true" ? "true" : "false";
-
+$preload_state = $filebased_cache_options['data']['preload'] ?? "false";
 $preload_amount =  intval($filebased_cache_options['data']['preload_amount'] ?? 5);
-
-$lwscache_options = $GLOBALS['lws_optimize']->lwsop_check_option("dynamic_cache");
-$autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
-
 $next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
 $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
 
+$autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
+$htaccess_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_rules");
 $memcached_force_off = false;
 
 function lwsOpSizeConvert($size)
@@ -37,24 +31,25 @@ function lwsOpSizeConvert($size)
     return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . '' . $unit[$i];
 }
 
-$cache_stats = get_option('lws_optimize_cache_statistics', [
+$cache_stats = get_option('lws_optimize_cache_statistics', []);
+$cache_stats = array_merge([
     'desktop' => ['amount' => 0, 'size' => 0],
     'mobile' => ['amount' => 0, 'size' => 0],
     'css' => ['amount' => 0, 'size' => 0],
     'js' => ['amount' => 0, 'size' => 0],
-]);
+], $cache_stats);
 
-$file_cache = $cache_stats['desktop']['amount'] ?? 0;
-$file_cache_size = lwsOpSizeConvert($cache_stats['desktop']['size'] ?? 0);
+$file_cache = $cache_stats['desktop']['amount'];
+$file_cache_size = lwsOpSizeConvert($cache_stats['desktop']['size']);
 
 $mobile_cache = $cache_stats['mobile']['amount'] ?? 0;
-$mobile_cache_size = lwsOpSizeConvert($cache_stats['mobile']['size'] ?? 0);
+$mobile_cache_size = lwsOpSizeConvert($cache_stats['mobile']['size']);
 
 $css_cache = $cache_stats['css']['amount'] ?? 0;
-$css_cache_size = lwsOpSizeConvert($cache_stats['css']['size'] ?? 0);
+$css_cache_size = lwsOpSizeConvert($cache_stats['css']['size']);
 
 $js_cache = $cache_stats['js']['amount'] ?? 0;
-$js_cache_size = lwsOpSizeConvert($cache_stats['js']['size'] ?? 0);
+$js_cache_size = lwsOpSizeConvert($cache_stats['js']['size']);
 
 $caches = [
     'files' => [
@@ -99,6 +94,7 @@ $caches = [
 
     ],
 ];
+
 ?>
 
 <div class="lwsop_bluebanner" style="justify-content: space-between;">
@@ -126,32 +122,33 @@ $caches = [
 <?php // WP-Cron is inactive
 if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="lwsop_wpcron_cutout" style="margin-bottom: 30px;">
-    <div>
-        <img class="" alt="Logo Plugins" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/warning.svg') ?>" width="35px">
-    </div>
+    <div><img alt="Logo Plugins" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/warning.svg') ?>" width="35px"></div>
     <div>
         <span><?php esc_html_e('You are currently using WP-Cron, which means the preloading will only be executed when there is activity on your website and will use your website resources, slowing it down.', 'lws-optimize'); ?></span>
         <span><?php esc_html_e('We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website.', 'lws-optimize'); ?></span>
         <span>
-            <?php if ($lwscache_locked) {
-                esc_html_e('For more informations on how to setup server crons, contact your hosting provider.', 'lws-optimize');
-            }  elseif ($lwscache_status !== null) {
-                esc_html_e('For more informations on how to setup server crons by using the WPManager, follow this ', 'lws-optimize');
-                ?><a href="https://tutoriels.lws.fr/wordpress/wp-manager-de-lws-gerer-son-site-wordpress#Gerer_la_securite_et_les_parametres_generaux_de_votre_site_WordPress_avec_WP_Manager_LWS" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
-            } elseif ($fastest_cache_status !== null) {
-                esc_html_e('For more informations on how to setup server crons, follow this ', 'lws-optimize');
-                ?><a href="https://support.cpanel.net/hc/en-us/articles/10687844130199-How-to-replace-wp-cron-with-cron-job-without-WP-Toolkit" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
-            } ?>
+            <?php
+                switch ($used_cache) {
+                    case 'varnish':
+                        esc_html_e('For more informations on how to setup server crons, follow this ', 'lws-optimize');
+                        ?><a href="https://support.cpanel.net/hc/en-us/articles/10687844130199-How-to-replace-wp-cron-with-cron-job-without-WP-Toolkit" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
+                        break;
+                    case 'lws':
+                        esc_html_e('For more informations on how to setup server crons by using the WPManager, follow this ', 'lws-optimize');
+                        ?><a href="https://tutoriels.lws.fr/wordpress/wp-manager-de-lws-gerer-son-site-wordpress#Gerer_la_securite_et_les_parametres_generaux_de_votre_site_WordPress_avec_WP_Manager_LWS" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
+                        break;
+                    case 'unsupported':
+                    default:
+                        esc_html_e('For more informations on how to setup server crons, contact your hosting provider.', 'lws-optimize');
+                        break;
+                } ?>
         </span>
     </div>
 </div>
 <?php endif; ?>
 
 
-<div class="lwsop_bluebanner">
-    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache types', 'lws-optimize'); ?></h2>
-</div>
-
+<div class="lwsop_bluebanner"><h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache types', 'lws-optimize'); ?></h2></div>
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
@@ -219,39 +216,73 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
             <?php esc_html_e('Server Cache', 'lws-optimize'); ?>
-            <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
             <a href="https://aide.lws.fr/a/1565" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
         </h2>
         <div class="lwsop_contentblock_description">
-            <?php esc_html_e('LWSCache, accessible to all clients, speed up websites by storing content on the server memory. While a manual purge is available, an autopurge is activated by default, making this option often redundant.', 'lws-optimize'); ?>
+            <span><?php esc_html_e('Each time a page or post is modified on your website, their cache (LWSCache or Varnish Cache) will be purged automatically to always serve the most recent one to the users. For best performances, we recommend using a LWS-hosted website.', 'lws-optimize'); ?></span>
+            <span><?php esc_html_e('You can also manually clear the cache at any moment.', 'lws-optimize'); ?></span>
         </div>
     </div>
-    <?php if ($lwscache_locked) : ?>
-        <div class="lwsop_contentblock_rightside custom">
-            <label class="lwsop_checkbox" for="lws_open_prom_lws_checkbox">
-                <input type="checkbox" name="" id="lws_open_prom_lws_checkbox" data-toggle="modal" data-target="#lws_optimize_lws_prom">
-                <span class="slider round"></span>
-            </label>
-        </div>
-    <?php else : ?>
-        <div class="lwsop_contentblock_rightside custom">
-            <?php if (isset($config_array['cloudflare']['tools']['dynamic_cache']) && $config_array['cloudflare']['tools']['dynamic_cache'] === true) : ?>
-                <div class="lwsop_cloudflare_block" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('This action is managed by CloudFlare and cannot be activated', 'lws-optimize'); ?>"></div>
-            <?php elseif(is_plugin_active("lwscache/lwscache.php")) : ?>
-                <div class="lwsop_cloudflare_block" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('This action is managed by LWSCache and cannot be activated. Deactivate LWSCache to manage the server cache from here.', 'lws-optimize'); ?>"></div>
-            <?php endif ?>
-            <label class="lwsop_checkbox" for="lws_optimize_dynamic_cache_check">
-                <input type="checkbox" name="lws_optimize_dynamic_cache_check" id="lws_optimize_dynamic_cache_check" <?php echo $lwscache_options['state'] === "true" ? esc_html("checked") : ""; ?>>
-                <span class="slider round"></span>
-            </label>
+    <div class="lwsop_contentblock_rightside">
+        <?php if ($used_cache == "unsupported" || $cache_state == "unsupported") : ?>
+            <button type="button" class="lwsop_blue_button" disabled>
+                <span>
+                    <img src="<?php echo esc_url(plugins_url('images/supprimer.svg', __DIR__)) ?>" alt="Logo poubelle" width="20px">
+                    <?php esc_html_e('Clear cache', 'lws-optimize'); ?>
+                </span>
+            </button>
+
+        <?php else : ?>
             <button type="button" class="lwsop_blue_button" id="lws_op_clear_dynamic_cache" name="lws_op_clear_dynamic_cache">
                 <span>
                     <img src="<?php echo esc_url(plugins_url('images/supprimer.svg', __DIR__)) ?>" alt="Logo poubelle" width="20px">
                     <?php esc_html_e('Clear cache', 'lws-optimize'); ?>
                 </span>
             </button>
+        <?php endif; ?>
+    </div>
+
+    <div class="lws_optimize_convertion_bar">
+        <div class="lws_optimize_convertion_bar_element">
+            <span class="lws_optimize_convertion_bar_element_title">
+                <?php echo esc_html__('Cache type: ', 'lws-optimize'); ?>
+            </span>
+            <span class="lws_optimize_convertion_bar_dynamic_element">
+                <?php switch ($used_cache) {
+                    case 'varnish':
+                        echo esc_html('Varnish Cache');
+                        break;
+                    case 'lws':
+                        echo esc_html('LWSCache');
+                        break;
+                    case 'unsupported':
+                    default:
+                        esc_html_e('No supported cache found', 'lws-optimize');
+                        ?><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="modal" data-target="#lws_optimize_lws_prom" style="cursor: pointer;"><?php
+                        break;
+                } ?>
+            </span>
         </div>
-    <?php endif ?>
+        <div class="lws_optimize_convertion_bar_element">
+            <span class="lws_optimize_convertion_bar_element_title">
+                <?php echo esc_html__('Cache status: ', 'lws-optimize'); ?>
+            </span>
+            <span class="lws_optimize_convertion_bar_dynamic_element">
+                <?php switch ($cache_state) {
+                    case "false":
+                        esc_html_e('Deactivated', 'lws-optimize');
+                        break;
+                    case "true":
+                        esc_html_e('Activated', 'lws-optimize');
+                        break;
+                    case null:
+                    default:
+                        esc_html_e('Unknown', 'lws-optimize');
+                        break;
+                } ?>
+            </span>
+        </div>
+    </div>
 </div>
 
 <div class="lwsop_bluebanner">
@@ -277,6 +308,11 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <button type="button" class="lwsop_darkblue_button" id="lws_op_fb_cache_exclusion_manage" data-toggle="modal" data-target="#lwsop_exclude_urls">
                 <span>
                     <?php esc_html_e('Exclude URLs', 'lws-optimize'); ?>
+                </span>
+            </button>
+            <button type="button" class="lwsop_darkblue_button" id="lws_op_fb_cache_exclusion_cookie_manage" data-toggle="modal" data-target="#lwsop_exclude_cookies">
+                <span>
+                    <?php esc_html_e('Exclude Cookies', 'lws-optimize'); ?>
                 </span>
             </button>
             <button type="button" class="lwsop_darkblue_button" id="lws_op_fb_cache_manage_specificurl" data-toggle="modal" data-target="#lwsop_specify_urls">
@@ -316,14 +352,53 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
+            <?php esc_html_e('Regenerate cache statistics', 'lws-optimize'); ?>
+        </h2>
+        <div class="lwsop_contentblock_description">
+            <?php esc_html_e('If the statistics for the file-based cache are broken, they can be fixed by regenerating them again. This option may negatively affects performances, especially on large caches, while it is ongoing.', 'lws-optimize'); ?>
+        </div>
+    </div>
+    <div class="lwsop_contentblock_rightside">
+        <button type="button" class="lwsop_blue_button" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
+            <span>
+                <img src="<?php echo esc_url(plugins_url('images/maj.svg', __DIR__)) ?>" alt="Logo MàJ" width="20px">
+                <?php esc_html_e('Regenerate', 'lws-optimize'); ?>
+            </span>
+        </button>
+    </div>
+</div>
+
+<div class="lwsop_contentblock">
+    <div class="lwsop_contentblock_leftside">
+        <h2 class="lwsop_contentblock_title">
+            <?php esc_html_e('Use .htaccess for caching', 'lws-optimize'); ?>
+            <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
+        </h2>
+        <div class="lwsop_contentblock_description">
+            <?php esc_html_e('Using .htaccess rules to manage the caching of your website will result in a decreased memory usage by PHP, improving performances, as well as faster loading times than with the default method.', 'lws-optimize'); ?>
+        </div>
+    </div>
+    <div class="lwsop_contentblock_rightside">
+        <label class="lwsop_checkbox" for="lws_optimize_htaccess_rules_check">
+            <input type="checkbox" name="lws_optimize_htaccess_rules_check" id="lws_optimize_htaccess_rules_check" <?php echo $htaccess_options['state'] === "true" ? esc_html("checked") : ""; ?>>
+            <span class="slider round"></span>
+        </label>
+    </div>
+</div>
+
+<div class="lwsop_contentblock">
+    <div class="lwsop_contentblock_leftside">
+        <h2 class="lwsop_contentblock_title">
             <?php esc_html_e('Preloading', 'lws-optimize'); ?>
             <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
         </h2>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while. Please be aware that the total amount of page may include dynamic pages that will not be cached, such as excluded URLs or WooCommerce checkout page.', 'lws-optimize'); ?>
+            <br><br>
+            <?php esc_html_e( 'This option uses WordPress sitemap to work. If you encounter issues such as the preloading not starting, make sure the sitemap is activated.', 'lws-optimize' );  ?>
         </div>
         <div class="lwsop_contentblock_fbcache_input_preload_block">
-            <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="3" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
+            <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="3" max="30" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
             <div class="lwsop_contentblock_input_preload_label"><?php esc_html_e('pages per minutes cached', 'lws-optimize'); ?></div>
         </div>
 
@@ -430,6 +505,18 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Exclude URLs from the cache', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_exclude_urls"></form>
             <div class="lwsop_modal_buttons" id="lwsop_exclude_modal_buttons">
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="lwsop_exclude_cookies" tabindex='-1' aria-hidden='true'>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Exclude Cookies from the cache', 'lws-optimize'); ?></h2>
+            <form method="POST" id="lwsop_form_exclude_cookies"></form>
+            <div class="lwsop_modal_buttons" id="lwsop_exclude_cookies_modal_buttons">
                 <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
@@ -797,16 +884,26 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             let element_create = element.parentNode.parentNode;
 
             let new_element = document.createElement("div");
-            new_element.insertAdjacentHTML("afterbegin", `
-                <div class="lwsop_exclude_url">
-                    ` + domain + `/
-                </div>
-                <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
-                <div class="lwsop_exclude_action_buttons">
-                    <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
-                    <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
-                </div>
-            `);
+            let isCookieModal = element.closest('#lwsop_exclude_cookies') !== null;
+
+            let htmlContent = isCookieModal ? `
+            <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
+            <div class="lwsop_exclude_action_buttons">
+                <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
+                <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
+            </div>
+            ` : `
+            <div class="lwsop_exclude_url">
+                ` + domain + `/
+            </div>
+            <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
+            <div class="lwsop_exclude_action_buttons">
+                <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
+                <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
+            </div>
+            `;
+
+            new_element.insertAdjacentHTML("afterbegin", htmlContent);
             new_element.classList.add('lwsop_exclude_element');
 
             element_create.after(new_element);
@@ -814,6 +911,13 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
         if (element.getAttribute('id') == "lwsop_submit_excluded_form") {
             let form = document.getElementById('lwsop_form_exclude_urls');
+            if (form !== null) {
+                form.dispatchEvent(new Event('submit'));
+            }
+        }
+
+        if (element.getAttribute('id') == "lwsop_submit_excluded_cookies_form") {
+            let form = document.getElementById('lwsop_form_exclude_cookies');
             if (form !== null) {
                 form.dispatchEvent(new Event('submit'));
             }
@@ -878,7 +982,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         }
     });
 
-    if (document.getElementById('lws_op_fb_cache_manage_specificurl') !== null) {
+    if (document.getElementById('lws_op_fb_cache_manage_specificurl')) {
         document.getElementById('lws_op_fb_cache_manage_specificurl').addEventListener('click', function() {
             let form = document.getElementById('lwsop_form_specify_urls');
             form.innerHTML = `
@@ -963,10 +1067,11 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         });
     }
 
-    if (document.getElementById('lwsop_form_exclude_urls') !== null) {
-        document.getElementById('lwsop_form_exclude_urls').addEventListener("submit", function(event) {
+
+    if (document.getElementById('lwsop_form_exclude_cookies')) {
+        document.getElementById('lwsop_form_exclude_cookies').addEventListener("submit", function(event) {
             var element = event.target;
-            if (element.getAttribute('id') == "lwsop_form_exclude_urls") {
+            if (element.getAttribute('id') == "lwsop_form_exclude_cookies") {
                 event.preventDefault();
                 let formData = jQuery(this).serializeArray();
                 let ajaxRequest = jQuery.ajax({
@@ -976,8 +1081,8 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     context: document.body,
                     data: {
                         data: formData,
-                        _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_excluded_nonce')); ?>',
-                        action: "lwsop_save_excluded_url"
+                        _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_excluded_cookies_nonce')); ?>',
+                        action: "lwsop_save_excluded_cookies"
                     },
                     success: function(data) {
                         if (data === null || typeof data != 'string') {
@@ -991,19 +1096,19 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             return 0;
                         }
 
-                        jQuery(document.getElementById('lwsop_exclude_urls')).modal('hide');
+                        jQuery(document.getElementById('lwsop_exclude_cookies')).modal('hide');
                         switch (returnData['code']) {
                             case 'SUCCESS':
-                                callPopup('success', "Les URLs ont bien été sauvegardées");
+                                callPopup('success', "Les cookies ont bien été sauvegardés");
                                 break;
                             case 'FAILED':
-                                callPopup('error', "Les URLs n'ont pas pu être sauvegardées");
+                                callPopup('error', "Les cookies n'ont pas pu être sauvegardés");
                                 break;
                             case 'NO_DATA':
-                                callPopup('error', "Les URLs n'ont pas pu être sauvegardées car aucune donnée n'a été trouvée");
+                                callPopup('error', "Les cookies n'ont pas pu être sauvegardés car aucune donnée n'a été trouvée");
                                 break;
                             default:
-                                callPopup('error', "Les URLs n'ont pas pu être sauvegardées car une erreur est survenue");
+                                callPopup('error', "Les cookies n'ont pas pu être sauvegardés car une erreur est survenue");
                                 break;
                         }
                     },
@@ -1014,6 +1119,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             }
         });
     }
+
 
     document.getElementById('lws_op_fb_cache_exclusion_manage').addEventListener('click', function() {
         let form = document.getElementById('lwsop_form_exclude_urls');
@@ -1051,11 +1157,8 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     </button>
                 `;
 
-                console.log(returnData);
-
                 switch (returnData['code']) {
                     case 'SUCCESS':
-                        lwsop_submit_excluded_form
                         let urls = returnData['data'];
                         let domain = returnData['domain'];
                         form.innerHTML = `
@@ -1102,63 +1205,202 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         });
     });
 
-    document.getElementById('lws_op_fb_cache_remove').addEventListener('click', function() {
-        let button = this;
-        let old_text = this.innerHTML;
-        this.innerHTML = `
-            <span name="loading" style="padding-left:5px">
-                <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
-            </span>
+    document.getElementById('lws_op_fb_cache_exclusion_cookie_manage').addEventListener('click', function() {
+        let form = document.getElementById('lwsop_form_exclude_cookies');
+        form.innerHTML = `
+            <div class="loading_animation">
+                <img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="120px" height="105px">
+            </div>
         `;
-
-        this.disabled = true;
-
         let ajaxRequest = jQuery.ajax({
             url: ajaxurl,
             type: "POST",
             timeout: 120000,
             context: document.body,
             data: {
-                action: "lws_clear_fb_cache",
-                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('clear_fb_caching')); ?>'
+                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_excluded_cookies_nonce')); ?>',
+                action: "lwsop_get_excluded_cookies"
             },
             success: function(data) {
-                button.disabled = false;
-                button.innerHTML = old_text;
-
                 if (data === null || typeof data != 'string') {
-                    callPopup('error', "Bad data returned. Cannot empty cache.");
                     return 0;
                 }
 
                 try {
                     var returnData = JSON.parse(data);
                 } catch (e) {
-                    callPopup('error', "Bad data returned. Cannot empty cache.");
                     console.log(e);
                     return 0;
                 }
 
+                document.getElementById('lwsop_exclude_cookies_modal_buttons').innerHTML = `
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                    <button type="button" id="lwsop_submit_excluded_cookies_form" class="lwsop_validatebutton">
+                        <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
+                        <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                    </button>
+                `;
+
                 switch (returnData['code']) {
                     case 'SUCCESS':
-                        callPopup('success', "<?php esc_html_e("File-based cache has been emptied.", "lws-optimize"); ?>");
+                        let cookies = returnData['data'];
+                        let domain = returnData['domain'];
+                        form.innerHTML = `
+                        <div class="lwsop_modal_infobubble">
+                            <?php esc_html_e('You can exclude specifics Cookies from the caching process. To exclude cookies starting with the same base, use ".*", such as : "wordpress_logged_in_.*"', 'lws-optimize'); ?>
+                        </div>`;
+                        if (!cookies.length) {
+                            form.insertAdjacentHTML('beforeend', `
+								<div class="lwsop_exclude_element">
+									<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
+									<div class="lwsop_exclude_action_buttons">
+										<div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
+										<div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
+									</div>
+								</div>
+							`);
+                        } else {
+                            for (var i in cookies) {
+                                form.insertAdjacentHTML('beforeend', `
+									<div class="lwsop_exclude_element">
+										<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + cookies[i] + `">
+										<div class="lwsop_exclude_action_buttons">
+											<div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
+											<div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
+										</div>
+									</div>
+								`);
+                            }
+                        }
                         break;
                     default:
-                        callPopup('error', "<?php esc_html_e("Unknown data returned. Cache cannot be emptied."); ?>");
                         break;
                 }
             },
             error: function(error) {
-                button.disabled = false;
-                button.innerHTML = old_text;
-                callPopup('error', "<?php esc_html_e("Unknown error. Cannot empty cache.", "lws-optimize"); ?>");
                 console.log(error);
             }
         });
-
     });
 
-    if (document.getElementById('lws_op_clear_dynamic_cache') !== null) {
+    let fbcache_remove = document.getElementById('lws_op_fb_cache_remove');
+    if (fbcache_remove) {
+        fbcache_remove.addEventListener('click', function() {
+            let button = this;
+            let old_text = this.innerHTML;
+            this.innerHTML = `
+                <span name="loading" style="padding-left:5px">
+                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                </span>
+            `;
+
+            this.disabled = true;
+
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    action: "lws_clear_fb_cache",
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('clear_fb_caching')); ?>'
+                },
+                success: function(data) {
+                    button.disabled = false;
+                    button.innerHTML = old_text;
+
+                    if (data === null || typeof data != 'string') {
+                        callPopup('error', "Bad data returned. Cannot empty cache.");
+                        return 0;
+                    }
+
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        callPopup('error', "Bad data returned. Cannot empty cache.");
+                        console.log(e);
+                        return 0;
+                    }
+
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            callPopup('success', "<?php esc_html_e("File-based cache has been emptied.", "lws-optimize"); ?>");
+                            break;
+                        default:
+                            callPopup('error', "<?php esc_html_e("Unknown data returned. Cache cannot be emptied."); ?>");
+                            break;
+                    }
+                },
+                error: function(error) {
+                    button.disabled = false;
+                    button.innerHTML = old_text;
+                    callPopup('error', "<?php esc_html_e("Unknown error. Cannot empty cache.", "lws-optimize"); ?>");
+                    console.log(error);
+                }
+            });
+
+        });
+    }
+
+    let regen_cache = document.getElementById('lws_op_regenerate_stats');
+    if (regen_cache) {
+        regen_cache.addEventListener('click', function(){
+            let button = this;
+            let old_text = this.innerHTML;
+            this.innerHTML = `
+                <span name="loading" style="padding-left:5px">
+                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                </span>
+            `;
+
+            this.disabled = true;
+
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    action: "lwsop_regenerate_cache",
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_cache_fb')); ?>'
+                },
+                success: function(data) {
+                    button.disabled = false;
+                    button.innerHTML = old_text;
+
+                    if (data === null || typeof data != 'string') {
+                        callPopup('error', "Bad data returned.");
+                        return 0;
+                    }
+
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        callPopup('error', "Bad data returned.");
+                        console.log(e);
+                        return 0;
+                    }
+
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
+                            break;
+                        default:
+                            callPopup('error', "<?php esc_html_e("Unknown data returned."); ?>");
+                            break;
+                    }
+                },
+                error: function(error) {
+                    button.disabled = false;
+                    button.innerHTML = old_text;
+                    callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
+                    console.log(error);
+                }
+            });
+        });
+    }
+
+    if (document.getElementById('lws_op_clear_dynamic_cache')) {
         document.getElementById('lws_op_clear_dynamic_cache').addEventListener("click", function(event) {
             let button = this;
             let old_text = this.innerHTML;

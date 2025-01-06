@@ -13,7 +13,6 @@ $tabs_list = array(
 
 // Check whether Memcached id available on this hosting or not.
 $memcached_locked = false;
-
 if (class_exists('Memcached')) {
     $memcached = new Memcached();
     if (empty($memcached->getServerList())) {
@@ -23,33 +22,30 @@ if (class_exists('Memcached')) {
     if ($memcached->getVersion() === false) {
         $memcached_locked = true;
     }
-} else {
-    $memcached_locked = true;
 }
 
-// Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
-$fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? null;
-if ($fastest_cache_status === null) {
-    $fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'] ?? null;
-}
-$lwscache_status = $_SERVER['lwscache'] ?? null;
-
-// Whether LWSCache/FastestCache is active or not. If status is null : not a LWS Hosting
-if ($lwscache_status == "Off") {
-    $lwscache_status = false;
-} elseif ($lwscache_status == "On") {
-    $lwscache_status = true;
+$cache_state = null;
+$used_cache = "unsupported";
+// Check for LWSCache
+if (!empty($_SERVER['lwscache'])) {
+    $used_cache = "lws";
+    if ($_SERVER['lwscache'] == "On") {
+        $cache_state = "true";
+    } else {
+        $cache_state = "false";
+    }
 }
 
-if ($fastest_cache_status == "0") {
-    $fastest_cache_status = false;
-} elseif ($fastest_cache_status == "1") {
-    $fastest_cache_status = true;
-}
-
-$lwscache_locked = false;
-if ($lwscache_status === null && $fastest_cache_status === null) {
-    $lwscache_locked = true;
+// Check for Varnish (try to get the state. If no state, check if exists)
+if (!empty($_SERVER['HTTP_X_VARNISH'])) {
+    $used_cache = "varnish";
+    if (!empty($_SERVER['HTTP_X_CACHE_ENABLED'])) {
+        $cache_state = $_SERVER['HTTP_X_CACHE_ENABLED'] == "1" ? "true" : "false";
+    } else if (!empty($_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'])) {
+        $cache_state = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'] == "1" ? "true" : "false";
+    } else if (!empty($_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'])) {
+        $cache_state = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] == "1" ? "true" : "false";
+    }
 }
 
 $arr = array('strong' => array());
@@ -88,7 +84,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 <div class="lwsoptimize_container">
 
     <div class="lwsop_title_banner">
-        <div class="lwsop_top_banner" <?php if (!$lwscache_locked) : ?>style="max-width: none;" <?php endif ?>>
+        <div class="lwsop_top_banner" <?php if ($cache_state !== null) : ?>style="max-width: none;" <?php endif ?>>
             <img src="<?php echo esc_url(plugins_url('images/plugin_lws_optimize_logo.svg', __DIR__)) ?>" alt="LWS Optimize Logo" width="80px" height="80px">
             <div class="lwsop_top_banner_text">
                 <div class="lwsop_top_title_block">
@@ -108,7 +104,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
             </div>
         </div>
 
-        <?php if ($lwscache_locked) : ?>
+        <?php if ($cache_state === null) : ?>
             <div class="lwsop_top_banner_right">
                 <div class="lwsop_top_banner_right_top">
                     <img src="<?php echo esc_url(plugins_url('images/wordpress_black.svg', __DIR__)) ?>" alt="Logo WP noir" width="20px" height="20px">
@@ -664,9 +660,12 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
                 let state = element.checked;
                 let type = element.getAttribute('id');
 
+                let tab = document.querySelector('button.tab_nav_lwsoptimize.active').id.replace('nav-', '')
+
                 let data = {
                     'state': state,
-                    'type': type
+                    'type': type,
+                    'tab': tab
                 };
 
                 document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
@@ -1555,4 +1554,3 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
         }
     </script>
 <?php endif ?>
-
