@@ -178,7 +178,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
         <?php endforeach ?>
     </div>
 </div>
-<div class="lws_made_with_heart"><?php esc_html_e('Created with ❤️ by LWS.fr', 'lws-optimize'); ?></div>
+<div class="lws_made_with_heart"><?php esc_html_e('Created with ❤️ by ', 'lws-optimize'); ?><a href="http://lws.fr" target="_blank" rel="noopener">LWS.fr</a></div>
 
 <div class="modal fade" id="lws_optimize_cloudflare_warning" tabindex='-1' role='dialog' aria-hidden='true'>
     <div class="modal-dialog cloudflare_dialog">

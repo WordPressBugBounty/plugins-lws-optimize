@@ -18,7 +18,7 @@ $first_bloc_array = array(
     ),
     'combine_css' => array(
         'title' => __('Combine CSS files', 'lws-optimize'),
-        'desc' => __('Fuse multiple CSS files into one to reduce server requests.', 'lws-optimize'),
+        'desc' => __('Fuse multiple CSS files into one to reduce server requests. <br> If you notice any display problem on your website, such as missing CSS or messed-up elements, deactivating this option may solve the issue.', 'lws-optimize'),
         'recommended' => true,
         'has_exclusion' => true,
         'exclusion' => "X",
@@ -222,7 +222,7 @@ foreach ($third_bloc_array as $key => $array) {
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
-                <?php echo esc_html($data['desc']); ?>
+                <?php echo wp_kses($data['desc'], ['br' => []]); ?>
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">

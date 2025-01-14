@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimize;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.2.2.0
+ * Version:           3.2.2.1
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.7
@@ -34,7 +34,7 @@ register_uninstall_hook(__FILE__, 'lws_optimize_deletion');
 
 function lws_optimize_check_update() {
     $ancienne_version = get_option('lwsop_plugin_version', 0);
-    $nouvelle_version = '3.2.2'; // Remplacez par la version actuelle du plugin.
+    $nouvelle_version = '3.2.2.1'; // Remplacez par la version actuelle du plugin.
 
     if ($ancienne_version !== $nouvelle_version) {
         set_transient( 'wp_lwsoptimize_post_update', 1);
@@ -57,6 +57,8 @@ function lws_optimize_activation()
 
     $GLOBALS['lws_optimize'] ->lws_optimize_set_cache_htaccess();
     $GLOBALS['lws_optimize'] ->lws_optimize_reset_header_htaccess();
+
+    @deactivate_plugins("lwscache/lwscache.php");
 
 
     if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {

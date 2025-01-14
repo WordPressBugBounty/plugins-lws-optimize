@@ -390,12 +390,19 @@ class LwsOptimize
             // Force deactivate memcached for everyone
             $options = get_option('lws_optimize_config_array', []);
             $options['memcached']['state'] = false;
-            update_option('lws_optimize_config_array', $options);
 
-            if (isset($options['htaccess_rules']['state']) && $options['htaccess_rules']['state'] == "true") {
+            $options['filebased_cache']['saved_urls'] = [];
+
+            if (!isset($options['htaccess_rules']['state'])) {
+                $this->lws_optimize_set_cache_htaccess();
+                $options['htaccess_rules']['state'] = "true";
+
+            } else if (isset($options['htaccess_rules']['state']) && $options['htaccess_rules']['state'] == "true") {
                 $this->lws_optimize_set_cache_htaccess();
             }
             $this->lws_optimize_reset_header_htaccess();
+
+            update_option('lws_optimize_config_array', $options);
 
             apply_filters("lws_optimize_clear_filebased_cache", false);
 
@@ -888,7 +895,7 @@ class LwsOptimize
         // Get domain name of the current website
         $urlparts = wp_parse_url(home_url());
         $http_host = $urlparts['host'];
-        $http_path = $urlparts['path'];
+        $http_path = $urlparts['path'] ?? '';
 
         // Get path to the cache directory
         $path = "cache";
@@ -1074,9 +1081,9 @@ class LwsOptimize
         $htaccess = ABSPATH . "/.htaccess";
 
         if ($state != "true") {
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d'" . escapeshellarg($htaccess) . "'", $eOut, $eCode);
-            error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut)));
-            return json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut));
+            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => "[$eCode] - $eOut")));
+            return json_encode(array('code' => 'NOT_ACTIVATED', 'data' => "[$eCode] - $eOut"));
         }
 
         switch ($timer) {
@@ -1119,7 +1126,7 @@ class LwsOptimize
         }
 
         // Remove the old htaccess related to HEADER before adding it back updated
-        if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d'" . escapeshellarg($htaccess) . "'", $eOut, $eCode) || !$eCode) {
+        if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode) || !$eCode) {
             error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "[$eCode] - " . json_encode($eOut))));
         }
 
@@ -1203,7 +1210,7 @@ class LwsOptimize
         if ($fb_options['state'] == "true") {
            $this->lws_optimize_reset_header_htaccess();
         } else {
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
             if ($eCode != 0) {
                 error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
             }
@@ -1794,9 +1801,10 @@ class LwsOptimize
     public function lws_optimize_start_filebased_preload()
     {
         $ongoing = get_option('lws_optimize_preload_is_ongoing', false);
+
         if ($ongoing) {
-            // Do not continue if the cron is ongoing BUT force if it has been ~10m
-            if (time() - $ongoing > 36000) {
+            // Do not continue if the cron is ongoing BUT force if it has been ~8m
+            if (time() - $ongoing > 500) {
                 delete_option('lws_optimize_preload_is_ongoing');
             } else {
                 exit;
@@ -1807,25 +1815,25 @@ class LwsOptimize
 
         $lws_filebased = new LwsOptimizeFileCache($GLOBALS['lws_optimize']);
 
-        $sitemap = get_sitemap_url("index");
-
-        stream_context_set_default( [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-            ],
-        ]);
-
-        $headers = get_headers($sitemap);
-        if (substr($headers[0], 9, 3) == 404) {
-            $sitemap = home_url('/sitemap_index.xml');
-        }
-
         $urls = get_option('lws_optimize_sitemap_urls', ['time' => 0, 'urls' => []]);
         $time = $urls['time'] ?? 0;
 
         // It has been more than an hour since the latest fetch from the sitemap
         if ($time +  3600 < time()) {
+            $sitemap = get_sitemap_url("index");
+
+            stream_context_set_default( [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ],
+            ]);
+
+            $headers = get_headers($sitemap);
+            if (substr($headers[0], 9, 3) == 404) {
+                $sitemap = home_url('/sitemap_index.xml');
+            }
+
             // We get the freshest data
             $urls = $this->fetch_url_sitemap($sitemap, []);
             if (!empty($urls)) {
@@ -1840,8 +1848,6 @@ class LwsOptimize
             $max_try = intval($array['filebased_cache']['preload_amount'] ?? 5);
             $current_try = 0;
 
-            $saved_urls = $array['filebased_cache']['saved_urls'] ?? [];
-
             $done = $array['filebased_cache']['preload_done'] ?? 0;
 
             $first_run = $done == 0 ? true : false;
@@ -1850,6 +1856,11 @@ class LwsOptimize
                 'desktop' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36; compatible; LWSOptimizePreload/1.0',
                 'mobile' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1; compatible; LWSOptimizePreload/1.0'
             ];
+
+            // If the cache for mobile users is disabled, we remove the mobile user agent
+            if ($array['cache_mobile_user']['state'] == "true") {
+                unset($userAgents['mobile']);
+            }
 
             foreach ($urls as $key => $url) {
                 // Don't do more than $max_try
@@ -1869,10 +1880,8 @@ class LwsOptimize
                     $path = $lws_filebased->lwsop_set_cachedir($parsed_url);
                     $path_mobile = $lws_filebased->lwsop_set_cachedir($parsed_url, true);
 
-
                     if (!$path) {
                         // Failed to set a PATH to save the file ; do not cache
-                        $saved_urls[$url] = false;
                         unset($urls[$key]);
                         continue;
                     }
@@ -1882,23 +1891,23 @@ class LwsOptimize
                     if (!empty($file_exists)) {
                         // If the cache for this file already exists but this is the first run of the cron, consider it done
                         if ($first_run) {
-                            $saved_urls[$url] = true;
                             $done++;
                         }
                     } else {
                         foreach ($userAgents as $type => $agent) {
                             // Fetch the page content
-                            $context = stream_context_create([
-                                'http' => [
-                                    'header' => "User-Agent: $agent\r\n" .
-                                                "Cache-Control: no-cache, no-store, must-revalidate\r\n" .
-                                                "Pragma: no-cache\r\n" .
-                                                "Expires: 0\r\n",
-                                    'follow_location' => 1
-                                ]
+                            $ch = curl_init();
+                            curl_setopt($ch, CURLOPT_URL, $url);
+                            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                                "User-Agent: $agent",
+                                "Cache-Control: no-cache, no-store, must-revalidate",
+                                "Pragma: no-cache",
+                                "Expires: 0"
                             ]);
-
-                            file_get_contents($url, false, $context);
+                            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                            curl_exec($ch);
+                            curl_close($ch);
                             sleep(1);
                         }
 
@@ -1909,9 +1918,7 @@ class LwsOptimize
                         if (!empty($file_exists)) {
                             $done++;
                             $current_try++;
-                            $saved_urls[$url] = true;
                         } else {
-                            $saved_urls[$url] = false;
                             unset($urls[$key]);
                         }
                     }
@@ -1926,7 +1933,6 @@ class LwsOptimize
 
             $array['filebased_cache']['preload_done'] = $done;
             $array['filebased_cache']['preload_quantity'] = count($urls);
-            $array['filebased_cache']['saved_urls'] = $saved_urls;
 
             update_option('lws_optimize_config_array', $array);
             delete_option('lws_optimize_preload_is_ongoing');
@@ -2517,7 +2523,7 @@ class LwsOptimize
             case 'basic': // recommended only
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "5";
+                $options['filebased_cache']['preload_amount'] = "10";
                 $options['filebased_cache']['timer'] = "lws_thrice_monthly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
@@ -2927,6 +2933,7 @@ class LwsOptimize
             }
         }
 
+        $this->optimize_options['filebased_cache']['preload_quantity'] = count($urls);
         $this->optimize_options['filebased_cache']['preload_done'] = $done;
         $this->optimize_options['filebased_cache']['preload_ongoing'] = $this->optimize_options['filebased_cache']['preload_quantity'] - $done == 0 ? "false" : "true";
 

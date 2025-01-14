@@ -706,8 +706,8 @@ msgstr "Minification des Fichiers CSS"
 msgid "Compress your CSS files to reduce their size and accelerate their loading."
 msgstr "Compresse vos fichiers CSS pour réduire leur taille et accélérer le chargement."
 
-msgid "Fuse multiple CSS files into one to reduce server requests."
-msgstr "Fusionne plusieurs fichiers CSS en un seul pour diminuer les requêtes serveur."
+msgid "Fuse multiple CSS files into one to reduce server requests. <br> If you notice any display problem on your website, such as missing CSS or messed-up elements, deactivating this option may solve the issue."
+msgstr "Combine plusieurs fichiers CSS en un seul pour réduire les requêtes serveur. <br> Si vous constatez des problèmes d'affichage sur votre site, comme des CSS manquants ou des éléments désorganisés, désactiver cette option peut résoudre le problème."
 
 msgid "Preload CSS files to accelerate page rendering."
 msgstr "Précharge les fichiers CSS pour accélérer le rendu de la page."
@@ -868,8 +868,8 @@ msgstr "activée"
 msgid "Option "
 msgstr "Option "
 
-msgid "Created with ❤️ by LWS.fr"
-msgstr "Crée avec ❤️ par LWS.fr"
+msgid "Created with ❤️ by "
+msgstr "Crée avec ❤️ par "
 
 msgid "Cache types"
 msgstr "Types de cache"
@@ -1670,7 +1670,7 @@ msgid "Image convertion is a recurring task which may consume a lot of resources
 msgstr "La conversion d'image est une tâche récurrente qui peut consommer beaucoup de ressources sur une durée prolongée. Vous utilisez actuellement le WP-Cron, ce qui signifie que la tâche sera exécutée uniquement s'il y a de l'activité sur votre site et qu'elle utilisera les ressources de ce dernier, causant des ralentissements."
 
 msgid "We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website."
-msgstr "Nous vous recommendons d'utiliser un cron serveur, qui exécutera les tâches à un moment précis et sans s'accaparer les ressources, peu importe ce qui se passe sur votre site."
+msgstr "Nous vous recommandons d'utiliser un cron serveur, qui exécutera les tâches à un moment précis et sans s'accaparer les ressources, peu importe ce qui se passe sur votre site."
 
 msgid "AVIF convertion is not available on your website. Your WordPress needs to be updated to at least 6.5 and the installed Imagick version must be compatible with AVIF"
 msgstr "La conversion AVIF n'est pas disponible sur votre site. Votre version de WordPress doit être au moins en 6.5 et la version d'Imagick doit être compatible avec AVIF"
@@ -1900,8 +1900,8 @@ msgstr "Les PNG avec transparence peuvent, dans de rares cas, perdre leur transp
 msgid "Cache dynamic pages"
 msgstr "Mettre en cache les pages dynamiques"
 
-msgid "Pages whose URL contains parameters (e.g. my_page/?et_fb=1) will be cached. By default, thoses pages are ignored as they are serving dynamic content, content that needs to be always up-to-date. Performances on those pages will be improved at the expense of increased size (multiple additional caches have to be made) and loss of dynamicity (as dynamic pages will become static)"
-msgstr "Les pages dont l'URL contient des paramètres (i.e. ma_page/?et_fb=1) seront mises en cache. Par défaut, ces pages sont ignorées car elles servent du contenu dynamique, qui doit être constemment à jour. Les performances de ces pages seront améliorées au prix d'une augmentation de taille (plusieurs fichiers de cache additionnels devant être crées) et d'une perte de dynamicité (les pages devenant statiques)"
+msgid "Pages with URLs containing parameters (e.g., ma_page/?lang=en) will be cached. By default, these pages are excluded because they serve dynamic content that needs to be constantly up-to-date."
+msgstr "Les pages dont l'URL inclut des paramètres (par exemple, ma_page/?langue=fr) seront mises en cache. Par défaut, ces pages sont exclues, car elles délivrent du contenu dynamique qui doit être constamment actualisé."
 
 msgid "WebpP autoconvertion options"
 msgstr "Options d'autoconversion WeBP"

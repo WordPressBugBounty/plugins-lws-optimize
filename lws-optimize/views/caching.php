@@ -119,6 +119,25 @@ $caches = [
     <?php endforeach; ?>
 </div>
 
+<div class="lwsop_contentblock">
+    <div class="lwsop_contentblock_leftside">
+        <h2 class="lwsop_contentblock_title">
+            <?php esc_html_e('Regenerate cache statistics', 'lws-optimize'); ?>
+        </h2>
+        <div class="lwsop_contentblock_description">
+            <?php esc_html_e('If the statistics for the file-based cache are broken, they can be fixed by regenerating them again. This option may negatively affects performances, especially on large caches, while it is ongoing.', 'lws-optimize'); ?>
+        </div>
+    </div>
+    <div class="lwsop_contentblock_rightside">
+        <button type="button" class="lwsop_blue_button" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
+            <span>
+                <img src="<?php echo esc_url(plugins_url('images/maj.svg', __DIR__)) ?>" alt="Logo MàJ" width="20px">
+                <?php esc_html_e('Regenerate', 'lws-optimize'); ?>
+            </span>
+        </button>
+    </div>
+</div>
+
 <?php // WP-Cron is inactive
 if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="lwsop_wpcron_cutout" style="margin-bottom: 30px;">
@@ -352,25 +371,6 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
-            <?php esc_html_e('Regenerate cache statistics', 'lws-optimize'); ?>
-        </h2>
-        <div class="lwsop_contentblock_description">
-            <?php esc_html_e('If the statistics for the file-based cache are broken, they can be fixed by regenerating them again. This option may negatively affects performances, especially on large caches, while it is ongoing.', 'lws-optimize'); ?>
-        </div>
-    </div>
-    <div class="lwsop_contentblock_rightside">
-        <button type="button" class="lwsop_blue_button" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
-            <span>
-                <img src="<?php echo esc_url(plugins_url('images/maj.svg', __DIR__)) ?>" alt="Logo MàJ" width="20px">
-                <?php esc_html_e('Regenerate', 'lws-optimize'); ?>
-            </span>
-        </button>
-    </div>
-</div>
-
-<div class="lwsop_contentblock">
-    <div class="lwsop_contentblock_leftside">
-        <h2 class="lwsop_contentblock_title">
             <?php esc_html_e('Use .htaccess for caching', 'lws-optimize'); ?>
             <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
         </h2>
@@ -487,7 +487,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             ?>
         </h2>
         <div class="lwsop_contentblock_description">
-            <?php esc_html_e('Pages whose URL contains parameters (e.g. my_page/?et_fb=1) will be cached. By default, thoses pages are ignored as they are serving dynamic content, content that needs to be always up-to-date. Performances on those pages will be improved at the expense of increased size (multiple additional caches have to be made) and loss of dynamicity (as dynamic pages will become static)', 'lws-optimize');
+            <?php esc_html_e('Pages with URLs containing parameters (e.g., ma_page/?lang=en) will be cached. By default, these pages are excluded because they serve dynamic content that needs to be constantly up-to-date.', 'lws-optimize');
             ?>
         </div>
     </div>

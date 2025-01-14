@@ -17,6 +17,8 @@ class LwsOptimizeAutoPurge
         add_action('wp_insert_post', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
         add_action('edit_post', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
         add_action('save_post', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
+        // Betheme compatibility
+        add_action('wp_ajax_updatevbview', [$this, 'lwsop_remove_cache_post_change_betheme'], 30, 2);
 
         add_action('deleted_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
         add_action('trashed_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
@@ -117,6 +119,22 @@ class LwsOptimizeAutoPurge
         $uri = get_permalink($post_id);
         $uri = parse_url($uri)['path'];
 
+        $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+
+        apply_filters("lws_optimize_clear_filebased_cache", $file);
+
+        $url = str_replace("https://", "", get_site_url());
+        $url = str_replace("http://", "", $url);
+        $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+        $this->purge_specified_url();
+    }
+
+    // BeTheme support
+    public function lwsop_remove_cache_post_change_betheme() {
+	    $post_id = $_POST['pageid'];
+
+        $uri = get_permalink($post_id);
+        $uri = parse_url($uri)['path'];
         $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
 
         apply_filters("lws_optimize_clear_filebased_cache", $file);
