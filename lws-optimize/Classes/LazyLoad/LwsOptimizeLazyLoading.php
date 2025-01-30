@@ -36,12 +36,16 @@ class LwsOptimizeLazyLoading
      */
     public static function lws_optimize_add_lazy_loading_attributes_to_images($content)
     {
-
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         $lazyload_options = $optimize_options['lazyload'] ?? [];
         $exclude_classes = $lazyload_options['exclusions']['css_classes'] ?? [];
         $exclude_filenames = $lazyload_options['exclusions']['img_iframe'] ?? [];
+
+        // Add "rev-slidebg" to exclude_classes if not already present (RevSlider)
+        if (!in_array('rev-slidebg', $exclude_classes)) {
+            $exclude_classes[] = 'rev-slidebg';
+        }
 
         // Regular expression to find all <img> tags in the content
         $content = preg_replace_callback(
@@ -49,38 +53,57 @@ class LwsOptimizeLazyLoading
 
             function ($matches) use ($exclude_classes, $exclude_filenames) {
                 $img_tag = $matches[0];
-                $attributes = $matches[1] . $matches[4]; // All attributes of <img> tag
-                $src = $matches[3]; // The image source URL
-
+                $attributes = $matches[1] . $matches[4];
+                $src = $matches[3];
 
                 // Skip if data-src is already present
                 if (strpos($img_tag, 'data-src') !== false) {
                     return $img_tag;
                 }
 
-                // Check if the image has any of the excluded classes using regex
+                // Check excluded classes
                 foreach ($exclude_classes as $class) {
                     if (preg_match('/\b' . preg_quote($class, '/') . '\b/', $attributes)) {
-                        return $img_tag; // Skip modification if excluded class is found
+                        return $img_tag;
                     }
                 }
 
-                // Check if the image source filename matches any excluded filenames
+                // Check excluded filenames
                 foreach ($exclude_filenames as $filename) {
                     if (empty($filename)) {
                         continue;
                     }
                     if (strpos($src, $filename) !== false) {
-                        return $img_tag; // Skip modification if excluded filename is found
+                        return $img_tag;
                     }
                 }
 
-                // Append "lws-optimize-lazyload" to existing class or add it if class attribute doesn't exist
+                // Get width and height if not present in attributes
+                if (preg_match('/\bwidth=[\'"](\d+)[\'"]/', $attributes, $width_match)) {
+                    $width = intval($width_match[1]);
+                    if (!preg_match('/\bheight=[\'"][^\'"]*[\'"]/', $attributes)) {
+                        if (strpos($src, '/wp-content/') === 0) {
+                            $image_path = ABSPATH . $src;
+                        } else {
+                            $image_path = str_replace(site_url(), ABSPATH, $src);
+                        }
+                        if (file_exists($image_path)) {
+                            $size = getimagesize($image_path);
+                            if ($size) {
+                                $ratio = $size[1] / $size[0];
+                                $height = round($width * $ratio);
+                                $attributes .= ' height="' . $height . '"';
+                            }
+                        }
+                    }
+                }
+
+                // Append lazy load class
                 $attributes = preg_match('/class=["\']([^"\']*)["\']/', $attributes)
                     ? preg_replace('/class=["\']([^"\']*)["\']/', 'class="$1 lws-optimize-lazyload"', $attributes)
                     : $attributes . ' class="lws-optimize-lazyload"';
 
-                // Modify <img> tag to add data-src
+                // Return modified tag
                 return '<img' . $attributes . ' data-src=' . $matches[2] . $src . $matches[2] . '>';
             },
             $content
@@ -157,7 +180,7 @@ class LwsOptimizeLazyLoading
                     : $attributes . ' class="lws-optimize-lazyload"';
 
                 // Modify <iframe> tag
-                return '<iframe' . $matches[1] . 'data-src=' . $matches[2] . $src . $matches[2] . $matches[4] . '>';
+                return '<iframe' . $attributes . ' data-src=' . $matches[2] . $src . $matches[2] . '>';
             },
             $content
         );
