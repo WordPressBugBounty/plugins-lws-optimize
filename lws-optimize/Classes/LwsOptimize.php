@@ -149,7 +149,42 @@ class LwsOptimize
 
             if ($this->lwsop_check_option('gzip_compression')['state'] === "true") {
                 $gzip_ok = false;
-                if (is_file(ABSPATH . '.htaccess')) {
+
+                $available_htaccess = true;
+
+                // Check if .htaccess exists
+                if (!file_exists(ABSPATH . '.htaccess')) {
+                    // Try to create .htaccess
+                    if (!touch(ABSPATH . '.htaccess')) {
+                        // Failed to create, check permissions
+                        $old_umask = umask(0);
+                        if (!chmod(ABSPATH, 0755)) {
+                            // Could not change directory permissions
+                            error_log("LWSOptimize: Could not change directory permissions for .htaccess");
+                            $available_htaccess = false;
+                        }
+
+                        // Try creating again with new permissions
+                        if (!touch(ABSPATH . '.htaccess')) {
+                            // Still failed, abort
+                            error_log("LWSOptimize: Could not create .htaccess file");
+                            umask($old_umask);
+                            $available_htaccess = false;
+                        }
+                        umask($old_umask);
+                    }
+                }
+
+                // Check if .htaccess is writable
+                if (!is_writable(ABSPATH . '.htaccess')) {
+                    // Try to make writable
+                    if (!chmod(ABSPATH . '.htaccess', 0644)) {
+                        error_log("LWSOptimize: Could not make .htaccess writable");
+                        $available_htaccess = false;
+                    }
+                }
+
+                if ($available_htaccess && is_file(ABSPATH . '.htaccess')) {
                     $f = file(ABSPATH . '.htaccess');
                     foreach ($f as $line) {
                         if (trim($line) == '#LWS OPTIMIZE - GZIP COMPRESSION') {
@@ -159,7 +194,7 @@ class LwsOptimize
                     }
                 }
 
-                if (!$gzip_ok) {
+                if ($available_htaccess && !$gzip_ok) {
                     exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
                     $htaccess = ABSPATH . "/.htaccess";
 
@@ -949,79 +984,106 @@ class LwsOptimize
         // Path to .htaccess
         $htaccess = ABSPATH . "/.htaccess";
 
+        $available_htaccess = true;
+
+        // Check if .htaccess exists
+        if (!file_exists($htaccess)) {
+            // Try to create .htaccess
+            if (!touch($htaccess)) {
+                // Failed to create, check permissions
+                $old_umask = umask(0);
+                if (!chmod(ABSPATH, 0755)) {
+                    // Could not change directory permissions
+                    error_log("LWSOptimize: Could not change directory permissions for .htaccess");
+                    $available_htaccess = false;
+                }
+
+                // Try creating again with new permissions
+                if (!touch($htaccess)) {
+                    // Still failed, abort
+                    error_log("LWSOptimize: Could not create .htaccess file");
+                    umask($old_umask);
+                    $available_htaccess = false;
+                }
+                umask($old_umask);
+            }
+        }
+
         // Get the directory (wp-content, by default)
         $wp_content_directory = explode('/', WP_CONTENT_DIR);
         $wp_content_directory = array_pop($wp_content_directory);
 
-        // Remove the htaccess related to caching
-        exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-        // Content
-        $hta = '';
+        if ($available_htaccess) {
+            // Remove the htaccess related to caching
+            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            // Content
+            $hta = '';
 
-        // Add instructions to load cache file without starting PHP
-        $hta .= "#Last Modification: $current_date\n";
-        $hta .= "<IfModule mod_rewrite.c>"."\n";
-        $hta .= "RewriteEngine On"."\n";
-        $hta .= "RewriteBase " . rtrim($http_path, '/') . "/\n";
+            // Add instructions to load cache file without starting PHP
+            $hta .= "#Last Modification: $current_date\n";
+            $hta .= "<IfModule mod_rewrite.c>"."\n";
+            $hta .= "RewriteEngine On"."\n";
+            $hta .= "RewriteBase " . rtrim($http_path, '/') . "/\n";
 
-        // If connected users have their own cache
-        if ($this->lwsop_check_option('cache_logged_user')['state'] === "false") {
-            $hta .= "## Connected desktop ##\n";
-            $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
-            $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
-            $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-            $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_2.html -f\n";
-            $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_2.html [L]\n\n";
-
-            // If connected users on mobile have their own cache
-            if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
-                $hta .= "## Connected mobile ##\n";
+            // If connected users have their own cache
+            if ($this->lwsop_check_option('cache_logged_user')['state'] === "false") {
+                $hta .= "## Connected desktop ##\n";
                 $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
                 $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
+                $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+                $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_2.html -f\n";
+                $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_2.html [L]\n\n";
+
+                // If connected users on mobile have their own cache
+                if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
+                    $hta .= "## Connected mobile ##\n";
+                    $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
+                    $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
+                    $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+                    $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_2.html -f\n";
+                    $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_2.html [L]\n\n";
+                }
+            }
+
+            // If not connected users on mobile have cache
+            if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
+                $hta .= "## Anonymous mobile ##\n";
+                $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
+                $hta .= "RewriteCond %{HTTP_COOKIE} !wordpress_logged_in_ [NC]\n";
                 $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-                $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_2.html -f\n";
-                $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_2.html [L]\n\n";
+                $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_0.html -f\n";
+                $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_0.html [L]\n\n";
             }
-        }
 
-        // If not connected users on mobile have cache
-        if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
-            $hta .= "## Anonymous mobile ##\n";
+            // Non connected and non-mobile users
+            $hta .= "## Anonymous desktop ##\n";
             $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
-            $hta .= "RewriteCond %{HTTP_COOKIE} !wordpress_logged_in_ [NC]\n";
-            $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-            $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_0.html -f\n";
-            $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_0.html [L]\n\n";
-        }
+            $hta .= "RewriteCond %{HTTP:Cookie} !wordpress_logged_in [NC]\n";
+            $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+            $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_0.html -f\n";
+            $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_0.html [L]\n\n";
 
-        // Non connected and non-mobile users
-        $hta .= "## Anonymous desktop ##\n";
-        $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
-        $hta .= "RewriteCond %{HTTP:Cookie} !wordpress_logged_in [NC]\n";
-        $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-        $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_0.html -f\n";
-        $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_0.html [L]\n\n";
+            $hta .= "Header set Edge-Cache-Platform 'lwsoptimize' env=REDIRECT_STATUS\n";
+            // Remove eTag to fix broken 304 Not Modified
+            $hta .= "FileETag None\nHeader unset ETag\n";
+            $hta .= "</IfModule>\n";
 
-        $hta .= "Header set Edge-Cache-Platform 'lwsoptimize' env=REDIRECT_STATUS\n";
-        // Remove eTag to fix broken 304 Not Modified
-        $hta .= "FileETag None\nHeader unset ETag\n";
-        $hta .= "</IfModule>\n";
+            $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n\n";
 
-        $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n\n";
-
-        if (is_file($htaccess)) {
-            $hta .= file_get_contents($htaccess);
-        }
-
-        if (($f = fopen($htaccess, 'w+')) !== false) {
-            if (!fwrite($f, $hta)) {
-                fclose($f);
-                error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-            } else {
-                fclose($f);
+            if (is_file($htaccess)) {
+                $hta .= file_get_contents($htaccess);
             }
-        } else {
-            error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
+
+            if (($f = fopen($htaccess, 'w+')) !== false) {
+                if (!fwrite($f, $hta)) {
+                    fclose($f);
+                    error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
+                } else {
+                    fclose($f);
+                }
+            } else {
+                error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
+            }
         }
     }
 
@@ -1079,8 +1141,33 @@ class LwsOptimize
 
         // Path to .htaccess
         $htaccess = ABSPATH . "/.htaccess";
+        $available_htaccess = true;
 
-        if ($state != "true") {
+        // Check if .htaccess exists
+        if (!file_exists($htaccess)) {
+            // Try to create .htaccess
+            if (!touch($htaccess)) {
+                // Failed to create, check permissions
+                $old_umask = umask(0);
+                if (!chmod(ABSPATH, 0755)) {
+                    // Could not change directory permissions
+                    error_log("LWSOptimize: Could not change directory permissions for .htaccess");
+                    $available_htaccess = false;
+                }
+
+                // Try creating again with new permissions
+                if (!touch($htaccess)) {
+                    // Still failed, abort
+                    error_log("LWSOptimize: Could not create .htaccess file");
+                    umask($old_umask);
+                    $available_htaccess = false;
+                }
+                umask($old_umask);
+            }
+        }
+
+
+        if ($available_htaccess && $state != "true") {
             exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
             error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => "[$eCode] - $eOut")));
             return json_encode(array('code' => 'NOT_ACTIVATED', 'data' => "[$eCode] - $eOut"));
@@ -1125,59 +1212,61 @@ class LwsOptimize
                 break;
         }
 
-        // Remove the old htaccess related to HEADER before adding it back updated
-        if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode) || !$eCode) {
-            error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "[$eCode] - " . json_encode($eOut))));
-        }
-
-
-        // Set expiration date for the cache, based on selected value (in the "Cache" tab)
-        $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n
-        <IfModule mod_expires.c>
-        ExpiresActive On
-        AddOutputFilterByType DEFLATE application/json
-        ExpiresByType image/jpg \"access $date\"
-        ExpiresByType image/jpeg \"access $date\"
-        ExpiresByType image/gif \"access $date\"
-        ExpiresByType image/png \"access $date\"
-        ExpiresByType image/svg \"access $date\"
-        ExpiresByType image/x-icon \"access $date\"
-        ExpiresByType text/css \"access $date\"
-        ExpiresByType application/pdf \"access $date\"
-        ExpiresByType application/javascript \"access $date\"
-        ExpiresByType application/x-javascript \"access $date\"
-        ExpiresByType application/x-shockwave-flash \"access $date\"
-        ExpiresByType text/html A0
-        ExpiresDefault \"access $date\"
-        </IfModule>
-        <FilesMatch \"index_[0-2]\.(html|htm)$\">
-        <IfModule mod_headers.c>
-            Header set Cache-Control \"public, max-age=0, no-cache, must-revalidate\"
-            Header set CDN-Cache-Control \"public, maxage=$cdn_date\"
-            Header set Pragma \"no-cache\"
-            Header set Expires \"Mon, 29 Oct 1923 20:30:00 GMT\"
-        </IfModule>
-        </FilesMatch>
-
-        #END LWS OPTIMIZE - EXPIRE HEADER\n\n";
-
-        if (is_file($htaccess)) {
-            $hta .= file_get_contents($htaccess);
-        }
-
-        if (($f = fopen($htaccess, 'w+')) !== false) {
-            if (!fwrite($f, $hta)) {
-                fclose($f);
-                error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                return json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable"));
+        if ($available_htaccess) {
+            // Remove the old htaccess related to HEADER before adding it back updated
+            if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode) || !$eCode) {
+                error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "[$eCode] - " . json_encode($eOut))));
             }
-            fclose($f);
-        } else {
-            error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-            return json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable"));
-        }
 
-        return json_encode(array('code' => 'SUCCESS', 'data' => ""));
+
+            // Set expiration date for the cache, based on selected value (in the "Cache" tab)
+            $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n
+            <IfModule mod_expires.c>
+            ExpiresActive On
+            AddOutputFilterByType DEFLATE application/json
+            ExpiresByType image/jpg \"access $date\"
+            ExpiresByType image/jpeg \"access $date\"
+            ExpiresByType image/gif \"access $date\"
+            ExpiresByType image/png \"access $date\"
+            ExpiresByType image/svg \"access $date\"
+            ExpiresByType image/x-icon \"access $date\"
+            ExpiresByType text/css \"access $date\"
+            ExpiresByType application/pdf \"access $date\"
+            ExpiresByType application/javascript \"access $date\"
+            ExpiresByType application/x-javascript \"access $date\"
+            ExpiresByType application/x-shockwave-flash \"access $date\"
+            ExpiresByType text/html A0
+            ExpiresDefault \"access $date\"
+            </IfModule>
+            <FilesMatch \"index_[0-2]\.(html|htm)$\">
+            <IfModule mod_headers.c>
+                Header set Cache-Control \"public, max-age=0, no-cache, must-revalidate\"
+                Header set CDN-Cache-Control \"public, maxage=$cdn_date\"
+                Header set Pragma \"no-cache\"
+                Header set Expires \"Mon, 29 Oct 1923 20:30:00 GMT\"
+            </IfModule>
+            </FilesMatch>
+
+            #END LWS OPTIMIZE - EXPIRE HEADER\n\n";
+
+            if (is_file($htaccess)) {
+                $hta .= file_get_contents($htaccess);
+            }
+
+            if (($f = fopen($htaccess, 'w+')) !== false) {
+                if (!fwrite($f, $hta)) {
+                    fclose($f);
+                    error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
+                    return json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable"));
+                }
+                fclose($f);
+            } else {
+                error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
+                return json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable"));
+            }
+
+            return json_encode(array('code' => 'SUCCESS', 'data' => ""));
+        }
     }
 
     /**
@@ -1836,9 +1925,6 @@ class LwsOptimize
 
             // We get the freshest data
             $urls = $this->fetch_url_sitemap($sitemap, []);
-            if (!empty($urls)) {
-                update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
-            }
         } else {
             // We get the ones currently saved in base
             $urls = $urls['urls'] ?? [];
@@ -1935,6 +2021,7 @@ class LwsOptimize
             $array['filebased_cache']['preload_quantity'] = count($urls);
 
             update_option('lws_optimize_config_array', $array);
+            update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
             delete_option('lws_optimize_preload_is_ongoing');
         }
     }
