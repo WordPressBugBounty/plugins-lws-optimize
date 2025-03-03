@@ -845,22 +845,27 @@ class LwsOptimizeFileCache
             $this->cache_directory = false;
         }
 
-        if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {
-            if (strlen($uri) > 1) { // for the sub-pages
-                if (!preg_match("/\.(html|xml)/i", $uri)) {
-                    if ($this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', ""))) {
-                        if (!preg_match("/\/$/", $uri)) {
-                            if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
-                            } elseif (preg_match("/y(ad|s)?clid\=/i", $this->cache_directory)) {
-                            } elseif (preg_match("/gclid\=/i", $this->cache_directory)) {
-                            } elseif (preg_match("/fbclid\=/i", $this->cache_directory)) {
-                            } elseif (preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)) {
-                            } else {
-                                $this->cache_directory = false;
-                            }
+        if (strlen($uri) > 1) { // for the sub-pages
+            if (!preg_match("/\.(html|xml)/i", $uri)) {
+                if ($this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', ""))) {
+                    if (!preg_match("/\/$/", $uri)) {
+                        if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
+                        } elseif (preg_match("/y(ad|s)?clid\=/i", $this->cache_directory)) {
+                        } elseif (preg_match("/gclid\=/i", $this->cache_directory)) {
+                        } elseif (preg_match("/fbclid\=/i", $this->cache_directory)) {
+                        } elseif (preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)) {
+                        } else {
+                            $this->cache_directory = false;
                         }
                     }
                 }
+            }
+        }
+
+        // If the dynamic URL option is not activated, do not cache the page if it has parameters
+        if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {
+            if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
+                $this->cache_directory = false;
             }
         }
 

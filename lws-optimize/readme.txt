@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: LWS, admin, optimisation, cache
 Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 3.2.2.3
+Stable tag: 3.2.3
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -144,6 +144,13 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 4. Activation / deactivation of caching systems
 
 == Changelog ==
+
+= 3.2.3 = 
+* Fixed issue where black screen on cache deletion would not take the whole page
+* Fixed issue where clicking the topbar-menu would not redirect to the plugin settings but instead clear cache
+* .htaccess caching will be deactivated whenever Optimize stops (due to other plugins, notably)
+* Fixed dynamic page caching, which would always cache pages, no matter what
+* Fixed URLs exclusion which would not save entered URLs
 
 = 3.2.2.3 =
 * Fix Warning when trying to modify an inaccessible .htaccess

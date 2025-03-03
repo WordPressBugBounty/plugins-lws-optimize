@@ -911,6 +911,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
         if (element.getAttribute('id') == "lwsop_submit_excluded_form") {
             let form = document.getElementById('lwsop_form_exclude_urls');
+            console.log(form);
             if (form !== null) {
                 form.dispatchEvent(new Event('submit'));
             }
@@ -1109,6 +1110,58 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                                 break;
                             default:
                                 callPopup('error', "Les cookies n'ont pas pu être sauvegardés car une erreur est survenue");
+                                break;
+                        }
+                    },
+                    error: function(error) {
+                        console.log(error);
+                    }
+                });
+            }
+        });
+    }
+
+    if (document.getElementById('lwsop_form_exclude_urls')) {
+        document.getElementById('lwsop_form_exclude_urls').addEventListener("submit", function(event) {
+            var element = event.target;
+            if (element.getAttribute('id') == "lwsop_form_exclude_urls") {
+                event.preventDefault();
+                let formData = jQuery(this).serializeArray();
+                let ajaxRequest = jQuery.ajax({
+                    url: ajaxurl,
+                    type: "POST",
+                    timeout: 120000,
+                    context: document.body,
+                    data: {
+                        data: formData,
+                        _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_excluded_nonce')); ?>',
+                        action: "lwsop_save_excluded_url"
+                    },
+                    success: function(data) {
+                        if (data === null || typeof data != 'string') {
+                            return 0;
+                        }
+
+                        try {
+                            var returnData = JSON.parse(data);
+                        } catch (e) {
+                            console.log(e);
+                            return 0;
+                        }
+
+                        jQuery(document.getElementById('lwsop_exclude_urls')).modal('hide');
+                        switch (returnData['code']) {
+                            case 'SUCCESS':
+                                callPopup('success', "Les URLs à exclure ont bien été sauvegardés");
+                                break;
+                            case 'FAILED':
+                                callPopup('error', "Les URLs à exclure n'ont pas pu être sauvegardés");
+                                break;
+                            case 'NO_DATA':
+                                callPopup('error', "Les URLs à exclure n'ont pas pu être sauvegardés car aucune donnée n'a été trouvée");
+                                break;
+                            default:
+                                callPopup('error', "Les URLs à exclure n'ont pas pu être sauvegardés car une erreur est survenue");
                                 break;
                         }
                     },
