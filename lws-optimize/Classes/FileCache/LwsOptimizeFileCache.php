@@ -789,6 +789,7 @@ class LwsOptimizeFileCache
      */
     public function lwsop_set_cachedir($uri = false, $mobile = false)
     {
+
         if (!$uri) {
             $uri = $_SERVER['REQUEST_URI'];
         } else {
@@ -862,12 +863,14 @@ class LwsOptimizeFileCache
             }
         }
 
+
         // If the dynamic URL option is not activated, do not cache the page if it has parameters
         if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {
-            if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
+            if (isset($parsed['query']) && $parsed['query']) {
                 $this->cache_directory = false;
             }
         }
+
 
         if ($this->_lwsop_is_mobile() && $this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {
             $this->cache_directory = false;
@@ -905,3 +908,4 @@ class LwsOptimizeFileCache
         }
     }
 }
+
