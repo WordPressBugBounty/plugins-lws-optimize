@@ -810,6 +810,11 @@ class LwsOptimizeFileCache
             $uri = $parsed_full;
         }
 
+        $parsed = parse_url($uri);
+        $parsed_full = parse_url($uri, PHP_URL_PATH);
+        $query = $parsed['query'] ?? '';
+
+
         $uri = preg_replace("/^(http|https):\/\//sx", "", $uri);
 
         // By default, "cache";
@@ -862,7 +867,6 @@ class LwsOptimizeFileCache
                 }
             }
         }
-
 
         // If the dynamic URL option is not activated, do not cache the page if it has parameters
         if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {

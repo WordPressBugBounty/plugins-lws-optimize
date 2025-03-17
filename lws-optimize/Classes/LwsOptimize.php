@@ -88,16 +88,6 @@ class LwsOptimize
             // If the plugin was updated...
             add_action('plugins_loaded', [$this, 'lws_optimize_after_update_actions']);
 
-            // Check if LWSCache is activated and deactivate it
-            if (in_array('lwscache/lwscache.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-                deactivate_plugins('lwscache/lwscache.php');
-
-                // Log deactivation
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] LWSCache plugin detected and deactivated to prevent conflicts' . PHP_EOL);
-                fclose($logger);
-            }
-
             // If Memcached is activated but there is no object-cache.php, add it back
             if ($this->lwsop_check_option('memcached')['state'] === "true") {
                 // Deactivate Memcached if Redis is activated
@@ -518,10 +508,15 @@ class LwsOptimize
         } elseif (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE']) && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'litespeed') {
             // If LiteSpeed, simply purge the cache
             wp_remote_request(get_site_url() . "/.*", array('method' => 'PURGE'));
+            wp_remote_request(get_site_url() . "/*", array('method' => 'FULLPURGE'));
             $chosen_purger = "LiteSpeed";
         } elseif (isset($_ENV['lwscache']) && strtolower($_ENV['lwscache']) == "on") {
             // If LWSCache, simply purge the cache
-            wp_remote_request(get_site_url() . "/.*", array('method' => 'PURGE'));
+            wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'PURGE'));
+            wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'PURGE'));
+
+            wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'FULLPURGE'));
+            wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'FULLPURGE'));
             $chosen_purger = "LWS Cache";
         } else {
             // No cache, no purge
@@ -938,7 +933,7 @@ class LwsOptimize
 
             // Add cache-busting parameter
             $query = parse_url($url, PHP_URL_QUERY);
-            //$url .= ($query ? '&' : '?') . 'nocache=' . time();
+            $url .= ($query ? '&' : '?') . 'nocache=' . time();
 
             // Get path for caching
             $parsed_url = parse_url($url);
@@ -961,21 +956,34 @@ class LwsOptimize
 
             // Fetch pages with appropriate user agents
             foreach ($userAgents as $agent) {
-            wp_remote_get(
-                $url,
+            // Ensure the nocache parameter is unique for each request
+            $unique_nocache = 'nocache=' . time() . '-' . mt_rand(1000, 9999);
+            $request_url = str_replace('nocache=' . time(), $unique_nocache, $url);
+
+            // Make the request with additional cache-busting headers
+            $response = wp_remote_get(
+                $request_url,
                 [
                 'timeout'     => 30,
                 'user-agent'  => $agent,
                 'headers'     => [
                     'Cache-Control' => 'no-cache, no-store, must-revalidate',
                     'Pragma'        => 'no-cache',
-                    'Expires'       => '0'
+                    'Expires'       => '0',
+                    'X-LWS-Preload' => time(), // Additional unique header
+                    'X-No-Cache'    => '1'     // Some servers recognize this
                 ],
                 'sslverify'   => false,
-                'blocking'    => false, // Non-blocking for better performance
-                'cookies'     => [] // Clean request with no cookies
+                'blocking'    => true,
+                'cookies'     => [], // Clean request with no cookies
+                'reject_unsafe_urls' => false // Allow URLs with query strings
                 ]
             );
+
+            // Log request for debugging
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload request sent to: $request_url with agent: $agent" . PHP_EOL);
+            fclose($logger);
             }
 
             // Check if cache file was created
@@ -1129,6 +1137,12 @@ class LwsOptimize
         $this->optimize_options['filebased_cache']['exceptions'] = $this->optimize_options['filebased_cache']['exceptions'] ?? [];
         $config_element = $this->optimize_options['filebased_cache']['state'] = $state;
         $this->optimize_options['filebased_cache']['timer'] = $timer;
+
+        if ($this->optimize_options['filebased_cache']['preload'] == "true") {
+            $this->optimize_options['filebased_cache']['preload_ongoing'] = "true";
+                // Get sitemap URLs
+                $urls = $this->get_sitemap_urls();
+        }
 
         if ($state == "true") {
             $this->lws_optimize_reset_header_htaccess();
