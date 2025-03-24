@@ -522,6 +522,9 @@ class LwsOptimizeFileCache
         }
     }
 
+    /**
+     * Exclude from the cache all pages containing user-chosen cookies
+     */
     public function lwsop_page_has_excluded_cookies()
     {
         if (!isset($GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions_cookies'])) {
@@ -531,7 +534,11 @@ class LwsOptimizeFileCache
         $excluded_cookies = $GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions_cookies'];
         foreach ($excluded_cookies as $cookie) {
             foreach ($_COOKIE as $key => $value) {
-            if (preg_match("/^$cookie$/", $key)) {
+            // Convert wildcard pattern to regex pattern and check if cookie name matches
+            $pattern = preg_replace('/(?<!\\\)\*/', '.*', $cookie);
+            $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
+
+            if (preg_match($regex_pattern, $key)) {
                 return true;
             }
             }
@@ -540,59 +547,38 @@ class LwsOptimizeFileCache
         return false;
     }
 
+    /**
+     * Exclude from the cache the pages that the user has chosen to exclude
+     */
     public function lwsop_page_has_been_excluded($buffer = null)
     {
         $url = urldecode($_SERVER["REQUEST_URI"]);
 
+        // Get WordPress installation directory
+        $home_path = parse_url(home_url(), PHP_URL_PATH);
+
+        if (!empty($home_path) && $home_path !== '/') {
+            // Remove the installation directory from the URL
+            $url = preg_replace('|^' . preg_quote($home_path, '|') . '|i', '', $url);
+        }
+        $url = trim($url, "/");
+
         $exclusions = $GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions'] ?? [];
 
         foreach ($exclusions as $page) {
-            $type = $page['type'] ?? null;
-            $page = $page['value'] ?? null;
-            $category = $page['category'] ?? null;
-
-            if ($type === null || $page === null || $category === null) {
-                continue;
-            }
-
-            if ($category == "pages") {
-                $page = trim($page);
-
-                // We check if $buffer is given to make sure this test is made only once the page_type is found
-                if ($buffer && preg_match("/^(homepage|category|tag|tax|author|search|post|page|archive|attachment)$/", $page)) {
-                    if ($page == $this->page_type) {
-                        return true;
-                    }
-                } elseif ($type == "exact") {
-                    $url = trim($url, "/");
-                    $page = trim($page, "/");
-
-                    if (strtolower($page) == strtolower($url)) {
-                        return true;
-                    }
-                } elseif ($type == "regex") {
-                    if (preg_match("/" . $page . "/i", $url)) {
-                        return true;
-                    }
-                } else {
-                    if ($type == "startwith") {
-                        $url = ltrim($url, "/");
-                        $page = ltrim($page, "/");
-
-                        $preg_match_rule = "^" . preg_quote($page, "/");
-                    } elseif ($type == "contain") {
-                        $preg_match_rule = preg_quote($page, "/");
-                    }
-
-                    if ($preg_match_rule && preg_match("/" . $preg_match_rule . "/i", $url)) {
-                        return true;
-                    }
-                }
-            } elseif ($category == "useragent") {
-                if (preg_match("/" . preg_quote($page, "/") . "/i", $_SERVER['HTTP_USER_AGENT'])) {
+            if ($buffer && preg_match("/^(homepage|category|tag|tax|author|search|post|page|archive|attachment)$/", $page)) {
+                if ($page == $this->page_type) {
                     return true;
                 }
-            } elseif ($category == "cookie" && isset($_SERVER['HTTP_COOKIE']) && preg_match("/" . preg_quote($page, "/") . "/i", $_SERVER['HTTP_COOKIE'])) {
+            }
+
+            $pattern = preg_replace('/(?<!\\\)\*/', '.*', $page);
+            $pattern = trim($pattern, '/');
+
+            // Create a regex pattern without escaping the .* sequences
+            $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
+
+            if (preg_match($regex_pattern, $url)) {
                 return true;
             }
         }
@@ -654,7 +640,6 @@ class LwsOptimizeFileCache
      */
     public function lwsop_check_need_cache($uri = false)
     {
-
         if (!$uri) {
             $uri = $_SERVER['REQUEST_URI'];
         } else {
@@ -804,6 +789,15 @@ class LwsOptimizeFileCache
         unset($params['nocache']);
         $string = http_build_query($params);
 
+        // If the dynamic URL option is not activated, do not cache the page if it has parameters
+        if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {
+            if (isset($string) && !empty($string)) {
+                $this->cache_directory = false;
+                return $this->cache_directory;
+            }
+        }
+
+
         if (!empty($string)) {
             $uri = "$parsed_full?$string";
         } else {
@@ -849,6 +843,7 @@ class LwsOptimizeFileCache
         // Security
         if (preg_match("/\.{2,}/", $this->cache_directory)) {
             $this->cache_directory = false;
+            return $this->cache_directory;
         }
 
         if (strlen($uri) > 1) { // for the sub-pages
@@ -862,22 +857,16 @@ class LwsOptimizeFileCache
                         } elseif (preg_match("/utm_(source|medium|campaign|content|term)/i", $this->cache_directory)) {
                         } else {
                             $this->cache_directory = false;
+                            return $this->cache_directory;
                         }
                     }
                 }
             }
         }
 
-        // If the dynamic URL option is not activated, do not cache the page if it has parameters
-        if ($this->base->lwsop_check_option('no_parameters')['state'] == "false") {
-            if (isset($parsed['query']) && $parsed['query']) {
-                $this->cache_directory = false;
-            }
-        }
-
-
         if ($this->_lwsop_is_mobile() && $this->base->lwsop_check_option('cache_mobile_user')['state'] == "true") {
             $this->cache_directory = false;
+            return $this->cache_directory;
         }
 
         return $this->cache_directory;
