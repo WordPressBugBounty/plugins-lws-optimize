@@ -4,9 +4,23 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917
+class ComposerStaticInit33b9e1ec6a58133d851abf705535d266
 {
+    public static $files = array (
+        'a4a119a56e50fbb293281d9a48007e0e' => __DIR__ . '/..' . '/symfony/polyfill-php80/bootstrap.php',
+    );
+
     public static $prefixLengthsPsr4 = array (
+        'v' => 
+        array (
+            'voku\\helper\\' => 12,
+            'voku\\' => 5,
+        ),
+        'S' => 
+        array (
+            'Symfony\\Polyfill\\Php80\\' => 23,
+            'Symfony\\Component\\CssSelector\\' => 30,
+        ),
         'M' => 
         array (
             'MatthiasMullie\\PathConverter\\' => 29,
@@ -16,13 +30,25 @@ class ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917
         array (
             'Lws\\' => 4,
         ),
-        'A' => 
-        array (
-            'Abordage\\HtmlMin\\' => 17,
-        ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'voku\\helper\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/voku/simple_html_dom/src/voku/helper',
+        ),
+        'voku\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/voku/html-min/src/voku',
+        ),
+        'Symfony\\Polyfill\\Php80\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
+        ),
+        'Symfony\\Component\\CssSelector\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/symfony/css-selector',
+        ),
         'MatthiasMullie\\PathConverter\\' => 
         array (
             0 => __DIR__ . '/..' . '/matthiasmullie/path-converter/src',
@@ -35,42 +61,23 @@ class ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917
         array (
             0 => __DIR__ . '/../..' . '/',
         ),
-        'Abordage\\HtmlMin\\' => 
-        array (
-            0 => __DIR__ . '/..' . '/abordage/html-min/src',
-        ),
     );
 
     public static $classMap = array (
-        'Abordage\\HtmlMin\\HtmlMin' => __DIR__ . '/..' . '/abordage/html-min/src/HtmlMin.php',
+        'Attribute' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Attribute.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
-        'Lws\\Classes\\Admin\\LwsOptimizeManageAdmin' => __DIR__ . '/../..' . '/Classes/Admin/LwsOptimizeManageAdmin.php',
-        'Lws\\Classes\\FileCache\\LwsOptimizeAutoPurge' => __DIR__ . '/../..' . '/Classes/FileCache/LwsOptimizeAutoPurge.php',
-        'Lws\\Classes\\FileCache\\LwsOptimizeCloudFlare' => __DIR__ . '/../..' . '/Classes/FileCache/LwsOptimizeCloudFlare.php',
-        'Lws\\Classes\\FileCache\\LwsOptimizeFileCache' => __DIR__ . '/../..' . '/Classes/FileCache/LwsOptimizeFileCache.php',
-        'Lws\\Classes\\Front\\LwsOptimizeCSSManager' => __DIR__ . '/../..' . '/Classes/Front/LwsOptimizeCSSManager.php',
-        'Lws\\Classes\\Front\\LwsOptimizeJSManager' => __DIR__ . '/../..' . '/Classes/Front/LwsOptimizeJSManager.php',
-        'Lws\\Classes\\Images\\LwsOptimizeImageOptimization' => __DIR__ . '/../..' . '/Classes/Images/LwsOptimizeImageOptimization.php',
-        'Lws\\Classes\\LazyLoad\\LwsOptimizeLazyLoading' => __DIR__ . '/../..' . '/Classes/LazyLoad/LwsOptimizeLazyLoading.php',
-        'Lws\\Classes\\LwsOptimize' => __DIR__ . '/../..' . '/Classes/LwsOptimize.php',
-        'MatthiasMullie\\Minify\\CSS' => __DIR__ . '/..' . '/matthiasmullie/minify/src/CSS.php',
-        'MatthiasMullie\\Minify\\Exception' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exception.php',
-        'MatthiasMullie\\Minify\\Exceptions\\BasicException' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exceptions/BasicException.php',
-        'MatthiasMullie\\Minify\\Exceptions\\FileImportException' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exceptions/FileImportException.php',
-        'MatthiasMullie\\Minify\\Exceptions\\IOException' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Exceptions/IOException.php',
-        'MatthiasMullie\\Minify\\JS' => __DIR__ . '/..' . '/matthiasmullie/minify/src/JS.php',
-        'MatthiasMullie\\Minify\\Minify' => __DIR__ . '/..' . '/matthiasmullie/minify/src/Minify.php',
-        'MatthiasMullie\\PathConverter\\Converter' => __DIR__ . '/..' . '/matthiasmullie/path-converter/src/Converter.php',
-        'MatthiasMullie\\PathConverter\\ConverterInterface' => __DIR__ . '/..' . '/matthiasmullie/path-converter/src/ConverterInterface.php',
-        'MatthiasMullie\\PathConverter\\NoConverter' => __DIR__ . '/..' . '/matthiasmullie/path-converter/src/NoConverter.php',
+        'PhpToken' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/PhpToken.php',
+        'Stringable' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/Stringable.php',
+        'UnhandledMatchError' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/UnhandledMatchError.php',
+        'ValueError' => __DIR__ . '/..' . '/symfony/polyfill-php80/Resources/stubs/ValueError.php',
     );
 
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit9edeab64443fafb0c93a0c5699d5c917::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit33b9e1ec6a58133d851abf705535d266::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit33b9e1ec6a58133d851abf705535d266::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit33b9e1ec6a58133d851abf705535d266::$classMap;
 
         }, null, ClassLoader::class);
     }

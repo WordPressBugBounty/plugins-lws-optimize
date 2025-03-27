@@ -124,6 +124,7 @@ class LwsOptimizeFileCache
 
             $content = @file_get_contents($this->cache_directory . "index_$user_id.$extension");
             if ($content) {
+                header ('Edge-Cache-Platform: lwsoptimize');
                 die($content);
             }
         }
@@ -313,7 +314,16 @@ class LwsOptimizeFileCache
                 $exclusions = $exclusions['data']['exclusions'] ?? null;
 
                 if ($exclusions === null || empty($exclusions)) {
-                    $htmlMin = new \Abordage\HtmlMin\HtmlMin();
+                    // Use voku/html-min to minify the HTML
+                    $htmlMin = new \voku\helper\HtmlMin();
+                    // Configure advanced minification options
+                    $htmlMin->doOptimizeViaHtmlDomParser(true);   // Enable HTML DOM optimization
+                    $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
+                    $htmlMin->doRemoveOmittedQuotes(true);        // Remove quotes when possible
+                    $htmlMin->doRemoveOmittedHtmlTags(true);      // Remove optional HTML tags
+                    $htmlMin->doSumUpWhitespace(true);            // Combine multiple whitespace
+                    $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
+                    $htmlMin->doRemoveHttpPrefixFromAttributes(true); // Remove http: when possible
                     $modified = $htmlMin->minify($modified);
                 } else {
                     $no_minify = false;
@@ -324,7 +334,16 @@ class LwsOptimizeFileCache
                     }
 
                     if (!$no_minify) {
-                        $htmlMin = new \Abordage\HtmlMin\HtmlMin();
+                        $htmlMin = new \voku\helper\HtmlMin();
+                        // Configure advanced minification options
+                        $htmlMin->doOptimizeViaHtmlDomParser(true);   // Enable HTML DOM optimization
+                        $htmlMin->doRemoveComments(true);             // Remove HTML comments
+                        $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
+                        $htmlMin->doRemoveOmittedQuotes(true);        // Remove quotes when possible
+                        $htmlMin->doRemoveOmittedHtmlTags(true);      // Remove optional HTML tags
+                        $htmlMin->doSumUpWhitespace(true);            // Combine multiple whitespace
+                        $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
+                        $htmlMin->doRemoveHttpPrefixFromAttributes(true); // Remove http: when possible
                         $modified = $htmlMin->minify($modified);
                     }
                 }
@@ -348,6 +367,7 @@ class LwsOptimizeFileCache
             $this->lwsop_add_to_cache($buffer, $cached_elements, false);
         }
 
+        header ('Edge-Cache-Platform: lwsoptimize');
         return $modified;
     }
 

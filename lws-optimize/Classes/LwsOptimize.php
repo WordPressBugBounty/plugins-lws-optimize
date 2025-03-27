@@ -837,11 +837,11 @@ class LwsOptimize
         $ongoing = get_option('lws_optimize_preload_is_ongoing', false);
 
         if ($ongoing) {
-            // Do not continue if the cron is ongoing BUT force if it has been ~5m
-            if (time() - $ongoing > 300) {
+            // Do not continue if the cron is ongoing BUT force if it has been ~10m
+            if (time() - $ongoing > 600) {
                 // Create log entry
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preloading still ongoing, 300 seconds ellapsed, forcing new instance" . PHP_EOL);
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preloading still ongoing, 600 seconds ellapsed, forcing new instance" . PHP_EOL);
                 fclose($logger);
                 delete_option('lws_optimize_preload_is_ongoing');
             } else {
@@ -1319,10 +1319,15 @@ class LwsOptimize
                 $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_0.html -f\n";
                 $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_0.html [L]\n\n";
 
-                $hta .= "Header set Edge-Cache-Platform 'lwsoptimize' env=REDIRECT_STATUS\n";
                 // Remove eTag to fix broken 304 Not Modified
                 $hta .= "FileETag None\nHeader unset ETag\n";
-                $hta .= "</IfModule>\n";
+                $hta .= "</IfModule>\n\n";
+
+                $hta .= "<FilesMatch \"index_.*\\.html$\">\n";
+                $hta .= "<If \"%{REQUEST_URI} =~ m#" . preg_quote($wp_content_directory, '#') . "/cache/lwsoptimize/cache#\">\n";
+                $hta .= "Header set Edge-Cache-Platform 'lwsoptimize'\n";
+                $hta .= "</If>\n";
+                $hta .= "</FilesMatch>\n";
 
                 $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n\n";
 
@@ -1996,7 +2001,7 @@ class LwsOptimize
         // All configs for LWS Optimize
 
         // Get the exclusions
-        $exclusions = isset($this->optimize_options[$element]['exclusions']) ? $this->optimize_options[$element]['exclusions'] : array();
+        $exclusions = isset($this->optimize_options[$element]['exclusions']) ? $this->optimize_options[$element]['exclusions'] : array('rs-lazyload');
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $exclusions, 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
@@ -2167,6 +2172,8 @@ class LwsOptimize
                 if (!wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                     wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
                 }
+            } else {
+                wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
             }
 
             update_option('lws_optimize_config_array', $array);
