@@ -602,7 +602,7 @@ if (!$memory_limit) {
             })
         }
     </script>
-    <?php if (get_option('lws_optimize_offline', null) === null) : ?>
+    <?php if (get_transient('lws_optimize_deactivate_temporarily')) : ?>
         <script>
             // Start the cron to convertion images in the designated type
             if (document.getElementById('lws_optimize_start_image_convertion')) {

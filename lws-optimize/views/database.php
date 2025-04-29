@@ -79,9 +79,9 @@ if ($next_scheduled_maintenance) {
             </div>
 
             <?php if ($data['has_special_element_database']) : ?>
-                <div class="lwsop_contentblock_convertion_status" id="lwsop_database_cleaning_status">
+                <div class="lwsop_contentblock_conversion_status" id="lwsop_database_cleaning_status">
                     <div>
-                        <span><?php echo esc_html__('Next convertion: ', 'lws-optimize'); ?></span>
+                        <span><?php echo esc_html__('Next conversion: ', 'lws-optimize'); ?></span>
                         <span id="lwsop_next_cleaning_db"><?php echo esc_html($next_scheduled_maintenance); ?></span>
                     </div>
                 </div>

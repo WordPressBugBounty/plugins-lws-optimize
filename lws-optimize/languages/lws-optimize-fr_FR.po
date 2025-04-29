@@ -17,7 +17,7 @@ msgstr "Activer LWS Optimize"
 
 #: lws-optimize.php:
 msgid "There is at least one other cache plugin active. LWS Optimize cannot be activated for incompatibility reasons."
-msgstr "Au moins un autre plugin de cache est actif. LWS Optimize ne peut pas être activé pour des raisons d'incompatibilitées."
+msgstr "Au moins un autre plugin de cache est actif. LWS Optimize ne peut pas être activé pour des raisons d'incompatibilités."
 
 #: lws-optimize.php:
 msgid "You already have another cache plugin installed on your website. LWS-Optimize will be inactive as long as those below are not deactivated to prevent incompatibilities: "
@@ -559,7 +559,7 @@ msgstr "Activer le cache de fichiers permet de créer une version HTML statique 
 
 #: caching.php:
 msgid "Cleanup interval for the cache: "
-msgstr "Durée de vie du cache : "
+msgstr "Fréquence de renouvellement du cache : "
 
 #: caching.php:
 msgid "Clear"
@@ -579,11 +579,11 @@ msgstr "Une fois par mois"
 
 #: caching.php:
 msgid "Once every 3 months"
-msgstr "Une fois tout les 3 mois"
+msgstr "Une fois tous les 3 mois"
 
 #: caching.php:
 msgid "Once every 6 months"
-msgstr "Une fois tout les 6 mois"
+msgstr "Une fois tous les 6 mois"
 
 #: caching.php:
 msgid "Once a year"
@@ -591,7 +591,7 @@ msgstr "Une fois par an"
 
 #: caching.php:
 msgid "Once every 2 years"
-msgstr "Une fois tout les 2 ans"
+msgstr "Une fois tous les 2 ans"
 
 #: caching.php:
 msgid "Memcached is not active on your server. Your website is compatible with Memcached but is not configurated to use it. If your website is hosted at LWS or on a cPanel, please refer to the documentation below for help."
@@ -631,7 +631,7 @@ msgstr "-15% sur les hébergements WordPress"
 msgid "Rate this plugin!"
 msgstr "Notez cette extension !"
 
-msgid "Support us and help other users choisir the right plugin."
+msgid "Support us and help other users choose the right plugin."
 msgstr "Supportez-nous et aidez d'autres utilisateurs à choisir la bonne extension."
 
 msgid "Leave a review"
@@ -706,8 +706,8 @@ msgstr "Minification des Fichiers CSS"
 msgid "Compress your CSS files to reduce their size and accelerate their loading."
 msgstr "Compresse vos fichiers CSS pour réduire leur taille et accélérer le chargement."
 
-msgid "Fuse multiple CSS files into one to reduce server requests. <br> If you notice any display problem on your website, such as missing CSS or messed-up elements, deactivating this option may solve the issue."
-msgstr "Combine plusieurs fichiers CSS en un seul pour réduire les requêtes serveur. <br> Si vous constatez des problèmes d'affichage sur votre site, comme des CSS manquants ou des éléments désorganisés, désactiver cette option peut résoudre le problème."
+msgid "Fuse multiple CSS files into one to reduce server requests. <br> If you notice any display problem on your website, such as missing CSS or messed-up elements, deactivating this option or excluding the problematic files may solve the issue."
+msgstr "Combine plusieurs fichiers CSS en un seul pour réduire les requêtes serveur. <br> Si vous constatez des problèmes d'affichage sur votre site, comme des CSS manquants ou des éléments désorganisés, désactiver cette option ou exclure les fichiers problématiques peut résoudre le problème."
 
 msgid "Preload CSS files to accelerate page rendering."
 msgstr "Précharge les fichiers CSS pour accélérer le rendu de la page."
@@ -727,8 +727,8 @@ msgstr "Minification des Fichiers JS"
 msgid "Reduce JS files size to boost loading performances."
 msgstr "Réduit la taille de vos fichiers JS pour améliorer les performances de chargement."
 
-msgid "Fuse multiple JS files into one to reduce server requests."
-msgstr "Combine plusieurs fichiers JS en un seul pour réduire le nombre de requêtes serveur."
+msgid "Fuse multiple JS files into one to reduce server requests. <br> This may cause issues when paired with some plugins or themes. Deactivating the option or excluding problematic files may fix the issue."
+msgstr "Combine plusieurs fichiers JS en un seul pour réduire le nombre de requêtes serveur. <br> Cela peut provoquer des erreurs lorsqu'utilisé avec certaines extensions et thèmes. Désactiver l'option ou exclure les fichiers problématiques peut résoudre le problème."
 
 msgid "Report loading JavaScript blocking rendering"
 msgstr "Report du chargement du JavaScript bloquant le rendu"
@@ -739,8 +739,8 @@ msgstr "Retarde le chargement des fichiers JS bloquant le rendu pour un chargeme
 msgid "HTML Minification"
 msgstr "Minification du HTML"
 
-msgid "Reduce your HTML file size by deleting useless characters."
-msgstr "Réduit la taille de votre HTML en supprimant les caractères inutiles."
+msgid "Reduce your HTML file size by deleting useless characters. <br> It may cause rendering issues with some themes and extensions."
+msgstr "Réduire la taille de vos fichiers HTML en supprimant les caractères inutiles. <br> Cela peut causer des problèmes d'affichage avec certains thèmes et extensions."
 
 msgid "Webfont preloading"
 msgstr "Préchargement des Polices"
@@ -787,8 +787,8 @@ msgstr "Cette extension vous permet d'optimiser et convertir les images (JPEG, P
 msgid "Image Lazy Loading"
 msgstr "Lazy Loading pour Images"
 
-msgid "Load images only when they appear on screen, speeding up pages loading."
-msgstr "Charge les images uniquement à leur apparition à l'écran, accélérant le chargement des pages."
+msgid "Load images only when they appear on screen, speeding up pages loading. It may be incompatible with plugins/themes trying to access images on page load, when they are not yet loaded."
+msgstr "Charge les images uniquement lorsqu'elles apparaissent à l'écran, accélérant le chargement des pages. Peut être incompatible avec des plugins/thèmes qui tentent d'accéder aux images au chargement de la page, lorsqu'elles ne sont pas encore chargées."
 
 msgid "CSS Background Image Lazy Loading"
 msgstr "Lazy Loading pour Images d'Arrière-plan CSS"
@@ -1271,7 +1271,7 @@ msgid "No cache for logged in users"
 msgstr "Pas de cache pour les utilisateurs connectés"
 
 msgid "All connected users will be shown the non-cached version of this website."
-msgstr "Tout les utilisateurs connectés verront une version non mise en cache du site web."
+msgstr "Tous les utilisateurs connectés verront une version non mise en cache du site web."
 
 msgid "No cache for mobile user"
 msgstr "Pas de cache pour les utilisateurs mobile"
@@ -1292,7 +1292,7 @@ msgid "Clear current page cache files"
 msgstr "Vider le cache de la page actuelle"
 
 msgid "Enter the full URL, or part of it, of the scripts/stylesheets you want to exclude from the process. Example : \"plugins/woocommerce/*\" will exclude all files in the directory \"woocommerce\" in plugins."
-msgstr "Entrez l'URL complète, ou une partie seulement, des scripts/feuilles de style que vous souhaitez exclure du processus. Exemple : \"plugins/woocommerce/*\" exclurera tout les fichiers du dossiers \"woocommerce\" des plugins."
+msgstr "Entrez l'URL complète, ou une partie seulement, des scripts/feuilles de style que vous souhaitez exclure du processus. Exemple : \"plugins/woocommerce/*\" exclurera tous les fichiers du dossiers \"woocommerce\" des plugins."
 
 msgid "Cache deleted"
 msgstr "Cache supprimé"
@@ -1406,7 +1406,7 @@ msgid "Activate GZIP Compression"
 msgstr "Activer la compression GZIP"
 
 msgid "GZIP Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times."
-msgstr "La compression GZIP permet de compresser vos fichiers HTML, CSS et JS afin qu'ils soient plus léger, et donc plus rapide à télécharger, ce qui peut améliorer les temps de chargement."
+msgstr "La compression GZIP permet de compresser vos fichiers HTML, CSS et JS afin qu'ils soient plus légers, et donc plus rapides à télécharger, ce qui peut améliorer les temps de chargement."
 
 msgid "Preloading status: "
 msgstr "Statut du pré-chargement : "
@@ -1432,7 +1432,7 @@ msgstr "A jour"
 msgid "Status: "
 msgstr "Statut : "
 
-msgid "Latest convertion done on: "
+msgid "Latest conversion done on: "
 msgstr "Dernière conversion réalisée le : "
 
 msgid "Amount of images converted: "
@@ -1450,7 +1450,7 @@ msgstr "Convertit toutes les images sur votre site vers un autre format"
 msgid "Inactive"
 msgstr "Inactif"
 
-msgid "No convertion recorded."
+msgid "No conversion recorded."
 msgstr "Aucune conversion enregistrée."
 
 msgid "Revert all images"
@@ -1483,19 +1483,19 @@ msgstr "100% signifie que l'image aura la même qualité que l'originale. Une qu
 msgid "Amount of images to convert per batch: "
 msgstr "Quantité d'images converties à chaque passage : "
 
-msgid "Image convertion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load."
+msgid "Image conversion can take time and as such images will be converted in multiple instances. A larger amount means images will get converted quicker but it may slow down the website due to a larger load."
 msgstr "La conversion d'image peut prendre du temps, ainsi les images sont converties par instance. Une quantité plus élevée résultera en une conversion plus rapides mais peut ralentir le site dû à une utilisation des ressources importante."
 
 msgid "Keep the original images: "
 msgstr "Garder les images originales : "
 
-msgid "By default, the original image will be kept, to allow for a rollback of the image to their original format. This will result in an increase in your website's size as two images will be saved instead of one. Deactivating this option will result in smaller sizes but all convertions are definitives."
+msgid "By default, the original image will be kept, to allow for a rollback of the image to their original format. This will result in an increase in your website's size as two images will be saved instead of one. Deactivating this option will result in smaller sizes but all conversions are definitives."
 msgstr "Par défaut, les images originales sont gardées, permettant de les restaurer dans leur format original. Cela resultera en une augmentation de la taille du site, car 2 images seront sauvegardées au lieu d'une. Désactiver cette option réduira la taille du site mais toute conversion sera définitive."
 
 msgid "Image exclusion:"
 msgstr "Exclusion d'image :"
 
-msgid "Input the name of each media you wish to exclude from the convertion. Separate each name with a comma (,)."
+msgid "Input the name of each media you wish to exclude from the conversion. Separate each name with a comma (,)."
 msgstr "Entrez le nom de chaque média que vous souhaitez exclure de la conversion. Séparez chaque nom par une virgule (,)."
 
 msgid "Convert images"
@@ -1507,40 +1507,40 @@ msgstr "Options générales"
 msgid "Image Optimization"
 msgstr "Optimisation d'images"
 
-msgid "Abort convertion"
+msgid "Abort conversion"
 msgstr "Arrêter la conversion"
 
 msgid "Abort restoration"
 msgstr "Arrêter la restauration"
 
-msgid "Image convertion started. It may take a while depending on the amount of files to process."
+msgid "Image conversion started. It may take a while depending on the amount of files to process."
 msgstr "Conversion d'image lancée. Cela peut prendre un moment selon la quantité de fichiers à traiter."
 
 msgid "All images are getting reverted. It may take a few moments."
 msgstr "Toutes les images sont en cours de restauration. Cela peut prendre quelques instants."
 
-msgid "Auto convertion stopped."
+msgid "Auto conversion stopped."
 msgstr "Conversion automatique désactivée."
 
-msgid "Activate convertion"
+msgid "Activate conversion"
 msgstr "Activer la conversion"
 
-msgid "Image convertion will now be done for each images uploaded. It may slightly lengthen the upload time"
+msgid "Image conversion will now be done for each images uploaded. It may slightly lengthen the upload time"
 msgstr "La conversion d'image sera maintenant effectuée pour chaque image téléversée. Cela pourrait allonger le temps de téléversement"
 
 msgid "Media Optimisations"
 msgstr "Optimisations des Médias"
 
-msgid "The convertion has been stopped."
+msgid "The conversion has been stopped."
 msgstr "La conversion a bien été arrétée."
 
-msgid "Image Convertion"
+msgid "Image conversion"
 msgstr "Conversion d'images"
 
 msgid "Imagick has not been found on this server. Please contact your hosting provider to learn more about the issue."
 msgstr "Imagick n'a pas été détecté sur ce serveur. Veuillez contacter votre hébergeur afin d'en apprendre plus à ce propos."
 
-msgid "Show failed convertions"
+msgid "Show failed conversions"
 msgstr "Afficher les conversions échouées"
 
 msgid "Error type"
@@ -1552,10 +1552,10 @@ msgstr "Date"
 msgid "File"
 msgstr "Fichier"
 
-msgid "Convertion"
+msgid "Conversion"
 msgstr "Conversion"
 
-msgid "Next convertion: "
+msgid "Next conversion: "
 msgstr "Prochaine conversion : "
 
 msgid " images converted out of "
@@ -1582,13 +1582,13 @@ msgstr "Cette fonctionnalité est actuellement en béta et pourrait pas fonction
 msgid "Important informations: "
 msgstr "Informations importantes : "
 
-msgid "AVIF convertion may not be available on your website if your WordPress or Imagick version is too old"
+msgid "AVIF conversion may not be available on your website if your WordPress or Imagick version is too old"
 msgstr "La conversion en AVIF peut ne pas être disponible si votre version de WordPress ou de Imagick est trop vieille"
 
 msgid "Images may lose transparency when converted to AVIF"
 msgstr "Les images peuvent perdre leur transparence une fois converties en AVIF"
 
-msgid "AVIF convertion is limited to images up to 400Kb. Depending on the amount of file and their size, the process may take a few minutes to complete"
+msgid "AVIF conversion is limited to images up to 400Kb. Depending on the amount of file and their size, the process may take a few minutes to complete"
 msgstr "La conversion AVIF est limitée à des images jusqu'à 400 Ko. Selon la quantité et la taille des fichiers, le processus pourrait prendre plusieurs minutes"
 
 msgid "If your images are not getting converted, you may need to upgrade your max_execution_time to at least 120s. More time may be necessary if you want to convert more images. Contact your hosting provider for more informations on how to proceed."
@@ -1597,7 +1597,7 @@ msgstr "Si vos images ne sont pas converties, vous pourriez avoir à augmenter l
 msgid "MIME-Type: "
 msgstr "Type MIME : "
 
-msgid "Next deconvertion: "
+msgid "Next deconversion: "
 msgstr "Prochaine déconversion : "
 
 msgid " images deconverted out of "
@@ -1609,7 +1609,7 @@ msgstr "Images restantes à déconvertir : "
 msgid "MIME-Types to convert: "
 msgstr "Types MIME à convertir : "
 
-msgid "If you wish to add or remove some image types from the convertion. This allows you to only convert specific image types or have more control over what may or may not be converted."
+msgid "If you wish to add or remove some image types from the conversion. This allows you to only convert specific image types or have more control over what may or may not be converted."
 msgstr "Si vous souhaitez ajouter ou retirer des types d'image de la conversion. Cela vous permet de ne convertir que les types d'images que vous souhaitez et d'avoir plus de contrôle sur ce qui peut, ou non, être converti."
 
 msgid "The default WP-Cron is activated. For optimal performances it is recommended to use a server cron, which is more efficient and do not slow your website."
@@ -1627,7 +1627,7 @@ msgstr "La restauration a été arrêtée."
 msgid "Unknown error. Cannot abort restoration."
 msgstr "Erreur inconnue. Impossible d'arrêter la restauration."
 
-msgid "Unknown error. Cannot abort convertion."
+msgid "Unknown error. Cannot abort conversion."
 msgstr "Erreur inconnue. Impossible d'arrêter la conversion."
 
 msgid "Please contact your hosting provider to find out how to change this value."
@@ -1651,7 +1651,7 @@ msgstr "Une memory_limit d'au moins 128M est nécessaire afin d'utiliser cette f
 msgid "Pending"
 msgstr "En attente"
 
-msgid "Convertion Date"
+msgid "Conversion Date"
 msgstr "Date de conversion"
 
 msgid "Compression"
@@ -1666,13 +1666,13 @@ msgstr "Pour plus d'informations sur comment mettre en place un cron serveur ave
 msgid "For more informations on how to setup server crons, contact your hosting provider."
 msgstr "Pour plus d'infromations sur comment mettre en place un cron serveur, contactez votre hébergeur."
 
-msgid "Image convertion is a recurring task which may consume a lot of resources for a prolonged time. You are currently using WP-Cron, which means this task will only be executed when there is activity on your website and will use your website resources, slowing it down."
+msgid "Image conversion is a recurring task which may consume a lot of resources for a prolonged time. You are currently using WP-Cron, which means this task will only be executed when there is activity on your website and will use your website resources, slowing it down."
 msgstr "La conversion d'image est une tâche récurrente qui peut consommer beaucoup de ressources sur une durée prolongée. Vous utilisez actuellement le WP-Cron, ce qui signifie que la tâche sera exécutée uniquement s'il y a de l'activité sur votre site et qu'elle utilisera les ressources de ce dernier, causant des ralentissements."
 
 msgid "We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website."
 msgstr "Nous vous recommandons d'utiliser un cron serveur, qui exécutera les tâches à un moment précis et sans s'accaparer les ressources, peu importe ce qui se passe sur votre site."
 
-msgid "AVIF convertion is not available on your website. Your WordPress needs to be updated to at least 6.5 and the installed Imagick version must be compatible with AVIF"
+msgid "AVIF conversion is not available on your website. Your WordPress needs to be updated to at least 6.5 and the installed Imagick version must be compatible with AVIF"
 msgstr "La conversion AVIF n'est pas disponible sur votre site. Votre version de WordPress doit être au moins en 6.5 et la version d'Imagick doit être compatible avec AVIF"
 
 msgid "You are currently using WP-Cron, which means the preloading will only be executed when there is activity on your website and will use your website resources, slowing it down."
@@ -1690,7 +1690,7 @@ msgstr "Suite à de nombreux utilisateurs rencontrant des problèmes avec Memcac
 msgid "1 - Which image do you wish to convert?"
 msgstr "1 - Quelles images souhaitez-vous convertir ?"
 
-msgid "Select every MIME-Types to include in the convertion process."
+msgid "Select every MIME-Types to include in the conversion process."
 msgstr "Sélectionnez les types MIME à inclure dans le processus de conversion."
 
 msgid "Webp <b>(recommended)</b>"
@@ -1705,14 +1705,20 @@ msgstr "PNG <b>(non recommandé)</b>"
 msgid "2 - To which type do you wish to convert images?"
 msgstr "2 - Vers quels formats souhaitez-vous convertir les images ?"
 
-msgid "Select the target type for the convertion. Images already in said type will be ignored."
+msgid "Select the target type for the conversion. Images already in said type will be ignored."
 msgstr "Sélectionnez le format cible pour optimiser vos images. Les images déjà dans ce format seront ignorées."
 
 msgid "Automatic <b>(recommended)</b> <span>Choose the most optimized type for each image</span>"
 msgstr "Automatique <b>(recommandé)</b> <span>Choisit le format le plus optimisé et léger pour chaque image</span>"
 
-msgid "2 - What quality do you wish for your converted images?"
-msgstr "2 - Quelle qualité souhaitez-vous pour les images converties ?"
+msgid "Use our API to convert your images ?"
+msgstr "Utiliser notre API pour convertir vos images ?"
+
+msgid "By using credits, you can convert your images with our API, resulting in faster and better conversion. Otherwise, the conversion will be done on your website using PHP and Imagick."
+msgstr "En utilisant des crédits, vous pouvez convertir vos images avec notre API, résultant en une conversion plus rapide et de meilleure qualité. Sinon, la conversion sera effectuée sur votre site web en utilisant PHP et Imagick."
+
+msgid "What quality do you wish for your converted images?"
+msgstr "Quelle qualité souhaitez-vous pour les images converties ?"
 
 msgid "Define the quality of converted images. A lower qualite will result in lower sharpness but reduced size."
 msgstr "Définissez la qualité des images converties. Une qualité plus basse réduit le poids mais peut affecter la netteté."
@@ -1726,8 +1732,8 @@ msgstr "Basse <span>Qualité de 30%</span>"
 msgid "High <span>90% quality</span>"
 msgstr "Haute <span>Qualité de 90%</span>"
 
-msgid "3 - Do you wish to resize images that are too big?"
-msgstr "3 - Souhaitez-vous redimensionner les images trop grandes ?"
+msgid "Do you wish to resize images that are too big?"
+msgstr "Souhaitez-vous redimensionner les images trop grandes ?"
 
 msgid "Define a maximum width to limit image size."
 msgstr "Définissez une largeur maximale pour limiter le poids des images."
@@ -1735,10 +1741,34 @@ msgstr "Définissez une largeur maximale pour limiter le poids des images."
 msgid "2560px <b>(recommended)</b>"
 msgstr "2560px <b>(recommandé)</b>"
 
+msgid "You currently have "
+msgstr "Vous avez actuellement "
+
+msgid "credits left and "
+msgstr "crédits et "
+
+msgid " images are to be converted. It will only convert as much images as you have credits: if you run out during the conversion, it will be stopped."
+msgstr " images sont à convertir. Il sera converti autant d'images que vous avez de crédits : si vous en manquez pendant la conversion, elle sera interrompue."
+
+msgid "Converted Type"
+msgstr "Type Converti"
+
+msgid "No images to show"
+msgstr "Aucune image à afficher"
+
+msgid "Remaining credits: "
+msgstr "Crédits restants : "
+
+msgid " images to restore. No credits will be used to restore images as the original images are stored on the website."
+msgstr " images à restaurer. Aucun crédit ne sera utilisé pour restaurer les images car les images originales sont stockées sur le site."
+
+msgid "Images Conversion Tool"
+msgstr "Outil de Conversion d'Images"
+
 msgid "5 - How many images do you wish to convert each time?"
 msgstr "5 - Combien d’images souhaitez-vous convertir par lot ?"
 
-msgid "A higher number will speed up convertion but may use more resources."
+msgid "A higher number will speed up conversion but may use more resources."
 msgstr "Un nombre plus élevé accélère la conversion mais peut consommer plus de ressources."
 
 msgid "10 <b>(recommended)</b>"
@@ -1753,10 +1783,10 @@ msgstr "Les conserver permet de restaurer les images au format initial mais augm
 msgid "Yes <b>(recommended)</b>"
 msgstr "Oui <b>(recommandé)</b>"
 
-msgid "Ongoing convertion..."
+msgid "Ongoing conversion..."
 msgstr "Conversion en cours…"
 
-msgid "Ongoing deconvertion..."
+msgid "Ongoing deconversion..."
 msgstr "Déconversion en cours…"
 
 msgid "Active"
@@ -1765,25 +1795,25 @@ msgstr "Actif"
 msgid "<b>Warning: </b> This operation will only works for images not converted automatically on upload and whose original copy was conserved."
 msgstr "<b>Important :</b> Cette opération fonctionne uniquement pour les images qui n’ont pas été converties automatiquement lors du téléversement et dont les copies originales ont été conservées."
 
-msgid "Warning: This convertion functionnality is in beta and may not work properly on all websites. Make sure to have a backup at the ready before using it."
+msgid "Warning: This conversion functionnality is in beta and may not work properly on all websites. Make sure to have a backup at the ready before using it."
 msgstr "Important: cette fonctionnalité de conversion est en version bêta et peut ne pas fonctionner correctement sur tous les sites. Assurez-vous d’avoir une sauvegarde de votre site avant utilisation."
 
 msgid "Warning about transparency: images may lose their transparency once converted to AVIF."
 msgstr "Attention à la transparence : Les images peuvent perdre leur transparence une fois converties en AVIF."
 
-msgid "Size limitations: AVIF convertion is only available on images smaller than 400Ko. Depending on the size and quantité of files, the process may take a while."
+msgid "Size limitations: AVIF conversion is only available on images smaller than 400Ko. Depending on the size and quantité of files, the process may take a while."
 msgstr "Limite de taille : La conversion AVIF est possible uniquement pour les images de moins de 400 Ko. Selon la quantité et la taille des fichiers, le processus peut prendre plusieurs minutes."
 
 msgid "Convert all images to the optimized format you chose."
 msgstr "Convertit toutes les images vers le format optimisé choisi."
 
-msgid "Images WebP Convertion Tool"
+msgid "Images WebP Conversion Tool"
 msgstr "Outil de conversion d’images en WebP"
 
 msgid "Stop"
 msgstr "Arrêter"
 
-msgid "Convertion format"
+msgid "Conversion format"
 msgstr "Format de conversion"
 
 msgid "Image total"
@@ -1792,7 +1822,7 @@ msgstr "Images totales"
 msgid "Converted images"
 msgstr "Images converties"
 
-msgid "Remaining convertions"
+msgid "Remaining conversions"
 msgstr "Conversions restantes"
 
 msgid "Total size reduction"
@@ -1810,28 +1840,31 @@ msgstr "Fonctionne uniquement pour les images qui n’ont pas été converties a
 msgid "Restore all images"
 msgstr "Restaurer les images"
 
-msgid "Automatic convertion on upload"
+msgid "Automatic conversion on upload"
 msgstr "Conversion automatique au téléversement"
 
-msgid "Automatically convert new images uplaoded on your WordPress website."
+msgid "Convert images on upload"
+msgstr "Convertir les images au téléversement"
+
+msgid "credits left. A credit will be used each time a PNG/JPEG image is uploaded on the website and converted. The file will be uploaded normally if there is not enough credits left."
+msgstr "crédits restants. Un crédit sera utilisé chaque fois qu'une image PNG/JPEG est téléversée sur le site et convertie. Le fichier sera téléversé normalement s'il n'y a pas assez de crédits restants."
+
+msgid "Automatically convert new images uploaded on your WordPress website."
 msgstr "Convertit automatiquement les nouvelles images ajoutées sur votre site WordPress."
 
 msgid "Configurate"
 msgstr "Configurer"
 
-msgid "WebP convertion options"
+msgid "WebP conversion options"
 msgstr "Options de conversion WebP"
 
-msgid "WebP autoconvertion options"
-msgstr "Options d'autoconversion WebP"
-
-msgid "7 - Do you wish to exclude images from the convertion?"
+msgid "7 - Do you wish to exclude images from the conversion?"
 msgstr "7 - Souhaitez-vous exclure des images de la conversion ?"
 
 msgid "Enter the name of each image to exclude below, separated by a comma (,). Those images will then be ignored and not be converted."
 msgstr "Entrez le nom de chaque image à exclure ci-dessous, séparé par une virgule (,). Ces images seront ignorées et non converties."
 
-msgid "5 - Do you wish to exclude images from the convertion?"
+msgid "5 - Do you wish to exclude images from the conversion?"
 msgstr "5 - Souhaitez-vous exclure des images de la conversion ?"
 
 msgid "Image restoration confirmation"
@@ -1846,22 +1879,22 @@ msgstr "Arrêter la restauration d'images"
 msgid "Stop restoration"
 msgstr "Arrêter la restauration"
 
-msgid "Stop image convertion"
+msgid "Stop image conversion"
 msgstr "Arrêter la conversion d'images"
 
-msgid "Stop convertion"
+msgid "Stop conversion"
 msgstr "Arrêter la conversion d'images"
 
-msgid "Stop image autoconvertion"
+msgid "Stop image autoconversion"
 msgstr "Arrêter la conversion d'images automatique"
 
-msgid "Start image autoconvertion"
+msgid "Start image autoconversion"
 msgstr "Lancer la conversion d'images automatique"
 
-msgid "Stop autoconvertion"
+msgid "Stop autoconversion"
 msgstr "Arrêter la conversion automatique"
 
-msgid "Start autoconvertion"
+msgid "Start autoconversion"
 msgstr "Lancer la conversion automatique"
 
 msgid "Failed to start the restoration"
@@ -1870,19 +1903,19 @@ msgstr "Impossible de commencer la restauration"
 msgid "Failed to start converting images"
 msgstr "Impossible de commencer à convertir les images"
 
-msgid "Failed to stop the autoconvertion"
+msgid "Failed to stop the autoconversion"
 msgstr "Impossible d'arrêter l'auto-conversion"
 
-msgid "Failed to start the autoconvertion"
+msgid "Failed to start the autoconversion"
 msgstr "Impossible de lancer l'auto-conversion"
 
-msgid "The autoconvertion has been stopped."
+msgid "The autoconversion has been stopped."
 msgstr "L'auto-conversion a été arrêtée."
 
-msgid "The autoconvertion has been started."
+msgid "The autoconversion has been started."
 msgstr "L'auto-conversion a été lancée."
 
-msgid "Failed to stop the convertion"
+msgid "Failed to stop the conversion"
 msgstr "Impossible d'arrêter la conversion"
 
 msgid "Images left: "
@@ -1891,10 +1924,10 @@ msgstr "Images restantes : "
 msgid "Hide converted images"
 msgstr "Cacher les images converties"
 
-msgid "Image convertion cannot be used with your current PHP configuration"
+msgid "Image conversion cannot be used with your current PHP configuration"
 msgstr "La conversion d'image n'est pas utilisable avec votre configuration PHP actuelle"
 
-msgid "PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency."
+msgid "PNG with transparency may, in rare cases, lose their transparency after conversion. Use this option knowing the risks or if you do not need transparency."
 msgstr "Les PNG avec transparence peuvent, dans de rares cas, perdre leur transparence après conversion. Utilisez cette option en connaissance de causes ou si vous n'avez pas besoin de la transparence."
 
 msgid "Cache dynamic pages"
@@ -1903,13 +1936,10 @@ msgstr "Mettre en cache les pages dynamiques"
 msgid "Pages with URLs containing parameters (e.g., ma_page/?lang=en) will be cached. By default, these pages are excluded because they serve dynamic content that needs to be constantly up-to-date."
 msgstr "Les pages dont l'URL inclut des paramètres (par exemple, ma_page/?langue=fr) seront mises en cache. Par défaut, ces pages sont exclues, car elles délivrent du contenu dynamique qui doit être constamment actualisé."
 
-msgid "WebpP autoconvertion options"
-msgstr "Options d'autoconversion WeBP"
+msgid "WebP autoconversion options"
+msgstr "Options d'autoconversion WebP"
 
 msgid "Validate"
-msgstr "Valider"
-
-msgid "Image convertion has been configurated"
 msgstr "La conversion d'image a été configuré"
 
 msgid "No supported cache found"
@@ -1952,4 +1982,205 @@ msgid "You can exclude specifics Cookies from the caching process. To exclude co
 msgstr "Vous pouvez exclure des Cookies spécifiques du processus de mise en cache. Pour exclure des cookies commençant par la même base, utilisez \".*\", tel que : \"wordpress_logged_in.*\""
 
 msgid "File-based cache statistics have been synchronized"
-msgstr "Les statistiques du cache de fichiers ont été synchronizées"
+msgstr "Les statistiques du cache de fichiers ont été synchronisées"
+
+msgid "Critical CSS"
+msgstr "CSS Critique"
+
+msgid "Load only the CSS necessary for above-the-fold content in order to render content to the user as fast as possible. All the CSS not needed when rendering the page (CSS for content at the bottom of the page, for example) will be removed and only loaded once the page is ready. <br> Accessing the page for the first time will result in a longer loading time as the CSS is generated. Preloading is recommended."
+msgstr "Charge uniquement le CSS nécessaire au contenu visible à l'écran afin d'afficher le contenu à l'utilisateur le plus rapidement possible. Tous le CSS non nécessaire lors du rendu de la page (CSS pour le contenu en bas de page, par exemple) sera supprimé et chargé uniquement une fois la page prête. <br> L'accès à la page pour la première fois entraînera un temps de chargement plus long car le CSS est généré. Le préchargement est recommandé."
+
+msgid "Remove unused CSS"
+msgstr "Supprimer le CSS non utilisé"
+
+msgid "Remove all the CSS not used in the page to reduce file sizes and improve loading speeds. <br> Accessing the page for the first time will result in a longer loading time as the CSS is analysed. Preloading is recommended."
+msgstr "Supprimez tout le CSS non utilisé dans la page pour réduire la taille des fichiers et améliorer la vitesse de chargement. <br> L'accès à la page pour la première fois entraînera un temps de chargement plus long car le CSS est analysé. Le préchargement est recommandé."
+
+msgid "Defer JS files"
+msgstr "Différer les fichiers JS"
+
+msgid "Delay JavaScript execution until after the page has loaded, improving initial page rendering speed."
+msgstr "Retarde l'exécution du JavaScript jusqu'à ce que la page soit chargée, améliorant la vitesse de rendu initiale de la page."
+
+msgid "Delay JS files"
+msgstr "Retarder les fichiers JS"
+
+msgid "Delay JavaScript execution until any actions, such as moving the cursor, typing on the keyboard or scrolling the page is done. <br> It may however provoke Javascript errors with some themes and plugins"
+msgstr "Retarde l'exécution du JavaScript jusqu'à ce qu'une action soit effectuée, comme bouger le curseur, taper sur le clavier ou faire défiler la page. <br> Cela peut cependant provoquer des erreurs JavaScript avec certains thèmes et extensions"
+
+msgid "Add Image Dimensions"
+msgstr "Ajouter les dimensions d'image"
+
+msgid "Automatically add width and height attributes to images that don't have them, preventing layout shifts during page loading."
+msgstr "Ajoute automatiquement les attributs de largeur et de hauteur aux images qui n'en ont pas, évitant les décalages de mise en page pendant le chargement."
+
+msgid " images left to restore."
+msgstr " images restantes à convertir."
+
+msgid "Invalid response format received. Please try again."
+msgstr "Format de réponse invalide reçu. Veuillez réessayer."
+
+msgid "An error occured and data could not be fetched. Please try again."
+msgstr "Une erreur est survenue et les données n'ont pas pu être récupérées. Veuillez réessayer."
+
+msgid "An error occured and the action could not be executed. Please try again."
+msgstr "Une erreur est survenue et l'action n'a pas pu être exécutée. Veuillez réessayer."
+
+msgid "Deactivate for: "
+msgstr "Désactiver pendant : "
+
+msgid "5 minutes"
+msgstr "5 minutes"
+
+msgid "30 minutes"
+msgstr "30 minutes"
+
+msgid "1 hour"
+msgstr "1 heure"
+
+msgid "1 day"
+msgstr "1 jour"
+
+msgid "Deactivated for: "
+msgstr "Désactivé pendant : "
+
+msgid "Plugin state successfully changed"
+msgstr "Etat de l'extension changé avec succès"
+
+msgid "Deactivating..."
+msgstr "Désactivation..."
+
+msgid "Activating..."
+msgstr "Activation..."
+
+msgid "Manage LWS Optimize"
+msgstr "Gérer LWS Optimize"
+
+#: lws-optimize.php:
+msgid "Enhance your website performance"
+msgstr "Améliorez les performances de votre site"
+
+#: lws-optimize.php:
+msgid "by converting images to modern, high-performance formats. Original images are preserved alongside the converted versions, which may increase your overall storage usage."
+msgstr "en convertissant les images vers des formats modernes à haute performance. Les images originales sont conservées aux côtés des versions converties, ce qui peut augmenter votre utilisation de stockage global."
+
+#: lws-optimize.php:
+msgid "You can choose between two ways of converting your images:"
+msgstr "Vous pouvez choisir entre deux façons de convertir vos images :"
+
+#: lws-optimize.php:
+msgid "Imagick:"
+msgstr "Imagick :"
+
+#: lws-optimize.php:
+msgid "Uses PHP and Imagick directly on your server to convert images to WebP format. Simple but may be slower with limited optimization."
+msgstr "Utilise PHP et Imagick directement sur votre serveur pour convertir les images au format WebP. Simple mais peut être plus lent avec une optimisation limitée."
+
+#: lws-optimize.php:
+msgid "API:"
+msgstr "API :"
+
+#: lws-optimize.php:
+msgid "Processes images on our dedicated servers, consuming credits but delivering superior compression and faster conversion. Automatically selects the optimal format (AVIF or WebP) for each image."
+msgstr "Traite les images sur nos serveurs dédiés, consommant des crédits mais offrant une compression supérieure et une conversion plus rapide. Sélectionne automatiquement le format optimal (AVIF ou WebP) pour chaque image."
+
+#: lws-optimize.php:
+msgid "Credits is the currency used to process images with the API. Every user gets"
+msgstr "Les crédits sont la monnaie utilisée pour traiter les images avec l'API. Chaque utilisateur reçoit"
+
+#: lws-optimize.php:
+msgid "allowing for 100 conversions. You will be able to buy additionnal credits to convert even more images on"
+msgstr "permettant 100 conversions. Vous pourrez acheter des crédits supplémentaires pour convertir encore plus d'images sur"
+
+#: lws-optimize.php:
+msgid "The GD Library and Imagick on this server do not support AVIF nor WebP format. WordPress will not be able to create thumbnails of your images in WebP and AVIF and will fallback to JPEG."
+msgstr "La bibliothèque GD et Imagick sur ce serveur ne prennent pas en charge le format AVIF ni WebP. WordPress ne pourra pas créer de miniatures de vos images en WebP et AVIF et reviendra au format JPEG."
+
+#: lws-optimize.php:
+msgid "The GD Library on this server does not support AVIF format. WordPress will not be able to create AVIF thumbnails of your images and will fallback to JPEG."
+msgstr "La bibliothèque GD de ce serveur ne prend pas en charge le format AVIF. WordPress ne pourra pas créer de miniatures AVIF de vos images et reviendra au format JPEG."
+
+#: lws-optimize.php:
+msgid "The GD Library on this server does not support WebP format. WordPress will not be able to create WebP thumbnails of your images and will fallback to JPEG."
+msgstr "La bibliothèque GD de ce serveur ne prend pas en charge le format WebP. WordPress ne pourra pas créer de miniatures WebP de vos images et reviendra au format JPEG."
+
+#: lws-optimize.php:
+msgid "Imagick is not available on this server. Standard conversion using PHP will not work on this website."
+msgstr "Imagick n'est pas disponible sur ce serveur. La conversion standard utilisant PHP ne fonctionnera pas sur ce site."
+
+msgid "100 credits per month"
+msgstr "100 crédits par mois"
+
+msgid "Yes"
+msgstr "Oui"
+
+msgid "No"
+msgstr "Non"
+
+msgid "Convert your images to modern formats (WebP/AVIF) to significantly improve website loading speed."
+msgstr "Convertissez vos images vers des formats modernes (WebP/AVIF) pour améliorer significativement la vitesse de chargement du site."
+
+msgid "Your server's GDImage library doesn't support AVIF or WebP formats. WordPress uses this library to generate thumbnails of your images, so they will be created in JPEG format instead."
+msgstr "La bibliothèque GDImage de votre serveur ne prend pas en charge les formats AVIF ou WebP. WordPress utilise cette bibliothèque pour générer les miniatures de vos images, elles seront donc créées en format JPEG à la place."
+
+msgid "Your server cannot create AVIF thumbnails. JPEG will be used instead for thumbnails."
+msgstr "Votre serveur ne peut pas créer de miniatures AVIF. Le format JPEG sera utilisé à la place pour les miniatures."
+
+msgid "Your server's GDImage library doesn't support AVIF format. Since WordPress uses this library to generate thumbnail versions of your images, AVIF thumbnails will be created as JPEG instead."
+msgstr "La bibliothèque GDImage de votre serveur ne prend pas en charge le format AVIF. Puisque WordPress utilise cette bibliothèque pour générer les versions miniatures de vos images, les miniatures AVIF seront créées en JPEG à la place."
+
+msgid "Your server cannot create WebP thumbnails. JPEG will be used instead for thumbnails."
+msgstr "Votre serveur ne peut pas créer de miniatures WebP. Le format JPEG sera utilisé à la place pour les miniatures."
+
+msgid "Your server's GDImage library doesn't support WebP format. Since WordPress uses this library to generate thumbnail versions of your images, WebP thumbnails will be created as JPEG instead."
+msgstr "La bibliothèque GDImage de votre serveur ne prend pas en charge le format WebP. Puisque WordPress utilise cette bibliothèque pour générer les versions miniatures de vos images, les miniatures WebP seront créées en JPEG à la place."
+
+msgid "Standard image conversion is not available on your server."
+msgstr "La conversion d'images standard n'est pas disponible sur votre serveur."
+
+msgid "The Imagick PHP extension is not installed on your server. This extension is required for local image conversion, which will be unavailable."
+msgstr "L'extension PHP Imagick n'est pas installée sur votre serveur. Cette extension est nécessaire pour la conversion locale d'images, qui sera indisponible."
+
+msgid "Your server's Imagick library doesn't support WebP format. This library is required for local image conversion, which will be unavailable."
+msgstr "La bibliothèque Imagick de votre serveur ne prend pas en charge le format WebP. Cette bibliothèque est nécessaire pour la conversion locale d'images, qui sera indisponible."
+
+msgid "Credits are used to convert images with our API. You get 1000 free credits to start with. Additional credits will later be purchasable on our website."
+msgstr "Les crédits sont utilisés pour convertir les images avec notre API. Vous recevez 1000 crédits gratuits pour commencer. Des crédits supplémentaires pourront être achetés ultérieurement sur notre site web."
+
+msgid "The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost."
+msgstr "L'API crée de meilleures images AVIF ou WebP en utilisant des crédits. La conversion locale crée uniquement des images WebP en utilisant votre serveur sans frais."
+
+msgid "Your server cannot create WebP or AVIF image thumbnails. JPEG will be used instead."
+msgstr "Votre serveur ne peut pas créer de miniatures WebP ou AVIF. Le format JPEG sera utilisé à la place pour les miniatures."
+
+#: lws-optimize.php:
+msgid "Showing _START_ to _END_ of _TOTAL_ entries"
+msgstr "Affichage de _START_ à _END_ sur _TOTAL_ entrées"
+
+#: lws-optimize.php:
+msgid "Showing 0 to 0 of 0 entries"
+msgstr "Affichage de 0 à 0 sur 0 entrées"
+
+#: lws-optimize.php:
+msgid "(filtered from _MAX_ total entries)"
+msgstr "(filtré de _MAX_ entrées totales)"
+
+#: lws-optimize.php:
+msgid "Show _MENU_ entries"
+msgstr "Afficher _MENU_ entrées"
+
+#: lws-optimize.php:
+msgid "Search:"
+msgstr "Rechercher :"
+
+#: lws-optimize.php:
+msgid "No matching records found"
+msgstr "Aucun enregistrement correspondant trouvé"
+
+#: lws-optimize.php:
+msgid "First"
+msgstr "Premier"
+
+#: lws-optimize.php:
+msgid "Last"
+msgstr "Dernier"

@@ -32,6 +32,7 @@ function lwsOpSizeConvert($size)
 }
 
 $cache_stats = get_option('lws_optimize_cache_statistics', []);
+
 $cache_stats = array_merge([
     'desktop' => ['amount' => 0, 'size' => 0],
     'mobile' => ['amount' => 0, 'size' => 0],
@@ -140,8 +141,9 @@ $caches = [
 
 <?php // WP-Cron is inactive
 if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
-<div class="lwsop_wpcron_cutout" style="margin-bottom: 30px;">
-    <div><img alt="Logo Plugins" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/warning.svg') ?>" width="35px"></div>
+
+<div class="lwop_alert lwop_alert_warning">
+    <i class="dashicons dashicons-warning"></i>
     <div>
         <span><?php esc_html_e('You are currently using WP-Cron, which means the preloading will only be executed when there is activity on your website and will use your website resources, slowing it down.', 'lws-optimize'); ?></span>
         <span><?php esc_html_e('We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website.', 'lws-optimize'); ?></span>
@@ -261,12 +263,12 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <?php endif; ?>
     </div>
 
-    <div class="lws_optimize_convertion_bar">
-        <div class="lws_optimize_convertion_bar_element">
-            <span class="lws_optimize_convertion_bar_element_title">
+    <div class="lws_optimize_conversion_bar">
+        <div class="lws_optimize_conversion_bar_element">
+            <span class="lws_optimize_conversion_bar_element_title">
                 <?php echo esc_html__('Cache type: ', 'lws-optimize'); ?>
             </span>
-            <span class="lws_optimize_convertion_bar_dynamic_element">
+            <span class="lws_optimize_conversion_bar_dynamic_element">
                 <?php switch ($used_cache) {
                     case 'varnish':
                         echo esc_html('Varnish Cache');
@@ -282,11 +284,11 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 } ?>
             </span>
         </div>
-        <div class="lws_optimize_convertion_bar_element">
-            <span class="lws_optimize_convertion_bar_element_title">
+        <div class="lws_optimize_conversion_bar_element">
+            <span class="lws_optimize_conversion_bar_element_title">
                 <?php echo esc_html__('Cache status: ', 'lws-optimize'); ?>
             </span>
-            <span class="lws_optimize_convertion_bar_dynamic_element">
+            <span class="lws_optimize_conversion_bar_dynamic_element">
                 <?php switch ($cache_state) {
                     case "false":
                         esc_html_e('Deactivated', 'lws-optimize');
@@ -405,33 +407,33 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $preload_state == "false" ? esc_attr('hidden') : ''; ?>">
             <span class="lwsop_contentblock_fbcache_preload_label">
                 <?php esc_html_e('Preloading status: ', 'lws-optimize'); ?>
-                <button id="lwsop_update_preloading_value" class="lws_optimize_image_convertion_refresh">
+                <button id="lwsop_update_preloading_value" class="lws_optimize_image_conversion_refresh">
                     <img src="<?php echo esc_url(plugins_url('images/rafraichir.svg', __DIR__)) ?>" alt="Logo Refresh" width="15px" height="15px">
                     <span><?php esc_html_e('Refresh', 'lws-optimize'); ?></span>
                 </button>
             </span>
 
 
-            <div class="lws_optimize_convertion_bar">
-                <div class="lws_optimize_convertion_bar_element">
-                    <span class="lws_optimize_convertion_bar_element_title">
+            <div class="lws_optimize_conversion_bar">
+                <div class="lws_optimize_conversion_bar_element">
+                    <span class="lws_optimize_conversion_bar_element_title">
                         <?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Done', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Done', 'lws-optimize'); ?></span>
                 </div>
-                <div class="lws_optimize_convertion_bar_element">
-                    <span class="lws_optimize_convertion_bar_element_title">
+                <div class="lws_optimize_conversion_bar_element">
+                    <span class="lws_optimize_conversion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/horloge.svg', __DIR__)); ?>" alt="Logo Horloge" width="15px" height="15px">
                         <?php echo esc_html__('Next preloading: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_next_preload_info"><?php echo $next_preload ? esc_attr($local_timestamp) : esc_html__('/', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_next_preload_info"><?php echo $next_preload ? esc_attr($local_timestamp) : esc_html__('/', 'lws-optimize'); ?></span>
                 </div>
-                <div class="lws_optimize_convertion_bar_element">
-                    <span class="lws_optimize_convertion_bar_element_title">
+                <div class="lws_optimize_conversion_bar_element">
+                    <span class="lws_optimize_conversion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/page.svg', __DIR__)); ?>" alt="Logo Page" width="15px" height="15px">
                         <?php esc_html_e('Page cached / Total pages: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lwsop_current_preload_done"><?php echo esc_html($fb_preloaddata['done'] . "/" . $fb_preloaddata['quantity']); ?></span>
+                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_current_preload_done"><?php echo esc_html($fb_preloaddata['done'] . "/" . $fb_preloaddata['quantity']); ?></span>
                 </div>
             </div>
         </div>
@@ -1436,6 +1438,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
                     switch (returnData['code']) {
                         case 'SUCCESS':
+                            if (document.getElementById('lwsop_refresh_stats') !== null) {
+                                document.getElementById('lwsop_refresh_stats').click();
+                            }
                             callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
                             break;
                         default:
@@ -1587,6 +1592,8 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             document.getElementById('lws_optimize_js_cache').children[2].children[0].innerHTML = `
                                 <span>` + stats['js']['size'] + ` / ` + stats['js']['amount'] + `</span>
                             `;
+
+
                             break;
                         default:
                             break;
@@ -1696,5 +1703,25 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <script>
     jQuery(document).ready(function() {
         jQuery('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+
+
+<script>
+    // Auto refresh for preload counter and cache stats every 2 minutes
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up auto-refresh for preload status
+        if (document.getElementById('lwsop_update_preloading_value')) {
+            setInterval(function() {
+                document.getElementById('lwsop_update_preloading_value').click();
+            }, 120000); // 2 minutes in milliseconds
+        }
+
+        // Set up auto-refresh for cache statistics
+        if (document.getElementById('lwsop_refresh_stats')) {
+            setInterval(function() {
+                document.getElementById('lwsop_refresh_stats').click();
+            }, 120000); // 2 minutes in milliseconds
+        }
     });
 </script>

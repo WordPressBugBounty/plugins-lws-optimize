@@ -24,7 +24,7 @@ class LwsOptimizeCloudFlare {
             $purge_type = null;
         }
 
-        $config_array = get_option('lws_optimize_config_array', array());
+        $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
         $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
         $api_token = $config_array['cloudflare']['api'] ?? null;
@@ -207,20 +207,17 @@ class LwsOptimizeCloudFlare {
         $min_js = $_POST['min_js'] ?? null;
         $dynamic_cache = $_POST['cache_deactivate'] ?? null;
 
-        $tmp = $config_array = get_option('lws_optimize_config_array', array());
+        $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
         $config_array['cloudflare']['tools'] = [
             'min_css' => $min_css === null ? false : true,
             'min_js' => $min_js === null ? false : true,
             'dynamic_cache' => $dynamic_cache === null ? false : true,
         ];
-        $saved = update_option('lws_optimize_config_array', $config_array);
+        update_option('lws_optimize_config_array', $config_array);
+        $GLOBALS['lws_optimize']->optimize_options = $config_array;
 
-        if ($saved === true || empty(array_diff($config_array, $tmp))) {
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-        } else {
-            wp_die(json_encode(array('code' => "FAILED_SAVE", 'data' => $config_array), JSON_PRETTY_PRINT));
-        }
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
     }
 
     public function lws_optimize_cf_cache_duration () {
@@ -228,22 +225,19 @@ class LwsOptimizeCloudFlare {
         $cache_span = $_POST['lifespan'] ?? null;
 
         if ($cache_span !== null) {
-            $tmp = $config_array = get_option('lws_optimize_config_array', array());
+            $config_array = $GLOBALS['lws_optimize']->optimize_options;
             $config_array['cloudflare']['lifespan'] = sanitize_text_field($cache_span);
-            $saved = update_option('lws_optimize_config_array', $config_array);
+            update_option('lws_optimize_config_array', $config_array);
+            $GLOBALS['lws_optimize']->optimize_options = $config_array;
         }
 
-        if ($saved === true || empty(array_diff($config_array, $tmp))) {
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-        } else {
-            wp_die(json_encode(array('code' => "FAILED_SAVE", 'data' => $config_array), JSON_PRETTY_PRINT));
-        }
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
     }
 
     public function lws_optimize_cf_finish_config () {
         check_ajax_referer('lwsop_cloudflare_finish_config_nonce', '_ajax_nonce');
 
-        $tmp = $config_array = get_option('lws_optimize_config_array', array());
+        $config_array = $GLOBALS['lws_optimize']->optimize_options;
         $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
         $api_token = $config_array['cloudflare']['api'] ?? null;
         $cache_span = $config_array['cloudflare']['lifespan'] ?? null;
@@ -298,12 +292,9 @@ class LwsOptimizeCloudFlare {
             }
             $config_array['dynamic_cache']['state'] = "false";
 
-            $saved = update_option('lws_optimize_config_array', $config_array);
-            if ($saved === true || empty(array_diff($config_array, $tmp))) {
-                wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-            } else {
-                wp_die(json_encode(array('code' => "FAILED_SAVE", 'data' => $config_array), JSON_PRETTY_PRINT));
-            }
+            update_option('lws_optimize_config_array', $config_array);
+            $GLOBALS['lws_optimize']->optimize_options = $config_array;
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
         } else {
             unset($config_array['cloudflare']);
             wp_die(json_encode(array('code' => "FAILED_PATCH", 'data' => $config_array), JSON_PRETTY_PRINT));
@@ -313,7 +304,7 @@ class LwsOptimizeCloudFlare {
     public function lws_optimize_deactivate_cf_inte() {
         check_ajax_referer('lwsop_deactivate_cf_integration_nonce', '_ajax_nonce');
 
-        $tmp = $config_array = get_option('lws_optimize_config_array', array());
+        $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
         $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
         $api_token = $config_array['cloudflare']['api'] ?? null;
@@ -325,7 +316,8 @@ class LwsOptimizeCloudFlare {
 
         unset($config_array['cloudflare']);
 
-        $saved = update_option('lws_optimize_config_array', $config_array);
+        update_option('lws_optimize_config_array', $config_array);
+        $GLOBALS['lws_optimize']->optimize_options = $config_array;
 
         // Set the Cloudflare cache to its default value. Whether or not it works, continue
         $ch = curl_init();
@@ -346,10 +338,6 @@ class LwsOptimizeCloudFlare {
         $response = curl_exec($ch);
         curl_close($ch);
 
-        if ($saved === true || empty(array_diff($config_array, $tmp))) {
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array, 'cache' => $response), JSON_PRETTY_PRINT));
-        } else {
-            wp_die(json_encode(array('code' => "FAILED_SAVE", 'data' => $config_array, 'cache' => $response), JSON_PRETTY_PRINT));
-        }
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array, 'cache' => $response), JSON_PRETTY_PRINT));
     }
 }

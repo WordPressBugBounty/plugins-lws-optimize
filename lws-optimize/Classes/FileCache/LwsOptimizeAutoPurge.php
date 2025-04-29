@@ -41,11 +41,13 @@ class LwsOptimizeAutoPurge
                 continue;
             }
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($url);
+            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($url, true);
 
             $action = current_filter();
             // Do not purge if there is no cache file
             if ($file !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
                 $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
@@ -65,10 +67,13 @@ class LwsOptimizeAutoPurge
             //$uri = parse_url($uri)['path'];
 
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($url, true);
+
             $action = current_filter();
             // Do not purge if there is no cache file
             if ($file !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
                 $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
@@ -89,10 +94,12 @@ class LwsOptimizeAutoPurge
             $uri = get_permalink($shop_id);
             //$uri = parse_url($uri)['path'];
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
             // Do not purge if there is no cache file
             if ($file !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
             }
         }
 
@@ -100,10 +107,12 @@ class LwsOptimizeAutoPurge
 
         //$uri = parse_url($uri)['path'];
         $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+        $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
         // Do not purge if there is no cache file
         if ($file !== null) {
             apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+            apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
             $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
@@ -127,10 +136,12 @@ class LwsOptimizeAutoPurge
             //$uri = parse_url($uri)['path'];
 
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
             // Do not purge if there is no cache file
             if ($file !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
             }
         }
 
@@ -138,10 +149,12 @@ class LwsOptimizeAutoPurge
         //$uri = parse_url($uri)['path'];
 
         $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+        $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
         // Do not purge if there is no cache file
         if ($file !== null) {
             apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+            apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
             $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
@@ -156,11 +169,13 @@ class LwsOptimizeAutoPurge
         $uri = get_permalink($post_id);
         //$uri = parse_url($uri)['path'];
         $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+        $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
         $action = current_filter();
         // Do not purge if there is no cache file
         if ($file !== null) {
             apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+            apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
             $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
@@ -180,11 +195,13 @@ class LwsOptimizeAutoPurge
             //$uri = parse_url($uri)['path'];
 
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
             $action = current_filter();
             // Do not purge if there is no cache file
             if ($file !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
             }
 
             $checkout_id = \wc_get_page_id('checkout');
@@ -193,10 +210,12 @@ class LwsOptimizeAutoPurge
             //$uri = parse_url($uri)['path'];
 
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
             // Do not purge if there is no cache file
             if ($file !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
                 $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));

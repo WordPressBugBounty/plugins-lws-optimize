@@ -2,8 +2,10 @@
 
 namespace Lws\Classes\FileCache;
 
+use Lws\Classes\Front\LwsOptimizeCriticalCSS;
 use Lws\Classes\Front\LwsOptimizeCSSManager;
 use Lws\Classes\Front\LwsOptimizeJSManager;
+use Lws\Classes\Front\LwsOptimizeUnusedCSS;
 
 class LwsOptimizeFileCache
 {
@@ -16,21 +18,11 @@ class LwsOptimizeFileCache
     public function __construct($parent)
     {
         $this->base = $parent;
-        // $actual_link = (empty($_SERVER['HTTPS']) ? 'http' : 'https') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        // if (in_array("Edge-Cache-Platform: lwsoptimize", get_headers($actual_link))) {
-        //     exit;
-        // }
 
-        // TODO :
-        // if (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])
-        // && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
-        //     $this->base->lwsop_dump_all_dynamic_caches();
-        // }
-
-        // $this->base->lwsop_remove_opcache();
         include_once ABSPATH . "wp-includes/pluggable.php";
         $this->need_cache = $this->lwsop_check_need_cache();
         $this->lwsop_set_cachedir();
+
     }
 
     public function lwsop_clear_current_page_cache()
@@ -90,7 +82,6 @@ class LwsOptimizeFileCache
 
     public function lwsop_launch_cache()
     {
-
         // Don't launch cache if checks have revealed that this URL should not be cached
         if (!$this->need_cache || !$this->cache_directory) {
             return false;
@@ -245,6 +236,8 @@ class LwsOptimizeFileCache
             }
         }
 
+        // TODO : Unused CSS : removed before minifying/combining CSS
+
         if ($this->base->lwsop_check_option('preload_css')['state'] == "true") {
             $preload = $this->base->lwsop_check_option('preload_css')['data']['links'] ?? [];
             $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, $preload, []);
@@ -255,6 +248,11 @@ class LwsOptimizeFileCache
             $preload = $this->base->lwsop_check_option('preload_font')['data']['links'] ?? [];
             $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], $preload);
             $modified = $lwsOptimizeCssManager->preload_fonts();
+        }
+
+        if ($this->base->lwsop_check_option('remove_css')['state'] == "true") {
+            $lwsOptimizeUnusedCssManager = new LwsOptimizeUnusedCSS($modified);
+            $modified = $lwsOptimizeUnusedCssManager->applyCleanedCSS();
         }
 
         // We can put the current page to cache. We now apply the chosen options to the file (minify CSS/JS, combine CSS/JS, ...)
@@ -294,6 +292,25 @@ class LwsOptimizeFileCache
                 $cached_elements['js']['file'] += $data['files']['file'];
                 $cached_elements['js']['size'] += $data['files']['size'];
             }
+        }
+
+        if ($this->base->lwsop_check_option('critical_css')['state'] == "true") {
+            $lwsOptimizeCriticalCssManager = new LwsOptimizeCriticalCSS($modified);
+            $modified = $lwsOptimizeCriticalCssManager->applyCriticalCSS();
+        }
+
+        if ($this->base->lwsop_check_option('defer_js')['state'] == "true") {
+            $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+            $data = $lwsOptimizeJsManager->defer_js();
+
+            $modified = $data['html'];
+        }
+
+        if ($this->base->lwsop_check_option('delay_js')['state'] == "true") {
+            $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+            $data = $lwsOptimizeJsManager->delay_js_execution();
+
+            $modified = $data['html'];
         }
 
         // Finally add the cache file
@@ -429,8 +446,10 @@ class LwsOptimizeFileCache
             return $tag;
         }
 
-        if (isset($GLOBALS['lws_optimize']->optimize_options['preload_js']['exclusions'])) {
-            foreach ((array)$GLOBALS['lws_optimize']->optimize_options['preload_js']['exclusions'] as $exception) {
+        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+
+        if (isset($optimize_options['preload_js']['exclusions'])) {
+            foreach ((array)$optimize_options['preload_js']['exclusions'] as $exception) {
                 if (preg_match("~$exception~", $src)) {
                     return $tag;
                 }
@@ -547,11 +566,12 @@ class LwsOptimizeFileCache
      */
     public function lwsop_page_has_excluded_cookies()
     {
-        if (!isset($GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions_cookies'])) {
+        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        if (!isset($optimize_options['filebased_cache']['exclusions_cookies'])) {
             return false;
         }
 
-        $excluded_cookies = $GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions_cookies'];
+        $excluded_cookies = $optimize_options['filebased_cache']['exclusions_cookies'];
         foreach ($excluded_cookies as $cookie) {
             foreach ($_COOKIE as $key => $value) {
             // Convert wildcard pattern to regex pattern and check if cookie name matches
@@ -583,7 +603,8 @@ class LwsOptimizeFileCache
         }
         $url = trim($url, "/");
 
-        $exclusions = $GLOBALS['lws_optimize']->optimize_options['filebased_cache']['exclusions'] ?? [];
+        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $exclusions = $optimize_options['filebased_cache']['exclusions'] ?? [];
 
         foreach ($exclusions as $page) {
             if ($buffer && preg_match("/^(homepage|category|tag|tax|author|search|post|page|archive|attachment)$/", $page)) {
@@ -716,6 +737,11 @@ class LwsOptimizeFileCache
             return false;
         }
 
+        // Do not cache pages if it comes from PentHouse
+        if (strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'penthouse') !== false) {
+            return false;
+        }
+
         // If the page has Yandex CID or GoogleAnalytics parameters, no cache #WPFC
         if (preg_match("/y(ad|s)?clid\=/i", urldecode($uri))) {
             return false;
@@ -794,6 +820,11 @@ class LwsOptimizeFileCache
      */
     public function lwsop_set_cachedir($uri = false, $mobile = false)
     {
+
+        // No cache if deactivated
+        if (get_transient('lws_optimize_deactivate_temporarily')) {
+            return false;
+        }
 
         if (!$uri) {
             $uri = $_SERVER['REQUEST_URI'];

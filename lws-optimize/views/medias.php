@@ -31,7 +31,7 @@ $media_array = array(
     ),
     'image_lazyload' => array(
         'title' => __('Image Lazy Loading', 'lws-optimize'),
-        'desc' => __('Load images only when they appear on screen, speeding up pages loading.', 'lws-optimize'),
+        'desc' => __('Load images only when they appear on screen, speeding up pages loading. It may be incompatible with plugins/themes trying to access images on page load, when they are not yet loaded.', 'lws-optimize'),
         'recommended' => true,
         'has_logo' => false,
         'has_exclusion' => false,
@@ -39,6 +39,19 @@ $media_array = array(
         'has_special_button' => false,
         'has_checkbox' => true,
         'checkbox_id' => "lws_optimize_image_lazyload_check",
+        'has_tooltip' => true,
+        'tooltip_link' => "https://aide.lws.fr/a/1886"
+    ),
+    'image_add_sizes' => array(
+        'title' => __('Add Image Dimensions', 'lws-optimize'),
+        'desc' => __('Automatically add width and height attributes to images that don\'t have them, preventing layout shifts during page loading.', 'lws-optimize'),
+        'recommended' => false,
+        'has_logo' => false,
+        'has_exclusion' => false,
+        'has_exclusion_button' => false,
+        'has_special_button' => false,
+        'has_checkbox' => true,
+        'checkbox_id' => "lws_optimize_image_add_sizes_check",
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1886"
     ),

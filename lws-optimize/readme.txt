@@ -2,8 +2,8 @@
 Contributors: aurelienlws
 Tags: LWS, admin, optimisation, cache
 Requires at least: 6.0
-Tested up to: 6.7
-Stable tag: 3.2.4.3
+Tested up to: 6.8
+Stable tag: 3.3
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -18,40 +18,68 @@ Released under the terms of the GNU General Public License.
 
 == Description ==
 
-This plugin lets you boost your website's <strong>loading times</strong> thanks to our tools: caching, media optimisation, files minification and concatenation...
-This plugin was developed by LWS to improve the performance of your website created with WordPress, regardless of the web host you have chosen.
+A fully-featured, **100 % free** performance suite built by web host **LWS** – yet installable on **any** WordPress site.
 
-= Front-end optimizations =
-The LWS Optimize plugin allows you to perform several optimizations on the front-end of your WordPress site.
+**LWS Optimize** speeds up WordPress with a single free plugin: page / object / server caching, WebP-AVIF images, Critical CSS, Lazy Load, Cloudflare CDN, built-in PageSpeed tests… all with zero licence fees and no host lock-in.
 
-* Minimize your CSS files
-* Combine your CSS files
-* Preload CSS files
-* Minify your JS files
-* Combine your JS files
-* Postpone the loading of your JavaScript files
-* Minify your HTML files
-* Disable WordPress emoji support on your site
-* Remove unnecessary requests
+**Highlights**
 
-= Medias =
-Optimize and set up the media of your WordPress site in a few clicks:
+* **Page & browser cache + server cache (Varnish)** – pages served in milliseconds  
+* **Object cache (Memcached)** – keep frequent MySQL queries in RAM  
+* **Smart media** – Lazy Load images/iframes, auto dimensions, GZIP, WebP/AVIF (100 credits / month), class/URL exclusions  
+* **CSS / JS toolkit** – Minify, Combine, *Remove Unused CSS*, Critical CSS, Preload CSS & Fonts, Defer / Delay JS  
+* **HTML & bloat** – Minify HTML, strip query strings, disable emojis  
+* **Cloudflare CDN (1 click)** – token activation, synced cache-purge, conflict-safe defaults  
+* **Google PageSpeed Insights inside WP** – run tests and store history  
+* **Lightweight database** – scheduled cleanup (revisions, spam, transients…)  
+* **Beginner-friendly dashboard** – pre-configured profiles, temporary disable (5 min → 1 day), “AI Magic” presets
 
-* Compress all images
-* Convert to WEBP images, a lighter extension than JPG, PNG...
-* Reduce the maximum size of an image
-* Disable Lazy Loading for all iframe elements
-* Disable Lazy Loading for all images
-* Force preloading of all audio and video elements
-* Force disable preloading for all audio and video elements
-* Disable Lazy Loading completely on the site
 
-= Caching =
+Through our 1-click **Auto-Installer**, LWS deploys WordPress in seconds — choose from tailored packs like the AI Site Generator, Divi Builder bundle, or WordPress + WooCommerce setup.  
+Each pack comes with essential LWS plugins pre-selected — including **LWS Optimize**, which works even faster on our [WordPress hosting](https://www.lws.fr/hebergement_wordpress.php), [classic shared hosting](https://www.lws.fr/hebergement_web.php), and [cPanel hosting](https://www.lws.fr/hebergement-cpanel.php).  
+You can also install it manually at any time via Plugins › Add New, no matter where your site is hosted.
 
-* Enable / Disable file caching
-* Enable / Disable Memcached
 
-This plugin is pre-installed when ordering one of these LWS webhosts: [WordPress hosting](https://www.lws.fr/hebergement_wordpress.php), Classic shared [web hosting](https://www.lws.fr/hebergement_web.php) and [cPanel hosting](https://www.lws.fr/hebergement-cpanel.php)
+= Front-end optimization =  
+* Minify / combine CSS & JS  
+* Preload CSS + fonts  
+* Remove unused CSS & generate Critical CSS  
+* Defer **or** Delay JS  
+* Minify HTML  
+* Strip query strings, disable emojis
+
+= Media =  
+* Lazy Load images, iframes & videos (class/URL exclusions)  
+* Auto-add width/height attributes (CLS-safe)  
+* GZIP HTML, CSS, JS  
+* Control audio/video preload
+
+= Images =  
+* Auto convert & compress **WebP / AVIF** (Imagick or API)  
+* 100 free credits / month, extra credits available (for API)
+* Restore originals, auto-convert on upload
+
+= Caching =  
+* File page cache (smart purge, preload, .htaccess option)  
+* Object cache **Memcached**  
+* Server cache **Varnish / LWSCache** (on LWS hosting)  
+* Browser-cache headers  
+* Optional no-cache for mobiles, logged-in users & dynamic URLs
+
+= CDN =  
+* Cloudflare in one click  
+* DDoS shield + worldwide POPs  
+* Synced cache-purge
+
+= Database =  
+* Weekly automatic cleanup (revisions, drafts, spam, transients…)
+
+= Performance test =  
+* Google PageSpeed Insights inside WordPress  
+* Score & timing history
+
+Enjoy lightning-fast load times, better Core Web Vitals and higher SEO rankings – all without the hassle.
+
 
 == Frequently Asked Questions ==
 
@@ -138,12 +166,22 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 
 == Screenshots ==
 
-1. LWS Optimize Plugin Home
-2. Front-end Optimizations
-3. Image Optimization
-4. Activation / deactivation of caching systems
+1. Dashboard overview
+2. Front-end settings (CSS/JS/HTML)  
+3. Caching (File, Memcached, Varnish)  
+4. Media optimizations (Lazy Load, GZIP)  
+5. Image conversion (WebP/AVIF)  
+6. CDN integration (Cloudflare)  
+7. Database cleanup  
+8. PageSpeed test results  
 
 == Changelog ==
+
+= 3.3 =
+* Added Unused CSS and Critical CSS management
+* Added Differed JS and Delayed JS management
+* Added option to add width and height attributes on images if not present
+* Updated Image Conversion
 
 = 3.2.4.3 =
 * Edge-Cache-Platform header only added when on a cache file ; fix rare cases where it would get added when it should not

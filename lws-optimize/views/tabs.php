@@ -1,10 +1,32 @@
 <?php
+wp_cache_flush();
+
+$is_deactivated = get_transient('lws_optimize_deactivate_temporarily');
+
+switch ($is_deactivated) {
+    case 300:  // 5 minutes (5 * 60 seconds)
+        $is_deactivated = __('5 minutes', 'lws-optimize');
+        break;
+    case 1800:  // 30 minutes (30 * 60 seconds)
+        $is_deactivated = __('30 minutes', 'lws-optimize');
+        break;
+    case 3600:  // 1 hour (60 * 60 seconds)
+        $is_deactivated = __('1 hour', 'lws-optimize');
+        break;
+    case 86400:  // 1 day (24 * 60 * 60 seconds)
+        $is_deactivated = __('1 day', 'lws-optimize');
+        break;
+    default:
+        $is_deactivated = null;
+        break;
+}
+
 
 $tabs_list = array(
     array('frontend', __('Frontend', 'lws-optimize')),
     array('caching', __('Caching', 'lws-optimize')),
     array('medias', __('Medias', 'lws-optimize')),
-    array('image_optimize', __('Images', 'lws-optimize')),
+    array('image_optimize_pro', __('Images', 'lws-optimize')),
     array('cdn', __('CDN', 'lws-optimize')),
     array('database', __('Database', 'lws-optimize')),
     array('pagespeed', __('Pagespeed test', 'lws-optimize')),
@@ -125,24 +147,44 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
     <div class="lwsop_activate_plugin">
         <div>
-            <span class="lws_op_front_text_title"><?php esc_html_e('Activate LWS Optimize', 'lws-optimize'); ?></span>
-            <span class="lwsop_necessary"><?php esc_html_e('necessary', 'lws-optimize'); ?></span>
+            <span class="lws_op_front_text_title"><?php esc_html_e('Manage LWS Optimize', 'lws-optimize'); ?></span>
         </div>
         <div class="lwsop_contentblock_rightside">
             <button class="lwsop_blue_button" data-toggle="modal" data-target="#lwsop_preconfigurate_plugin">
                 <img src="<?php echo esc_url(plugins_url('images/magie_ia.svg', __DIR__)) ?>" alt="Logo IA Magie" width="20px" height="20px">
                 <?php esc_html_e('Pre-configuration', 'lws-optimize'); ?>
             </button>
-            <label class="lwsop_checkbox">
-                <input type="checkbox" name="manage_plugin_state" id="manage_plugin_state" <?php echo get_option('lws_optimize_offline') ? esc_html('') : esc_html('checked'); ?>>
-                <span class="slider round"></span>
-            </label>
+
+            <button class="lwsop_dropdown_button">
+                <span class="lwsop_dropdown_text">
+                    <?php if ($is_deactivated) : ?>
+                        <?php echo esc_html__('Deactivated for: ', 'lws-optimize') . $is_deactivated; ?>
+                    <?php else : ?>
+                        <?php esc_html_e('Deactivate for: ', 'lws-optimize'); ?>
+                    <?php endif; ?>
+                </span>
+                <span class="lwsop_dropdown_arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </span>
+                <div class="lwsop_dropdown_content">
+                    <?php if ($is_deactivated) : ?>
+                        <a href="#" data-config="0"><?php esc_html_e('Activate', 'lws-optimize'); ?></a>
+                    <?php else : ?>
+                        <a href="#" data-config="300"><?php esc_html_e('5 minutes', 'lws-optimize'); ?></a>
+                        <a href="#" data-config="1800"><?php esc_html_e('30 minutes', 'lws-optimize'); ?></a>
+                        <a href="#" data-config="3600"><?php esc_html_e('1 hour', 'lws-optimize'); ?></a>
+                        <a href="#" data-config="86400"><?php esc_html_e('1 day', 'lws-optimize'); ?></a>
+                    <?php endif; ?>
+                </div>
+            </button>
         </div>
     </div>
 
 
     <div class="lwsoptimize_main_content">
-        <?php if (get_option('lws_optimize_offline', null) !== null) : ?>
+        <?php if ($is_deactivated) : ?>
             <!-- <div class="lwsoptimize_main_content_fogged"></div> -->
         <?php endif ?>
         <div class="tab_lwsoptimize" id='tab_lwsoptimize_block'>
@@ -168,8 +210,8 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
         <?php foreach ($tabs_list as $tab) : ?>
             <div class="tab-pane main-tab-pane" id="<?php echo esc_attr($tab[0]) ?>" role="tabpanel" aria-labelledby="nav-<?php echo esc_attr($tab[0]) ?>" <?php echo $tab[0] == 'frontend' ? esc_attr('tabindex="0"') : esc_attr('tabindex="-1" hidden') ?>>
-                <div id="post-body" class="<?php echo $tab[0] == 'plugins' ? esc_attr('lws_op_configpage_plugin') : esc_attr('lws_op_configpage'); ?> ">
-                    <?php if (get_option("lws_optimize_offline")) : ?>
+                <div id="post-body-<?php echo $tab[0]; ?>" class="<?php echo $tab[0] == 'plugins' ? esc_attr('lws_op_configpage_plugin') : esc_attr('lws_op_configpage'); ?> ">
+                    <?php if ($is_deactivated) : ?>
                         <?php echo ($tab[0] == 'plugins' || $tab[0] == 'pagespeed') ? '' : '<div class="deactivated_plugin_state"></div>'; ?>
                     <?php endif ?>
                     <?php include_once plugin_dir_path(__FILE__) . $tab[0] . '.php'; ?>
@@ -361,16 +403,19 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
         popup.dispatchEvent(new Event('mouseover'));
     }
 
-    document.getElementById('manage_plugin_state').addEventListener('change', function(event) {
-        var data = {
-            action: "lws_optimize_manage_state",
-            checked: this.checked,
-            _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('nonce_lws_optimize_activate_config')); ?>',
-        };
-        jQuery.post(ajaxurl, data, function(response) {
-            location.reload();
-        });
-    })
+
+    if (document.getElementById('manage_plugin_state')) {
+        document.getElementById('manage_plugin_state').addEventListener('change', function(event) {
+            var data = {
+                action: "lws_optimize_manage_state",
+                checked: this.checked,
+                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('nonce_lws_optimize_activate_config')); ?>',
+            };
+            jQuery.post(ajaxurl, data, function(response) {
+                location.reload();
+            });
+        })
+    }
 
     function lwsoptimize_copy_clipboard(input) {
         navigator.clipboard.writeText(input.innerText.trim());
@@ -579,6 +624,150 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
             });
         }
     }
+
+
+    // Toggle dropdown when hovering or clicking the button
+    document.querySelectorAll('.lwsop_dropdown_button').forEach(button => {
+        button.addEventListener('mouseenter', function() {
+            this.querySelector('.lwsop_dropdown_content').classList.add('active');
+            this.querySelector('.lwsop_dropdown_arrow svg').style.transform = 'rotate(180deg)';
+        });
+
+        // Handle mouseleave
+        button.addEventListener('mouseleave', function(e) {
+            // Check if mouse is moving to the dropdown content
+            const relatedTarget = e.relatedTarget;
+            if (!relatedTarget || !relatedTarget.closest('.lwsop_dropdown_content')) {
+                this.querySelector('.lwsop_dropdown_content').classList.remove('active');
+                this.querySelector('.lwsop_dropdown_arrow svg').style.transform = 'rotate(0)';
+            }
+        });
+    });
+
+    // Keep dropdown open when hovering the dropdown content
+    document.querySelectorAll('.lwsop_dropdown_content').forEach(dropdown => {
+        dropdown.addEventListener('mouseenter', function() {
+            this.classList.add('active');
+            this.parentNode.querySelector('.lwsop_dropdown_arrow svg').style.transform = 'rotate(180deg)';
+        });
+
+        // Close dropdown when mouse leaves the dropdown content
+        dropdown.addEventListener('mouseleave', function() {
+            this.classList.remove('active');
+            this.parentNode.querySelector('.lwsop_dropdown_arrow svg').style.transform = 'rotate(0)';
+        });
+
+        // Handle clicks on dropdown options
+        dropdown.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const config = this.getAttribute('data-config');
+                const dropdownButton = this.closest('.lwsop_dropdown_button');
+                const dropdownText = dropdownButton.querySelector('.lwsop_dropdown_text');
+
+                dropdownText.textContent = this.textContent;
+                dropdown.classList.remove('active');
+                dropdownButton.querySelector('.lwsop_dropdown_arrow svg').style.transform = 'rotate(0)';
+
+                // Send AJAX request to temporarily deactivate the plugin
+                dropdownButton.classList.add('loading');
+                if (config == 0) {
+                    dropdownText.textContent = '<?php esc_html_e("Activating...", "lws-optimize"); ?>';
+                } else {
+                    dropdownText.textContent = '<?php esc_html_e("Deactivating...", "lws-optimize"); ?>';
+                }
+
+                let ajaxRequest = jQuery.ajax({
+                    url: ajaxurl,
+                    type: "POST",
+                    timeout: 120000,
+                    context: document.body,
+                    data: {
+                        _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_deactivate_temporarily_nonce")); ?>",
+                        action: "lwsop_deactivate_temporarily",
+                        duration: config,
+                    },
+                    success: function(data) {
+                        document.body.style.pointerEvents = "all";
+                        dropdownButton.classList.remove('loading');
+
+                        if (data === null || typeof data != 'string') {
+                            return 0;
+                        }
+
+                        try {
+                            var returnData = JSON.parse(data);
+                        } catch (e) {
+                            console.log(e);
+                            returnData = {
+                                'code': "NOT_JSON",
+                                'data': "FAIL"
+                            };
+                        }
+
+                        dropdownText.textContent = '<?php esc_html_e("Deactivate for: ", "lws-optimize"); ?>';
+
+                        switch (returnData['code']) {
+                            case 'SUCCESS':
+                                callPopup('success', "<?php esc_html_e('Plugin state successfully changed', 'lws-optimize'); ?>");
+
+                                if (config == 0) {
+                                    dropdownText.textContent = '<?php esc_html_e("Activated", "lws-optimize"); ?>';
+                                } else {
+                                    // Update button text to show deactivation duration
+                                    dropdownText.textContent = '<?php esc_html_e("Deactivated for: ", "lws-optimize"); ?>' + link.textContent;
+                                }
+
+                                // Reload page after a short delay
+                                setTimeout(function() {
+                                    window.location.reload();
+                                }, 500);
+                                break;
+                            case 'NOT_JSON':
+                                callPopup('error', "<?php esc_html_e('Bad server response. Could not deactivate plugin.', 'lws-optimize'); ?>");
+                                break;
+                            case 'NO_PARAM':
+                                callPopup('error', "<?php esc_html_e('No data sent to the server. Please try again.', 'lws-optimize'); ?>");
+                                break;
+                            default:
+                                break;
+                        }
+                    },
+                    error: function(error) {
+                        document.body.style.pointerEvents = "all";
+                        jQuery(document.getElementById('lws_optimize_exclusion_modale')).modal('hide');
+                        callPopup("error", "<?php esc_html_e('Unknown error. Cannot activate this option.', 'lws-optimize'); ?>");
+                        console.log(error);
+                    }
+                });
+            });
+        });
+    });
+
+    // Also support click functionality on the dropdown arrow
+    document.querySelectorAll('.lwsop_dropdown_arrow').forEach(arrow => {
+        arrow.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = this.parentNode.querySelector('.lwsop_dropdown_content');
+            dropdown.classList.toggle('active');
+            this.querySelector('svg').style.transform = dropdown.classList.contains('active')
+                ? 'rotate(180deg)'
+                : 'rotate(0)';
+        });
+    });
+
+    // Close dropdown when clicking elsewhere
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.lwsop_dropdown_button')) {
+            document.querySelectorAll('.lwsop_dropdown_content').forEach(dropdown => {
+                dropdown.classList.remove('active');
+            });
+            document.querySelectorAll('.lwsop_dropdown_arrow svg').forEach(svg => {
+                svg.style.transform = 'rotate(0)';
+            });
+        }
+    });
+
 </script>
 
 <!-- If need a select -->
@@ -650,7 +839,7 @@ $config_array = $GLOBALS['lws_optimize']->optimize_options;
     </div>
 </div>
 
-<?php if (get_option('lws_optimize_offline', null) === null) : ?>
+<?php if (!$is_deactivated) : ?>
     <script>
         // All checkbox, not the buttons (like preload fonts)
         document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checkbox) {

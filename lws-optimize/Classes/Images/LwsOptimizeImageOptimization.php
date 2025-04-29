@@ -13,6 +13,19 @@ class LwsOptimizeImageOptimization
         add_filter('the_content', [$this, 'replace_images_with_newtype']);
         add_filter('wp_filter_content_tags', [$this, 'replace_images_with_newtype']);
         add_filter('post_thumbnail_html', [$this, 'replace_images_with_newtype']);
+        add_action('template_redirect', [$this, 'lws_optimize_start_output_buffer']);
+    }
+
+    /**
+     * On the homepage of most WordPress websites, the other function will not work natively
+     * as images are loaded differently, generally by the theme.
+     * As such we are forced to use ob_start to get and replace images
+     */
+    public function lws_optimize_start_output_buffer()
+    {
+        if (is_front_page() || is_home()) {
+            ob_start([$this, 'replace_images_with_newtype']);
+        }
     }
 
     /**
@@ -22,12 +35,7 @@ class LwsOptimizeImageOptimization
     {
         $timer = microtime(true);
         // Get the chosen mime-type from the database. If none found, default to webp convertion
-        $config_array = get_option('lws_optimize_config_array', ['auto_update' => [
-            'state' => false,
-            'auto_convertion_quality' => "balanced",
-            'auto_image_format' => [],
-            'auto_image_maxsize' => 2560,
-        ]]);
+        $config_array = $GLOBALS['lws_optimize']->optimize_options;
 
         $state = $config_array['auto_update']['state'] ?? false;
         $type = "webp";

@@ -18,7 +18,7 @@ $first_bloc_array = array(
     ),
     'combine_css' => array(
         'title' => __('Combine CSS files', 'lws-optimize'),
-        'desc' => __('Fuse multiple CSS files into one to reduce server requests. <br> If you notice any display problem on your website, such as missing CSS or messed-up elements, deactivating this option may solve the issue.', 'lws-optimize'),
+        'desc' => __('Fuse multiple CSS files into one to reduce server requests. <br> If you notice any display problem on your website, such as missing CSS or messed-up elements, deactivating this option or excluding the problematic files may solve the issue.', 'lws-optimize'),
         'recommended' => true,
         'has_exclusion' => true,
         'exclusion' => "X",
@@ -44,6 +44,31 @@ $first_bloc_array = array(
         'checkbox_id' => "lws_optimize_preload_css_check",
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1883"
+    ),
+    'remove_css' => array(
+        'title' => __('Remove unused CSS', 'lws-optimize'),
+        'desc' => __('Remove all the CSS not used in the page to reduce file sizes and improve loading speeds. <br> Accessing the page for the first time will result in a longer loading time as the CSS is analysed. Preloading is recommended.', 'lws-optimize'),
+        'recommended' => false,
+        'has_exclusion' => false,
+        'has_exclusion_button' => false,
+        'has_special_button' => false,
+        'exclusion_id' => "lws_optimize_remove_css_exclusion",
+        'has_checkbox' => true,
+        'checkbox_id' => "lws_optimize_remove_css_check",
+        'has_tooltip' => true,
+        'tooltip_link' => "https://aide.lws.fr/a/"
+    ),
+    'critical_css' => array(
+        'title' => __('Critical CSS', 'lws-optimize'),
+        'desc' => __('Load only the CSS necessary for above-the-fold content in order to render content to the user as fast as possible. All the CSS not needed when rendering the page (CSS for content at the bottom of the page, for example) will be removed and only loaded once the page is ready. <br> Accessing the page for the first time will result in a longer loading time as the CSS is generated. Preloading is recommended.', 'lws-optimize'),
+        'recommended' => false,
+        'has_exclusion' => false,
+        'has_exclusion_button' => false,
+        'has_special_button' => false,
+        'has_checkbox' => true,
+        'checkbox_id' => "lws_optimize_critical_css_check",
+        'has_tooltip' => true,
+        'tooltip_link' => "https://aide.lws.fr/a/"
     )
 );
 
@@ -64,7 +89,7 @@ $second_bloc_array = array(
     ),
     'combine_js' => array(
         'title' => __('Combine JS files', 'lws-optimize'),
-        'desc' => __('Fuse multiple JS files into one to reduce server requests.', 'lws-optimize'),
+        'desc' => __('Fuse multiple JS files into one to reduce server requests. <br> This may cause issues when paired with some plugins or themes. Deactivating the option or excluding problematic files may fix the issue.', 'lws-optimize'),
         'recommended' => true,
         'has_exclusion' => true,
         'exclusion' => "X",
@@ -75,6 +100,34 @@ $second_bloc_array = array(
         'checkbox_id' => "lws_optimize_combine_js_check",
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1882"
+    ),
+    'defer_js' => array(
+        'title' => __('Defer JS files', 'lws-optimize'),
+        'desc' => __('Delay JavaScript execution until after the page has loaded, improving initial page rendering speed.', 'lws-optimize'),
+        'recommended' => false,
+        'has_exclusion' => true,
+        'exclusion' => "X",
+        'has_exclusion_button' => true,
+        'exclusion_id' => "lws_optimize_defer_js_exclusion",
+        'has_special_button' => false,
+        'has_checkbox' => true,
+        'checkbox_id' => "lws_optimize_defer_js_check",
+        'has_tooltip' => true,
+        'tooltip_link' => "https://aide.lws.fr/"
+    ),
+    'delay_js' => array(
+        'title' => __('Delay JS files', 'lws-optimize'),
+        'desc' => __('Delay JavaScript execution until any actions, such as moving the cursor, typing on the keyboard or scrolling the page is done. <br> It may however provoke Javascript errors with some themes and plugins', 'lws-optimize'),
+        'recommended' => false,
+        'has_exclusion' => true,
+        'exclusion' => "X",
+        'has_exclusion_button' => true,
+        'exclusion_id' => "lws_optimize_delay_js_exclusion",
+        'has_special_button' => false,
+        'has_checkbox' => true,
+        'checkbox_id' => "lws_optimize_delay_js_check",
+        'has_tooltip' => true,
+        'tooltip_link' => "https://aide.lws.fr/"
     ),
     // 'preload_js' => array(
     //     'title' => __('Report loading JavaScript blocking rendering', 'lws-optimize'),
@@ -93,7 +146,7 @@ $second_bloc_array = array(
 $third_bloc_array = array(
     'minify_html' => array(
         'title' => __('HTML Minification', 'lws-optimize'),
-        'desc' => __('Reduce your HTML file size by deleting useless characters.', 'lws-optimize'),
+        'desc' => __('Reduce your HTML file size by deleting useless characters. <br> It may cause rendering issues with some themes and extensions.', 'lws-optimize'),
         'recommended' => true,
         'has_exclusion' => true,
         'exclusion' => "X",
@@ -288,7 +341,7 @@ foreach ($third_bloc_array as $key => $array) {
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
-                <?php echo esc_html($data['desc']); ?>
+                <?php echo wp_kses($data['desc'], ['br' => []]); ?>
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">
@@ -348,7 +401,7 @@ foreach ($third_bloc_array as $key => $array) {
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
-                <?php echo esc_html($data['desc']); ?>
+                <?php echo wp_kses($data['desc'], ['br' => []]); ?>
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">

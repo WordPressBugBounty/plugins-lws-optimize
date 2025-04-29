@@ -259,7 +259,6 @@ class LwsOptimizeCSSManager
                             $this->files['size'] += filesize($path) ?? 0;
                         }
 
-                        error_log(json_encode($problematic_files));
                         return ['final_url' => $path_url, 'problematic' => $problematic_files];
 
                     }
@@ -364,8 +363,24 @@ class LwsOptimizeCSSManager
                     return false;
                 }
 
-                $file_path = str_replace(get_site_url() . "/", ABSPATH, $href);
-                $file_path = explode("?ver", $file_path)[0];
+
+                    $file_path = $href;
+                    $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                    $file_path = explode("?ver", $file_path)[0];
+                    // If path starts with "//", remove them
+                    if (substr($file_path, 0, 2) === "//") {
+                        $file_path = substr($file_path, 2);
+                        // Add http: or https: based on site settings
+                        $file_path = (is_ssl() ? 'https:' : 'http:') . '//' . $file_path;
+                        $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                    }
+                    // Handle remote URLs (like CDN content)
+                    if (strpos($file_path, 'http') === 0) {
+                        $content = @file_get_contents($file_path);
+                        if ($content === false) {
+                            return ['html' => $this->content, 'files' => $this->files];
+                        }
+                    }
 
                 $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.css");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
@@ -376,23 +391,23 @@ class LwsOptimizeCSSManager
                     $add_cache = true;
                 }
 
-                $minify = new Minify\CSS($file_path);
+                if ($add_cache) {
+                    $minify = new Minify\CSS($file_path);
 
-                if ($minify->minify($path) && file_exists($path)) {
-                    $file_contents = file_get_contents($path);
-                    foreach ($this->media_convertion as $media_element) {
-                        $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);
-                    }
-                    file_put_contents($path, $file_contents);
+                    if ($minify->minify($path) && file_exists($path)) {
+                        $file_contents = file_get_contents($path);
+                        foreach ($this->media_convertion as $media_element) {
+                            $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);
+                        }
+                        file_put_contents($path, $file_contents);
 
-                    if ($add_cache) {
                         $this->files['file'] += 1;
                         $this->files['size'] += filesize($path) ?? 0;
-                    }
 
-                    // Create a new link with the newly combined URL and add it to the DOM
-                    $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
-                    $this->content = str_replace($element, $newLink, $this->content);
+                        // Create a new link with the newly combined URL and add it to the DOM
+                        $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
+                        $this->content = str_replace($element, $newLink, $this->content);
+                    }
                 }
             }
         }
@@ -413,7 +428,7 @@ class LwsOptimizeCSSManager
         foreach ($elements as $element) {
             if (substr($element, 0, 5) == "<link") {
                 preg_match("/rel\=[\'\"]([^\'\"]+)[\'\"]/", $element, $rel);
-                preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
+                preg_match("/href\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
 
                 $rel = $rel[1] ?? "";
                 $rel = trim($rel);
@@ -424,7 +439,6 @@ class LwsOptimizeCSSManager
                 if ($rel !== "stylesheet"/* || $this->check_for_exclusion($href, "preload")*/) {
                     continue;
                 }
-
                 // Do not preload if the file has not been stated to be preloaded
                 if (!in_array($src, $this->preloadable_urls)) {
                     continue;
@@ -448,7 +462,7 @@ class LwsOptimizeCSSManager
         foreach ($elements as $element) {
             if (substr($element, 0, 5) == "<link") {
                 preg_match("/rel\=[\'\"]([^\'\"]+)[\'\"]/", $element, $rel);
-                preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
+                preg_match("/href\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
 
                 $rel = $rel[1] ?? "";
                 $rel = trim($rel);
@@ -476,7 +490,7 @@ class LwsOptimizeCSSManager
 
     public function lwsop_check_option(string $option)
     {
-        $optimize_options = get_option('lws_optimize_config_array', []);
+        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
         try {
             if (empty($option) || $option === null) {
                 return ['state' => "false", 'data' => []];
@@ -504,7 +518,11 @@ class LwsOptimizeCSSManager
      */
     public function check_for_exclusion($url, $type)
     {
-        if (empty($type) || preg_match("/fonts/", $url) || preg_match("/bootstrap/", $url)) {
+        if (empty($type) || empty($url) ||
+            preg_match("#\.(woff|woff2|eot|ttf|otf)(\?.*)?$#i", $url) ||
+            preg_match("#(/bootstrap[^/]*\.css|/bootstrap/|bootstrap-[^/]*\.css)#i", $url) ||
+            preg_match("#(fonts\.googleapis\.com|fonts\.gstatic\.com)#i", $url) || // Google Fonts
+            preg_match("#(fontawesome|font-awesome)#i", $url)) { // Font Awesome
             return true;
         }
 
@@ -514,7 +532,7 @@ class LwsOptimizeCSSManager
         }
 
         if ($type == "minify") {
-            $options_combine = get_option('lws_optimize_config_array', []);
+            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
             if (isset($options_combine['minify_css']['state']) && $options_combine['minify_css']['state'] == "true" && isset($options_combine['minify_css']['exclusions'])) {
                 $minify_css_exclusions = $options_combine['minify_css']['exclusions'];
             } else {
@@ -522,12 +540,15 @@ class LwsOptimizeCSSManager
             }
 
             foreach ($minify_css_exclusions as $exclusion) {
-                if (preg_match("~$exclusion~xs", $url)) {
+                $pattern = preg_replace('/(?<!\\\)\*/', '.*', $exclusion);
+                $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
+
+                if (preg_match("$regex_pattern", $url)) {
                     return true;
                 }
             }
         } elseif ($type == "combine") {
-            $options_combine = get_option('lws_optimize_config_array', []);
+            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
             if (isset($options_combine['combine_css']['state']) && $options_combine['combine_css']['state'] == "true" && isset($options_combine['combine_css']['exclusions'])) {
                 $combine_css_exclusions = $options_combine['combine_css']['exclusions'];
             } else {
@@ -536,7 +557,10 @@ class LwsOptimizeCSSManager
 
             // If the URL was excluded by the user
             foreach ($combine_css_exclusions as $exclusion) {
-                if (preg_match("~$exclusion~xs", $url)) {
+                $pattern = preg_replace('/(?<!\\\)\*/', '.*', $exclusion);
+                $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
+
+                if (preg_match("$regex_pattern", $url)) {
                     return true;
                 }
             }
@@ -559,11 +583,14 @@ class LwsOptimizeCSSManager
                 }
             }
         } else {
-            $options_combine = get_option('lws_optimize_config_array', []);
+            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
             if (isset($options_combine['minify_html']['state']) && $options_combine['minify_html']['state'] == "true" && isset($options_combine['minify_html']['exclusions'])) {
                 $combine_html_exclusions = $options_combine['minify_html']['exclusions'];
                 foreach ($combine_html_exclusions as $exclusion) {
-                    if (preg_match("~$exclusion~", $url)) {
+                    $pattern = preg_replace('/(?<!\\\)\*/', '.*', $exclusion);
+                    $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
+
+                    if (preg_match("$regex_pattern", $url)) {
                         return true;
                     }
                 }

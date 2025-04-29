@@ -2,26 +2,30 @@
 
 namespace Lws\Classes;
 
+use Google\Web_Stories\Remove_Transients;
 use Lws\Classes\Admin\LwsOptimizeManageAdmin;
 use Lws\Classes\FileCache\LwsOptimizeAutoPurge;
-use Lws\Classes\Images\LwsOptimizeImageOptimization;
+use Lws\Classes\Images\LwsOptimizeImageOptimizationPro;
 use Lws\Classes\LazyLoad\LwsOptimizeLazyLoading;
 use Lws\Classes\FileCache\LwsOptimizeFileCache;
 use Lws\Classes\FileCache\LwsOptimizeCloudFlare;
+use Lws\Classes\Front\LwsOptimizeJSManager;
+use Lws\Classes\Images\LwsOptimizeImageFrontManager;
 
 class LwsOptimize
 {
     private $log_file;
     public $optimize_options;
     public $lwsOptimizeCache;
-    public $state;
     public $lwsImageOptimization;
+    public $lwsImageOptimizationPro;
     public $cloudflare_manager;
     public $nginx_purger;
     public $chosen_purger;
 
     public function __construct()
     {
+        // Store the class in GLOBALS for later usage
         $GLOBALS['lws_optimize'] = $this;
         $GLOBALS['lws_optimize_cache_timestamps'] = [
             'lws_daily' => [86400, __('Once a day', 'lws-optimize')],
@@ -34,43 +38,36 @@ class LwsOptimize
             'lws_never' => [0, __('Never expire', 'lws-optimize')],
         ];
 
-        // Create log file in uploads directory if it doesn't exist
-        $upload_dir = wp_upload_dir();
-        $log_dir = $upload_dir['basedir'] . '/lwsoptimize';
-        if (!file_exists($log_dir)) {
-            wp_mkdir_p($log_dir);
-        }
-        $this->log_file = $log_dir . '/debug.log';
-        if (!file_exists($this->log_file)) {
-            touch($this->log_file);
-        }
-
-        // Get the current state of the plugin ; If deactivated, only PageSpeed works
-        $this->state = get_option('lws_optimize_offline', false);
+        // Create the log file if needed, otherwise just get the path
+        $this->setupLogfile();
 
         // Path to the object-cache file (for Memcached)
         define('LWSOP_OBJECTCACHE_PATH', WP_CONTENT_DIR . '/object-cache.php');
 
         // Get all the options for LWSOptimize. If none are found (first start, erased from DB), recreate the array
-        $this->optimize_options = get_option('lws_optimize_config_array', []);
-        if (empty($this->optimize_options)) {
-            $this->optimize_options = $this->lwsop_auto_setup_optimize("basic");
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        if (empty($optimize_options)) {
+            $optimize_options = $this->lwsop_auto_setup_optimize("basic");
             $this->lws_optimize_reset_header_htaccess();
 
             // Deactivate the filebased_cache preloading at first
-            $this->optimize_options['filebased_cache']['preload'] = "false";
+            $optimize_options['filebased_cache']['preload'] = "false";
             if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                 wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
             }
 
-            update_option('lws_optimize_config_array', $this->optimize_options);
-
             // Deactivate the plugin on activation
-            update_option('lws_optimize_offline', 'ON');
+            delete_option('lws_optimize_offline');
             delete_option('lws_optimize_preload_is_ongoing');
 
             $this->lws_optimize_set_cache_htaccess();
+
+            update_option('lws_optimize_config_array', $optimize_options);
         }
+
+        // Store the array globally to avoid updating it each time
+        $this->optimize_options = $optimize_options;
+
 
         // If it got installed by the LWS Auto-installer, then proceed to activate it on recommended by default
         $auto_installer_mode = get_option('lws_from_autoinstall_optimize', false);
@@ -83,8 +80,12 @@ class LwsOptimize
         // Init the FileCache Class
         $this->lwsOptimizeCache = new LwsOptimizeFileCache($this);
 
+        // Init the ImageOptimization Class
+        $this->lwsImageOptimization = new LwsOptimizeImageOptimizationPro();
 
-        if (!$this->state) {
+        add_action("wp_ajax_lwsop_deactivate_temporarily", [$this, "lwsop_deactivate_temporarily"]);
+
+        if (!get_transient('lws_optimize_deactivate_temporarily')) {
             // If the plugin was updated...
             add_action('plugins_loaded', [$this, 'lws_optimize_after_update_actions']);
 
@@ -92,7 +93,7 @@ class LwsOptimize
             if ($this->lwsop_check_option('memcached')['state'] === "true") {
                 // Deactivate Memcached if Redis is activated
                 if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
-                    $this->optimize_options['memcached']['state'] = "false";
+                    $optimize_options['memcached']['state'] = "false";
                 } else {
                     if (class_exists('Memcached')) {
                         $memcached = new \Memcached();
@@ -101,7 +102,7 @@ class LwsOptimize
                         }
 
                         if ($memcached->getVersion() === false) {
-                            $this->optimize_options['memcached']['state'] = "false";
+                            $optimize_options['memcached']['state'] = "false";
                             if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
                                 unlink(LWSOP_OBJECTCACHE_PATH);
                             }
@@ -111,7 +112,7 @@ class LwsOptimize
                             }
                         }
                     } else {
-                        $this->optimize_options['memcached']['state'] = "false";
+                        $optimize_options['memcached']['state'] = "false";
                         if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
                             var_dump("no_class");
                             unlink(LWSOP_OBJECTCACHE_PATH);
@@ -175,7 +176,7 @@ class LwsOptimize
                     exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
                     $htaccess = ABSPATH . "/.htaccess";
 
-                    if (!get_option('lws_optimize_offline', false)) {
+                    if (!get_transient('lws_optimize_deactivate_temporarily')) {
                         $hta = '';
                         $hta .= "<IfModule mod_deflate.c>\n";
                         $hta .= "SetOutputFilter DEFLATE\n";
@@ -224,6 +225,10 @@ class LwsOptimize
                 }
             }
 
+            if ($this->lwsop_check_option('image_add_sizes')['state'] === "true") {
+                LwsOptimizeImageFrontManager::startImageWidth();
+            }
+
             // If the lazyloading of images has been activated on the website
             if ($this->lwsop_check_option('image_lazyload')['state'] === "true") {
                 LwsOptimizeLazyLoading::startActionsImage();
@@ -238,6 +243,7 @@ class LwsOptimize
                 wp_enqueue_script('jquery');
             });
 
+            add_filter('lws_optimize_convert_media_cron', [$this, 'lws_optimize_convert_media_cron'], 10, 2);
             add_filter('lws_optimize_clear_filebased_cache', [$this, 'lws_optimize_clean_filebased_cache'], 10, 2);
             add_action('lws_optimize_start_filebased_preload', [$this, 'lws_optimize_start_filebased_preload']);
 
@@ -248,12 +254,6 @@ class LwsOptimize
             // Add new schedules time for crons
             add_filter('cron_schedules', [$this, 'lws_optimize_timestamp_crons']);
 
-            // If the auto-convert feature is activated, then prepare the hooks
-            if ($this->lwsop_check_option("auto_update")['state'] == "true") {
-                $this->lwsImageOptimization = new LwsOptimizeImageOptimization(true);
-            } else {
-                $this->lwsImageOptimization = new LwsOptimizeImageOptimization(false);
-            }
 
             // Activate functions related to CloudFlare
             $this->cloudflare_manager = new LwsOptimizeCloudFlare();
@@ -262,35 +262,25 @@ class LwsOptimize
             add_action("wp_ajax_lwsop_dump_dynamic_cache", [$this, "lwsop_dump_dynamic_cache"]);
             add_action("wp_ajax_lws_optimize_activate_cleaner", [$this, "lws_optimize_activate_cleaner"]);
 
-            // Optimize all images to the designed MIME-Type
-            add_filter('lws_optimize_convert_media_cron', [$this, 'lws_optimize_convert_media_cron']);
-
-            // Stop or Revert the convertion of all medias
-            add_filter('wp_ajax_lwsop_stop_convertion', [$this, 'lws_optimize_stop_convertion']);
-            add_filter('wp_ajax_lwsop_stop_deconvertion', [$this, 'lws_optimize_stop_deconvertion']);
-            add_action("wp_ajax_lws_optimize_revert_convertion", [$this, "lws_optimize_revert_convertion"]);
-            add_action("lwsop_revertOptimization", [$this, "lwsop_revertOptimization"]);
-
             // Launch the weekly DB cleanup
             add_action("lws_optimize_maintenance_db_weekly", [$this, "lws_optimize_create_maintenance_db_options"]);
             add_action("wp_ajax_lws_optimize_set_maintenance_db_options", [$this, "lws_optimize_set_maintenance_db_options"]);
             add_action("wp_ajax_lws_optimize_get_maintenance_db_options", [$this, "lws_optimize_manage_maintenance_get"]);
 
             add_action('wp_ajax_lwsop_change_optimize_configuration', [$this, "lwsop_get_setup_optimize"]);
-        }
 
-        add_action('init', [$this, "lws_optimize_init"]);
-        add_action("wp_ajax_lws_optimize_do_pagespeed", [$this, "lwsop_do_pagespeed_test"]);
+            // If LWSOptimize is off or the cache has been deactivated, do not start the caching process
+            if ($this->lwsop_check_option('filebased_cache')['state'] === "true") {
+                $this->lwsOptimizeCache->lwsop_launch_cache();
+            }
 
-        // If the autopurge has been activated, add hooks that will clear specific cache on specific actions
-        if (!$this->state && $this->lwsop_check_option("autopurge")['state'] == "true") {
-            $autopurge_manager = new LwsOptimizeAutoPurge();
-            $autopurge_manager->start_autopurge();
-        }
+            // If the autopurge has been activated, add hooks that will clear specific cache on specific actions
+            if (!get_transient('lws_optimize_deactivate_temporarily') && $this->lwsop_check_option("autopurge")['state'] == "true") {
+                $autopurge_manager = new LwsOptimizeAutoPurge();
+                $autopurge_manager->start_autopurge();
+            }
 
-        if (is_admin()) {
-            // Only add thoses actions if the plugin is activated. It means that even if users modify the page content, actions will not launch
-            if (!$this->state) {
+            if (is_admin()) {
                 // Change configuration state for the differents element of LWSOptimize
                 add_action("wp_ajax_lws_optimize_checkboxes_action", [$this, "lws_optimize_manage_config"]);
                 add_action("wp_ajax_lws_optimize_exclusions_changes_action", [$this, "lws_optimize_manage_exclusions"]);
@@ -301,8 +291,6 @@ class LwsOptimize
                 add_action("wp_ajax_lwsop_change_preload_amount", [$this, "lwsop_change_preload_amount"]);
 
                 add_action("wp_ajax_lwsop_regenerate_cache", [$this, "lwsop_regenerate_cache"]);
-
-                add_action("wp_ajax_lwsop_convert_all_images", [$this, "lwsop_convert_all_media"]);
 
                 // Fetch an array containing every URLs that should get purged each time an autopurge starts
                 add_action("wp_ajax_lwsop_get_specified_url", [$this, "lwsop_specified_urls_fb"]);
@@ -329,33 +317,28 @@ class LwsOptimize
                 // Get when the next database maintenance will happen
                 add_action("wp_ajax_lws_optimize_get_database_cleaning_time", [$this, "lws_optimize_get_database_cleaning_time"]);
 
-                // Activate or deactivate the auto-convertion of upload medias
-                add_action("wp_ajax_lwsop_autoconvert_all_images_activate", [$this, "lwsop_start_autoconvert_media"]);
-                add_action("wp_ajax_lwsop_start_autoconvertion", [$this, "lwsop_start_autoconvertion"]);
-                add_action("wp_ajax_lwsop_stop_autoconvertion", [$this, "lwsop_stop_autoconvertion"]);
+                if (isset($this->lwsop_check_option('filebased_cache')['data']['preload']) && $this->lwsop_check_option('filebased_cache')['data']['preload'] === "true") {
+                    add_action("wp_ajax_lwsop_check_preload_update", [$this, "lwsop_check_preload_update"]);
+                }
 
-                add_action("wp_ajax_lwsop_check_convert_images_update", [$this, "lwsop_check_convert_images_update"]);
-            }
-
-            if (!$this->state && isset($this->lwsop_check_option('filebased_cache')['data']['preload']) && $this->lwsop_check_option('filebased_cache')['data']['preload'] === "true") {
-                add_action("wp_ajax_lwsop_check_preload_update", [$this, "lwsop_check_preload_update"]);
-            }
-
-            add_action("wp_ajax_lws_clear_fb_cache", [$this, "lws_optimize_clear_cache"]);
-            add_action("wp_ajax_lws_clear_opcache", [$this, "lws_clear_opcache"]);
-            add_action("wp_ajax_lws_clear_html_fb_cache", [$this, "lws_optimize_clear_htmlcache"]);
-            add_action("wp_ajax_lws_clear_style_fb_cache", [$this, "lws_optimize_clear_stylecache"]);
-            add_action("wp_ajax_lws_clear_currentpage_fb_cache", [$this, "lws_optimize_clear_currentcache"]);
+                add_action("wp_ajax_lws_clear_fb_cache", [$this, "lws_optimize_clear_cache"]);
+                add_action("wp_ajax_lws_clear_opcache", [$this, "lws_clear_opcache"]);
+                add_action("wp_ajax_lws_clear_html_fb_cache", [$this, "lws_optimize_clear_htmlcache"]);
+                add_action("wp_ajax_lws_clear_style_fb_cache", [$this, "lws_optimize_clear_stylecache"]);
+                add_action("wp_ajax_lws_clear_currentpage_fb_cache", [$this, "lws_optimize_clear_currentcache"]);
 
 
-            add_action("wp_ajax_lws_optimize_fb_cache_change_status", [$this, "lws_optimize_set_fb_status"]);
-            add_action("wp_ajax_lws_optimize_fb_cache_change_cache_time", [$this, "lws_optimize_set_fb_timer"]);
-        } else {
-            // If LWSOptimize is off or the cache has been deactivated, do not start the caching process
-            if (!$this->state && $this->lwsop_check_option('filebased_cache')['state'] === "true") {
-                $this->lwsOptimizeCache->lwsop_launch_cache();
+                add_action("wp_ajax_lws_optimize_fb_cache_change_status", [$this, "lws_optimize_set_fb_status"]);
+                add_action("wp_ajax_lws_optimize_fb_cache_change_cache_time", [$this, "lws_optimize_set_fb_timer"]);
             }
         }
+
+        update_option('lws_optimize_config_array', $optimize_options);
+        // Store the array globally to avoid updating it each time
+        $this->optimize_options = $optimize_options;
+
+        add_action('init', [$this, "lws_optimize_init"]);
+        add_action("wp_ajax_lws_optimize_do_pagespeed", [$this, "lwsop_do_pagespeed_test"]);
     }
 
     /**
@@ -363,6 +346,8 @@ class LwsOptimize
      */
     public function lws_optimize_init()
     {
+        $optimize_options = $this->optimize_options;
+
         load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
 
         // Add all options referring to the WPAdmin page or the AdminBar
@@ -375,17 +360,39 @@ class LwsOptimize
 
         // Schedule the cache cleanout again if it has been deleted
         // If the plugin is OFF or the filecached is deactivated, unregister the WPCron
-        if (isset($this->optimize_options['filebased_cache']['timer']) && !$this->state) {
-            if (!wp_next_scheduled('lws_optimize_clear_filebased_cache') && $this->optimize_options['filebased_cache']['timer'] != 0) {
-                wp_schedule_event(time(), $this->optimize_options['filebased_cache']['timer'], 'lws_optimize_clear_filebased_cache');
+        if (isset($optimize_options['filebased_cache']['timer']) && !get_transient('lws_optimize_deactivate_temporarily')) {
+            if (!wp_next_scheduled('lws_optimize_clear_filebased_cache') && $optimize_options['filebased_cache']['timer'] != 0) {
+                wp_schedule_event(time(), $optimize_options['filebased_cache']['timer'], 'lws_optimize_clear_filebased_cache');
             }
-        } elseif ($this->state || $this->lwsop_check_option('filebased_cache')['state'] === "false") {
+        } elseif (get_transient('lws_optimize_deactivate_temporarily') || $this->lwsop_check_option('filebased_cache')['state'] === "false") {
             wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
         }
     }
 
+    public function lwsop_deactivate_temporarily() {
+        check_ajax_referer('lwsop_deactivate_temporarily_nonce', '_ajax_nonce');
+        if (!isset($_POST['duration'])) {
+            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+        }
+
+        $duration = intval($_POST['duration']);
+        if ($duration < 0) {
+            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+        }
+
+        if ($duration == 0) {
+            delete_transient('lws_optimize_deactivate_temporarily');
+            $this->lws_optimize_set_cache_htaccess();
+        } else {
+            set_transient('lws_optimize_deactivate_temporarily', $duration, $duration);
+            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+        }
+
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $_POST), JSON_PRETTY_PRINT));
+    }
+
     public function lws_optimize_after_update_actions() {
-        if (get_transient('wp_lwsoptimize_post_update') && !$this->state) {
+        if (get_transient('wp_lwsoptimize_post_update') && !get_transient('lws_optimize_deactivate_temporarily')) {
             // Remove old, unused options
             delete_option('lwsop_do_not_ask_again');
             delete_transient('lwsop_remind_me');
@@ -402,7 +409,7 @@ class LwsOptimize
             global $wpdb;
 
             // Force deactivate memcached for everyone
-            $options = get_option('lws_optimize_config_array', []);
+            $options = $this->optimize_options;
             $options['memcached']['state'] = false;
 
             $options['filebased_cache']['saved_urls'] = [];
@@ -415,8 +422,6 @@ class LwsOptimize
                 $this->lws_optimize_set_cache_htaccess();
             }
             $this->lws_optimize_reset_header_htaccess();
-
-            update_option('lws_optimize_config_array', $options);
 
             apply_filters("lws_optimize_clear_filebased_cache", false, "lws_optimize_after_update_actions");
 
@@ -441,6 +446,8 @@ class LwsOptimize
             }
 
             delete_transient('wp_lwsoptimize_post_update');
+            update_option('lws_optimize_config_array', $options);
+            $this->optimize_options = $options;
         }
     }
 
@@ -456,19 +463,16 @@ class LwsOptimize
             );
         }
 
-        foreach ($GLOBALS['lws_optimize_cache_timestamps'] as $code => $schedule) {
-            $schedules['lws_three_minutes'] = array(
-                'interval' => 120,
-                'display' => __('Every 2 Minutes', 'lws-optimize')
-            );
-        }
+        $schedules['lws_three_minutes'] = array(
+            'interval' => 120,
+            'display' => __('Every 2 Minutes', 'lws-optimize')
+        );
 
-        foreach ($GLOBALS['lws_optimize_cache_timestamps'] as $code => $schedule) {
-            $schedules['lws_minute'] = array(
-                'interval' => 60,
-                'display' => __('Every Minutes', 'lws-optimize')
-            );
-        }
+        $schedules['lws_minute'] = array(
+            'interval' => 60,
+            'display' => __('Every Minutes', 'lws-optimize')
+        );
+
 
         return $schedules;
     }
@@ -565,8 +569,10 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
 
+        $optimize_options = $this->optimize_options;
+
         // Get the exclusions
-        $preloads = isset($this->optimize_options['preload_css']['links']) ? $this->optimize_options['preload_css']['links'] : array();
+        $preloads = isset($optimize_options['preload_css']['links']) ? $optimize_options['preload_css']['links'] : array();
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $preloads, 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
@@ -574,6 +580,8 @@ class LwsOptimize
     public function lwsop_set_url_preload()
     {
         check_ajax_referer('nonce_lws_optimize_preloading_url_files_set', '_ajax_nonce');
+        $optimize_options = $this->optimize_options;
+
         if (isset($_POST['data'])) {
             $urls = array();
 
@@ -584,20 +592,11 @@ class LwsOptimize
                 }
                 $urls[] = $value;
             }
+            $optimize_options['preload_css']['links'] = $urls;
 
-            $old = $this->optimize_options;
-            $this->optimize_options['preload_css']['links'] = $urls;
-
-            if ($old === $this->optimize_options) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            }
-            $return = update_option('lws_optimize_config_array', $this->optimize_options);
-            // If correctly added and updated
-            if ($return) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            } else {
-                wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-            }
+            update_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
+            wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
         }
         wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()), JSON_PRETTY_PRINT));
     }
@@ -609,8 +608,10 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
 
+        $optimize_options = $this->optimize_options;
+
         // Get the exclusions
-        $preloads = isset($this->optimize_options['preload_font']['links']) ? $this->optimize_options['preload_font']['links'] : array();
+        $preloads = isset($optimize_options['preload_font']['links']) ? $optimize_options['preload_font']['links'] : array();
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $preloads, 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
@@ -621,6 +622,8 @@ class LwsOptimize
         if (isset($_POST['data'])) {
             $urls = array();
 
+            $optimize_options = $this->optimize_options;
+
             foreach ($_POST['data'] as $data) {
                 $value = sanitize_text_field($data['value']);
                 if ($value == "" || empty($value)) {
@@ -629,19 +632,11 @@ class LwsOptimize
                 $urls[] = $value;
             }
 
-            $old = $this->optimize_options;
-            $this->optimize_options['preload_font']['links'] = $urls;
+            $optimize_options['preload_font']['links'] = $urls;
 
-            if ($old === $this->optimize_options) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            }
-            $return = update_option('lws_optimize_config_array', $this->optimize_options);
-            // If correctly added and updated
-            if ($return) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            } else {
-                wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-            }
+            update_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
+            wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
         }
         wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()), JSON_PRETTY_PRINT));
     }
@@ -657,7 +652,6 @@ class LwsOptimize
 
         wp_die(json_encode(array('code' => "SUCCESS", 'data' => $stats)));
     }
-
 
     /**
      * Recursively fetches URLs from sitemaps
@@ -739,6 +733,9 @@ class LwsOptimize
             wp_die(json_encode(['code' => "FAILED_ACTIVATE", 'data' => "Missing required parameters"]), JSON_PRETTY_PRINT);
         }
 
+        // IMPORTANT: Get a fresh copy of options from the database
+        $optimize_options = $this->optimize_options;
+
         // Clean previous preload data
         delete_option('lws_optimize_sitemap_urls');
         delete_option('lws_optimize_preload_is_ongoing');
@@ -747,26 +744,14 @@ class LwsOptimize
         $amount = isset($_POST['amount']) ? absint($_POST['amount']) : 3;
 
         // Update preload configuration
-        $old = $this->optimize_options;
-        $this->optimize_options['filebased_cache']['preload'] = $state;
-        $this->optimize_options['filebased_cache']['preload_amount'] = $amount;
-        $this->optimize_options['filebased_cache']['preload_done'] = 0;
-        $this->optimize_options['filebased_cache']['preload_ongoing'] = $state;
+        $optimize_options['filebased_cache']['preload'] = $state;
+        $optimize_options['filebased_cache']['preload_amount'] = $amount;
+        $optimize_options['filebased_cache']['preload_done'] = 0;
+        $optimize_options['filebased_cache']['preload_ongoing'] = $state;
 
         // Get sitemap URLs
         $urls = $this->get_sitemap_urls();
-        $this->optimize_options['filebased_cache']['preload_quantity'] = count($urls);
-
-        // Nothing changed, no need to update options
-        if ($old === $this->optimize_options) {
-            wp_die(json_encode(['code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache']]), JSON_PRETTY_PRINT);
-        }
-
-        // Update options in database
-        $updated = update_option('lws_optimize_config_array', $this->optimize_options);
-        if (!$updated) {
-            wp_die(json_encode(['code' => "FAILED_ACTIVATE", 'data' => "Could not update options"]), JSON_PRETTY_PRINT);
-        }
+        $optimize_options['filebased_cache']['preload_quantity'] = count($urls);
 
         // Manage scheduled preload task
         if ($state === "false") {
@@ -782,7 +767,11 @@ class LwsOptimize
             wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
         }
 
-        wp_die(json_encode(['code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache']]), JSON_PRETTY_PRINT);
+        // Update options in database
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
+
+        wp_die(json_encode(['code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']]), JSON_PRETTY_PRINT);
     }
 
     /**
@@ -893,12 +882,7 @@ class LwsOptimize
             $urls = $urls['urls'] ?? [];
         }
 
-        // Get the optimization configuration
-        $array = get_option('lws_optimize_config_array', []);
-        if (!$array) {
-            delete_option('lws_optimize_preload_is_ongoing');
-            return;
-        }
+        $array = $this->optimize_options;
 
         // Initialize variables from configuration
         $max_try = intval($array['filebased_cache']['preload_amount'] ?? 5);
@@ -1025,6 +1009,7 @@ class LwsOptimize
 
         // Save updated configuration and sitemap URLs
         update_option('lws_optimize_config_array', $array);
+        $this->optimize_options = $array;
         update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
         delete_option('lws_optimize_preload_is_ongoing');
     }
@@ -1034,20 +1019,15 @@ class LwsOptimize
         check_ajax_referer('update_fb_preload_amount', '_ajax_nonce');
 
         if (isset($_POST['action'])) {
+            $optimize_options = $this->optimize_options;
+
             $amount = $_POST['amount'] ? sanitize_text_field($_POST['amount']) : 3;
+            $optimize_options['filebased_cache']['preload_amount'] =  $amount;
 
-            $old = $this->optimize_options;
-            $this->optimize_options['filebased_cache']['preload_amount'] =  $amount;
-            if ($old === $this->optimize_options) {
-                wp_die(json_encode(array('code' => "SUCCESS", 'data' => "DONE")));
-            }
+            update_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
 
-            $return = update_option('lws_optimize_config_array', $this->optimize_options);
-            if ($return) {
-                wp_die(json_encode(array('code' => "SUCCESS", 'data' => "DONE")));
-            } else {
-                wp_die(json_encode(array('code' => "FAILED_ACTIVATE", 'data' => "FAIL")));
-            }
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => "DONE")));
         }
         wp_die(json_encode(array('code' => "FAILED_ACTIVATE", 'data' => "FAIL")));
     }
@@ -1121,56 +1101,54 @@ class LwsOptimize
     public function lws_optimize_set_fb_status()
     {
         check_ajax_referer('change_filebased_cache_status_nonce', '_ajax_nonce');
+
+        // Validate required parameters
         if (!isset($_POST['timer']) || !isset($_POST['state'])) {
-            wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url())));
+            wp_die(json_encode(['code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()]));
         }
 
+        // Get fresh copy of options
+        $optimize_options = $this->optimize_options;
+
+        // Sanitize inputs
         $timer = sanitize_text_field($_POST['timer']);
-        $state = sanitize_text_field($_POST['state']);
+        $state = sanitize_text_field($_POST['state']) === "true" ? "true" : "false";
 
-        if ($state !== "false" && $state !== "true") {
-            $state = "false";
+        // Update configuration
+        $optimize_options['filebased_cache']['exceptions'] = $optimize_options['filebased_cache']['exceptions'] ?? [];
+        $optimize_options['filebased_cache']['state'] = $state;
+        $optimize_options['filebased_cache']['timer'] = $timer;
+
+        // Update preload status if necessary
+        if (isset($optimize_options['filebased_cache']['preload']) && $optimize_options['filebased_cache']['preload'] == "true") {
+            $optimize_options['filebased_cache']['preload_ongoing'] = "true";
         }
 
-        $temp_array = $this->optimize_options;
-
-        $this->optimize_options['filebased_cache']['exceptions'] = $this->optimize_options['filebased_cache']['exceptions'] ?? [];
-        $config_element = $this->optimize_options['filebased_cache']['state'] = $state;
-        $this->optimize_options['filebased_cache']['timer'] = $timer;
-
-        if ($this->optimize_options['filebased_cache']['preload'] == "true") {
-            $this->optimize_options['filebased_cache']['preload_ongoing'] = "true";
-                // Get sitemap URLs
-                $urls = $this->get_sitemap_urls();
-        }
-
+        // Update .htaccess based on state
         if ($state == "true") {
             $this->lws_optimize_reset_header_htaccess();
         } else {
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-            if ($eCode != 0) {
-                error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
+            $result = exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $output, $return_code);
+            if ($return_code != 0) {
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess headers: ' . implode("\n", $output) . PHP_EOL);
+                fclose($logger);
             }
         }
 
-        if (isset($this->optimize_options['htaccess_rules']['state']) && $this->optimize_options['htaccess_rules']['state'] == "true") {
+        // Update htaccess cache rules if enabled
+        if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
             $this->lws_optimize_set_cache_htaccess();
         }
 
-        // Just return if the array did not change
-        if ($temp_array == $this->optimize_options) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element)), JSON_PRETTY_PRINT);
-        }
+        // Clear dynamic cache
+        $this->lwsop_dump_all_dynamic_caches();
 
-        $return = update_option('lws_optimize_config_array', $this->optimize_options);
-        // If correctly added and updated
-        if ($return) {
-            // Remove the dynamic cache when the cache change state
-            $this->lwsop_dump_all_dynamic_caches();
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element)), JSON_PRETTY_PRINT);
-        } else {
-            wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-        }
+        // Save updated options
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
+
+        wp_die(json_encode(['code' => "SUCCESS", 'data' => $state]), JSON_PRETTY_PRINT);
     }
 
     public function lws_optimize_set_cache_htaccess() {
@@ -1274,7 +1252,7 @@ class LwsOptimize
             // Content
             $hta = '';
 
-            if (!get_option('lws_optimize_offline', false)) {
+            if (!get_transient('lws_optimize_deactivate_temporarily')) {
                 // Add instructions to load cache file without starting PHP
                 $hta .= "#Last Modification: $current_date\n";
                 $hta .= "<IfModule mod_rewrite.c>"."\n";
@@ -1398,8 +1376,10 @@ class LwsOptimize
      * If the cache is not active or an error occurs, headers won't be added
      */
     function lws_optimize_reset_header_htaccess() {
-        $state = $this->optimize_options['filebased_cache']['state'] ?? "false";
-        $timer = $this->optimize_options['filebased_cache']['timer'] ?? "lws_thrice_monthly";
+        $optimize_options = $this->optimize_options;
+
+        $state = $optimize_options['filebased_cache']['state'] ?? "false";
+        $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_thrice_monthly";
 
         // Path to .htaccess
         $htaccess = ABSPATH . "/.htaccess";
@@ -1481,7 +1461,7 @@ class LwsOptimize
             }
 
 
-            if (!get_option('lws_optimize_offline', false)) {
+            if (!get_transient('lws_optimize_deactivate_temporarily')) {
                 // Set expiration date for the cache, based on selected value (in the "Cache" tab)
                 $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n
                 <IfModule mod_expires.c>
@@ -1543,6 +1523,8 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url())));
         }
 
+        $optimize_options = $this->optimize_options;
+
         $timer = sanitize_text_field($_POST['timer']);
         if (empty($timer)) {
             if (empty($GLOBALS['lws_optimize_cache_timestamps']) || array_key_first($GLOBALS['lws_optimize_cache_timestamps']) === null) {
@@ -1554,9 +1536,9 @@ class LwsOptimize
 
         $fb_options = $this->lwsop_check_option('filebased_cache');
         if ($fb_options['state'] === "false") {
-            $this->optimize_options['filebased_cache']['state'] = "false";
+            $optimize_options['filebased_cache']['state'] = "false";
         }
-        if (isset($this->optimize_options['filebased_cache']['timer']) && $this->optimize_options['filebased_cache']['timer'] === $timer) {
+        if (isset($optimize_options['filebased_cache']['timer']) && $optimize_options['filebased_cache']['timer'] === $timer) {
             wp_die(json_encode(array('code' => "SUCCESS", "data" => $timer)), JSON_PRETTY_PRINT);
         }
 
@@ -1569,27 +1551,25 @@ class LwsOptimize
             }
         }
 
-        if (isset($this->optimize_options['htaccess_rules']['state']) && $this->optimize_options['htaccess_rules']['state'] == "true") {
+        if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
             $this->lws_optimize_set_cache_htaccess();
         }
 
-        $this->optimize_options['filebased_cache']['timer'] = $timer;
-        $return = update_option('lws_optimize_config_array', $this->optimize_options);
-        if ($return) {
-            // Remove the old event and schedule a new one with the new timer
-            if (wp_next_scheduled('lws_optimize_clear_filebased_cache')) {
-                wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
-            }
+        $optimize_options['filebased_cache']['timer'] = $timer;
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
 
-            // Never start cron if timer is defined as zero (infinite)
-            if ($timer != 0) {
-                wp_schedule_event(time(), $timer, 'lws_optimize_clear_filebased_cache');
-            }
-
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $timer)), JSON_PRETTY_PRINT);
-        } else {
-            wp_die(json_encode(array('code' => "FAILURE", "data" => $timer)), JSON_PRETTY_PRINT);
+        // Remove the old event and schedule a new one with the new timer
+        if (wp_next_scheduled('lws_optimize_clear_filebased_cache')) {
+            wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
         }
+
+        // Never start cron if timer is defined as zero (infinite)
+        if ($timer != 0) {
+            wp_schedule_event(time(), $timer, 'lws_optimize_clear_filebased_cache');
+        }
+
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $timer)), JSON_PRETTY_PRINT);
     }
 
     /**
@@ -1602,6 +1582,9 @@ class LwsOptimize
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
+
+        // IMPORTANT: Get a fresh copy of options from the database
+        $optimize_options = $this->optimize_options;
 
         $id = sanitize_text_field($_POST['data']['type']);
         $state = sanitize_text_field($_POST['data']['state']);
@@ -1617,6 +1600,8 @@ class LwsOptimize
 
         // The $element to update
         $element = $match[1];
+
+        $optimize_options[$element]['state'] = $state;
 
         // In case it is the dynamic cache, we need to check which type (cpanel/lws) it is and whether it CAN be activated
         if ($element == "dynamic_cache") {
@@ -1640,20 +1625,20 @@ class LwsOptimize
 
 
             if ($lwscache_status === null && $fastest_cache_status === null) {
-                $this->optimize_options[$element]['state'] = "false";
-                update_option('lws_optimize_config_array', $this->optimize_options);
+                $optimize_options[$element]['state'] = "false";
+                update_option('lws_optimize_config_array', $optimize_options);
                 wp_die(json_encode(array('code' => "INCOMPATIBLE", "data" => "LWSCache is incompatible with this hosting. Use LWS.")), JSON_PRETTY_PRINT);
             }
 
             if ($lwscache_status == false && $fastest_cache_status === null) {
-                $this->optimize_options[$element]['state'] = "false";
-                update_option('lws_optimize_config_array', $this->optimize_options);
+                $optimize_options[$element]['state'] = "false";
+                update_option('lws_optimize_config_array', $optimize_options);
                 wp_die(json_encode(array('code' => "PANEL_CACHE_OFF", "data" => "LWSCache is not activated on LWSPanel.")), JSON_PRETTY_PRINT);
             }
 
             if ($lwscache_status === null && $fastest_cache_status == false) {
-                $this->optimize_options[$element]['state'] = "false";
-                update_option('lws_optimize_config_array', $this->optimize_options);
+                $optimize_options[$element]['state'] = "false";
+                update_option('lws_optimize_config_array', $optimize_options);
                 wp_die(json_encode(array('code' => "CPANEL_CACHE_OFF", "data" => "Varnish is not activated on cPanel.")), JSON_PRETTY_PRINT);
             }
         } elseif ($element == "maintenance_db") {
@@ -1665,8 +1650,7 @@ class LwsOptimize
             }
         } elseif ($element == "memcached") {
             if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
-                $this->optimize_options[$element]['state'] = "false";
-                update_option('lws_optimize_config_array', $this->optimize_options);
+                $optimize_options[$element]['state'] = "false";
                 wp_die(json_encode(array('code' => "REDIS_ALREADY_HERE", 'data' => "FAILURE", 'state' => "unknown")));
             }
             if (class_exists('Memcached')) {
@@ -1759,31 +1743,17 @@ class LwsOptimize
             apply_filters("lws_optimize_clear_filebased_cache", false, "lws_optimize_manage_config");
         }
 
-        $temp_array = $this->optimize_options;
-
-        // We change the state of the $element in the config
-        // If no config is present for the $element, it will be added
-        $config_element = $this->optimize_options[$element]['state'] = $state;
-
-        // Just return if the array did not change
-        if ($temp_array == $this->optimize_options) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'type' => $element)), JSON_PRETTY_PRINT);
-        }
-
-        $return = update_option('lws_optimize_config_array', $this->optimize_options);
-
         if ($element == "cache_mobile_user" || $element == "cache_logged_user") {
-            if (isset($this->optimize_options['htaccess_rules']['state']) && $this->optimize_options['htaccess_rules']['state'] == "true") {
+            if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
                 $this->lws_optimize_set_cache_htaccess();
             }
         }
 
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
+
         // If correctly added and updated
-        if ($return) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'type' => $element)), JSON_PRETTY_PRINT);
-        } else {
-            wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options, 'type' => $element)), JSON_PRETTY_PRINT);
-        }
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $optimize_options[$element]['state'] = $state, 'type' => $element)), JSON_PRETTY_PRINT);
     }
 
 
@@ -1865,8 +1835,8 @@ class LwsOptimize
 
         // The $element to update
         $element = $match[1];
-        // All configs for LWS Optimize
-        $old = $this->optimize_options;
+
+        $optimize_options = $this->optimize_options;
 
         // Get all exclusions
         foreach ($data as $var) {
@@ -1880,17 +1850,12 @@ class LwsOptimize
 
         // Add the exclusions for the $element ; each is a URL (e.g. : my-website.fr/wp-content/plugins/...)
         // If no config is present for the $element, it will be added
-        $config_element = $this->optimize_options[$element]['exclusions'] = $exclusions;
+        $config_element = $optimize_options[$element]['exclusions'] = $exclusions;
 
-        if ($old === $this->optimize_options) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'id' => $id)), JSON_PRETTY_PRINT);
-        }
-        $return = update_option('lws_optimize_config_array', $this->optimize_options);
-        // If correctly added and updated
-        if ($return) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'id' => $id)), JSON_PRETTY_PRINT);
-        }
-        wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
+
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'id' => $id)), JSON_PRETTY_PRINT);
     }
 
     public function lws_optimize_manage_exclusions_media()
@@ -1926,7 +1891,7 @@ class LwsOptimize
         // The $element to update
         $element = $match[1];
         // All configs for LWS Optimize
-        $old = $this->optimize_options;
+        $optimize_options = $this->optimize_options;
 
         // Get all exclusions
         foreach ($data as $var) {
@@ -1969,23 +1934,19 @@ class LwsOptimize
 
         // Add the exclusions for the $element ; each is a URL (e.g. : my-website.fr/wp-content/plugins/...)
         // If no config is present for the $element, it will be added
-        $config_element = $this->optimize_options[$element]['exclusions'] = $exclusions;
+        $config_element = $optimize_options[$element]['exclusions'] = $exclusions;
 
-        if ($old === $this->optimize_options) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'id' => $id)), JSON_PRETTY_PRINT);
-        }
-        $return = update_option('lws_optimize_config_array', $this->optimize_options);
-        // If correctly added and updated
-        if ($return) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'id' => $id)), JSON_PRETTY_PRINT);
-        } else {
-            wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-        }
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
+
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $config_element, 'id' => $id)), JSON_PRETTY_PRINT);
     }
 
     public function lws_optimize_fetch_exclusions()
     {
         check_ajax_referer('nonce_lws_optimize_fetch_exclusions', '_ajax_nonce');
+        $optimize_options = $this->optimize_options;
+
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -2001,7 +1962,7 @@ class LwsOptimize
         // All configs for LWS Optimize
 
         // Get the exclusions
-        $exclusions = isset($this->optimize_options[$element]['exclusions']) ? $this->optimize_options[$element]['exclusions'] : array('rs-lazyload');
+        $exclusions = isset($optimize_options[$element]['exclusions']) ? $optimize_options[$element]['exclusions'] : array('rs-lazyload');
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $exclusions, 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
@@ -2157,6 +2118,18 @@ class LwsOptimize
             fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Optimize cache purge started by $action. Removing full file-based cache" . PHP_EOL);
             fclose($logger);
 
+            $upload_dir = wp_upload_dir();
+            $critical_dir = $upload_dir['basedir'] . '/lwsoptimize/critical/';
+            // Make sure directory exists before attempting to remove it
+            if (file_exists($critical_dir) && is_dir($critical_dir)) {
+                $this->removeDir($critical_dir);
+
+                // Recreate the critical directory after removing it
+                if (!file_exists($critical_dir)) {
+                    wp_mkdir_p($critical_dir);
+                }
+            }
+
             $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
             $this->lwsop_recalculate_stats("all");
         }
@@ -2184,13 +2157,23 @@ class LwsOptimize
         $this->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
         $this->lwsop_dump_all_dynamic_caches();
         $this->lwsop_remove_opcache();
+        // Clear WordPress object cache if available
+        if (function_exists('wp_cache_flush')) {
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Clearing WordPress object cache" . PHP_EOL);
+            fclose($logger);
+
+            wp_cache_flush();
+        }
     }
 
     public function lwsop_specified_urls_fb()
     {
         check_ajax_referer('lwsop_get_specified_url_nonce', '_ajax_nonce');
-        if (isset($this->optimize_options['filebased_cache']) && isset($this->optimize_options['filebased_cache']['specified'])) {
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache']['specified'], 'domain' => site_url()), JSON_PRETTY_PRINT));
+        $optimize_options = $this->optimize_options;
+
+        if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['specified'])) {
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']['specified'], 'domain' => site_url()), JSON_PRETTY_PRINT));
         } else {
             wp_die(json_encode(array('code' => "SUCCESS", 'data' => array(), 'domain' => site_url()), JSON_PRETTY_PRINT));
         }
@@ -2204,6 +2187,8 @@ class LwsOptimize
         if (isset($_POST['data'])) {
             $urls = array();
 
+            $optimize_options = $this->optimize_options;
+
             foreach ($_POST['data'] as $data) {
                 $value = sanitize_text_field($data['value']);
                 if ($value == "" || empty($value)) {
@@ -2212,13 +2197,12 @@ class LwsOptimize
                 $urls[] = $value;
             }
 
-            $this->optimize_options['filebased_cache']['specified'] = $urls;
+            $optimize_options['filebased_cache']['specified'] = $urls;
 
-            if (update_site_option('lws_optimize_config_array', $this->optimize_options)) {
-                wp_die(json_encode(array('code' => "SUCCESS", 'data' => $urls, 'domain' => site_url()), JSON_PRETTY_PRINT));
-            } else {
-                wp_die(json_encode(array('code' => "FAILED", 'data' => $urls, 'domain' => site_url()), JSON_PRETTY_PRINT));
-            }
+            update_site_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
+
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $urls, 'domain' => site_url()), JSON_PRETTY_PRINT));
         }
         wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()), JSON_PRETTY_PRINT));
     }
@@ -2226,8 +2210,10 @@ class LwsOptimize
     public function lwsop_exclude_urls_fb()
     {
         check_ajax_referer('lwsop_get_excluded_nonce', '_ajax_nonce');
-        if (isset($this->optimize_options['filebased_cache']) && isset($this->optimize_options['filebased_cache']['exclusions'])) {
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache']['exclusions'], 'domain' => site_url()), JSON_PRETTY_PRINT));
+        $optimize_options = $this->optimize_options;
+
+        if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['exclusions'])) {
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']['exclusions'], 'domain' => site_url()), JSON_PRETTY_PRINT));
         } else {
             wp_die(json_encode(array('code' => "SUCCESS", 'data' => array(), 'domain' => site_url()), JSON_PRETTY_PRINT));
         }
@@ -2236,8 +2222,10 @@ class LwsOptimize
     public function lwsop_exclude_cookies_fb()
     {
         check_ajax_referer('lwsop_get_excluded_cookies_nonce', '_ajax_nonce');
-        if (isset($this->optimize_options['filebased_cache']) && isset($this->optimize_options['filebased_cache']['exclusions_cookies'])) {
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $this->optimize_options['filebased_cache']['exclusions_cookies'], 'domain' => site_url()), JSON_PRETTY_PRINT));
+        $optimize_options = $this->optimize_options;
+
+        if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['exclusions_cookies'])) {
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']['exclusions_cookies'], 'domain' => site_url()), JSON_PRETTY_PRINT));
         } else {
             wp_die(json_encode(array('code' => "SUCCESS", 'data' => array(), 'domain' => site_url()), JSON_PRETTY_PRINT));
         }
@@ -2260,19 +2248,13 @@ class LwsOptimize
                 $urls[] = $value;
             }
 
-            $old = $this->optimize_options;
-            $this->optimize_options['filebased_cache']['exclusions'] = $urls;
+            $optimize_options = $this->optimize_options;
+            $optimize_options['filebased_cache']['exclusions'] = $urls;
 
-            if ($old === $this->optimize_options) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            }
-            $return = update_option('lws_optimize_config_array', $this->optimize_options);
-            // If correctly added and updated
-            if ($return) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            } else {
-                wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-            }
+            update_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
+
+            wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
         }
         wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()), JSON_PRETTY_PRINT));
     }
@@ -2294,19 +2276,14 @@ class LwsOptimize
                 $urls[] = $value;
             }
 
-            $old = $this->optimize_options;
-            $this->optimize_options['filebased_cache']['exclusions_cookies'] = $urls;
+            $optimize_options = $this->optimize_options;
+            $optimize_options['filebased_cache']['exclusions_cookies'] = $urls;
 
-            if ($old === $this->optimize_options) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            }
-            $return = update_option('lws_optimize_config_array', $this->optimize_options);
-            // If correctly added and updated
-            if ($return) {
-                wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
-            } else {
-                wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-            }
+
+            update_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
+
+            wp_die(json_encode(array('code' => "SUCCESS", "data" => $urls)), JSON_PRETTY_PRINT);
         }
         wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url()), JSON_PRETTY_PRINT));
     }
@@ -2325,9 +2302,11 @@ class LwsOptimize
                 return ['state' => "false", 'data' => []];
             }
 
+            $optimize_options = $this->optimize_options;
+
             $option = sanitize_text_field($option);
-            if (isset($this->optimize_options[$option]) && isset($this->optimize_options[$option]['state'])) {
-                $array = $this->optimize_options[$option];
+            if (isset($optimize_options[$option]) && isset($optimize_options[$option]['state'])) {
+                $array = $optimize_options[$option];
                 $state = $array['state'];
                 unset($array['state']);
                 $data = $array;
@@ -2602,8 +2581,10 @@ class LwsOptimize
     {
         check_ajax_referer('lwsop_get_maintenance_db_nonce', '_ajax_nonce');
 
-        if (!isset($this->optimize_options['maintenance_db']) || !isset($this->optimize_options['maintenance_db']['options'])) {
-            $this->optimize_options['maintenance_db']['options'] = array(
+        $optimize_options = $this->optimize_options;
+
+        if (!isset($optimize_options['maintenance_db']) || !isset($optimize_options['maintenance_db']['options'])) {
+            $optimize_options['maintenance_db']['options'] = array(
                 'myisam' => false,
                 'drafts' => false,
                 'revisions' => false,
@@ -2612,10 +2593,11 @@ class LwsOptimize
                 'deleted_comments' => false,
                 'expired_transients' => false
             );
-            update_option('lws_optimize_config_array', $this->optimize_options);
+            update_option('lws_optimize_config_array', $optimize_options);
+            $this->optimize_options = $optimize_options;
         }
 
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => $this->optimize_options['maintenance_db']['options'], 'domain' => site_url())), JSON_PRETTY_PRINT);
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $optimize_options['maintenance_db']['options'], 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
     // Update the DB options array
@@ -2637,30 +2619,24 @@ class LwsOptimize
             $options[] = $value;
         }
 
-        $old = $this->optimize_options;
-        $this->optimize_options['maintenance_db']['options'] = $options;
+        $optimize_options = $this->optimize_options;
+        $optimize_options['maintenance_db']['options'] = $options;
 
-        if ($old === $this->optimize_options) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $options)), JSON_PRETTY_PRINT);
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
+
+        if (wp_next_scheduled('lws_optimize_maintenance_db_weekly')) {
+            wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
         }
-        $return = update_option('lws_optimize_config_array', $this->optimize_options);
-        // If correctly added and updated
-        if ($return) {
-            if (wp_next_scheduled('lws_optimize_maintenance_db_weekly')) {
-                wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
-            }
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $options)), JSON_PRETTY_PRINT);
-        } else {
-            wp_die(json_encode(array('code' => "FAILURE", "data" => $this->optimize_options)), JSON_PRETTY_PRINT);
-        }
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => $options)), JSON_PRETTY_PRINT);
     }
 
     public function lws_optimize_create_maintenance_db_options()
     {
         global $wpdb;
-        $this->optimize_options = get_option('lws_optimize_config_array', array());
+        $optimize_options = $this->optimize_options;
 
-        $config_options = $this->optimize_options['maintenance_db']['options'];
+        $config_options = $optimize_options['maintenance_db']['options'];
         foreach ($config_options as $options) {
             switch ($options) {
                 case 'myisam':
@@ -2776,6 +2752,8 @@ class LwsOptimize
                 $options['combine_js']['state'] = "true";
                 $options['minify_css']['state'] = "true";
                 $options['minify_js']['state'] = "true";
+                $options['defer_js']['state'] = "false";
+                $options['delay_js']['state'] = "false";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
                 $options['memcached']['state'] = "false";
@@ -2792,6 +2770,10 @@ class LwsOptimize
                 $options['cache_logged_user']['state'] = "true";
                 $options['dynamic_cache']['state'] = "true";
                 $options['htaccess_rules']['state'] = "true";
+                $options['image_add_sizes']['state'] = "false";
+                $options['remove_css']['state'] = "false";
+                $options['critical_css']['state'] = "false";
+
 
                 update_option('lws_optimize_config_array', $options);
 
@@ -2808,6 +2790,8 @@ class LwsOptimize
                 $options['combine_js']['state'] = "true";
                 $options['minify_css']['state'] = "true";
                 $options['minify_js']['state'] = "true";
+                $options['defer_js']['state'] = "true";
+                $options['delay_js']['state'] = "false";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
                 $options['memcached']['state'] = "false";
@@ -2824,6 +2808,9 @@ class LwsOptimize
                 $options['cache_logged_user']['state'] = "true";
                 $options['dynamic_cache']['state'] = "true";
                 $options['htaccess_rules']['state'] = "true";
+                $options['image_add_sizes']['state'] = "true";
+                $options['remove_css']['state'] = "false";
+                $options['critical_css']['state'] = "false";
 
                 update_option('lws_optimize_config_array', $options);
                 break;
@@ -2836,6 +2823,8 @@ class LwsOptimize
                 $options['combine_js']['state'] = "true";
                 $options['minify_css']['state'] = "true";
                 $options['minify_js']['state'] = "true";
+                $options['defer_js']['state'] = "true";
+                $options['delay_js']['state'] = "true";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
                 $options['memcached']['state'] = "false";
@@ -2852,6 +2841,9 @@ class LwsOptimize
                 $options['cache_logged_user']['state'] = "true";
                 $options['dynamic_cache']['state'] = "true";
                 $options['htaccess_rules']['state'] = "true";
+                $options['image_add_sizes']['state'] = "true";
+                $options['remove_css']['state'] = "true";
+                $options['critical_css']['state'] = "true";
 
                 update_option('lws_optimize_config_array', $options);
                 break;
@@ -2868,275 +2860,14 @@ class LwsOptimize
         return $options;
     }
 
-    public function lwsop_convert_all_media()
-    {
-        check_ajax_referer('lwsop_convert_all_images_nonce', '_ajax_nonce');
-
-        // Fetch data from the form
-        $quality = $_POST['data']['quality'] != null ? sanitize_text_field($_POST['data']['quality']) : "balanced";
-        $keepcopy = $_POST['data']['keepcopy'] != null ? sanitize_text_field($_POST['data']['keepcopy']) : "keep";
-        $mimetypes = $_POST['data']['mimetypes'] != null ? $_POST['data']['mimetypes'] : ['jpeg', 'jpg'];
-        $size = $_POST['data']['size'] != null ? intval($_POST['data']['size']) : 2560;
-
-        if ($keepcopy != "keep") {
-            $keepcopy = "not_keep";
-        }
-
-        $authorized_types = [];
-        foreach ($mimetypes as $mimetype) {
-            $authorized_types[] = sanitize_text_field($mimetype);
-        }
-        // To support both way to write JPG
-        if (in_array("jpg", $authorized_types) && !in_array("jpeg", $authorized_types)) {
-            $authorized_types[] = "jpeg";
-        }
-        if (in_array("jpeg", $authorized_types) && !in_array("jpg", $authorized_types)) {
-            $authorized_types[] = "jpg";
-        }
-
-        // Fetch and store all necessary infos to proceed with the conversion
-        $data = [
-            'convertion_format' => "webp",
-            'convertion_keeporiginal' => $keepcopy,
-            'convertion_quality' => $quality,
-            'convertion_amount' => 15,
-            'image_format' => $authorized_types,
-            'image_maxsize' => $size,
-            'ongoing' => true
-        ];
-
-        // Add the data to the database for future access by the cron
-        update_option('lws_optimize_all_media_convertion', $data);
-
-        $current_data = $this->lwsop_update_current_media_convertion_database();
-
-        // Update the stats about the current convertion
-        update_option('lws_optimize_current_convertion_stats', ['type' => "webp", 'original' => $current_data['max'], 'converted' => $current_data['converted']]);
-
-        $scheduled = false;
-        // Deactivate the deconvertion if activated before converting anything
-        wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
-        if (!wp_next_scheduled('lws_optimize_convert_media_cron')) {
-            $scheduled = wp_schedule_event(time() + 3, 'lws_three_minutes', 'lws_optimize_convert_media_cron');
-        } else {
-            wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-            $scheduled = wp_schedule_event(time() + 3, 'lws_three_minutes', 'lws_optimize_convert_media_cron');
-        }
-
-        if ($scheduled) {
-            wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
-        } else {
-            wp_die(json_encode(array('code' => "FAILED", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
-        }
-    }
-
-    /**
-     * Convert a certain amount (between 1 and 15) of images to the desired format.
-     * The function does not check much else, whether or not anything got converted is not checked
-     */
-    public function lws_optimize_convert_media_cron()
-    {
-        // Fetch data from the databse and check for validity
-        $media_data = get_option('lws_optimize_all_media_convertion', []);
-
-        if (empty($media_data)) {
-            wp_die(json_encode(array('code' => "NO_DATA", "data" => "", 'domain' => site_url())), JSON_PRETTY_PRINT);
-        }
-
-        // Launch the convertion
-        $response = $this->lwsImageOptimization->convert_all_medias(
-            $media_data['convertion_quality'] ?? "balanced",
-            $media_data['convertion_amount'] ?? 10,
-            $media_data['image_maxsize'] ?? 2560,
-        );
-
-        // If no attachments got converted, stop the cron here
-        $response = json_decode($response, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $data = $response['data'];
-
-            // Update the data array with info on what has been done and what is left
-            $options = [
-                'latest_time' => time(),
-                'data' => [
-                    'max' => $data['max'] ?? 0,
-                    'to_convert' => $data['to_convert'] ?? 0,
-                    'converted' => $data['converted'] ?? 0,
-                    'left' => $data['left'] ?? 0,
-                    'convert_type' => $media_data['convertion_format'] ?? '-'
-                ]
-            ];
-            update_option('lws_optimize_current_media_convertion', $options);
-
-            $stats = $this->lwsop_update_current_media_convertion_database();
-            if ($stats['left'] == 0) {
-                apply_filters("lws_optimize_clear_filebased_cache", false, "lws_optimize_convert_media_cron");
-                wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-            }
-        }
-
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
-    /**
-     * Remove the cron for the convertion of all medias, stopping the process
-     */
-    public function lws_optimize_stop_convertion()
-    {
-        check_ajax_referer('lwsop_stop_convertion_nonce', '_ajax_nonce');
-        $data = get_option('lws_optimize_all_media_convertion');
-
-        $data['ongoing'] = false;
-        update_option('lws_optimize_all_media_convertion', $data);
-
-        wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
-
-    /**
-     * Remove the cron for the restoration of all converted medias, stopping the process
-     */
-    public function lws_optimize_stop_deconvertion()
-    {
-        check_ajax_referer('lwsop_stop_deconvertion_nonce', '_ajax_nonce');
-        wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
-
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
-
-    public function lws_optimize_get_revertion_stats()
-    {
-        $images = get_option('lws_optimize_images_convertion', []);
-        $to_unconvert = [];
-        foreach ($images as $image) {
-            if (!isset($image['converted']) || !isset($image['original_path']) || !isset($image['to_keep'])) {
-                continue;
-            }
-
-            // If the image is converted, has the original file and is supposed to be kept
-            if ($image['converted'] && file_exists($image['original_path']) && $image['to_keep']) {
-                $to_unconvert[] = $image;
-            }
-        }
-
-        return $to_unconvert;
-    }
-
-    /**
-     * Revert all original (and saved) images to normal
-     */
-    public function lws_optimize_revert_convertion()
-    {
-        check_ajax_referer('lwsop_revert_convertion_nonce', '_ajax_nonce');
-
-        // Also deactivate the convertion before starting the deconvertion, to prevent errors
-        wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-        wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
-
-        $images = get_option('lws_optimize_images_convertion', []);
-        $to_unconvert = [];
-        foreach ($images as $image) {
-            // If the original file of the image still exists, the option to keep it is activated and the image is converted or has been converted by our plugin
-            if (((isset($image['converted']) && $image['converted']) || (isset($image['previously_converted']) && $image['previously_converted'])) && isset($image['original_path']) && file_exists($image['original_path']) && isset($image['to_keep']) && $image['to_keep']) {
-                // We add it for deconvertion
-                $to_unconvert[] = $image;
-            }
-        }
-
-        wp_schedule_event(time(), "lws_minute", "lwsop_revertOptimization");
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => count($to_unconvert), 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
-    public function lwsop_revertOptimization()
-    {
-        $return = $this->lwsImageOptimization->revertOptimization();
-        $response = json_decode($return, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $data = $response['data'];
-
-            // Nothing got converted, stop the cron
-            if (empty($data)) {
-                wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
-                // Remove the cache folder
-
-                apply_filters("lws_optimize_clear_filebased_cache", false, "lwsop_revertOptimization");
-            }
-        }
-    }
-
-    /**
-     * Configurate the autoconvertion
-     */
-    public function lwsop_start_autoconvert_media()
-    {
-        check_ajax_referer('lwsop_convert_all_images_on_upload_nonce', '_ajax_nonce');
-
-        // Fetch data from the form
-        $quality = $_POST['data']['quality'] != null ? sanitize_text_field($_POST['data']['quality']) : "balanced";
-        $mimetypes = $_POST['data']['mimetypes'] != null ? $_POST['data']['mimetypes'] : ['jpeg', 'jpg'];
-        $size = $_POST['data']['size'] != null ? intval($_POST['data']['size']) : 2560;
-
-        $authorized_types = [];
-        foreach ($mimetypes as $mimetype) {
-            $authorized_types[] = sanitize_text_field($mimetype);
-        }
-
-        // Fetch and store all necessary infos to proceed with the conversion
-        $data = [
-            'auto_convertion_format' => "webp",
-            'auto_convertion_quality' => $quality,
-            'auto_image_format' => $authorized_types,
-            'auto_image_maxsize' => $size,
-        ];
-
-        $this->optimize_options['auto_update'] = $data;
-
-        update_option('lws_optimize_config_array', $this->optimize_options);
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
-    /**
-     * Start the auto-convert-on-upload feature
-     */
-    public function lwsop_start_autoconvertion()
-    {
-        check_ajax_referer('lwsop_start_autoconvertion_nonce', '_ajax_nonce');
-
-        $this->optimize_options['auto_update'] = array_merge([
-            'auto_convertion_format' => "webp",
-            'auto_convertion_quality' => "balanced",
-            'auto_image_format' => ['jpeg', 'jpg'],
-            'auto_image_maxsize' => 2560,
-        ], $this->optimize_options['auto_update']);
-
-        $this->optimize_options['auto_update']['state'] = "true";
-
-        update_option('lws_optimize_config_array', $this->optimize_options);
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
-    /**
-     * Stop the auto-convert-on-upload feature
-     */
-    public function lwsop_stop_autoconvertion()
-    {
-        check_ajax_referer('lwsop_stop_autoconvertion_nonce', '_ajax_nonce');
-
-        $this->optimize_options['auto_update']['state'] = "false";
-
-        update_option('lws_optimize_config_array', $this->optimize_options);
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
-    }
-
     /**
      * Check and return the state of the preloading
      */
     public function lwsop_check_preload_update()
     {
         check_ajax_referer('lwsop_check_for_update_preload_nonce', '_ajax_nonce');
+
+        $optimize_options = $this->optimize_options;
 
         $sitemap = get_sitemap_url("index");
         stream_context_set_default( [
@@ -3183,11 +2914,9 @@ class LwsOptimize
             }
         }
 
-        $this->optimize_options['filebased_cache']['preload_quantity'] = count($urls);
-        $this->optimize_options['filebased_cache']['preload_done'] = $done;
-        $this->optimize_options['filebased_cache']['preload_ongoing'] = $this->optimize_options['filebased_cache']['preload_quantity'] - $done == 0 ? "false" : "true";
-
-        update_option('lws_optimize_config_array', $this->optimize_options);
+        $optimize_options['filebased_cache']['preload_quantity'] = count($urls);
+        $optimize_options['filebased_cache']['preload_done'] = $done;
+        $optimize_options['filebased_cache']['preload_ongoing'] = $optimize_options['filebased_cache']['preload_quantity'] - $done == 0 ? "false" : "true";
 
         $next = wp_next_scheduled('lws_optimize_start_filebased_preload') ?? null;
         if ($next != null) {
@@ -3204,11 +2933,14 @@ class LwsOptimize
         }
 
         $data = [
-            'quantity' => $this->optimize_options['filebased_cache']['preload_quantity'] ?? null,
-            'done' => $this->optimize_options['filebased_cache']['preload_done'] ?? null,
-            'ongoing' => $this->optimize_options['filebased_cache']['preload_ongoing'] ?? null,
+            'quantity' => $optimize_options['filebased_cache']['preload_quantity'] ?? null,
+            'done' => $optimize_options['filebased_cache']['preload_done'] ?? null,
+            'ongoing' => $optimize_options['filebased_cache']['preload_ongoing'] ?? null,
             'next' => $next ?? null
         ];
+
+        update_option('lws_optimize_config_array', $optimize_options);
+        $this->optimize_options = $optimize_options;
 
         if ($data['quantity'] === null || $data['done'] === null || $data['ongoing'] === null || $data['next'] === null) {
             wp_die(json_encode(array('code' => "ERROR", "data" => $data, 'message' => "Failed to get some of the datas", 'domain' => site_url())), JSON_PRETTY_PRINT);
@@ -3219,228 +2951,28 @@ class LwsOptimize
     }
 
     /**
-     * Update the database with the latest data about the current state of convertion
+     * Convert a certain amount (between 1 and 15) of images to the desired format.
+     * The function does not check much else, whether or not anything got converted is not checked
+     *
+     * Deprecated
      */
-    public function lwsop_update_current_media_convertion_database()
+    public function lws_optimize_convert_media_cron()
     {
-        $data = get_option('lws_optimize_all_media_convertion');
-
-        $keepcopy = $data['convertion_keeporiginal'] ?? null;
-        $authorized_types = $data['image_format'] ?? null;
-
-        if ($keepcopy == null || $authorized_types == null) {
-            return [
-                'max' => 0,
-                'to_convert' => 0,
-                'converted' => 0,
-                'left' => 0,
-                'type' => "-",
-                'gains' => "0%"
-            ];
-        }
-
-        $all_medias_to_convert =  get_option('lws_optimize_images_convertion', []);
-
-        $original = 0;
-        $converted = 0;
-
-        $gained_size = 1;
-        $original_size = 1;
-
-        // Get all images
-        $args = array(
-            'post_type' => 'attachment',
-            'post_mime_type' => 'image',
-            'numberposts' => -1,
-            'post_status' => null,
-            'post_parent' => null
-        );
-        $attachments = get_posts($args);
-
-        $type = "webp";
-
-        // Go through each image, verify its status and update the array
-        // Also fetch $data on how many images are $converted and how many are still $original
-        foreach ($attachments as $attachment) {
-
-            // Get the URL and PATH of the image
-            $attachment_url = wp_get_attachment_url($attachment->ID);
-            $attachment_path = get_attached_file($attachment->ID);
-
-            $tmp = explode('.', $attachment_url);
-            array_pop($tmp);
-            $attachment_url_converted = implode('.', $tmp) . ".$type";
-
-            $tmp = explode('.', $attachment_path);
-            array_pop($tmp);
-            $attachment_path_converted = implode('.', $tmp) . ".$type";
-
-            $mimetype = $attachment->post_mime_type;
-            $name = $attachment->post_name;
-
-            // Ignore non-images
-            if (!str_contains($mimetype, "image/")) {
-                continue;
-            }
-
-            // Get size of the file
-            $size_attachment = filesize($attachment_path) ?? 0;
-
-            // Get the extension on the current file
-            $tmp = explode(".", $attachment_path);
-            $extension = array_pop($tmp);
-
-            // Do not bother with this attachment if the file does not exists
-            if (!file_exists($attachment_path)) {
-                continue;
-            }
-
-            // Get, if it exists, its values in the array
-            $inlist_attachment = $all_medias_to_convert[$attachment->ID] ?? null;
-
-            // If the attachment is not in our array
-            if ($inlist_attachment == null) {
-
-                // Do not convert images not on the authorized_type table
-                if (!in_array($extension, $authorized_types)) {
-                    continue;
-                }
-
-                // If the original and the converted version are the same, it means it already was in $type
-                if ($attachment_path == $attachment_path_converted) {
-                    continue;
-                }
-
-                // We add it to the array with infos about the original file
-                $all_medias_to_convert[$attachment->ID] = [
-                    'ID' => $attachment->ID,
-                    'name' => $name,
-                    'original_url' => $attachment_url,
-                    'original_path' => $attachment_path,
-                    'original_mime' => $mimetype,
-                    'original_extension' => $extension,
-                    'original_size' => $size_attachment,
-                    'url' => $attachment_url_converted,
-                    'path' => $attachment_path_converted,
-                    'mime' => "image/$type",
-                    'extension' => $type,
-                    'size' => $size_attachment,
-                    'to_keep' => $keepcopy,
-                    'converted' => false,
-                    'date_convertion' => false,
-                ];
-
-                // If the file is already converted
-                if (file_exists($attachment_path_converted)) {
-                    $converted++;
-                    $all_medias_to_convert[$attachment->ID] = array_merge(
-                        $all_medias_to_convert[$attachment->ID],
-                        [
-                            'size' => filesize($attachment_path_converted) ?? $size_attachment,
-                            'converted' => true,
-                            'date_convertion' => time(),
-                        ]
-                    );
-                }
-            } else {
-                // The attachment is already in our array
-
-                // Remove the attachment from the listing if it does not exists anymore (and should still exists)
-                if ((!file_exists($inlist_attachment['original_path']) && $inlist_attachment['to_keep'] == "true") || ($inlist_attachment['to_keep'] == "false" && isset($inlist_attachment['original_path']) && !file_exists($inlist_attachment['original_path']))) {
-                    unset($all_medias_to_convert[$attachment->ID]);
-                    continue;
-                }
-
-                // Do not convert images not on the authorized_type table
-                if (!in_array($inlist_attachment['original_extension'], $authorized_types)) {
-                    if (!$inlist_attachment['converted']) {
-                        unset($all_medias_to_convert[$attachment->ID]);
-                    }
-                    continue;
-                }
-
-                // It is already converted to the right format, the converted file exists
-                if (file_exists($inlist_attachment['path'])) {
-                    $all_medias_to_convert[$attachment->ID]['converted'] = true;
-                    $all_medias_to_convert[$attachment->ID]['date_convertion'] = $all_medias_to_convert[$attachment->ID]['date_convertion'] ?? time();
-                    $converted++;
-                } else {
-                    // The file "converted" cannot be found, we consider it not to be converted, then
-                    $all_medias_to_convert[$attachment->ID] = array_merge($all_medias_to_convert[$attachment->ID], [
-                        'converted' => false,
-                        'date_convertion' => false,
-                    ]);
-                }
-            }
-            $original++;
-        }
-
-        $original_size = 1;
-        $gained_size = 1;
-        foreach ($all_medias_to_convert as $media_convert_size) {
-            if ($media_convert_size['converted']) {
-                $original_size += $media_convert_size['original_size'];
-                $gained_size += $media_convert_size['size'];
-            }
-        }
-
-        $gains = number_format((($original_size - $gained_size) * 100) / $original_size, 2, ".", '') . "%";
-        update_option('lws_optimize_images_convertion', $all_medias_to_convert);
-
-        // Update the stats about the current convertion
-        update_option('lws_optimize_current_convertion_stats', ['type' => $type, 'original' => $original, 'converted' => $converted, 'gains' => $gains]);
-
-        return [
-            'max' => $original,
-            'to_convert' => $original,
-            'converted' => $converted,
-            'left' => $original - $converted,
-            'type' => $type,
-            'gains' => $gains,
-        ];
+        wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => [], 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
-    public function lwsop_check_convert_images_update()
+    /**
+     * Remove the cron for the restoration of all converted medias, stopping the process
+     *
+     * Deprecated
+     */
+    public function lws_optimize_stop_deconvertion()
     {
-        check_ajax_referer('lwsop_check_for_update_convert_image_nonce', '_ajax_nonce');
-        // Get the latest data on the convertion
-        $latest_convertion = $this->lwsop_update_current_media_convertion_database();
+        check_ajax_referer('lwsop_stop_deconvertion_nonce', '_ajax_nonce');
+        wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
 
-        $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
-        $next_scheduled_deconvert = wp_next_scheduled('lwsop_revertOptimization');
-
-        $next = $next_scheduled_all_convert ? get_date_from_gmt(date('Y-m-d H:i:s', intval($next_scheduled_all_convert)), 'Y-m-d H:i:s') : "-";
-        $next_deconvert = $next_scheduled_deconvert ? get_date_from_gmt(date('Y-m-d H:i:s', intval($next_scheduled_deconvert)), 'Y-m-d H:i:s') : "-";
-
-        $max = intval($latest_convertion['max'] ?? 0);
-        $left = intval($latest_convertion['left'] ?? 0);
-        $done = intval($latest_convertion['converted'] ?? 0);
-        $type = sanitize_text_field($latest_convertion['type']) ?? '-';
-        $gains = sanitize_text_field($latest_convertion['gains']) ?? '0%';
-
-        $images = get_option('lws_optimize_images_convertion', []);
-
-        $revertable_images = $this->lws_optimize_get_revertion_stats();
-        $revertable_images_count = 0;
-        if (is_array($revertable_images)) {
-            $revertable_images_count = count($revertable_images);
-        }
-
-        $data = [
-            'status' => $next_scheduled_all_convert ? true : false,
-            'status_revert' => wp_next_scheduled('lwsop_revertOptimization') ? true : false,
-            'next' => htmlentities($next),
-            'next_deconvert' => htmlentities($next_deconvert),
-            'max' => intval($max) ?? 0,
-            'left' => intval($left) ?? 0,
-            'done' => intval($done) ?? 0,
-            'listing' => $images,
-            'convert_type' => htmlentities($type),
-            'deconvert_left' => $revertable_images_count,
-            'gains' => $gains
-        ];
-
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => $data, 'domain' => site_url())), JSON_PRETTY_PRINT);
+        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
     /**
@@ -3461,6 +2993,47 @@ class LwsOptimize
             }
         }
         rmdir($dir);
+    }
+
+    public function setupLogfile() {
+        // Create log file in uploads directory if it doesn't exist
+        $upload_dir = wp_upload_dir();
+        $log_dir = $upload_dir['basedir'] . '/lwsoptimize';
+        if (!file_exists($log_dir)) {
+            wp_mkdir_p($log_dir);
+        }
+        $this->log_file = $log_dir . '/debug.log';
+
+        // Check if the log file exists and is too large (over 5MB)
+        if (file_exists($this->log_file) && filesize($this->log_file) > 5 * 1024 * 1024) {
+            // Create a timestamp for the archived log
+            $timestamp = date('Y-m-d-His');
+
+            // Rename the existing log file
+            $archive_name = $log_dir . '/debug-' . $timestamp . '.log';
+            rename($this->log_file, $archive_name);
+
+            // Keep only the latest 15 archived logs
+            $log_files = glob($log_dir . '/debug-*.log');
+            if ($log_files && count($log_files) > 15) {
+                usort($log_files, function($a, $b) {
+                    return filemtime($a) - filemtime($b);
+                });
+
+                $files_to_delete = array_slice($log_files, 0, count($log_files) - 5);
+                foreach ($files_to_delete as $file) {
+                    @unlink($file);
+                }
+            }
+        }
+
+        // Create a new log file if it doesn't exist
+        if (!file_exists($this->log_file)) {
+            touch($this->log_file);
+            // Add header to the new log file
+            $header = '[' . date('Y-m-d H:i:s') . '] Log file created' . PHP_EOL;
+            file_put_contents($this->log_file, $header);
+        }
     }
 }
 

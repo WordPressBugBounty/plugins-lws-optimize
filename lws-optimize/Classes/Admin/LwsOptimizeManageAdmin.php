@@ -4,7 +4,7 @@ namespace Lws\Classes\Admin;
 
 class LwsOptimizeManageAdmin
 {
-    public $version = "3.2.0.5";
+    public $version = "3.2.4.3";
 
     public function manage_options()
     {
@@ -27,7 +27,7 @@ class LwsOptimizeManageAdmin
         add_action('admin_notices', function () {
             if (substr(get_current_screen()->id, 0, 29) == "toplevel_page_lws-op-config") {
                 remove_all_actions('admin_notices');
-                if (get_option('lws_optimize_offline') && (is_plugin_active('wp-rocket/wp-rocket.php') || is_plugin_active('powered-cache/powered-cache.php') || is_plugin_active('wp-super-cache/wp-cache.php')
+                if (get_transient('lws_optimize_deactivate_temporarily') && (is_plugin_active('wp-rocket/wp-rocket.php') || is_plugin_active('powered-cache/powered-cache.php') || is_plugin_active('wp-super-cache/wp-cache.php')
                     || is_plugin_active('wp-optimize/wp-optimize.php') || is_plugin_active('wp-fastest-cache/wpFastestCache.php') || is_plugin_active('w3-total-cache/w3-total-cache.php'))) {
                     $this->lws_optimize_warning_incompatibiliy();
                 }
@@ -78,6 +78,9 @@ class LwsOptimizeManageAdmin
             wp_enqueue_style('lws_optimize_Poppins_font', 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
             wp_enqueue_style("lws_optimize_bootstrap_css", LWS_OP_URL . 'css/bootstrap.min.css?v=' . $this->version);
             wp_enqueue_script("lws_optimize_bootstrap_js", LWS_OP_URL . 'js/bootstrap.min.js?v=' . $this->version, array('jquery'));
+            // DataTable assets
+            wp_enqueue_style("lws_optimize_datatable_css", LWS_OP_URL . "css/jquery.dataTables.min.css");
+            wp_enqueue_script("lws_optimize_datatable_js", LWS_OP_URL . "/js/jquery.dataTables.min.js", array('jquery'));
             wp_enqueue_script("lws_optimize_popper", "https://unpkg.com/@popperjs/core@2");
         }
     }
@@ -299,7 +302,7 @@ class LwsOptimizeManageAdmin
             is_plugin_active('wp-fastest-cache/wpFastestCache.php') ||
             is_plugin_active('w3-total-cache/w3-total-cache.php')
         ) {
-            update_option('lws_optimize_offline', 'ON');
+            set_transient('lws_optimize_deactivate_temporarily', true, 86400);
             $GLOBALS['lws_optimize']->lws_optimize_set_cache_htaccess();
             $GLOBALS['lws_optimize']->lws_optimize_reset_header_htaccess();
             $GLOBALS['lws_optimize']->lwsop_dump_all_dynamic_caches();
@@ -341,21 +344,23 @@ class LwsOptimizeManageAdmin
     public function lws_optimize_manage_state()
     {
         check_ajax_referer('nonce_lws_optimize_activate_config', '_ajax_nonce');
-        if (!isset($_POST['action']) || !isset($_POST['checked'])) {
-            wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
-        }
+        $result = delete_option('lws_optimize_offline');
 
-        $state = sanitize_text_field($_POST['checked']);
-        if ($state == "true") {
-            $result = delete_option('lws_optimize_offline');
-        } else {
-            $result = update_option('lws_optimize_offline', "ON");
-        }
+        // if (!isset($_POST['action']) || !isset($_POST['checked'])) {
+        //     wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
+        // }
 
-        // Remove Dynamic Cache at the same time
-        $GLOBALS['lws_optimize']->lws_optimize_set_cache_htaccess();
-        $GLOBALS['lws_optimize']->lws_optimize_reset_header_htaccess();
-        $GLOBALS['lws_optimize']->lwsop_dump_all_dynamic_caches();
+        // $state = sanitize_text_field($_POST['checked']);
+        // if ($state == "true") {
+        //     $result = delete_option('lws_optimize_offline');
+        // } else {
+        //     $result = update_option('lws_optimize_offline', "ON");
+        // }
+
+        // // Remove Dynamic Cache at the same time
+        // $GLOBALS['lws_optimize']->lws_optimize_set_cache_htaccess();
+        // $GLOBALS['lws_optimize']->lws_optimize_reset_header_htaccess();
+        // $GLOBALS['lws_optimize']->lwsop_dump_all_dynamic_caches();
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $result)), JSON_PRETTY_PRINT);
     }

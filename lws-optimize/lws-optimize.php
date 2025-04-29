@@ -8,10 +8,10 @@ use Lws\Classes\LwsOptimize;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.2.4.3
+ * Version:           3.3
  * Author:            LWS
  * Author URI:        https://www.lws.fr
- * Tested up to:      6.7
+ * Tested up to:      6.8
  * Domain Path:       /languages
  *
  * @link    https://www.lws.fr/
@@ -58,7 +58,7 @@ function lws_optimize_activation()
     $GLOBALS['lws_optimize'] ->lws_optimize_set_cache_htaccess();
     $GLOBALS['lws_optimize'] ->lws_optimize_reset_header_htaccess();
 
-    @deactivate_plugins("lwscache/lwscache.php");
+    //@deactivate_plugins("lwscache/lwscache.php");
 
 
     if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {
@@ -75,13 +75,8 @@ function lws_optimize_activation()
         wp_schedule_event(time() + 3, "lws_minute", "lws_optimize_start_filebased_preload");
     }
 
-    $media_convertion = get_option('lws_optimize_all_media_convertion', ['ongoing' => false]);
-    if (isset($media_convertion['ongoing']) && $media_convertion['ongoing']) {
-        if (wp_next_scheduled("lws_optimize_convert_media_cron")) {
-            wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-        }
-        wp_schedule_event(time(), "lws_three_minutes", "lws_optimize_convert_media_cron");
-    }
+    wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+    wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
 
     if (isset($optimize_options['maintenance_db']) && $optimize_options['maintenance_db']['state'] == "true") {
         if (wp_next_scheduled("lws_optimize_maintenance_db_weekly")) {
