@@ -446,7 +446,7 @@ class LwsOptimizeFileCache
             return $tag;
         }
 
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['preload_js']['exclusions'])) {
             foreach ((array)$optimize_options['preload_js']['exclusions'] as $exception) {
@@ -566,7 +566,7 @@ class LwsOptimizeFileCache
      */
     public function lwsop_page_has_excluded_cookies()
     {
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
         if (!isset($optimize_options['filebased_cache']['exclusions_cookies'])) {
             return false;
         }
@@ -603,7 +603,7 @@ class LwsOptimizeFileCache
         }
         $url = trim($url, "/");
 
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
         $exclusions = $optimize_options['filebased_cache']['exclusions'] ?? [];
 
         foreach ($exclusions as $page) {

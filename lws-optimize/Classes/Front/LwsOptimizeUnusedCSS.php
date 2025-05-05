@@ -24,7 +24,7 @@ class LwsOptimizeUnusedCSS
                 'headers' => [
                     'Content-Type' => 'application/json',
                 ],
-                'timeout' => 120,
+                'timeout' => 60,
             ]
         );
 

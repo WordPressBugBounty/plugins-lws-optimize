@@ -36,7 +36,7 @@ class LwsOptimizeLazyLoading
      */
     public static function lws_optimize_add_lazy_loading_attributes_to_images($content)
     {
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $lazyload_options = $optimize_options['lazyload'] ?? [];
         $exclude_classes = $lazyload_options['exclusions']['css_classes'] ?? [];
@@ -140,7 +140,7 @@ class LwsOptimizeLazyLoading
     public static function lws_optimize_add_lazy_loading_attributes_to_iframe_videos($content)
     {
 
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $lazyload_options = $optimize_options['lazyload'] ?? [];
         $exclude_classes = $lazyload_options['exclusions']['css_classes'] ?? [];

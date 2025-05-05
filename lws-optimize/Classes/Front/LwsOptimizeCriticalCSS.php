@@ -28,29 +28,29 @@ class LwsOptimizeCriticalCSS
             $site_domain = parse_url(site_url(), PHP_URL_HOST);
 
             foreach ($css_elements[0] as $element) {
-            // Handle <style> tags
-            if (strpos($element, '<style') !== false) {
-                preg_match("/<style[^>]*>(.*?)<\/style>/is", $element, $style_content);
-                if (!empty($style_content[1])) {
-                $this->all_css .= trim($style_content[1]) . "\n";
-                }
-            }
-            // Handle <link> tags
-            elseif (strpos($element, '<link') !== false) {
-                preg_match("/href=['\"]([^'\"]+)['\"]/",$element, $href);
-                if (!empty($href[1])) {
-                $url = trim($href[1]);
-
-                // Check if CSS is from the same domain
-                $css_domain = parse_url($url, PHP_URL_HOST);
-                if ($css_domain && $css_domain === $site_domain) {
-                    $response = wp_remote_get($url);
-                    if (!is_wp_error($response) && $response['response']['code'] === 200) {
-                    $this->all_css .= wp_remote_retrieve_body($response) . "\n";
+                // Handle <style> tags
+                if (strpos($element, '<style') !== false) {
+                    preg_match("/<style[^>]*>(.*?)<\/style>/is", $element, $style_content);
+                    if (!empty($style_content[1])) {
+                        $this->all_css .= trim($style_content[1]) . "\n";
                     }
                 }
+                // Handle <link> tags
+                elseif (strpos($element, '<link') !== false) {
+                    preg_match("/href=['\"]([^'\"]+)['\"]/",$element, $href);
+                    if (!empty($href[1])) {
+                        $url = trim($href[1]);
+
+                        // Check if CSS is from the same domain
+                        $css_domain = parse_url($url, PHP_URL_HOST);
+                        if ($css_domain && $css_domain === $site_domain) {
+                            $response = wp_remote_get($url);
+                            if (!is_wp_error($response) && $response['response']['code'] === 200) {
+                                $this->all_css .= wp_remote_retrieve_body($response) . "\n";
+                            }
+                        }
+                    }
                 }
-            }
             }
         }
 
@@ -73,7 +73,7 @@ class LwsOptimizeCriticalCSS
                 'headers' => [
                     'Content-Type' => 'application/json',
                 ],
-                'timeout' => 120,
+                'timeout' => 60,
             ]
         );
 

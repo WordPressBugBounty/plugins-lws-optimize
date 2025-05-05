@@ -14,7 +14,7 @@ use Lws\Classes\Images\LwsOptimizeImageFrontManager;
 
 class LwsOptimize
 {
-    private $log_file;
+    public $log_file;
     public $optimize_options;
     public $lwsOptimizeCache;
     public $lwsImageOptimization;
@@ -346,7 +346,7 @@ class LwsOptimize
      */
     public function lws_optimize_init()
     {
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
 
@@ -409,7 +409,7 @@ class LwsOptimize
             global $wpdb;
 
             // Force deactivate memcached for everyone
-            $options = $this->optimize_options;
+            $options = get_option('lws_optimize_config_array', []);
             $options['memcached']['state'] = false;
 
             $options['filebased_cache']['saved_urls'] = [];
@@ -494,7 +494,7 @@ class LwsOptimize
             && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
             // Verify whether this is Varnish using IPxChange or not
             if (isset($_SERVER['HTTP_X_CDN_INFO']) && $_SERVER['HTTP_X_CDN_INFO'] == "ipxchange") {
-                $ipXchange_IP = dns_get_record("cron.kghkhkhkh.fr")[0]['ip'] ?? false;
+                $ipXchange_IP = dns_get_record($_SERVER['HTTP_HOST'])[0]['ip'] ?? false;
                 $host = $_SERVER['SERVER_NAME'] ?? false;
 
                 // If we find the IP and the host, we can purge the cache
@@ -569,7 +569,7 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         // Get the exclusions
         $preloads = isset($optimize_options['preload_css']['links']) ? $optimize_options['preload_css']['links'] : array();
@@ -580,7 +580,7 @@ class LwsOptimize
     public function lwsop_set_url_preload()
     {
         check_ajax_referer('nonce_lws_optimize_preloading_url_files_set', '_ajax_nonce');
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($_POST['data'])) {
             $urls = array();
@@ -608,7 +608,7 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         // Get the exclusions
         $preloads = isset($optimize_options['preload_font']['links']) ? $optimize_options['preload_font']['links'] : array();
@@ -622,7 +622,7 @@ class LwsOptimize
         if (isset($_POST['data'])) {
             $urls = array();
 
-            $optimize_options = $this->optimize_options;
+            $optimize_options = get_option('lws_optimize_config_array', []);
 
             foreach ($_POST['data'] as $data) {
                 $value = sanitize_text_field($data['value']);
@@ -734,7 +734,7 @@ class LwsOptimize
         }
 
         // IMPORTANT: Get a fresh copy of options from the database
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         // Clean previous preload data
         delete_option('lws_optimize_sitemap_urls');
@@ -882,7 +882,7 @@ class LwsOptimize
             $urls = $urls['urls'] ?? [];
         }
 
-        $array = $this->optimize_options;
+        $array = get_option('lws_optimize_config_array', []);
 
         // Initialize variables from configuration
         $max_try = intval($array['filebased_cache']['preload_amount'] ?? 5);
@@ -963,11 +963,6 @@ class LwsOptimize
                 'reject_unsafe_urls' => false // Allow URLs with query strings
                 ]
             );
-
-            // Log request for debugging
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload request sent to: $request_url with agent: $agent" . PHP_EOL);
-            fclose($logger);
             }
 
             // Check if cache file was created
@@ -1008,8 +1003,8 @@ class LwsOptimize
         $array['filebased_cache']['preload_quantity'] = count($urls);
 
         // Save updated configuration and sitemap URLs
-        update_option('lws_optimize_config_array', $array);
-        $this->optimize_options = $array;
+        // update_option('lws_optimize_config_array', $array);
+        // $this->optimize_options = $array;
         update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
         delete_option('lws_optimize_preload_is_ongoing');
     }
@@ -1019,7 +1014,7 @@ class LwsOptimize
         check_ajax_referer('update_fb_preload_amount', '_ajax_nonce');
 
         if (isset($_POST['action'])) {
-            $optimize_options = $this->optimize_options;
+            $optimize_options = get_option('lws_optimize_config_array', []);
 
             $amount = $_POST['amount'] ? sanitize_text_field($_POST['amount']) : 3;
             $optimize_options['filebased_cache']['preload_amount'] =  $amount;
@@ -1108,7 +1103,7 @@ class LwsOptimize
         }
 
         // Get fresh copy of options
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         // Sanitize inputs
         $timer = sanitize_text_field($_POST['timer']);
@@ -1376,7 +1371,7 @@ class LwsOptimize
      * If the cache is not active or an error occurs, headers won't be added
      */
     function lws_optimize_reset_header_htaccess() {
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $state = $optimize_options['filebased_cache']['state'] ?? "false";
         $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_thrice_monthly";
@@ -1412,7 +1407,7 @@ class LwsOptimize
         if ($available_htaccess && $state != "true") {
             exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
             error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut)));
-            return json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut));
+            return 0;
         }
 
         switch ($timer) {
@@ -1457,7 +1452,8 @@ class LwsOptimize
         if ($available_htaccess) {
             // Remove the old htaccess related to HEADER before adding it back updated
             if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode) || !$eCode) {
-                error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "[$eCode] - " . json_encode($eOut))));
+                error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => $eOut)));
+                return 0;
             }
 
 
@@ -1523,7 +1519,7 @@ class LwsOptimize
             wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url())));
         }
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $timer = sanitize_text_field($_POST['timer']);
         if (empty($timer)) {
@@ -1584,7 +1580,7 @@ class LwsOptimize
         }
 
         // IMPORTANT: Get a fresh copy of options from the database
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $id = sanitize_text_field($_POST['data']['type']);
         $state = sanitize_text_field($_POST['data']['state']);
@@ -1836,7 +1832,7 @@ class LwsOptimize
         // The $element to update
         $element = $match[1];
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         // Get all exclusions
         foreach ($data as $var) {
@@ -1891,7 +1887,7 @@ class LwsOptimize
         // The $element to update
         $element = $match[1];
         // All configs for LWS Optimize
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         // Get all exclusions
         foreach ($data as $var) {
@@ -1945,7 +1941,7 @@ class LwsOptimize
     public function lws_optimize_fetch_exclusions()
     {
         check_ajax_referer('nonce_lws_optimize_fetch_exclusions', '_ajax_nonce');
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
@@ -2076,7 +2072,7 @@ class LwsOptimize
     /**
      * Clean the given directory. If no directory is given, remove /cache/lwsoptimize/
      */
-    public function lws_optimize_clean_filebased_cache($directory = false, $action = "[]")
+    public function lws_optimize_clean_filebased_cache($directory = false, $action = "[]", $autopurge = false)
     {
 
         if ($directory) {
@@ -2113,6 +2109,13 @@ class LwsOptimize
                 $this->lws_optimize_delete_directory($directory, $this);
             }
         } else {
+            if ($autopurge) {
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Optimize cache purge started by $action. Removing full cache from AutoPurge is forbidden. Stopping." . PHP_EOL);
+                fclose($logger);
+
+                return;
+            }
 
             $logger = fopen($this->log_file, 'a');
             fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Optimize cache purge started by $action. Removing full file-based cache" . PHP_EOL);
@@ -2170,7 +2173,7 @@ class LwsOptimize
     public function lwsop_specified_urls_fb()
     {
         check_ajax_referer('lwsop_get_specified_url_nonce', '_ajax_nonce');
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['specified'])) {
             wp_die(json_encode(array('code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']['specified'], 'domain' => site_url()), JSON_PRETTY_PRINT));
@@ -2187,7 +2190,7 @@ class LwsOptimize
         if (isset($_POST['data'])) {
             $urls = array();
 
-            $optimize_options = $this->optimize_options;
+            $optimize_options = get_option('lws_optimize_config_array', []);
 
             foreach ($_POST['data'] as $data) {
                 $value = sanitize_text_field($data['value']);
@@ -2210,7 +2213,7 @@ class LwsOptimize
     public function lwsop_exclude_urls_fb()
     {
         check_ajax_referer('lwsop_get_excluded_nonce', '_ajax_nonce');
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['exclusions'])) {
             wp_die(json_encode(array('code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']['exclusions'], 'domain' => site_url()), JSON_PRETTY_PRINT));
@@ -2222,7 +2225,7 @@ class LwsOptimize
     public function lwsop_exclude_cookies_fb()
     {
         check_ajax_referer('lwsop_get_excluded_cookies_nonce', '_ajax_nonce');
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['exclusions_cookies'])) {
             wp_die(json_encode(array('code' => "SUCCESS", 'data' => $optimize_options['filebased_cache']['exclusions_cookies'], 'domain' => site_url()), JSON_PRETTY_PRINT));
@@ -2248,7 +2251,7 @@ class LwsOptimize
                 $urls[] = $value;
             }
 
-            $optimize_options = $this->optimize_options;
+            $optimize_options = get_option('lws_optimize_config_array', []);
             $optimize_options['filebased_cache']['exclusions'] = $urls;
 
             update_option('lws_optimize_config_array', $optimize_options);
@@ -2276,7 +2279,7 @@ class LwsOptimize
                 $urls[] = $value;
             }
 
-            $optimize_options = $this->optimize_options;
+            $optimize_options = get_option('lws_optimize_config_array', []);
             $optimize_options['filebased_cache']['exclusions_cookies'] = $urls;
 
 
@@ -2302,7 +2305,7 @@ class LwsOptimize
                 return ['state' => "false", 'data' => []];
             }
 
-            $optimize_options = $this->optimize_options;
+            $optimize_options = get_option('lws_optimize_config_array', []);
 
             $option = sanitize_text_field($option);
             if (isset($optimize_options[$option]) && isset($optimize_options[$option]['state'])) {
@@ -2581,7 +2584,7 @@ class LwsOptimize
     {
         check_ajax_referer('lwsop_get_maintenance_db_nonce', '_ajax_nonce');
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (!isset($optimize_options['maintenance_db']) || !isset($optimize_options['maintenance_db']['options'])) {
             $optimize_options['maintenance_db']['options'] = array(
@@ -2619,7 +2622,7 @@ class LwsOptimize
             $options[] = $value;
         }
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
         $optimize_options['maintenance_db']['options'] = $options;
 
         update_option('lws_optimize_config_array', $optimize_options);
@@ -2634,7 +2637,7 @@ class LwsOptimize
     public function lws_optimize_create_maintenance_db_options()
     {
         global $wpdb;
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $config_options = $optimize_options['maintenance_db']['options'];
         foreach ($config_options as $options) {
@@ -2867,7 +2870,7 @@ class LwsOptimize
     {
         check_ajax_referer('lwsop_check_for_update_preload_nonce', '_ajax_nonce');
 
-        $optimize_options = $this->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
 
         $sitemap = get_sitemap_url("index");
         stream_context_set_default( [

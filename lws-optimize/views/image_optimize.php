@@ -450,7 +450,7 @@ if (!$memory_limit) {
         </div>
     </div>
 
-    <?php $media_convertion_values = $GLOBALS['lws_optimize']->optimize_options['auto_update'] ?? []; $media_convertion_values = array_merge(['auto_convertion_quality' => 'balanced', 'auto_image_format' => ['jpg', 'jpeg'], 'auto_image_maxsize' => 2560], $media_convertion_values);?>
+    <?php $media_convertion_values = get_option('lws_optimize_config_array', [])['auto_update'] ?? []; $media_convertion_values = array_merge(['auto_convertion_quality' => 'balanced', 'auto_image_format' => ['jpg', 'jpeg'], 'auto_image_maxsize' => 2560], $media_convertion_values);?>
     <div class="modal fade" id="lws_optimize_image_autoconvertion_modal" tabindex='-1'>
         <div class="modal-dialog lws_optimize_image_convertion_modal_dialog">
             <div class="modal-content lws_optimize_image_convertion_modal_content">

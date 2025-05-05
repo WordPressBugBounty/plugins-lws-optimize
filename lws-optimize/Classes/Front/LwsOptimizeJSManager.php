@@ -728,7 +728,7 @@ class LwsOptimizeJSManager
 
     public function lwsop_check_option(string $option)
     {
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
         try {
             if (empty($option) || $option === null) {
                 return ['state' => "false", 'data' => []];
@@ -899,7 +899,7 @@ class LwsOptimizeJSManager
                 }
             }
         } else {
-            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
+            $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['minify_html']['state']) && $options_combine['minify_html']['state'] == "true" && isset($options_combine['minify_html']['exclusions'])) {
                 $combine_html_exclusions = $options_combine['minify_html']['exclusions'];
                 foreach ($combine_html_exclusions as $exclusion) {

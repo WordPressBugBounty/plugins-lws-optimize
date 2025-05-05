@@ -24,7 +24,8 @@ class LwsOptimizeCloudFlare {
             $purge_type = null;
         }
 
-        $config_array = $GLOBALS['lws_optimize']->optimize_options;
+        $config_array = get_option('lws_optimize_config_array', []);
+
 
         $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
         $api_token = $config_array['cloudflare']['api'] ?? null;
@@ -207,7 +208,7 @@ class LwsOptimizeCloudFlare {
         $min_js = $_POST['min_js'] ?? null;
         $dynamic_cache = $_POST['cache_deactivate'] ?? null;
 
-        $config_array = $GLOBALS['lws_optimize']->optimize_options;
+        $config_array = get_option('lws_optimize_config_array', []);
 
         $config_array['cloudflare']['tools'] = [
             'min_css' => $min_css === null ? false : true,
@@ -225,7 +226,7 @@ class LwsOptimizeCloudFlare {
         $cache_span = $_POST['lifespan'] ?? null;
 
         if ($cache_span !== null) {
-            $config_array = $GLOBALS['lws_optimize']->optimize_options;
+            $config_array = get_option('lws_optimize_config_array', []);
             $config_array['cloudflare']['lifespan'] = sanitize_text_field($cache_span);
             update_option('lws_optimize_config_array', $config_array);
             $GLOBALS['lws_optimize']->optimize_options = $config_array;
@@ -237,7 +238,7 @@ class LwsOptimizeCloudFlare {
     public function lws_optimize_cf_finish_config () {
         check_ajax_referer('lwsop_cloudflare_finish_config_nonce', '_ajax_nonce');
 
-        $config_array = $GLOBALS['lws_optimize']->optimize_options;
+        $config_array = get_option('lws_optimize_config_array', []);
         $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
         $api_token = $config_array['cloudflare']['api'] ?? null;
         $cache_span = $config_array['cloudflare']['lifespan'] ?? null;
@@ -304,7 +305,7 @@ class LwsOptimizeCloudFlare {
     public function lws_optimize_deactivate_cf_inte() {
         check_ajax_referer('lwsop_deactivate_cf_integration_nonce', '_ajax_nonce');
 
-        $config_array = $GLOBALS['lws_optimize']->optimize_options;
+        $config_array = get_option('lws_optimize_config_array', []);
 
         $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
         $api_token = $config_array['cloudflare']['api'] ?? null;

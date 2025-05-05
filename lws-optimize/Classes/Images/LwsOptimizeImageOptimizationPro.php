@@ -123,9 +123,15 @@ class LwsOptimizeImageOptimizationPro
             $id = $image->ID;
             $file_path = get_attached_file($id);
 
+            // Fix potential duplicate path segments in file path
+            if (strpos($file_path, '/wp-content/uploads/wp-content/uploads/') !== false) {
+                $file_path = preg_replace('|(.*?/wp-content/uploads)/wp-content/uploads/|', '$1/', $file_path);
+                update_post_meta($id, '_wp_attached_file', str_replace(ABSPATH, '', $file_path));
+            }
+
             // Get file extension and path info
             $path_info = pathinfo($file_path);
-            $extension = strtolower($path_info['extension']);
+            $extension = strtolower($path_info['extension'] ?? '');
 
 
             // Check the file extension against the allowed formats array
@@ -151,6 +157,7 @@ class LwsOptimizeImageOptimizationPro
                     // If the file does not exist, we skip it
                     continue;
                 }
+
 
                 // Add the image to the listing
                 $images_listing[$id] = [

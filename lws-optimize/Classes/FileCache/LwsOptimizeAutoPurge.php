@@ -4,7 +4,8 @@ namespace Lws\Classes\FileCache;
 
 class LwsOptimizeAutoPurge
 {
-    public function start_autopurge() {
+    public function start_autopurge()
+    {
         // Comment-related hooks - consolidated into a single hook group
         $comment_hooks = ['comment_post', 'edit_comment', 'transition_comment_status'];
         foreach ($comment_hooks as $hook) {
@@ -19,8 +20,12 @@ class LwsOptimizeAutoPurge
 
         // WooCommerce cart hooks - consolidated
         if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-            $cart_hooks = ['woocommerce_add_to_cart', 'woocommerce_cart_item_removed',
-                            'woocommerce_cart_item_restored', 'woocommerce_after_cart_item_quantity_update'];
+            $cart_hooks = [
+                'woocommerce_add_to_cart',
+                'woocommerce_cart_item_removed',
+                'woocommerce_cart_item_restored',
+                'woocommerce_after_cart_item_quantity_update'
+            ];
             foreach ($cart_hooks as $hook) {
                 add_action($hook, [$this, 'lwsop_remove_fb_cache_on_cart_update']);
             }
@@ -35,7 +40,9 @@ class LwsOptimizeAutoPurge
 
     public function purge_specified_url()
     {
-        $specified = $this->optimize_options['filebased_cache']['specified'] ?? [];
+        $config_array = get_option('lws_optimize_config_array', []);
+
+        $specified = $config_array['filebased_cache']['specified'] ?? [];
         foreach ($specified as $url) {
             if ($url == null) {
                 continue;
@@ -46,9 +53,9 @@ class LwsOptimizeAutoPurge
             $action = current_filter();
             // Do not purge if there is no cache file
             if ($file !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
                 if ($file_mobile !== null) {
-                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
@@ -62,27 +69,27 @@ class LwsOptimizeAutoPurge
      */
     public function lws_optimize_clear_cache_on_comment($comment_id, $comment)
     {
-            $post_id = $comment->comment_post_ID;
+        $post_id = $comment->comment_post_ID;
 
-            $uri = get_page_uri($post_id);
-            $uri = get_site_url(null, $uri);
-            //$uri = parse_url($uri)['path'];
+        $uri = get_page_uri($post_id);
+        $uri = get_site_url(null, $uri);
+        //$uri = parse_url($uri)['path'];
 
-            $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
-            $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($url, true);
+        $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
+        $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
-            $action = current_filter();
-            // Do not purge if there is no cache file
-            if ($file !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
-                if ($file_mobile !== null) {
-                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
-                }
-                $url = str_replace("https://", "", get_site_url());
-                $url = str_replace("http://", "", $url);
-                $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
-                $this->purge_specified_url();
+        $action = current_filter();
+        // Do not purge if there is no cache file
+        if ($file !== null) {
+            apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
+            if ($file_mobile !== null) {
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
+            $url = str_replace("https://", "", get_site_url());
+            $url = str_replace("http://", "", $url);
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $this->purge_specified_url();
+        }
     }
 
     /**
@@ -110,9 +117,9 @@ class LwsOptimizeAutoPurge
 
             // Do not purge if there is no cache file
             if ($file !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
                 if ($file_mobile !== null) {
-                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
             }
         }
@@ -126,9 +133,9 @@ class LwsOptimizeAutoPurge
         // Do not purge if there is no cache file
         if ($file !== null) {
             if ($file_mobile !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
-            apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+            apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
             $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
@@ -154,11 +161,17 @@ class LwsOptimizeAutoPurge
             $file = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri);
             $file_mobile = $GLOBALS['lws_optimize']->lwsOptimizeCache->lwsop_set_cachedir($uri, true);
 
+            $logger = fopen($GLOBALS['lws_optimize']->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] AutoPurge Files: ' . PHP_EOL);
+            fwrite($logger, 'File: ' . $file . PHP_EOL);
+            fwrite($logger, 'File Mobile: ' . $file_mobile . PHP_EOL);
+            fclose($logger);
+
             // Do not purge if there is no cache file
             if ($file !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
                 if ($file_mobile !== null) {
-                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
             }
         }
@@ -171,9 +184,9 @@ class LwsOptimizeAutoPurge
 
         // Do not purge if there is no cache file
         if ($file !== null) {
-            apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+            apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
             if ($file_mobile !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
@@ -183,8 +196,9 @@ class LwsOptimizeAutoPurge
     }
 
     // BeTheme support
-    public function lwsop_remove_cache_post_change_betheme() {
-	    $post_id = $_POST['pageid'];
+    public function lwsop_remove_cache_post_change_betheme()
+    {
+        $post_id = $_POST['pageid'];
 
         $uri = get_permalink($post_id);
         //$uri = parse_url($uri)['path'];
@@ -194,9 +208,9 @@ class LwsOptimizeAutoPurge
         $action = current_filter();
         // Do not purge if there is no cache file
         if ($file !== null) {
-            apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+            apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
             if ($file_mobile !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
@@ -222,9 +236,9 @@ class LwsOptimizeAutoPurge
             $action = current_filter();
             // Do not purge if there is no cache file
             if ($file !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
                 if ($file_mobile !== null) {
-                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
             }
 
@@ -238,9 +252,9 @@ class LwsOptimizeAutoPurge
 
             // Do not purge if there is no cache file
             if ($file !== null) {
-                apply_filters("lws_optimize_clear_filebased_cache", $file, $action);
+                apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
                 if ($file_mobile !== null) {
-                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action);
+                    apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
@@ -250,4 +264,3 @@ class LwsOptimizeAutoPurge
         }
     }
 }
-

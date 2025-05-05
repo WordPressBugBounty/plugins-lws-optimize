@@ -490,7 +490,7 @@ class LwsOptimizeCSSManager
 
     public function lwsop_check_option(string $option)
     {
-        $optimize_options = $GLOBALS['lws_optimize']->optimize_options;
+        $optimize_options = get_option('lws_optimize_config_array', []);
         try {
             if (empty($option) || $option === null) {
                 return ['state' => "false", 'data' => []];
@@ -532,7 +532,7 @@ class LwsOptimizeCSSManager
         }
 
         if ($type == "minify") {
-            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
+            $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['minify_css']['state']) && $options_combine['minify_css']['state'] == "true" && isset($options_combine['minify_css']['exclusions'])) {
                 $minify_css_exclusions = $options_combine['minify_css']['exclusions'];
             } else {
@@ -548,7 +548,7 @@ class LwsOptimizeCSSManager
                 }
             }
         } elseif ($type == "combine") {
-            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
+            $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['combine_css']['state']) && $options_combine['combine_css']['state'] == "true" && isset($options_combine['combine_css']['exclusions'])) {
                 $combine_css_exclusions = $options_combine['combine_css']['exclusions'];
             } else {
@@ -583,7 +583,7 @@ class LwsOptimizeCSSManager
                 }
             }
         } else {
-            $options_combine = $GLOBALS['lws_optimize']->optimize_options;
+            $options_combine = get_option('lws_optimize_config_array', []);
             if (isset($options_combine['minify_html']['state']) && $options_combine['minify_html']['state'] == "true" && isset($options_combine['minify_html']['exclusions'])) {
                 $combine_html_exclusions = $options_combine['minify_html']['exclusions'];
                 foreach ($combine_html_exclusions as $exclusion) {

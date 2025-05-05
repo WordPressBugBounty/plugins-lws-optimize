@@ -96,7 +96,7 @@ foreach ($plugins as $slug => $plugin) {
 }
 
 // Fetch the configuration for each elements of LWSOptimize
-$config_array = $GLOBALS['lws_optimize']->optimize_options;
+$config_array = get_option('lws_optimize_config_array', []);
 ?>
 
 <script>

@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimize;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.3.1
+ * Version:           3.3.1.1
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.8
@@ -174,21 +174,21 @@ if (!defined('LWS_OP_BASENAME')) {
 
 // Polyfills of useful PHP8+ functions for PHP < 8
 if (!function_exists('str_starts_with')) {
-    function str_starts_with(string $haystack, string $needle): bool
+    function str_starts_with($haystack, $needle)
     {
         return strlen($needle) === 0 || strpos($haystack, $needle) === 0;
     }
 }
 
 if (!function_exists('str_contains')) {
-    function str_contains(string $haystack, string $needle): bool
+    function str_contains($haystack, $needle)
     {
         return strlen($needle) === 0 || strpos($haystack, $needle) !== false;
     }
 }
 
 if (!function_exists('str_ends_with')) {
-    function str_ends_with(string $haystack, string $needle): bool
+    function str_ends_with($haystack, $needle)
     {
         return strlen($needle) === 0 || substr($haystack, -strlen($needle)) === $needle;
     }

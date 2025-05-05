@@ -35,7 +35,7 @@ class LwsOptimizeImageOptimization
     {
         $timer = microtime(true);
         // Get the chosen mime-type from the database. If none found, default to webp convertion
-        $config_array = $GLOBALS['lws_optimize']->optimize_options;
+        $config_array = get_option('lws_optimize_config_array', []);
 
         $state = $config_array['auto_update']['state'] ?? false;
         $type = "webp";
