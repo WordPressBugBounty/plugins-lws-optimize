@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimize;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.3.2
+ * Version:           3.3.2.1
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.8

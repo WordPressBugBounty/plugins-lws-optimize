@@ -478,6 +478,9 @@ class LwsOptimize
                 $wpdb->update($wpdb->prefix . 'posts', $data, $where);
             }
 
+            $options['combine_css']['state'] = "false";
+            $options['combine_js']['state'] = "false";
+
             delete_transient('wp_lwsoptimize_post_update');
             update_option('lws_optimize_config_array', $options);
             $this->optimize_options = $options;
@@ -2940,8 +2943,8 @@ class LwsOptimize
                 $options['filebased_cache']['preload'] = "false";
                 $options['filebased_cache']['preload_amount'] = "5";
                 $options['filebased_cache']['timer'] = "lws_yearly";
-                $options['combine_css']['state'] = "true";
-                $options['combine_js']['state'] = "true";
+                $options['combine_css']['state'] = "false";
+                $options['combine_js']['state'] = "false";
                 $options['minify_css']['state'] = "true";
                 $options['minify_js']['state'] = "true";
                 $options['defer_js']['state'] = "false";

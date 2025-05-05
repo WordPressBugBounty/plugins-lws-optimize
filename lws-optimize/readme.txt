@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: LWS, admin, optimisation, cache
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.2
+Stable tag: 3.3.2.1
 Requires PHP: 7.4
 Author : LWS
 Author URI: https://www.lws.fr/
@@ -176,6 +176,9 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 8. PageSpeed test results  
 
 == Changelog ==
+
+= 3.3.2.1 =
+* Removed combine JS/CSS from recommended settings
 
 = 3.3.2 =
 * Preloading inactive by default, reduced to 5 pages/minutes at first
