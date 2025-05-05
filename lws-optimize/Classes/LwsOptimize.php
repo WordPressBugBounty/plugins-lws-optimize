@@ -173,7 +173,20 @@ class LwsOptimize
                 }
 
                 if ($available_htaccess && !$gzip_ok) {
-                    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+                    // Get htaccess content
+                    $htaccess = ABSPATH . "/.htaccess";
+                    if (file_exists($htaccess) && is_writable($htaccess)) {
+                        $htaccess_content = file_get_contents($htaccess);
+
+                        // Remove existing GZIP rules if they exist
+                        $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
+                        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                        // Write back to file
+                        file_put_contents($htaccess, $htaccess_content);
+                    } else {
+                        error_log("LWSOptimize: Could not modify .htaccess - file doesn't exist or is not writable");
+                    }
                     $htaccess = ABSPATH . "/.htaccess";
 
                     if (!get_transient('lws_optimize_deactivate_temporarily')) {
@@ -382,10 +395,30 @@ class LwsOptimize
 
         if ($duration == 0) {
             delete_transient('lws_optimize_deactivate_temporarily');
-            $this->lws_optimize_set_cache_htaccess();
+            // Update htaccess cache rules if enabled
+            if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
+                $this->lws_optimize_set_cache_htaccess();
+            }
         } else {
             set_transient('lws_optimize_deactivate_temporarily', $duration, $duration);
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            // Get htaccess content
+            $htaccess = ABSPATH . '/.htaccess';
+            if (file_exists($htaccess) && is_writable($htaccess)) {
+                // Read htaccess content
+                $htaccess_content = file_get_contents($htaccess);
+
+                // Remove caching rules if they exist
+                $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
+                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                // Write back to file
+                file_put_contents($htaccess, $htaccess_content);
+            } else {
+                // Log error if htaccess can't be modified
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
+                fclose($logger);
+            }
         }
 
         wp_die(json_encode(array('code' => "SUCCESS", 'data' => $_POST), JSON_PRETTY_PRINT));
@@ -1123,7 +1156,22 @@ class LwsOptimize
         if ($state == "true") {
             $this->lws_optimize_reset_header_htaccess();
         } else {
-            $result = exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $output, $return_code);
+            // Read the htaccess file
+            $htaccess = ABSPATH . "/.htaccess";
+            if (file_exists($htaccess) && is_writable($htaccess)) {
+                $htaccess_content = file_get_contents($htaccess);
+
+                // Remove the expire header section using regex
+                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
+                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                // Write back to file
+                $return_code = file_put_contents($htaccess, $htaccess_content) ? 0 : 1;
+                $output = [];
+            } else {
+                $return_code = 1;
+                $output = ["Cannot access or write to .htaccess file"];
+            }
             if ($return_code != 0) {
                 $logger = fopen($this->log_file, 'a');
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess headers: ' . implode("\n", $output) . PHP_EOL);
@@ -1243,7 +1291,24 @@ class LwsOptimize
 
         if ($available_htaccess) {
             // Remove the htaccess related to caching
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            // Read the htaccess file
+            $htaccess = ABSPATH . '/.htaccess';
+            if (file_exists($htaccess) && is_writable($htaccess)) {
+                // Read htaccess content
+                $htaccess_content = file_get_contents($htaccess);
+
+                // Remove caching rules if they exist
+                $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
+                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                // Write back to file
+                file_put_contents($htaccess, $htaccess_content);
+            } else {
+                // Log error if htaccess can't be modified
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
+                fclose($logger);
+            }
             // Content
             $hta = '';
 
@@ -1374,7 +1439,7 @@ class LwsOptimize
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         $state = $optimize_options['filebased_cache']['state'] ?? "false";
-        $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_thrice_monthly";
+        $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_yearly";
 
         // Path to .htaccess
         $htaccess = ABSPATH . "/.htaccess";
@@ -1405,7 +1470,23 @@ class LwsOptimize
 
 
         if ($available_htaccess && $state != "true") {
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+            // Read the htaccess file
+            $htaccess = ABSPATH . '/.htaccess';
+            if (file_exists($htaccess) && is_writable($htaccess)) {
+                // Read htaccess content
+                $htaccess_content = file_get_contents($htaccess);
+
+                // Remove expire header section using regex
+                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
+                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                // Write back to file
+                $return_code = file_put_contents($htaccess, $htaccess_content) ? 0 : 1;
+                $eOut = [];
+            } else {
+                $return_code = 1;
+                $eOut = ["Cannot access or write to .htaccess file"];
+            }
             error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut)));
             return 0;
         }
@@ -1451,8 +1532,24 @@ class LwsOptimize
 
         if ($available_htaccess) {
             // Remove the old htaccess related to HEADER before adding it back updated
-            if (!exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode) || !$eCode) {
-                error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => $eOut)));
+            // Read the htaccess file
+            $htaccess = ABSPATH . '/.htaccess';
+            if (file_exists($htaccess) && is_writable($htaccess)) {
+                // Read htaccess content
+                $htaccess_content = file_get_contents($htaccess);
+
+                // Remove expire header section using regex
+                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
+                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                // Write back to file
+                $result = file_put_contents($htaccess, $htaccess_content);
+                if ($result === false) {
+                    error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "Failed to update .htaccess file")));
+                    return 0;
+                }
+            } else {
+                error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "Cannot access or write to .htaccess file")));
                 return 0;
             }
 
@@ -1541,9 +1638,23 @@ class LwsOptimize
         if ($fb_options['state'] == "true") {
            $this->lws_optimize_reset_header_htaccess();
         } else {
-            exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-            if ($eCode != 0) {
-                error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
+            // Read the htaccess file
+            $htaccess = ABSPATH . "/.htaccess";
+            if (file_exists($htaccess) && is_writable($htaccess)) {
+                // Read htaccess content
+                $htaccess_content = file_get_contents($htaccess);
+
+                // Remove expire header section using regex
+                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
+                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                // Write back to file
+                $result = file_put_contents($htaccess, $htaccess_content);
+                if ($result === false) {
+                    error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | Error removing expire headers from .htaccess")));
+                }
+            } else {
+                error_log(json_encode(array('code' => 'CANT_ACCESS', 'data' => "LWSOptimize | Cannot access or write to .htaccess file")));
             }
         }
 
@@ -1671,7 +1782,22 @@ class LwsOptimize
             }
         } elseif ($element == "gzip_compression") {
             if ($state == "true") {
-                exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+                $htaccess = ABSPATH . "/.htaccess";
+                if (file_exists($htaccess) && is_writable($htaccess)) {
+                    $htaccess_content = file_get_contents($htaccess);
+
+                    // Remove GZIP compression rules if they exist
+                    $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
+                    $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                    // Write back to file
+                    file_put_contents($htaccess, $htaccess_content);
+                } else {
+                    // Log error if htaccess can't be modified
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
+                    fclose($logger);
+                }
                 $htaccess = ABSPATH . "/.htaccess";
 
                 $hta = '';
@@ -1720,14 +1846,45 @@ class LwsOptimize
                     }
                 }
             } else {
-                exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellcmd(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-                if ($eCode != 0) {
-                    error_log(json_encode(array('code' => 'ERR_SED', 'data' => "LWSOptimize | GZIP | An error occured when using sed in .htaccess")));
+                // Read the htaccess file
+                $htaccess = ABSPATH . "/.htaccess";
+                if (file_exists($htaccess) && is_writable($htaccess)) {
+                    // Read htaccess content
+                    $htaccess_content = file_get_contents($htaccess);
+
+                    // Remove GZIP compression rules if they exist
+                    $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
+                    $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                    // Write back to file
+                    $result = file_put_contents($htaccess, $htaccess_content);
+                    if ($result === false) {
+                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | Failed to update .htaccess file")));
+                    }
+                } else {
+                    // Log error if htaccess can't be modified
+                    error_log(json_encode(array('code' => 'CANT_ACCESS', 'data' => "LWSOptimize | GZIP | Cannot access or write to .htaccess file")));
                 }
             }
         } elseif ($element == "htaccess_rules") {
             if ($state == "false") {
-                exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+                // Read the htaccess file
+                $htaccess = ABSPATH . "/.htaccess";
+                if (file_exists($htaccess) && is_writable($htaccess)) {
+                    $htaccess_content = file_get_contents($htaccess);
+
+                    // Remove caching rules if they exist
+                    $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
+                    $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+                    // Write back to file
+                    file_put_contents($htaccess, $htaccess_content);
+                } else {
+                    // Log error if htaccess can't be modified
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
+                    fclose($logger);
+                }
             } else {
                 $this->lws_optimize_set_cache_htaccess();
             }
@@ -2080,8 +2237,40 @@ class LwsOptimize
             $directory = rtrim(str_replace('//', '/', $directory), '/');
 
             if (is_dir($directory)) {
-                $cache_dir = $this->lwsop_get_content_directory('cache');
-                $cache_mobile_dir = $this->lwsop_get_content_directory('cache-mobile');
+
+                // Extract the domain from site URL
+                $site_url = site_url();
+                $domain_parts = parse_url($site_url);
+                $path = isset($domain_parts['path']) ? trim($domain_parts['path'], '/') : '';
+
+                $cache_dir = $this->lwsop_get_content_directory("cache/$path");
+                $cache_mobile_dir = $this->lwsop_get_content_directory("cache-mobile/$path");
+
+                $files = glob($cache_dir . '/index_*');
+                if (!empty($files)) {
+                    foreach ($files as $file) {
+                        if (is_file($file)) {
+                            @unlink($file);
+                        }
+                    }
+
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removed only index files from main cache directory: $directory" . PHP_EOL);
+                    fclose($logger);
+                }
+
+                $files = glob($cache_mobile_dir . '/index_*');
+                if (!empty($files)) {
+                    foreach ($files as $file) {
+                        if (is_file($file)) {
+                            @unlink($file);
+                        }
+                    }
+
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removed only index files from main cache-mobile directory: $directory" . PHP_EOL);
+                    fclose($logger);
+                }
 
                 // Check if we're deleting the root cache directory
                 if (rtrim($directory, '/') === rtrim($cache_dir, '/') || rtrim($directory, '/') === rtrim($cache_mobile_dir, '/')) {
@@ -2748,9 +2937,9 @@ class LwsOptimize
         switch ($type) {
             case 'basic': // recommended only
                 $options['filebased_cache']['state'] = "true";
-                $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "10";
-                $options['filebased_cache']['timer'] = "lws_thrice_monthly";
+                $options['filebased_cache']['preload'] = "false";
+                $options['filebased_cache']['preload_amount'] = "5";
+                $options['filebased_cache']['timer'] = "lws_yearly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
                 $options['minify_css']['state'] = "true";
@@ -2770,7 +2959,7 @@ class LwsOptimize
                 $options['deactivate_emoji']['state'] = "false";
                 $options['eliminate_requests']['state'] = "false";
                 $options['cache_mobile_user']['state'] = "false";
-                $options['cache_logged_user']['state'] = "true";
+                $options['cache_logged_user']['state'] = "false";
                 $options['dynamic_cache']['state'] = "true";
                 $options['htaccess_rules']['state'] = "true";
                 $options['image_add_sizes']['state'] = "false";
@@ -2781,14 +2970,18 @@ class LwsOptimize
                 update_option('lws_optimize_config_array', $options);
 
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
-                wp_schedule_event(time(), 'lws_thrice_monthly', 'lws_optimize_clear_filebased_cache');
+                wp_schedule_event(time(), 'lws_yearly', 'lws_optimize_clear_filebased_cache');
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+
+                if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                    wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+                }
                 break;
             case 'advanced':
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "20";
-                $options['filebased_cache']['timer'] = "lws_thrice_monthly";
+                $options['filebased_cache']['preload_amount'] = "5";
+                $options['filebased_cache']['timer'] = "lws_yearly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
                 $options['minify_css']['state'] = "true";
@@ -2808,7 +3001,7 @@ class LwsOptimize
                 $options['deactivate_emoji']['state'] = "false";
                 $options['eliminate_requests']['state'] = "false";
                 $options['cache_mobile_user']['state'] = "false";
-                $options['cache_logged_user']['state'] = "true";
+                $options['cache_logged_user']['state'] = "false";
                 $options['dynamic_cache']['state'] = "true";
                 $options['htaccess_rules']['state'] = "true";
                 $options['image_add_sizes']['state'] = "true";
@@ -2816,11 +3009,20 @@ class LwsOptimize
                 $options['critical_css']['state'] = "false";
 
                 update_option('lws_optimize_config_array', $options);
+
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
+                wp_schedule_event(time(), 'lws_yearly', 'lws_optimize_clear_filebased_cache');
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+
+                if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                    wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+                }
+                wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
                 break;
             case 'full':
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "30";
+                $options['filebased_cache']['preload_amount'] = "10";
                 $options['filebased_cache']['timer'] = "lws_biyearly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
@@ -2841,7 +3043,7 @@ class LwsOptimize
                 $options['deactivate_emoji']['state'] = "true";
                 $options['eliminate_requests']['state'] = "true";
                 $options['cache_mobile_user']['state'] = "false";
-                $options['cache_logged_user']['state'] = "true";
+                $options['cache_logged_user']['state'] = "false";
                 $options['dynamic_cache']['state'] = "true";
                 $options['htaccess_rules']['state'] = "true";
                 $options['image_add_sizes']['state'] = "true";
@@ -2849,6 +3051,15 @@ class LwsOptimize
                 $options['critical_css']['state'] = "true";
 
                 update_option('lws_optimize_config_array', $options);
+
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
+                wp_schedule_event(time(), 'lws_biyearly', 'lws_optimize_clear_filebased_cache');
+                wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
+
+                if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                    wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
+                }
+                wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
                 break;
             default:
                 break;

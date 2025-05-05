@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimize;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.3.1.1
+ * Version:           3.3.2
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.8
@@ -61,18 +61,19 @@ function lws_optimize_activation()
     //@deactivate_plugins("lwscache/lwscache.php");
 
 
+    // Deactivate the preloading on plugin activation to prevent issues
     if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {
         if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
             wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
         }
 
-        $optimize_options['filebased_cache']['preload'] = "true";
+        $optimize_options['filebased_cache']['preload'] = "false";
         $optimize_options['filebased_cache']['preload_done'] =  0;
         $optimize_options['filebased_cache']['preload_ongoing'] = "true";
 
         update_option('lws_optimize_config_array', $optimize_options);
 
-        wp_schedule_event(time() + 3, "lws_minute", "lws_optimize_start_filebased_preload");
+        //wp_schedule_event(time() + 3, "lws_minute", "lws_optimize_start_filebased_preload");
     }
 
     wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
@@ -98,9 +99,23 @@ function lws_optimize_deactivation()
     wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
 
     // Remove .htaccess content
-    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+    $htaccess_file = ABSPATH . '/.htaccess';
+
+    if (file_exists($htaccess_file) && is_writable($htaccess_file)) {
+        $htaccess_content = file_get_contents($htaccess_file);
+
+        // Remove LWS OPTIMIZE - CACHING section
+        $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - CACHING.*?#END LWS OPTIMIZE - CACHING\s*/s', "\n", $htaccess_content);
+
+        // Remove LWS OPTIMIZE - EXPIRE HEADER section
+        $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - EXPIRE HEADER.*?#END LWS OPTIMIZE - EXPIRE HEADER\s*/s', "\n", $htaccess_content);
+
+        // Remove LWS OPTIMIZE - GZIP COMPRESSION section
+        $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - GZIP COMPRESSION.*?#END LWS OPTIMIZE - GZIP COMPRESSION\s*/s', "\n", $htaccess_content);
+
+        // Write the modified content back to the file
+        file_put_contents($htaccess_file, $htaccess_content);
+    }
 
     delete_option('lws_optimize_preload_is_ongoing');
 
@@ -123,9 +138,23 @@ function lws_optimize_deletion()
     wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
 
     // Remove .htaccess content
-    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - CACHING/,/#END LWS OPTIMIZE - CACHING/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - EXPIRE HEADER/,/#END LWS OPTIMIZE - EXPIRE HEADER/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
-    exec("cd /htdocs/ | sed -i '/#LWS OPTIMIZE - GZIP COMPRESSION/,/#END LWS OPTIMIZE - GZIP COMPRESSION/ d' '" . escapeshellarg(ABSPATH) . "/.htaccess'", $eOut, $eCode);
+    $htaccess_file = ABSPATH . '/.htaccess';
+
+    if (file_exists($htaccess_file) && is_writable($htaccess_file)) {
+        $htaccess_content = file_get_contents($htaccess_file);
+
+        // Remove LWS OPTIMIZE - CACHING section
+        $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - CACHING.*?#END LWS OPTIMIZE - CACHING\s*/s', "\n", $htaccess_content);
+
+        // Remove LWS OPTIMIZE - EXPIRE HEADER section
+        $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - EXPIRE HEADER.*?#END LWS OPTIMIZE - EXPIRE HEADER\s*/s', "\n", $htaccess_content);
+
+        // Remove LWS OPTIMIZE - GZIP COMPRESSION section
+        $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - GZIP COMPRESSION.*?#END LWS OPTIMIZE - GZIP COMPRESSION\s*/s', "\n", $htaccess_content);
+
+        // Write the modified content back to the file
+        file_put_contents($htaccess_file, $htaccess_content);
+    }
 
     // Remove all options on delete
     if (get_option('lws_optimize_config_array', null) !== null) {

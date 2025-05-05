@@ -400,7 +400,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <?php esc_html_e( 'This option uses WordPress sitemap to work. If you encounter issues such as the preloading not starting, make sure the sitemap is activated.', 'lws-optimize' );  ?>
         </div>
         <div class="lwsop_contentblock_fbcache_input_preload_block">
-            <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="3" max="30" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
+            <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="1" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
             <div class="lwsop_contentblock_input_preload_label"><?php esc_html_e('pages per minutes cached', 'lws-optimize'); ?></div>
         </div>
 
