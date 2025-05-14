@@ -128,7 +128,7 @@ $format_support = [
                     <?php echo esc_html__('Remaining credits: ', 'lws-optimize'); ?>
                 </span>
                 <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsoppro_conversion_credits">-</span>
-                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('Credits are used to convert images with our API. You get 1000 free credits to start with. Additional credits will later be purchasable on our website.', 'lws-optimize'); ?>">
+                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('Credits are used to convert images with our API. You get 2000 free credits to start with. Additional credits will soon be purchasable on our website.', 'lws-optimize'); ?>">
             </div>
         </div>
 
@@ -652,16 +652,14 @@ $format_support = [
 
                 modal_text = `
                     <span class="lws_optimize_image_conversion_modal_element" style="position: relative;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.7); z-index: 10;"></div>
                         <h3 class="lws_optimize_image_conversion_modal_element_title" style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; width: 100%;">
                             <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                                 <?php esc_html_e("Use our API to convert your images ?", 'lws-optimize'); ?>
-                                <span class="lwsop_recommended">COMING SOON</span>
                             </span>
                             <div class="lwsop_checkbox_container">
                                 <label class="lwsop_checkbox_label">
                                     <label class="lwsop_checkbox">
-                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" disabled>
+                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)">
                                         <span class="slider round"></span>
                                     </label>
                                 </label>
@@ -701,16 +699,14 @@ $format_support = [
 
                 modal_text = `
                     <span class="lws_optimize_image_conversion_modal_element" style="position: relative;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.7); z-index: 10;"></div>
                         <h3 class="lws_optimize_image_conversion_modal_element_title" style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; width: 100%;">
                             <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                                 <?php esc_html_e("Use our API to convert your images ?", 'lws-optimize'); ?>
-                                <span class="lwsop_recommended">COMING SOON</span>
                             </span>
                             <div class="lwsop_checkbox_container">
                                 <label class="lwsop_checkbox_label">
                                     <label class="lwsop_checkbox">
-                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" disabled checked>
+                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" checked>
                                         <span class="slider round"></span>
                                     </label>
                                 </label>
@@ -768,16 +764,14 @@ $format_support = [
 
                 modal_text = `
                     <span class="lws_optimize_image_conversion_modal_element" style="position: relative;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.7); z-index: 10;"></div>
                         <h3 class="lws_optimize_image_conversion_modal_element_title" style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; width: 100%;">
                             <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                                 <?php esc_html_e("Use our API to convert your images ?", 'lws-optimize'); ?>
-                                <span class="lwsop_recommended">COMING SOON</span>
                             </span>
                             <div class="lwsop_checkbox_container">
                                 <label class="lwsop_checkbox_label">
                                     <label class="lwsop_checkbox">
-                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" disabled>
+                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)">
                                         <span class="slider round"></span>
                                     </label>
                                 </label>
@@ -827,16 +821,14 @@ $format_support = [
 
                 modal_text = `
                     <span class="lws_optimize_image_conversion_modal_element" style="position: relative;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.7); z-index: 10;"></div>
                         <h3 class="lws_optimize_image_conversion_modal_element_title" style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; width: 100%;">
                             <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                                 <?php esc_html_e("Use our API to convert your images ?", 'lws-optimize'); ?>
-                                <span class="lwsop_recommended">COMING SOON</span>
                             </span>
                             <div class="lwsop_checkbox_container">
                                 <label class="lwsop_checkbox_label">
                                     <label class="lwsop_checkbox">
-                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" disabled checked>
+                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" checked>
                                         <span class="slider round"></span>
                                     </label>
                                 </label>

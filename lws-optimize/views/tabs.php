@@ -45,30 +45,43 @@ if (class_exists('Memcached')) {
         $memcached_locked = true;
     }
 }
-
-$cache_state = null;
+// Check server cache state using environment variables
+$cache_state = "false";
 $used_cache = "unsupported";
+
 // Check for LWSCache
-if (!empty($_SERVER['lwscache'])) {
+if (!empty($_SERVER['lwscache']) || !empty($_ENV['lwscache'])) {
     $used_cache = "lws";
-    if ($_SERVER['lwscache'] == "On") {
-        $cache_state = "true";
-    } else {
-        $cache_state = "false";
+    $server_value = !empty($_SERVER['lwscache']) ? $_SERVER['lwscache'] : $_ENV['lwscache'];
+    $cache_state = (strtolower($server_value) == "on" || $server_value == "1" || $server_value === true) ? "true" : "false";
+}
+// Check for Varnish cache
+elseif (!empty($_SERVER['HTTP_X_VARNISH'])) {
+    $used_cache = "varnish";
+    // Check if Varnish is active through any of the possible headers
+    foreach (['HTTP_X_CACHE_ENABLED', 'HTTP_EDGE_CACHE_ENGINE_ENABLED', 'HTTP_EDGE_CACHE_ENGINE_ENABLE'] as $header) {
+        if (!empty($_SERVER[$header])) {
+            $cache_state = ($_SERVER[$header] == "1" || strtolower($_SERVER[$header]) == "on" || $_SERVER[$header] === true) ? "true" : "false";
+            break;
+        }
+    }
+}
+// Check for LiteSpeed or other Edge cache engines
+elseif (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])) {
+    $engine = strtolower($_SERVER['HTTP_EDGE_CACHE_ENGINE']);
+    if ($engine == 'litespeed') {
+        $used_cache = "litespeed";
+    } elseif ($engine == 'varnish') {
+        $used_cache = "varnish";
+    }
+
+    if ($used_cache !== "unsupported") {
+        $cache_state = ($_SERVER['HTTP_X_CACHE_ENABLED'] == "1" ||
+                       strtolower($_SERVER['HTTP_X_CACHE_ENABLED']) == "on" ||
+                       $_SERVER['HTTP_X_CACHE_ENABLED'] === true) ? "true" : "false";
     }
 }
 
-// Check for Varnish (try to get the state. If no state, check if exists)
-if (!empty($_SERVER['HTTP_X_VARNISH'])) {
-    $used_cache = "varnish";
-    if (!empty($_SERVER['HTTP_X_CACHE_ENABLED'])) {
-        $cache_state = $_SERVER['HTTP_X_CACHE_ENABLED'] == "1" ? "true" : "false";
-    } else if (!empty($_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'])) {
-        $cache_state = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLED'] == "1" ? "true" : "false";
-    } else if (!empty($_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'])) {
-        $cache_state = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] == "1" ? "true" : "false";
-    }
-}
 
 $arr = array('strong' => array());
 $plugins = array(

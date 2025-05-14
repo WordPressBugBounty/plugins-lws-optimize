@@ -19,10 +19,14 @@ class LwsOptimizeFileCache
     {
         $this->base = $parent;
 
+        // No cache on admin pages
+        if (is_admin()) {
+            return;
+        }
+
         include_once ABSPATH . "wp-includes/pluggable.php";
         $this->need_cache = $this->lwsop_check_need_cache();
         $this->lwsop_set_cachedir();
-
     }
 
     public function lwsop_clear_current_page_cache()

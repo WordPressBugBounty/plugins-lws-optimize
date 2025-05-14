@@ -100,7 +100,13 @@ $caches = [
 
 <div class="lwsop_bluebanner" style="justify-content: space-between;">
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
-    <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php esc_html_e('Refresh', 'lws-optimize'); ?></button>
+    <button type="button" class="lwsop_blue_button" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
+        <span>
+            <img src="<?php echo esc_url(plugins_url('images/maj.svg', __DIR__)) ?>" alt="Logo MàJ" width="20px">
+            <?php esc_html_e('Refresh', 'lws-optimize'); ?>
+        </span>
+    </button>
+    <!-- <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php //esc_html_e('Refresh', 'lws-optimize'); ?></button> -->
 </div>
 
 <div class="lwsop_contentblock_stats">
@@ -118,25 +124,6 @@ $caches = [
             </div>
         </div>
     <?php endforeach; ?>
-</div>
-
-<div class="lwsop_contentblock">
-    <div class="lwsop_contentblock_leftside">
-        <h2 class="lwsop_contentblock_title">
-            <?php esc_html_e('Regenerate cache statistics', 'lws-optimize'); ?>
-        </h2>
-        <div class="lwsop_contentblock_description">
-            <?php esc_html_e('If the statistics for the file-based cache are broken, they can be fixed by regenerating them again. This option may negatively affects performances, especially on large caches, while it is ongoing.', 'lws-optimize'); ?>
-        </div>
-    </div>
-    <div class="lwsop_contentblock_rightside">
-        <button type="button" class="lwsop_blue_button" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
-            <span>
-                <img src="<?php echo esc_url(plugins_url('images/maj.svg', __DIR__)) ?>" alt="Logo MàJ" width="20px">
-                <?php esc_html_e('Regenerate', 'lws-optimize'); ?>
-            </span>
-        </button>
-    </div>
 </div>
 
 <?php // WP-Cron is inactive
@@ -403,6 +390,33 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="1" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
             <div class="lwsop_contentblock_input_preload_label"><?php esc_html_e('pages per minutes cached', 'lws-optimize'); ?></div>
         </div>
+        <div id="preload_amount_warning" class="lwop_alert lwop_alert_warning" style="display: none; margin-top: 10px; margin-left: 0px; font-size: 13px; max-width: 900px;">
+            <i class="dashicons dashicons-warning"></i>
+            <div>
+                <span><?php esc_html_e('Setting a high preload value may cause performance issues on your website. For most sites, a value of 1-2 pages per minute is recommended.', 'lws-optimize'); ?></span>
+            </div>
+        </div>
+
+        <script>
+            // Show warning when preload amount is above 2
+            document.getElementById('lws_op_fb_cache_preload_amount').addEventListener('change', function() {
+                let warningElement = document.getElementById('preload_amount_warning');
+                if (parseInt(this.value) > 2) {
+                    warningElement.style.display = 'flex';
+                } else {
+                    warningElement.style.display = 'none';
+                }
+            });
+
+            // Check initial value on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                let preloadAmount = document.getElementById('lws_op_fb_cache_preload_amount');
+                let warningElement = document.getElementById('preload_amount_warning');
+                if (parseInt(preloadAmount.value) > 2) {
+                    warningElement.style.display = 'flex';
+                }
+            });
+        </script>
 
         <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $preload_state == "false" ? esc_attr('hidden') : ''; ?>">
             <span class="lwsop_contentblock_fbcache_preload_label">
@@ -1441,6 +1455,24 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             if (document.getElementById('lwsop_refresh_stats') !== null) {
                                 document.getElementById('lwsop_refresh_stats').click();
                             }
+
+                            let stats = returnData['data'];
+                            document.getElementById('lws_optimize_file_cache').children[2].children[0].innerHTML = `
+                                <span>` + stats['desktop']['size'] + ` / ` + stats['desktop']['amount'] + `</span>
+                            `;
+
+                            document.getElementById('lws_optimize_mobile_cache').children[2].children[0].innerHTML = `
+                                <span>` + stats['mobile']['size'] + ` / ` + stats['mobile']['amount'] + `</span>
+                            `;
+
+                            document.getElementById('lws_optimize_css_cache').children[2].children[0].innerHTML = `
+                                <span>` + stats['css']['size'] + ` / ` + stats['css']['amount'] + `</span>
+                            `;
+
+                            document.getElementById('lws_optimize_js_cache').children[2].children[0].innerHTML = `
+                                <span>` + stats['js']['size'] + ` / ` + stats['js']['amount'] + `</span>
+                            `;
+
                             callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
                             break;
                         default:

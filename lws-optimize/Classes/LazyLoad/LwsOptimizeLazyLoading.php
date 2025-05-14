@@ -6,7 +6,7 @@ class LwsOptimizeLazyLoading
 {
     public static function startActionsImage()
     {
-        add_action('wp_enqueue_scripts', [__CLASS__, 'lws_optimize_manage_media_image_lazyload_js']);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'lws_optimize_manage_media_image_lazyload_js'], 0);
         add_filter('the_content', [__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);
         add_filter('wp_filter_content_tags', [__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);
         add_filter('post_thumbnail_html', [__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);

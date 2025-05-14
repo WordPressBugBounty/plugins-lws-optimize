@@ -1,16 +1,16 @@
-=== LWS Optimize ===
+=== LWS Optimize - All-in-One Speed Booster & Cache Plugin ===
 Contributors: aurelienlws
-Tags: LWS, admin, optimisation, cache
+Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.2.1
+Stable tag: 3.3.2.5
 Requires PHP: 7.4
-Author : LWS
+Author: LWS
 Author URI: https://www.lws.fr/
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Optimize and modify your website's parameters
+All-in-one speed optimization: powerful caching, WebP/AVIF conversion, critical CSS, lazy loading, and performance tools. Instantly improve Core Web Vitals!
 
 == License ==
 
@@ -18,228 +18,243 @@ Released under the terms of the GNU General Public License.
 
 == Description ==
 
-A fully-featured, **100 % free** performance suite built by web host **LWS** – yet installable on **any** WordPress site.
+## Transform Your WordPress Site's Performance in Just One Click
 
-**LWS Optimize** speeds up WordPress with a single free plugin: page / object / server caching, WebP-AVIF images, Critical CSS, Lazy Load, Cloudflare CDN, built-in PageSpeed tests… all with zero licence fees and no host lock-in.
+A premium-quality, **100% FREE** performance optimization suite developed by top web host **LWS** – but works perfectly on **ANY** WordPress hosting!
 
-**Highlights**
+**LWS Optimize** delivers lightning-fast load times with just one plugin: comprehensive caching, WebP/AVIF image conversion, Critical CSS generation, Lazy Loading, Cloudflare CDN integration, built-in PageSpeed testing – all with zero fees and no host restrictions.
 
-* **Page & browser cache + server cache (Varnish)** – pages served in milliseconds  
-* **Object cache (Memcached)** – keep frequent MySQL queries in RAM  
-* **Smart media** – Lazy Load images/iframes, auto dimensions, GZIP, WebP/AVIF (100 credits / month), class/URL exclusions  
-* **CSS / JS toolkit** – Minify, Combine, *Remove Unused CSS*, Critical CSS, Preload CSS & Fonts, Defer / Delay JS  
-* **HTML & bloat** – Minify HTML, strip query strings, disable emojis  
-* **Cloudflare CDN (1 click)** – token activation, synced cache-purge, conflict-safe defaults  
-* **Google PageSpeed Insights inside WP** – run tests and store history  
-* **Lightweight database** – scheduled cleanup (revisions, spam, transients…)  
-* **Beginner-friendly dashboard** – pre-configured profiles, temporary disable (5 min → 1 day), “AI Magic” presets
+### Why Your Site Needs LWS Optimize
 
+* **Boost Core Web Vitals scores** - Improve your Google rankings
+* **Reduce bounce rates** - Keep visitors engaged with faster loading times
+* **Increase conversions** - Speed directly impacts your bottom line
+* **Save money** - Get premium optimization features without paid subscriptions
+* **Simple setup** - Pre-configured profiles make optimization effortless
 
-Through our 1-click **Auto-Installer**, LWS deploys WordPress in seconds — choose from tailored packs like the AI Site Generator, Divi Builder bundle, or WordPress + WooCommerce setup.  
-Each pack comes with essential LWS plugins pre-selected — including **LWS Optimize**, which works even faster on our [WordPress hosting](https://www.lws.fr/hebergement_wordpress.php), [classic shared hosting](https://www.lws.fr/hebergement_web.php), and [cPanel hosting](https://www.lws.fr/hebergement-cpanel.php).  
-You can also install it manually at any time via Plugins › Add New, no matter where your site is hosted.
+### Key Features
 
+* **Complete Caching System** – File-based page cache, browser cache, and server-side caching (Varnish) serve pages in milliseconds
+* **Memory-Based Object Cache** – Memcached integration keeps database queries lightning-fast
+* **Intelligent Media Handling** – Advanced Lazy Loading for images/iframes, automatic dimension attributes, GZIP compression, WebP/AVIF conversion with class/URL exclusions
+* **Advanced CSS/JS Optimization** – Minify, combine, remove unused CSS, generate Critical CSS, preload essential resources, defer/delay JavaScript execution
+* **HTML Optimization** – Minify HTML, strip query strings, disable emojis
+* **One-Click CDN Setup** – Seamless Cloudflare integration with token activation and synchronized cache purging
+* **Built-in Performance Testing** – Run Google PageSpeed Insights directly in WordPress and track improvement history
+* **Database Optimization** – Scheduled cleanup of revisions, spam, transients and more
+* **User-Friendly Interface** – Pre-configured optimization profiles, temporary disable options, and "AI Magic" presets
 
-= Front-end optimization =  
-* Minify / combine CSS & JS  
-* Preload CSS + fonts  
-* Remove unused CSS & generate Critical CSS  
-* Defer **or** Delay JS  
-* Minify HTML  
+Through our 1-click **Auto-Installer**, LWS deploys WordPress in seconds with tailored packs like AI Site Generator, Divi Builder bundle, or WordPress + WooCommerce setup. Each pack includes essential LWS plugins—with **LWS Optimize** working even faster on our [WordPress hosting](https://www.lws.fr/hebergement_wordpress.php), [shared hosting](https://www.lws.fr/hebergement_web.php), and [cPanel hosting](https://www.lws.fr/hebergement-cpanel.php).
+
+You can also install it manually via Plugins › Add New, regardless of where your site is hosted.
+
+### Front-end Optimization
+* Minify and combine CSS & JS
+* Preload critical CSS and fonts
+* Remove unused CSS & generate Critical CSS
+* Defer or delay JavaScript execution
+* Minify HTML
 * Strip query strings, disable emojis
 
-= Media =  
-* Lazy Load images, iframes & videos (class/URL exclusions)  
-* Auto-add width/height attributes (CLS-safe)  
-* GZIP HTML, CSS, JS  
-* Control audio/video preload
+### Media Optimization
+* Smart Lazy Loading for images, iframes & videos (with exclusion options)
+* Automatic width/height attributes to prevent layout shifts
+* GZIP compression for HTML, CSS, and JavaScript
+* Advanced audio/video preload controls
 
-= Images =  
-* Auto convert & compress **WebP / AVIF** (Imagick or API)  
-* 100 free credits / month, extra credits available (for API)
-* Restore originals, auto-convert on upload
+### Image Optimization
+* Automatic WebP/AVIF conversion and compression (using Imagick or API)
+* 2000 free API credits monthly (additional credits available)
+* One-click restoration of originals
+* Auto-convert on upload option
 
-= Caching =  
-* File page cache (smart purge, preload, .htaccess option)  
-* Object cache **Memcached**  
-* Server cache **Varnish / LWSCache** (on LWS hosting)  
-* Browser-cache headers  
-* Optional no-cache for mobiles, logged-in users & dynamic URLs
+### Caching System
+* High-performance file-based page cache with smart purging and preloading
+* Object cache with Memcached integration
+* Server-side cache with Varnish/LWSCache (optimized for LWS hosting)
+* Browser cache headers
+* Configurable cache exclusions for mobile, logged-in users & dynamic content
 
-= CDN =  
-* Cloudflare in one click  
-* DDoS shield + worldwide POPs  
-* Synced cache-purge
+### CDN Integration
+* One-click Cloudflare setup
+* DDoS protection with worldwide distribution
+* Synchronized cache purging
 
-= Database =  
-* Weekly automatic cleanup (revisions, drafts, spam, transients…)
+### Database Optimization
+* Weekly automatic cleanup of revisions, drafts, spam, and transients
 
-= Performance test =  
-* Google PageSpeed Insights inside WordPress  
-* Score & timing history
+### Performance Testing
+* Integrated Google PageSpeed Insights testing
+* Performance history tracking
 
-Enjoy lightning-fast load times, better Core Web Vitals and higher SEO rankings – all without the hassle.
-
+Enjoy dramatically faster load times, improved Core Web Vitals scores, and higher search engine rankings – all with minimal configuration required!
 
 == Frequently Asked Questions ==
 
-= <strong>Why optimize your WordPress site?</strong> =
-Having a fast site without slowing down must be one of your priorities. A slow site does not please anyone, your visitors may leave it very quickly. A user will not wait more than a few seconds
+= <strong>Why is website speed so critical for success?</strong> =
+Site speed is no longer just a convenience—it's essential for SEO, user experience, and conversions. Google ranks faster sites higher, visitors abandon slow sites (53% leave if loading takes over 3 seconds), and conversion rates drop approximately 4.42% with each second of load time. LWS Optimize addresses all these issues with professional-grade optimization.
 
-= <strong>Does this plugin need any particular web hosting to work?</strong> =
-This plugin can be used with all WordPress websites. However it was designed for LWS web hosting customers. Some features may be inaccessible to users of other servers. Apart from this plugin, LWS hosting offers you many other benefits: free domain, SSL certificate (https), pro emails based on your domain, low prices, premium WordPress themes and plugins...
+= <strong>Do I need special hosting to use this plugin?</strong> =
+LWS Optimize works on any WordPress installation regardless of host. However, when paired with LWS hosting, you'll unlock additional server-level optimizations like enhanced Varnish cache. Beyond this plugin, LWS hosting includes many premium benefits: free domains, SSL certificates, professional email accounts based on your domain, competitive pricing, and access to premium WordPress themes and plugins.
 
-If you want to host your WordPress site with LWS you can choose one of these solutions:
+For maximum performance, consider one of our optimized hosting options:
 
-[WordPress hosting](https://www.lws.fr/hebergement_wordpress.php)
-Classic shared [web hosting](https://www.lws.fr/hebergement_web.php)
-[cPanel hosting](https://www.lws.fr/hebergement-cpanel.php)
+[WordPress-Specific Hosting](https://www.lws.fr/hebergement_wordpress.php)
+[Professional Shared Hosting](https://www.lws.fr/hebergement_web.php)
+[cPanel Hosting Solutions](https://www.lws.fr/hebergement-cpanel.php)
 
-= <strong>Do you have a valid promo code on recommended web hosting?</strong> =
-Yes, you can enter the coupon code WPEXT15 at checkout (on [LWS](https://www.lws.fr/)) to receive an additional 15% discount (cumulative with current promotional offers!)
+= <strong>Is there a discount available for your hosting services?</strong> =
+Yes! Enter coupon code **WPEXT15** during checkout at [LWS](https://www.lws.fr/) to receive an additional 15% discount that combines with all current promotional offers!
 
-= <strong>Where can I get help?</strong> =
-Find out more about LWS Optimize by searching for this keyword on our [LWS online help](https://aide.lws.fr/). A free 7 days / 7 support is also available in France when you have ordered a web hosting or other service from LWS. Videos are also published regularly on our [YouTube channel](https://www.youtube.com/c/LwsFrance).
+= <strong>Where can I find support for LWS Optimize?</strong> =
+Find detailed information by searching our [LWS online help center](https://aide.lws.fr/). LWS customers enjoy free 7-day support in France. We also regularly publish helpful tutorials on our [YouTube channel](https://www.youtube.com/c/LwsFrance).
 
-= <strong>Do you have any other plugins to recommend?</strong> =
-Other WordPress extensions have been created by LWS :
+= <strong>What other WordPress plugins do you recommend?</strong> =
+We've developed several complementary WordPress plugins:
 
-* <strong>[LWS Cleaner](https://wordpress.org/plugins/lws-cleaner/)</strong> : Helps you clean your website and giving it a second youth, fast and easily!
-* <strong>[LWS Tools](https://wordpress.org/plugins/lws-tools/)</strong> : Get a hold on various tools and options to optimize your website. From deactivating emotes or hiding sensible informations to deactivating REST API!
-* <strong>[LWS Hide Login](https://wordpress.org/plugins/lws-hide-login/)</strong> : Redirect your users if they try to access your admin page directly. Choose your own page and protect your website.
-* <strong>[LWS Affiliation](https://wordpress.org/plugins/lws-affiliation/)</strong> : Easily add banners and widgets such as search domain name availability or a summary table of our web hosting plans on your website.
-* <strong>[LWS SMS](https://wordpress.org/plugins/lws-sms/)</strong> : Create SMS templates and configurate your website to send SMS to clients when you want it ! Requires [ordering SMS credits](https://www.lws.fr/envoyer-sms-par-internet.php)
-* <strong>[LWS Cache](https://wordpress.org/plugins/lwscache/)</strong> : This plugin works only on servers using the LWSCache system. This cache is pre-installed with shared web hosting , WordPress hosting, cPanel hosting from LWS.
+* <strong>[LWS Cleaner](https://wordpress.org/plugins/lws-cleaner/)</strong>: Rejuvenate your website by removing unnecessary bloat quickly and easily!
+* <strong>[LWS Tools](https://wordpress.org/plugins/lws-tools/)</strong>: Access various tools to optimize your website, from disabling emojis to securing sensitive information and controlling REST API access.
+* <strong>[LWS Hide Login](https://wordpress.org/plugins/lws-hide-login/)</strong>: Enhance security by customizing your admin login URL and redirecting unauthorized access attempts.
+* <strong>[LWS Affiliation](https://wordpress.org/plugins/lws-affiliation/)</strong>: Easily add promotional banners, domain search widgets, or hosting comparison tables to your website.
 
-= <strong>Useful LWS services to get you started on the web</strong> =
-* [Domain name](https://www.lws.fr/nom-de-domaine.php)
-* [WordPress hosting](https://www.lws.fr/hebergement_wordpress.php)
-* Classic [Web hosting](https://www.lws.fr/hebergement_web.php)
-* [cPanel hosting](https://www.lws.fr/hebergement-cpanel.php)
-* [Reseller web hosting](https://www.lws.fr/hebergement_revendeur.php)
-* [Woocommerce Hosting](https://www.lws.fr/hebergement-woocommerce.php)
-* [VPS server](https://www.lws.fr/serveur_dedie_linux.php)
-* [cPanel server](https://www.lws.fr/serveur-cpanel.php)
-* [Cloud server](https://www.lws.fr/serveur_cloud.php)
-* [Private Cloud](https://www.lws.fr/private_cloud.php)
-* [Email addresses](https://www.lws.fr/adresses-email.php)
-* [create a website easily](https://www.lws.fr/creer-un-site-internet.php)
-* [Create a WordPress website](https://www.lws.fr/creer-un-site-wordpress.php)
-* [Custom website creation](https://www.lws.fr/creation-site-sur-mesure.php)
-* [Online store hosting](https://www.lws.fr/hebergement_e_commerce.php)
-* [Web referencing](https://www.lws.fr/referencement.php)
-* [Online storage](https://www.lws.fr/stockage-en-ligne.php)
-* [Online backups](https://www.lws.fr/sauvegarde-en-ligne.php)
-* [Send SMS by internet](https://www.lws.fr/envoyer-sms-par-internet.php)
-* [Online help](https://aide.lws.fr/)
-* [Tutorials](https://tutoriels.lws.fr/)
-* [Blog](https://blog.lws-hosting.com/)
-* [YouTube Videos](https://www.youtube.com/c/LwsFrance)
-
+= <strong>Essential LWS services to boost your online presence</strong> =
+* [Domain Registration](https://www.lws.fr/nom-de-domaine.php)
+* [WordPress-Optimized Hosting](https://www.lws.fr/hebergement_wordpress.php)
+* [Professional Web Hosting](https://www.lws.fr/hebergement_web.php)
+* [cPanel Hosting Solutions](https://www.lws.fr/hebergement-cpanel.php)
+* [Reseller Hosting Options](https://www.lws.fr/hebergement_revendeur.php)
+* [WooCommerce-Ready Hosting](https://www.lws.fr/hebergement-woocommerce.php)
+* [VPS Servers](https://www.lws.fr/serveur_dedie_linux.php)
+* [cPanel Servers](https://www.lws.fr/serveur-cpanel.php)
+* [Cloud Servers](https://www.lws.fr/serveur_cloud.php)
+* [Private Cloud Solutions](https://www.lws.fr/private_cloud.php)
+* [Professional Email Services](https://www.lws.fr/adresses-email.php)
+* [Website Builder Platform](https://www.lws.fr/creer-un-site-internet.php)
+* [WordPress Site Creator](https://www.lws.fr/creer-un-site-wordpress.php)
+* [Custom Website Development](https://www.lws.fr/creation-site-sur-mesure.php)
+* [E-commerce Hosting](https://www.lws.fr/hebergement_e_commerce.php)
+* [SEO Services](https://www.lws.fr/referencement.php)
+* [Cloud Storage Solutions](https://www.lws.fr/stockage-en-ligne.php)
+* [Online Backup Services](https://www.lws.fr/sauvegarde-en-ligne.php)
+* [Business SMS Platform](https://www.lws.fr/envoyer-sms-par-internet.php)
+* [Knowledge Base](https://aide.lws.fr/)
+* [Tutorials Library](https://tutoriels.lws.fr/)
+* [Company Blog](https://blog.lws-hosting.com/)
+* [Video Tutorials](https://www.youtube.com/c/LwsFrance)
 
 == Installation ==
 
-There are 3 different ways to install LWS Optimize (as with any other wordpress.org plugin).
+Installing LWS Optimize is quick and easy with three installation methods available:
 
-= Using the WordPress dashboard =
+= Method 1: Install Directly from WordPress Dashboard (Recommended) =
 
-1. In WordPress, in the Extensions menu, click on "Add"
-2. Search for the 'LWS Optimize' plugin
-3. Click 'Install Now'
-4. Activate the plugin
+1. In WordPress admin, navigate to "Plugins" → "Add New"
+2. Search for "LWS Optimize"
+3. Click "Install Now"
+4. After installation completes, click "Activate"
+5. Visit the new LWS Optimize settings page to configure optimization options
 
-= Uploading in WordPress Dashboard =
+= Method 2: Upload via WordPress Dashboard =
 
-1. Download the latest version of this [plugin](https://wordpress.org/plugins/lws-optimize/)
-2. In WordPress, in the Extensions menu, click on "Add"
-3. Click on the top button "Upload an extension"
-4. Select the zip file from your computer (zip file from step 1.)
-5. Click 'Install Now'
-4. Activate the plugin
+1. [Download the latest version](https://wordpress.org/plugins/lws-optimize/)
+2. In WordPress admin, go to "Plugins" → "Add New"
+3. Click "Upload Plugin" at the top
+4. Choose the downloaded zip file and click "Install Now"
+5. After installation completes, click "Activate"
+6. Configure settings through the LWS Optimize menu
 
-= Using FTP =
+= Method 3: Manual FTP Installation =
 
-1. Download the latest version of this [plugin](https://wordpress.org/plugins/lws-optimize/)
-2. Unzip the zip file. This extracts the files from the compressed folder on your computer
-3. Upload the LWS Optimize folder to the /wp-content/plugins/ directory in your web space
-4. Activate the plugin in WordPress
+1. [Download the latest version](https://wordpress.org/plugins/lws-optimize/)
+2. Unzip the downloaded file on your computer
+3. Using FTP software, upload the entire "lws-optimize" folder to your website's "/wp-content/plugins/" directory
+4. In WordPress admin, navigate to "Plugins" and click "Activate" under LWS Optimize
+5. Configure optimization settings through the new menu item
+
+After activation, we recommend starting with the pre-configured optimization profile that best matches your needs. For most sites, the "Balanced" profile offers excellent performance improvements with minimal risk of conflicts.
 
 == Screenshots ==
 
-1. Dashboard overview
-2. Front-end settings (CSS/JS/HTML)  
-3. Caching (File, Memcached, Varnish)  
-4. Media optimizations (Lazy Load, GZIP)  
-5. Image conversion (WebP/AVIF)  
-6. CDN integration (Cloudflare)  
-7. Database cleanup  
-8. PageSpeed test results  
+1. User-friendly dashboard with performance statistics
+2. Front-end optimization settings for CSS/JS/HTML
+3. Comprehensive caching options (File, Memcached, Varnish)
+4. Media optimization controls (Lazy Load, GZIP)
+5. Advanced image conversion to WebP/AVIF formats
+6. One-click Cloudflare CDN integration
+7. Automatic database cleanup scheduling
+8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
 
+= 3.3.2.5 =
+* Added possibility to use our API to convert images faster than with PHP
+* Delayed preload reloading when updating plugin options to reduce lag
+* Reduce to 2 pages per minute by default
+* Few bugs fixes
+
 = 3.3.2.1 =
-* Removed combine JS/CSS from recommended settings
+* Removed combine JS/CSS from recommended settings to improve compatibility
 
 = 3.3.2 =
-* Preloading inactive by default, reduced to 5 pages/minutes at first
-* Cache for connected user active by default
-* Autopurge now purge the home page 
-* Cache is kept longer by default
-* Removed potentially harmful functions
+* Optimized preloading settings: inactive by default, reduced to 5 pages/minutes initially
+* Cache for logged-in users now active by default for better user experience
+* Enhanced autopurge functionality to include home page
+* Extended default cache duration for improved performance
+* Removed potentially problematic functions for greater stability
 
 = 3.3.1.1 =
-* Fixed issue where log_file could not be accessed, causing errors
-* Fixed case where using the CLI to activate the plugin would return warnings in the terminal
-* Minor bugs fixes
+* Fixed critical issue where log_file could not be accessed, preventing errors
+* Resolved warning messages when activating the plugin via WP-CLI
+* Various minor bug fixes for improved reliability
 
 = 3.3.1 =
-* Hotfix on the autopurge, which may in some rare cases purge all the cache instead of only the concerned page
+* Critical hotfix for autopurge function that occasionally purged entire cache instead of targeted pages
 
 = 3.3 =
-* Added Unused CSS and Critical CSS management
-* Added Differed JS and Delayed JS management
-* Added option to add width and height attributes on images if not present
-* Updated Image Conversion
+* Major feature update: Added Unused CSS removal and Critical CSS generation
+* Implemented Deferred and Delayed JavaScript loading options
+* Added automatic width/height attributes for images to prevent layout shifts
+* Enhanced image conversion system for better performance
 
 = 3.2.4.3 =
-* Edge-Cache-Platform header only added when on a cache file ; fix rare cases where it would get added when it should not
-* Updated CSS combination to catch rare combination errors instead of bailling out of caching
-* Better combination algorithm
+* Improved Edge-Cache-Platform header implementation
+* Enhanced CSS combination to handle edge cases more effectively
+* Optimized combination algorithm for better performance
 
 = 3.2.4.2 =
-* Fixed issue where dynamic cache would not be purged
-* Fixed remaining issues with autopurge
-* Small changes to how the "cache dynamic url" works
-* Fixed broken exclusion system for the cache + "*" now correctly supported
+* Fixed dynamic cache purging issue
+* Resolved remaining autopurge problems
+* Improved "cache dynamic url" functionality
+* Fixed cache exclusion system with proper "*" wildcard support
 
 = 3.2.4.1 =
-* Fixed small issue where autopurge would not get purged when using Varnish Cache
-* Fixed Fatal Error on update if LWSCache is activated
+* Fixed autopurge issue with Varnish Cache integration
+* Resolved potential fatal error on update when LWSCache is activated
 
 = 3.2.4 =
-* Updated the preloading for better stability and performances
-* Modified how the autopurge is triggered to be less prone to sudden, unwanted purges due to how the hooks are triggered
-* Added some logging
+* Significant preloading improvements for better stability and performance
+* Restructured autopurge trigger mechanism to prevent unwanted cache clearing
+* Enhanced logging capabilities for better troubleshooting
 
-= 3.2.3 = 
-* Fixed issue where black screen on cache deletion would not take the whole page
-* Fixed issue where clicking the topbar-menu would not redirect to the plugin settings but instead clear cache
-* .htaccess caching will be deactivated whenever Optimize stops (due to other plugins, notably)
-* Fixed dynamic page caching, which would always cache pages, no matter what
-* Fixed URLs exclusion which would not save entered URLs
+= 3.2.3 =
+* User interface improvements for cache deletion confirmation
+* Fixed topbar-menu redirection issue
+* Improved .htaccess handling when plugin is temporarily disabled
+* Fixed dynamic page caching behavior
+* Corrected URLs exclusion saving functionality
 
 = 3.2.2.3 =
-* Fix Warning when trying to modify an inaccessible .htaccess
-* Fix bug where preloading would never stop if some of the URLs to preload were unavailable (404, 500, ...)
+* Fixed warning when modifying inaccessible .htaccess files
+* Resolved preloading issue with unavailable URLs (404, 500 errors)
 
-= 3.2.2.2 = 
-* Added documentation
-* Minor bug fix
+= 3.2.2.2 =
+* Added comprehensive documentation
+* Various minor bug fixes
 
 = 3.2.2.1 =
-* Minor interface update
-* Rewording of some options
-* Fix potential issues with the preloading not working on some websites
+* Updated user interface elements
+* Improved clarity in option descriptions
+* Fixed potential preloading issues on certain website configurations
 
 
 = 3.2.2 =
@@ -282,7 +297,6 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 * Better warnings when your website cannot use Image Conversion
 * Updated for WordPress 6.7
 
-
 = 3.2.0.6 =
 * Few bug fixes
 * Varnish can now be deleted
@@ -300,7 +314,7 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 * Fixed an issue with the database weekly maintenance where an SQL request could potentially remove all "pages" elements from the DB
 * Minor CSS ameliorations
 
-= 3.2 = 
+= 3.2 =
 * Image convertion greatly improved and changed to BETA
 * Lazy-loading changed : now an active solution greatly improving performances
 * Some change to the mobile cache, now activated by default
@@ -364,7 +378,7 @@ There are 3 different ways to install LWS Optimize (as with any other wordpress.
 
 = 3.1.3 =
 * Fixed a visual bug with PageSpeed's Device Select
-* Limited to 1 test/3 minutes for PageSpeed. Google keeps your last test result in cache for a few minutes, 
+* Limited to 1 test/3 minutes for PageSpeed. Google keeps your last test result in cache for a few minutes,
 retrying a test in this time window will only return the same values.
 * Added disclaimer for PageSpeed tests
 * Fixed an issue where modifying Database options would erase configuration
@@ -415,7 +429,7 @@ retrying a test in this time window will only return the same values.
 * Removed a few options that did no help with performances and caused issues (e.g. : JPG-ification)
 * Updated the webp converter, it should now work more reliably
 
-= 1.8.6 = 
+= 1.8.6 =
 *Removed Memcached for now. Cause site to break.
 
 = 1.8.5 =
@@ -444,7 +458,7 @@ retrying a test in this time window will only return the same values.
 * Some bugs fixed
 * More security measures added
 
-= 1.2 = 
+= 1.2 =
 * Important bug corrected concerning the lazy loading
 * WordPress crash when trying to deactivate lazy loading corrected
 * Clarified some button to better show their function

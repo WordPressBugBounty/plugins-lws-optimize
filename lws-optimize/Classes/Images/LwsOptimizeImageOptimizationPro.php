@@ -339,11 +339,11 @@ class LwsOptimizeImageOptimizationPro
 
         // Check for API errors
         if (isset($result['code']) && $result['code'] == 'SUCCESS') {
-            $conversion_options['remaining_credits'] = $result['data']['credits'] ?? 1000;
+            $conversion_options['remaining_credits'] = $result['data']['credits'] ?? 2000;
             $conversion_options['api_key'] = $result['data']['api_key'] ?? '';
         } else {
             // error_log(json_encode(['code' => 'API_ERROR', 'message' => 'Failed to get remaining credits', 'data' => $response]));
-            $conversion_options['remaining_credits'] = "1000";
+            $conversion_options['remaining_credits'] = "2000";
         }
 
         // Save the updated options
@@ -1905,7 +1905,7 @@ class LwsOptimizeImageOptimizationPro
             return json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]);
         }
 
-        $credits = $result['credits'] ?? 1000;
+        $credits = $result['credits'] ?? 2000;
         $domains = $result['domains'] ?? null;
         $api_key = $result['apiKey'] ?? null;
 

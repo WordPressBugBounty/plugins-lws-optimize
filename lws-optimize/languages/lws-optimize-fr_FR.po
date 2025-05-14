@@ -2144,8 +2144,8 @@ msgstr "L'extension PHP Imagick n'est pas installée sur votre serveur. Cette ex
 msgid "Your server's Imagick library doesn't support WebP format. This library is required for local image conversion, which will be unavailable."
 msgstr "La bibliothèque Imagick de votre serveur ne prend pas en charge le format WebP. Cette bibliothèque est nécessaire pour la conversion locale d'images, qui sera indisponible."
 
-msgid "Credits are used to convert images with our API. You get 1000 free credits to start with. Additional credits will later be purchasable on our website."
-msgstr "Les crédits sont utilisés pour convertir les images avec notre API. Vous recevez 1000 crédits gratuits pour commencer. Des crédits supplémentaires pourront être achetés ultérieurement sur notre site web."
+msgid "Credits are used to convert images with our API. You get 2000 free credits to start with. Additional credits will soon be purchasable on our website."
+msgstr "Les crédits sont utilisés pour convertir les images avec notre API. Vous recevez 2000 crédits gratuits pour commencer. Des crédits supplémentaires pourront être achetés prochainement sur notre site web."
 
 msgid "The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost."
 msgstr "L'API crée de meilleures images AVIF ou WebP en utilisant des crédits. La conversion locale crée uniquement des images WebP en utilisant votre serveur sans frais."
@@ -2184,3 +2184,6 @@ msgstr "Premier"
 #: lws-optimize.php:
 msgid "Last"
 msgstr "Dernier"
+
+msgid "Setting a high preload value may cause performance issues on your website. For most sites, a value of 1-2 pages per minute is recommended."
+msgstr "Définir une valeur de préchargement élevée peut causer des problèmes de performance sur votre site. Pour la plupart des sites, une valeur de 1 à 2 pages par minute est recommandée."

@@ -244,12 +244,30 @@ class LwsOptimize
 
             // If the lazyloading of images has been activated on the website
             if ($this->lwsop_check_option('image_lazyload')['state'] === "true") {
-                LwsOptimizeLazyLoading::startActionsImage();
+                // Skip lazyloading in admin pages and page builders
+                if (!is_admin() &&
+                    !isset($_GET['elementor-preview']) &&
+                    !isset($_GET['et_fb']) &&
+                    !isset($_GET['fl_builder']) &&
+                    !isset($_GET['vcv-action']) &&
+                    !isset($_GET['vc_action']) &&
+                    !isset($_GET['vc_editable'])) {
+                    LwsOptimizeLazyLoading::startActionsImage();
+                }
             }
 
-            // If the lazyloading of images has been activated on the website
+            // If the lazyloading of iframes/videos has been activated on the website
             if ($this->lwsop_check_option('iframe_video_lazyload')['state'] === "true") {
-                LwsOptimizeLazyLoading::startActionsIframe();
+                // Skip lazyloading in admin pages and page builders
+                if (!is_admin() &&
+                    !isset($_GET['elementor-preview']) &&
+                    !isset($_GET['et_fb']) &&
+                    !isset($_GET['fl_builder']) &&
+                    !isset($_GET['vcv-action']) &&
+                    !isset($_GET['vc_action']) &&
+                    !isset($_GET['vc_editable'])) {
+                    LwsOptimizeLazyLoading::startActionsIframe();
+                }
             }
 
             add_action('wp_enqueue_scripts', function () {
@@ -443,7 +461,7 @@ class LwsOptimize
 
             // Force deactivate memcached for everyone
             $options = get_option('lws_optimize_config_array', []);
-            $options['memcached']['state'] = false;
+            $options['memcached']['state'] = "false";
 
             $options['filebased_cache']['saved_urls'] = [];
 
@@ -480,6 +498,8 @@ class LwsOptimize
 
             $options['combine_css']['state'] = "false";
             $options['combine_js']['state'] = "false";
+            // 2 preload per minute by default
+            $options['filebased_cache']['preload_amount'] = 2;
 
             delete_transient('wp_lwsoptimize_post_update');
             update_option('lws_optimize_config_array', $options);
@@ -814,7 +834,7 @@ class LwsOptimize
      * Helper method to get sitemap URLs
      * @return array Array of URLs from sitemap
      */
-    private function get_sitemap_urls()
+    public function get_sitemap_urls()
     {
         $sitemap = get_sitemap_url("index");
 
@@ -919,6 +939,16 @@ class LwsOptimize
         }
 
         $array = get_option('lws_optimize_config_array', []);
+        if (!isset($array['filebased_cache']['state']) || $array['filebased_cache']['state'] == "false") {
+            delete_option('lws_optimize_preload_is_ongoing');
+
+            // Create log entry
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Filebased cache is disabled, aborting preload" . PHP_EOL);
+            fclose($logger);
+            return;
+        }
+
 
         // Initialize variables from configuration
         $max_try = intval($array['filebased_cache']['preload_amount'] ?? 5);
@@ -1026,21 +1056,8 @@ class LwsOptimize
             $logger = fopen($this->log_file, 'a');
             fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload batch completed - URLs cached: $current_try, total cached: $done" . PHP_EOL);
             fclose($logger);
-        } else if ($done >= count($urls) && $array['filebased_cache']['preload_ongoing'] == "true") {
-            // Log only when all URLs are done and preload was active
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload fully completed - all $done URLs are now cached" . PHP_EOL);
-            fclose($logger);
         }
 
-        // Update preload status
-        $array['filebased_cache']['preload_ongoing'] = ($current_try == 0 || $done >= count($urls)) ? "false" : "true";
-        $array['filebased_cache']['preload_done'] = $done;
-        $array['filebased_cache']['preload_quantity'] = count($urls);
-
-        // Save updated configuration and sitemap URLs
-        // update_option('lws_optimize_config_array', $array);
-        // $this->optimize_options = $array;
         update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
         delete_option('lws_optimize_preload_is_ongoing');
     }
@@ -1068,6 +1085,12 @@ class LwsOptimize
     public function lwsop_regenerate_cache() {
         check_ajax_referer('lws_regenerate_nonce_cache_fb', '_ajax_nonce');
         $stats = $this->lwsop_recalculate_stats('regenerate');
+
+        $stats['desktop']['size'] = $this->lwsOpSizeConvert($stats['desktop']['size'] ?? 0);
+        $stats['mobile']['size'] = $this->lwsOpSizeConvert($stats['mobile']['size'] ?? 0);
+        $stats['css']['size'] = $this->lwsOpSizeConvert($stats['css']['size'] ?? 0);
+        $stats['js']['size'] = $this->lwsOpSizeConvert($stats['js']['size'] ?? 0);
+
         wp_die(json_encode(array('code' => "SUCCESS", 'data' => $stats)));
 
     }
@@ -2291,7 +2314,7 @@ class LwsOptimize
                     fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removed only index files from main cache directory: $directory" . PHP_EOL);
                     fclose($logger);
 
-                    return;
+                    return json_encode(array('code' => 'ONLY_HOME'), JSON_PRETTY_PRINT);
                 }
 
                 $logger = fopen($this->log_file, 'a');
@@ -2306,7 +2329,7 @@ class LwsOptimize
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Optimize cache purge started by $action. Removing full cache from AutoPurge is forbidden. Stopping." . PHP_EOL);
                 fclose($logger);
 
-                return;
+                return json_encode(array('code' => 'FULL_CLEAR_FORBIDDEN'), JSON_PRETTY_PRINT);
             }
 
             $logger = fopen($this->log_file, 'a');
@@ -2327,19 +2350,35 @@ class LwsOptimize
 
             $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
             $this->lwsop_recalculate_stats("all");
+
+            return json_encode(array('code' => 'SUCCESS'), JSON_PRETTY_PRINT);
         }
 
         if ($array = get_option('lws_optimize_config_array', [])) {
             $array['filebased_cache']['preload_done'] =  0;
             if (isset($array['filebased_cache']['preload']) && $array['filebased_cache']['preload'] == "true") {
                 $array['filebased_cache']['preload_ongoing'] = "true";
-                if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
-                    wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
-                }
 
-                if (!wp_next_scheduled("lws_optimize_start_filebased_preload")) {
-                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                $next_scheduled = wp_next_scheduled("lws_optimize_start_filebased_preload");
+                $current_time = time();
+
+                // Check if a task is scheduled and if it's within 2 minutes from now
+                if ($next_scheduled && ($next_scheduled - $current_time < 120)) {
+                    // If the next run is too soon, cancel it
+                    wp_unschedule_event($next_scheduled, "lws_optimize_start_filebased_preload");
+
+                    // Schedule a new one for 5 minutes from now
+                    wp_schedule_event($current_time + 300, "lws_minute", "lws_optimize_start_filebased_preload");
+
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload task rescheduled to run in 5 minutes." . PHP_EOL);
+                    fclose($logger);
                 }
+                // If there's no scheduled task, create one
+                elseif (!$next_scheduled) {
+                    wp_schedule_event($current_time, "lws_minute", "lws_optimize_start_filebased_preload");
+                }
+                // Otherwise, leave the existing scheduled task alone
             } else {
                 wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
             }
@@ -2941,7 +2980,7 @@ class LwsOptimize
             case 'basic': // recommended only
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "false";
-                $options['filebased_cache']['preload_amount'] = "5";
+                $options['filebased_cache']['preload_amount'] = "2";
                 $options['filebased_cache']['timer'] = "lws_yearly";
                 $options['combine_css']['state'] = "false";
                 $options['combine_js']['state'] = "false";
@@ -2983,7 +3022,7 @@ class LwsOptimize
             case 'advanced':
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "5";
+                $options['filebased_cache']['preload_amount'] = "3";
                 $options['filebased_cache']['timer'] = "lws_yearly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
@@ -3025,7 +3064,7 @@ class LwsOptimize
             case 'full':
                 $options['filebased_cache']['state'] = "true";
                 $options['filebased_cache']['preload'] = "true";
-                $options['filebased_cache']['preload_amount'] = "10";
+                $options['filebased_cache']['preload_amount'] = "5";
                 $options['filebased_cache']['timer'] = "lws_biyearly";
                 $options['combine_css']['state'] = "true";
                 $options['combine_js']['state'] = "true";
