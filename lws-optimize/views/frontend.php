@@ -206,6 +206,8 @@ if ((isset($config_array['filebased_cache']['state']) && $config_array['filebase
     $deactivated_filebased = true;
 }
 
+$cloudflare_state = isset($config_array['cloudflare']['state']) && $config_array['cloudflare']['state'] == "true" ? true : false;
+
 foreach ($first_bloc_array as $key => $array) {
     if ($deactivated_filebased) {
         $first_bloc_array[$key]['has_checkbox'] = false;
@@ -260,8 +262,6 @@ foreach ($third_bloc_array as $key => $array) {
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('CSS Files', 'lws-optimize'); ?></h2>
 </div>
 
-<?php $stop_css = isset($config_array['cloudflare']['tools']['min_css']) && $config_array['cloudflare']['tools']['min_css'] === true ? true : false; ?>
-<?php $stop_js = isset($config_array['cloudflare']['tools']['min_js']) && $config_array['cloudflare']['tools']['min_js'] === true ? true : false; ?>
 <?php foreach ($first_bloc_array as $name => $data) : ?>
     <div class="lwsop_contentblock">
         <div class="lwsop_contentblock_leftside">
@@ -279,7 +279,7 @@ foreach ($third_bloc_array as $key => $array) {
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">
-            <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) : ?>
+            <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) : ?>
                 <div class="lwsop_cloudflare_block" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('This action is managed by CloudFlare and cannot be activated', 'lws-optimize'); ?>"></div>
             <?php endif ?>
             <?php if ($data['has_exclusion']) : ?>
@@ -294,7 +294,7 @@ foreach ($third_bloc_array as $key => $array) {
                 <?php endif ?>
             <?php endif ?>
             <?php if ($data['has_exclusion_button']) : ?>
-                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>" <?php if (($name == "minify_css" || $name == "minify_js") && $stop_css) {
+                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>" <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) {
                                                                                                                                                                                                                                     echo esc_html("disabled");
                                                                                                                                                                                                                                 } ?>>
                     <span>
@@ -314,7 +314,7 @@ foreach ($third_bloc_array as $key => $array) {
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
                 <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
-                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $stop_css) {
+                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) {
                                                                                                                                                                                                                             echo esc_html("disabled");
                                                                                                                                                                                                                         } ?>>
                     <span class="slider round"></span>
@@ -345,7 +345,7 @@ foreach ($third_bloc_array as $key => $array) {
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">
-            <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) : ?>
+            <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) : ?>
                 <div class="lwsop_cloudflare_block" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('This action is managed by CloudFlare and cannot be activated', 'lws-optimize'); ?>"></div>
             <?php endif ?>
             <?php if ($data['has_exclusion']) : ?>
@@ -354,7 +354,7 @@ foreach ($third_bloc_array as $key => $array) {
                 </div>
             <?php endif ?>
             <?php if ($data['has_exclusion_button']) : ?>
-                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>" <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) {
+                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>" <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) {
                                                                                                                                                                                                                                     echo esc_html("disabled");
                                                                                                                                                                                                                                 } ?>>
                     <span>
@@ -374,7 +374,7 @@ foreach ($third_bloc_array as $key => $array) {
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
                 <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
-                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) {
+                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) {
                                                                                                                                                                                                                             echo esc_html("disabled");
                                                                                                                                                                                                                         } ?>>
                     <span class="slider round"></span>
@@ -405,7 +405,7 @@ foreach ($third_bloc_array as $key => $array) {
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">
-            <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) : ?>
+            <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) : ?>
                 <div class="lwsop_cloudflare_block" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('This action is managed by CloudFlare and cannot be activated', 'lws-optimize'); ?>"></div>
             <?php endif ?>
             <?php if ($data['has_exclusion']) : ?>
@@ -414,7 +414,7 @@ foreach ($third_bloc_array as $key => $array) {
                 </div>
             <?php endif ?>
             <?php if ($data['has_exclusion_button']) : ?>
-                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>" <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) {
+                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>" <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) {
                                                                                                                                                                                                                                     echo esc_html("disabled");
                                                                                                                                                                                                                                 } ?>>
                     <span>
@@ -434,7 +434,7 @@ foreach ($third_bloc_array as $key => $array) {
             <?php endif ?>
             <?php if ($data['has_checkbox']) : ?>
                 <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
-                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $stop_js) {
+                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?> <?php if (($name == "minify_css" || $name == "minify_js") && $cloudflare_state) {
                                                                                                                                                                                                                             echo esc_html("disabled");
                                                                                                                                                                                                                         } ?>>
                     <span class="slider round"></span>

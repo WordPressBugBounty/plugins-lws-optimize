@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimizeWpCli;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.3.2.5
+ * Version:           3.3.3
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.8
@@ -37,7 +37,7 @@ function lws_optimize_check_update() {
     $nouvelle_version = '3.2.2.1'; // Remplacez par la version actuelle du plugin.
 
     if ($ancienne_version !== $nouvelle_version) {
-        set_transient( 'wp_lwsoptimize_post_update', 1);
+        add_option( 'wp_lwsoptimize_post_update', 1);
 
         // Mettre à jour la version en base.
         update_option('lwsop_plugin_version', $nouvelle_version);
@@ -174,7 +174,7 @@ function lws_optimize_upgrading($upgrader_object, $options)
         foreach ($options['plugins'] as $plugin) {
             // If the plugin getting updated is LWS Optimize
             if ($plugin == plugin_basename(__FILE__)) {
-                set_transient( 'wp_lwsoptimize_post_update', 1);
+                add_option( 'wp_lwsoptimize_post_update', 1);
             }
         }
     }
@@ -260,6 +260,13 @@ add_action("wp_ajax_lws_op_activatePlugin", function()
     }
     wp_die();
 });
+
+$deactivated = get_option('lws_optimize_deactivate_temporarily', false);
+if ($deactivated) {
+    if (time() > $deactivated) {
+        delete_option('lws_optimize_deactivate_temporarily');
+    }
+}
 
 $GLOBALS['lws_optimize'] = $lwsop = new LwsOptimize();
 

@@ -62,10 +62,10 @@ $format_support = [
     <div class="lwsop_loading_spinner"></div>
 </div>
 
-<div class="lwsop_bluebanner_alt">
-    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Images Conversion Tool', 'lws-optimize'); ?></h2>
+<div class="lwsop_bluebanner_alt no_blue">
+    <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Images Compression', 'lws-optimize'); ?></h2>
     <div class="lwsop_bluebanner_subtitle">
-    <?php esc_html_e('Convert your images to modern formats (WebP/AVIF) to significantly improve website loading speed.', 'lws-optimize'); ?>
+    <?php esc_html_e('Convert and compress your images to modern formats (WebP/AVIF) to significantly improve website loading speed.', 'lws-optimize'); ?>
     </div>
 </div>
 
@@ -174,90 +174,9 @@ $format_support = [
     </div>
 </div>
 
-<div class="lws_optimize_error_listing">
-    <div class="lws_optimize_error_listing_button" id="lwsoppro_show_image_listing" onclick="changeStateTable(this)">
-        <img src="<?php echo esc_url(plugins_url('images/plus.svg', __DIR__)) ?>" alt="Logo Plus" width="15px" height="15px">
-        <span><?php esc_html_e('Show converted images', 'lws-optimize'); ?></span>
-    </div>
-
-    <div class="lwsop_contentblock_error_listing hidden">
-        <table class="lwsop_error_listing">
-            <thead>
-                <tr>
-                    <th><?php esc_html_e('Name', 'lws-optimize'); ?></th>
-                    <th><?php esc_html_e('Type', 'lws-optimize'); ?></th>
-                    <th><?php esc_html_e('Converted', 'lws-optimize'); ?></th>
-                    <th><?php esc_html_e('Converted Type', 'lws-optimize'); ?></th>
-                    <th><?php esc_html_e('Compression', 'lws-optimize'); ?></th>
-                </tr>
-            </thead>
-            <tbody id="lwsoppro_tbody_listing"></tbody>
-        </table>
-    </div>
-</div>
-
-<div class="lws_optimize_image_conversion_main">
-    <div class="lws_optimize_image_conversion_main_left">
-        <h2 class="lws_optimize_image_conversion_title">
-            <span><?php esc_html_e('Restore all images', 'lws-optimize'); ?></span>
-            <button onclick="refreshPage(this)" class="lws_optimize_image_conversion_refresh">
-                <img src="<?php echo esc_url(plugins_url('images/rafraichir.svg', __DIR__)) ?>" alt="Logo Refresh" width="15px" height="15px">
-                <span><?php esc_html_e('Refresh', 'lws-optimize'); ?></span>
-            </button>
-        </h2>
-
-        <div class="lws_optimize_image_conversion_description">
-            <span><?php esc_html_e('Restore all converted images to their original format il the original copy is available.', 'lws-optimize'); ?></span>
-            <span><?php esc_html_e('Only works for images not automatically converted on upload (see below)', 'lws-optimize'); ?></span>
-        </div>
-
-        <div class="lws_optimize_conversion_bar">
-            <div class="lws_optimize_conversion_bar_element">
-                <span class="lws_optimize_conversion_bar_element_title">
-                    <img id="lwsoppro_image_deconversion_status" alt="Logo Status" width="15px" height="15px">
-                    <?php echo esc_html__('Status: ', 'lws-optimize'); ?>
-                </span>
-                <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsoppro_deconversion_status">-</span>
-            </div>
-            <div class="lws_optimize_conversion_bar_element">
-                <span class="lws_optimize_conversion_bar_element_title">
-                    <img src="<?php echo esc_url(plugins_url('images/horloge.svg', __DIR__)); ?>" alt="Logo Horloge" width="15px" height="15px">
-                    <?php echo esc_html__('Next deconversion: ', 'lws-optimize'); ?>
-                </span>
-                <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsoppro_deconversion_next">-</span>
-            </div>
-            <div class="lws_optimize_conversion_bar_element">
-                <span class="lws_optimize_conversion_bar_element_title">
-                    <img src="<?php echo esc_url(plugins_url('images/page.svg', __DIR__)); ?>" alt="Logo Page" width="15px" height="15px">
-                    <?php echo esc_html__('Images left: ', 'lws-optimize'); ?>
-                </span>
-                <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsoppro_deconversion_left">-</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="lwsoppro_deconversion_button_block" class="lws_optimize_image_conversion_main_right">
-        <button type="button" class="lws_optimize_action_button">
-                <span><?php esc_html_e('Convert images', 'lws-optimize'); ?></span>
-        </button>
-    </div>
-</div>
-
-<div class="lws_optimize_image_conversion_main">
-    <div class="lws_optimize_image_conversion_main_left">
-        <h2 class="lws_optimize_image_conversion_title">
-            <span><?php esc_html_e('Automatic conversion on upload', 'lws-optimize'); ?></span>
-        </h2>
-        <div class="lws_optimize_image_conversion_description">
-            <span><?php esc_html_e('Automatically convert new images uploaded on your WordPress website.', 'lws-optimize'); ?></span>
-        </div>
-    </div>
-    <div class="lws_optimize_image_conversion_main_right">
-        <label class="lwsop_checkbox">
-            <input type="checkbox" id="lwsoppro_image_autoconversion_check" onchange="checkAutoupload(this)">
-            <span class="slider round"></span>
-        </label>
-    </div>
+<div class="lwsop_oneclickconfig_cachestate_bottomtext" style="padding: 30px;">
+    <?php esc_html_e('To see the complete list of compressed images, restore images or automatically convert images on upload, go to the ', 'lws-optimize'); ?>
+    <span class="lwsop_oneclickconfig_cachestate_link" onclick="window.location.href='?page=lws-op-config-advanced'"><?php esc_html_e('advanced mode', 'lws-optimize'); ?></span>.
 </div>
 
 <div class="modal fade" id="lwsoppro_modal" tabindex='-1'>
@@ -895,7 +814,11 @@ $format_support = [
             state = false;
         } else {
             value = element.getAttribute('value');
-            state = document.getElementById('lwsoppro_image_autoconversion_check').checked ? 0 : 1;
+            if (document.getElementById('lwsoppro_image_autoconversion_check')) {
+                state = document.getElementById('lwsoppro_image_autoconversion_check').checked ? 0 : 1;
+            } else {
+                state = false;
+            }
         }
 
         let modal = document.getElementById('lwsoppro_modal');

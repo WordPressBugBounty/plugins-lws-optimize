@@ -13,21 +13,21 @@ $first_bloc_array = array(
         'checkbox_id' => "lws_optimize_maintenance_db_check",
         'has_special_element_database' => true,
     ),
-    'lwscleaner' => array(
-        'has_logo' => true,
-        'logo' => "plugin_lws_cleaner_logo.svg",
-        'logo_size' => ['height' => "30px", 'width' => "30px"],
-        'logo_alt' => "",
-        'title' => __('LWS Cleaner Plugin', 'lws-optimize'),
-        'desc' => __('This plugin lets you <b>clean your WordPress</b> website, notably its database, in a few clicks to improve speed: posts, comments, terms, users, parameters, plugins, medias, files.', 'lws-optimize'),
-        'recommended' => true,
-        'has_button' => true,
-        'button_title' => __('Manage', 'lws-optimize'),
-        'button_id' => "lws_optimize_lwscleaner_manage",
-        'has_checkbox' => true,
-        'checkbox_id' => "lws_optimize_lwscleaner_check",
-        'has_special_element_database' => false,
-    ),
+    // 'lwscleaner' => array(
+    //     'has_logo' => true,
+    //     'logo' => "plugin_lws_cleaner_logo.svg",
+    //     'logo_size' => ['height' => "30px", 'width' => "30px"],
+    //     'logo_alt' => "",
+    //     'title' => __('LWS Cleaner Plugin', 'lws-optimize'),
+    //     'desc' => __('This plugin lets you <b>clean your WordPress</b> website, notably its database, in a few clicks to improve speed: posts, comments, terms, users, parameters, plugins, medias, files.', 'lws-optimize'),
+    //     'recommended' => true,
+    //     'has_button' => true,
+    //     'button_title' => __('Manage', 'lws-optimize'),
+    //     'button_id' => "lws_optimize_lwscleaner_manage",
+    //     'has_checkbox' => true,
+    //     'checkbox_id' => "lws_optimize_lwscleaner_check",
+    //     'has_special_element_database' => false,
+    // ),
 );
 
 $maintenance_options = array(
@@ -44,13 +44,13 @@ foreach ($first_bloc_array as $key => $array) {
     $first_bloc_array[$key]['state'] = isset($config_array[$key]['state']) && $config_array[$key]['state'] == "true" ? true : false;
 }
 
-if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
-    $first_bloc_array['lwscleaner']['state'] = false;
-    $first_bloc_array['lwscleaner']['has_button'] = false;
-} else {
-    $first_bloc_array['lwscleaner']['state'] = true;
-    $first_bloc_array['lwscleaner']['has_button'] = true;
-}
+// if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
+//     $first_bloc_array['lwscleaner']['state'] = false;
+//     $first_bloc_array['lwscleaner']['has_button'] = false;
+// } else {
+//     $first_bloc_array['lwscleaner']['state'] = true;
+//     $first_bloc_array['lwscleaner']['has_button'] = true;
+// }
 
 
 $next_scheduled_maintenance = wp_next_scheduled('lws_optimize_maintenance_db_weekly');
@@ -81,7 +81,7 @@ if ($next_scheduled_maintenance) {
             <?php if ($data['has_special_element_database']) : ?>
                 <div class="lwsop_contentblock_conversion_status" id="lwsop_database_cleaning_status">
                     <div>
-                        <span><?php echo esc_html__('Next conversion: ', 'lws-optimize'); ?></span>
+                        <span><?php echo esc_html__('Next optimization: ', 'lws-optimize'); ?></span>
                         <span id="lwsop_next_cleaning_db"><?php echo esc_html($next_scheduled_maintenance); ?></span>
                     </div>
                 </div>
@@ -342,61 +342,63 @@ if ($next_scheduled_maintenance) {
 
     }
 
-    document.getElementById('lws_optimize_lwscleaner_check').addEventListener('click', function() {
-        document.getElementById('wpcontent').style.pointerEvents = "none";
-        let state = this.checked;
-        let ajaxRequest = jQuery.ajax({
-            url: ajaxurl,
-            type: "POST",
-            timeout: 120000,
-            context: document.body,
-            data: {
-                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_activate_cleaner_nonce')); ?>',
-                action: "lws_optimize_activate_cleaner",
-                state
-            },
-            success: function(data) {
-                document.getElementById('wpcontent').style.pointerEvents = "all";
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
+    if (document.getElementById('lws_optimize_lwscleaner_check')) {
+        document.getElementById('lws_optimize_lwscleaner_check').addEventListener('click', function() {
+            document.getElementById('wpcontent').style.pointerEvents = "none";
+            let state = this.checked;
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_activate_cleaner_nonce')); ?>',
+                    action: "lws_optimize_activate_cleaner",
+                    state
+                },
+                success: function(data) {
+                    document.getElementById('wpcontent').style.pointerEvents = "all";
+                    if (data === null || typeof data != 'string') {
+                        return 0;
+                    }
 
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
-                }
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        console.log(e);
+                        return 0;
+                    }
 
-                switch (returnData['code']) {
-                    case 'SUCCESS':
-                        if (returnData['state'] == "true") {
-                            document.getElementById('lwsop_button_side').insertAdjacentHTML('afterbegin', `
-                                <button type="button" class="lwsop_darkblue_button" value="LWS Cleaner Plugin" id="lws_optimize_lwscleaner_manage" name="lws_optimize_lwscleaner_manage">
-                                    <span>
-                                        <?php esc_html_e("Manage", 'lws-optimize'); ?>
-                                    </span>
-                                </button>
-                            `);
-                        } else {
-                            document.getElementById('lws_optimize_lwscleaner_manage').remove();
-                        }
-                        break;
-                    default:
-                        console.log(returnData['code']);
-                        break;
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            if (returnData['state'] == "true") {
+                                document.getElementById('lwsop_button_side').insertAdjacentHTML('afterbegin', `
+                                    <button type="button" class="lwsop_darkblue_button" value="LWS Cleaner Plugin" id="lws_optimize_lwscleaner_manage" name="lws_optimize_lwscleaner_manage">
+                                        <span>
+                                            <?php esc_html_e("Manage", 'lws-optimize'); ?>
+                                        </span>
+                                    </button>
+                                `);
+                            } else {
+                                document.getElementById('lws_optimize_lwscleaner_manage').remove();
+                            }
+                            break;
+                        default:
+                            console.log(returnData['code']);
+                            break;
+                    }
+                },
+                error: function(error) {
+                    document.getElementById('wpcontent').style.pointerEvents = "all";
+                    console.log(error);
                 }
-            },
-            error: function(error) {
-                document.getElementById('wpcontent').style.pointerEvents = "all";
-                console.log(error);
+            });
+        })
+
+        document.addEventListener('click', function(event) {
+            if (event.target.id == "lws_optimize_lwscleaner_manage") {
+                window.location.href = "<?php echo esc_url(admin_url("admin.php?page=lws-cl-config")); ?>";
             }
         });
-    })
-
-    document.addEventListener('click', function(event) {
-        if (event.target.id == "lws_optimize_lwscleaner_manage") {
-            window.location.href = "<?php echo esc_url(admin_url("admin.php?page=lws-cl-config")); ?>";
-        }
-    });
+    }
 </script>

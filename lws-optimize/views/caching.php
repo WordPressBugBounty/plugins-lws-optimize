@@ -21,90 +21,13 @@ $local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $next_preload), 'Y-m-d 
 $autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
 $htaccess_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_rules");
 $memcached_force_off = false;
-
-function lwsOpSizeConvert($size)
-{
-    $unit = array(__('b', 'lws-optimize'), __('K', 'lws-optimize'), __('M', 'lws-optimize'), __('G', 'lws-optimize'), __('T', 'lws-optimize'), __('P', 'lws-optimize'));
-    if ($size <= 0) {
-        return '0 ' . $unit[1];
-    }
-    return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . '' . $unit[$i];
-}
-
-$cache_stats = get_option('lws_optimize_cache_statistics', []);
-
-$cache_stats = array_merge([
-    'desktop' => ['amount' => 0, 'size' => 0],
-    'mobile' => ['amount' => 0, 'size' => 0],
-    'css' => ['amount' => 0, 'size' => 0],
-    'js' => ['amount' => 0, 'size' => 0],
-], $cache_stats);
-
-$file_cache = $cache_stats['desktop']['amount'];
-$file_cache_size = lwsOpSizeConvert($cache_stats['desktop']['size']);
-
-$mobile_cache = $cache_stats['mobile']['amount'] ?? 0;
-$mobile_cache_size = lwsOpSizeConvert($cache_stats['mobile']['size']);
-
-$css_cache = $cache_stats['css']['amount'] ?? 0;
-$css_cache_size = lwsOpSizeConvert($cache_stats['css']['size']);
-
-$js_cache = $cache_stats['js']['amount'] ?? 0;
-$js_cache_size = lwsOpSizeConvert($cache_stats['js']['size']);
-
-$caches = [
-    'files' => [
-        'size' => $file_cache_size,
-        'title' => __('Computer Cache', 'lws-optimize'),
-        'amount' => $file_cache,
-        'id' => "lws_optimize_file_cache",
-        'image_file' => "ordinateur.svg",
-        'image_alt' => "computer icon",
-        'width' => "60px",
-        'height' => "60px",
-    ],
-    'mobile' => [
-        'size' => $mobile_cache_size,
-        'title' => __('Mobile Cache', 'lws-optimize'),
-        'amount' => $mobile_cache,
-        'id' => "lws_optimize_mobile_cache",
-        'image_file' => "mobile.svg",
-        'image_alt' => "mobile icon",
-        'width' => "50px",
-        'height' => "60px",
-    ],
-    'css' => [
-        'size' => $css_cache_size,
-        'title' => __('CSS Cache', 'lws-optimize'),
-        'amount' => $css_cache,
-        'id' => "lws_optimize_css_cache",
-        'image_file' => "css.svg",
-        'image_alt' => "css logo in a window icon",
-        'width' => "60px",
-        'height' => "60px",
-    ],
-    'js' => [
-        'size' => $js_cache_size,
-        'title' => __('JS Cache', 'lws-optimize'),
-        'amount' => $js_cache,
-        'id' => "lws_optimize_js_cache",
-        'image_file' => "js.svg",
-        'image_alt' => "js logo in a window icon",
-        'width' => "60px",
-        'height' => "60px",
-
-    ],
-];
-
 ?>
 
 <div class="lwsop_bluebanner" style="justify-content: space-between;">
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Cache stats', 'lws-optimize'); ?></h2>
-    <button type="button" class="lwsop_blue_button" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
-        <span>
-            <img src="<?php echo esc_url(plugins_url('images/maj.svg', __DIR__)) ?>" alt="Logo MàJ" width="20px">
-            <?php esc_html_e('Refresh', 'lws-optimize'); ?>
-        </span>
+    <button type="button" class="lws_optimize_image_conversion_refresh" id="lws_op_regenerate_stats" name="lws_op_regenerate_stats">
+        <img src="<?php echo esc_url(plugins_url('images/rafraichir.svg', __DIR__)) ?>" alt="Logo MàJ" width="12px">
+        <span><?php esc_html_e('Refresh', 'lws-optimize'); ?></span>
     </button>
     <!-- <button class="lwsop_blue_button" id="lwsop_refresh_stats"><?php //esc_html_e('Refresh', 'lws-optimize'); ?></button> -->
 </div>
@@ -615,6 +538,18 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         let timer = document.getElementById('lws_op_filebased_cache_timer');
         timer = timer.value ?? "lws_thrice_monthly";
 
+        let originalLoading = checkbox.previousElementSibling;
+        if (!originalLoading || !originalLoading.classList.contains('loading-spinner')) {
+            let loadingSpan = document.createElement('span');
+            loadingSpan.classList.add('loading-spinner');
+            loadingSpan.innerHTML = `
+            <span name="loading" style="padding-left:5px">
+                <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
+            </span>
+            `;
+            checkbox.parentNode.insertBefore(loadingSpan, checkbox);
+        }
+
         let ajaxRequest = jQuery.ajax({
             url: ajaxurl,
             type: "POST",
@@ -629,6 +564,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             success: function(data) {
                 checkbox.disabled = false;
                 checkbox.checked = false;
+                let originalLoading = checkbox.previousElementSibling;
+                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
+                    originalLoading.remove();
+                }
 
                 if (data === null || typeof data != 'string') {
                     callPopup('error', "<?php esc_html_e("Bad data returned. Cannot activate cache.", "lws-optimize"); ?>");
@@ -664,6 +603,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             error: function(error) {
                 checkbox.disabled = false;
                 checkbox.checked = !state;
+                let originalLoading = checkbox.previousElementSibling;
+                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
+                    originalLoading.remove();
+                }
                 callPopup('error', "<?php esc_html_e("Unknown error. Cannot change cache.", "lws-optimize"); ?>");
                 console.log(error);
             }
@@ -675,6 +618,18 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         let select = this;
         let checkbox = document.getElementById('lws_op_filebased_cache_manage');
         checkbox.disabled = true;
+
+        let originalLoading = checkbox.previousElementSibling;
+        if (!originalLoading || !originalLoading.classList.contains('loading-spinner')) {
+            let loadingSpan = document.createElement('span');
+            loadingSpan.classList.add('loading-spinner');
+            loadingSpan.innerHTML = `
+            <span name="loading" style="padding-left:5px">
+                <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
+            </span>
+            `;
+            checkbox.parentNode.insertBefore(loadingSpan, checkbox);
+        }
 
         let timer = select.value ?? "lws_thrice_monthly";
 
@@ -690,6 +645,11 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             },
             success: function(data) {
                 checkbox.disabled = false;
+                let originalLoading = checkbox.previousElementSibling;
+                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
+                    originalLoading.remove();
+                }
+
 
                 if (data === null || typeof data != 'string') {
                     callPopup('error', "<?php esc_html_e("Bad data returned. Cannot change cache timer.", 'lws-optimize'); ?>");
@@ -720,6 +680,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             },
             error: function(error) {
                 checkbox.disabled = false;
+                let originalLoading = checkbox.previousElementSibling;
+                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
+                    originalLoading.remove();
+                }
 
                 callPopup('error', "<?php esc_html_e("Unknown error. Cannot change cache timer.", "lws-optimize"); ?>");
                 console.log(error);
@@ -784,6 +748,20 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         let amount = document.getElementById('lws_op_fb_cache_preload_amount');
         amount = amount.value ?? 3;
 
+        let originalText = '';
+        let originalLoading = button.previousElementSibling;
+        if (!originalLoading || !originalLoading.classList.contains('loading-spinner')) {
+            let loadingSpan = document.createElement('span');
+            loadingSpan.classList.add('loading-spinner');
+            loadingSpan.innerHTML = `
+            <span name="loading" style="padding-left:5px">
+                <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
+            </span>
+            `;
+            button.parentNode.insertBefore(loadingSpan, button);
+            originalText = button.innerHTML;
+        }
+
         let ajaxRequest = jQuery.ajax({
             url: ajaxurl,
             type: "POST",
@@ -797,6 +775,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             },
             success: function(data) {
                 button.disabled = false;
+                let originalLoading = button.previousElementSibling;
+                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
+                    originalLoading.remove();
+                }
 
                 if (data === null || typeof data != 'string') {
                     callPopup('error', "<?php esc_html_e("Bad data returned. Cannot activate preloading.", "lws-optimize"); ?>");
@@ -872,6 +854,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             },
             error: function(error) {
                 button.disabled = false;
+                let originalLoading = button.previousElementSibling;
+                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
+                    originalLoading.remove();
+                }
                 callPopup('error', "<?php esc_html_e("Unknown error. Cannot change preloading state.", "lws-optimize"); ?>");
                 console.log(error);
             }
@@ -1418,7 +1404,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             let old_text = this.innerHTML;
             this.innerHTML = `
                 <span name="loading" style="padding-left:5px">
-                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
                 </span>
             `;
 
@@ -1438,14 +1424,14 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     button.innerHTML = old_text;
 
                     if (data === null || typeof data != 'string') {
-                        callPopup('error', "Bad data returned.");
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
                         return 0;
                     }
 
                     try {
                         var returnData = JSON.parse(data);
                     } catch (e) {
-                        callPopup('error', "Bad data returned.");
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
                         console.log(e);
                         return 0;
                     }

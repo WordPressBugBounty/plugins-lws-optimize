@@ -57,9 +57,10 @@ class LwsOptimizeAutoPurge
                 if ($file_mobile !== null) {
                     apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
+
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
-                $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+                $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("partial", $url);
             }
         }
     }
@@ -85,9 +86,11 @@ class LwsOptimizeAutoPurge
             if ($file_mobile !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
+
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("partial", $url);
+
             $this->purge_specified_url();
         }
     }
@@ -136,9 +139,11 @@ class LwsOptimizeAutoPurge
                 apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
             apply_filters("lws_optimize_clear_filebased_cache", $file, $action, true);
+
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("partial", $url);
+
             $this->purge_specified_url();
         }
     }
@@ -188,9 +193,11 @@ class LwsOptimizeAutoPurge
             if ($file_mobile !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
+
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("partial", $url);
+
             $this->purge_specified_url();
         }
     }
@@ -212,9 +219,11 @@ class LwsOptimizeAutoPurge
             if ($file_mobile !== null) {
                 apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
             }
+
             $url = str_replace("https://", "", get_site_url());
             $url = str_replace("http://", "", $url);
-            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+            $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("partial", $url);
+
             $this->purge_specified_url();
         }
     }
@@ -256,9 +265,11 @@ class LwsOptimizeAutoPurge
                 if ($file_mobile !== null) {
                     apply_filters("lws_optimize_clear_filebased_cache", $file_mobile, $action, true);
                 }
+
                 $url = str_replace("https://", "", get_site_url());
                 $url = str_replace("http://", "", $url);
-                $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("purge", array($url));
+                $GLOBALS['lws_optimize']->cloudflare_manager->lws_optimize_clear_cloudflare_cache("partial", $url);
+
                 $this->purge_specified_url();
             }
         }

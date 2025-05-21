@@ -826,7 +826,7 @@ class LwsOptimizeFileCache
     {
 
         // No cache if deactivated
-        if (get_transient('lws_optimize_deactivate_temporarily')) {
+        if (get_option('lws_optimize_deactivate_temporarily')) {
             return false;
         }
 

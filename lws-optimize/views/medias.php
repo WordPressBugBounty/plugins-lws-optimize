@@ -17,8 +17,8 @@ $media_array = array(
     //     'checkbox_id' => "lws_optimize_media_optimize_check",
     // ),
     'gzip_compression' => array(
-        'title' => __('Activate GZIP Compression', 'lws-optimize'),
-        'desc' => __('GZIP Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times.', 'lws-optimize'),
+        'title' => __('Activate GZIP/Brotli Compression', 'lws-optimize'),
+        'desc' => __('GZIP or Brotli Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times.', 'lws-optimize'),
         'recommended' => true,
         'has_logo' => false,
         'has_exclusion' => false,

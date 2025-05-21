@@ -792,7 +792,7 @@ class LwsOptimizeWpCli {
         $duration = 300; // Default to 5 minutes
         switch ($action) {
             case 'deactivate':
-                if (get_transient('lws_optimize_deactivate_temporarily')) {
+                if (get_option('lws_optimize_deactivate_temporarily')) {
                     \WP_CLI::success('LWS Optimize is already deactivated.');
                     return 0;
                 }
@@ -815,7 +815,7 @@ class LwsOptimizeWpCli {
                         break;
                 }
 
-                $deactivated = set_transient('lws_optimize_deactivate_temporarily', $duration, $duration);
+                $deactivated = add_option('lws_optimize_deactivate_temporarily', time() + $duration);
                 $htaccess_cleaned = false;
 
                 if ($deactivated) {
@@ -855,8 +855,8 @@ class LwsOptimizeWpCli {
                 }
                 return 0;
             case 'activate':
-                if (get_transient('lws_optimize_deactivate_temporarily')) {
-                    if (delete_transient('lws_optimize_deactivate_temporarily') === true) {
+                if (get_option('lws_optimize_deactivate_temporarily')) {
+                    if (delete_option('lws_optimize_deactivate_temporarily') === true) {
                         if (isset($options['htaccess_rules']['state']) && $options['htaccess_rules']['state'] == "true") {
                             $optimize->lws_optimize_set_cache_htaccess();
                         }

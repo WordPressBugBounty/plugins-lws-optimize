@@ -5,114 +5,231 @@ namespace Lws\Classes\FileCache;
 class LwsOptimizeCloudFlare {
     public function activate_cloudflare_integration() {
         add_action("wp_ajax_lws_optimize_check_cloudflare_key", [$this, "lws_optimize_check_cf_key"]);
-        add_action("wp_ajax_lws_optimize_cloudflare_tools_deactivation", [$this, "lws_optimize_cf_tools_deactivation"]);
-        add_action("wp_ajax_lws_optimize_cloudflare_cache_duration", [$this, "lws_optimize_cf_cache_duration"]);
-        add_action("wp_ajax_lws_optimize_cloudflare_finish_configuration", [$this, "lws_optimize_cf_finish_config"]);
-        add_action("wp_ajax_lws_optimize_deactivate_cloudflare_integration", [$this, "lws_optimize_deactivate_cf_inte"]);
+        add_action("wp_ajax_lws_optimize_complete_cloudflare_integration", [$this, "lws_optimize_complete_cloudflare_integration"]);
+        add_action("wp_ajax_lws_optimize_cloudflare_deactivation", [$this, "lws_optimize_cloudflare_deactivation"]);
     }
 
-    // $cache_type : purge / part_purge ; $url : ["url", "url"]
     // Clear CloudFlare cache on-demand
-    public function lws_optimize_clear_cloudflare_cache(string $cache_type, array $url)
+    public function lws_optimize_clear_cloudflare_cache(string|null $cache_type = null, string|null $url = null)
     {
-        $purge_type = null;
-        if ($cache_type === "purge") {
-            $purge_type = "full_purge";
-        } elseif ($cache_type === "part_purge") {
-            $purge_type = "part_purge";
-        } else {
-            $purge_type = null;
+        switch ($cache_type) {
+            case 'full':
+                $cache_type = "full";
+                break;
+            case 'partial':
+                $cache_type = "partial";
+                break;
+            default:
+                $cache_type = 'full';
+                break;
         }
 
-        $config_array = get_option('lws_optimize_config_array', []);
+        // Get the Token Key and the Zone ID to change the CF cache
+        $options = get_option('lws_optimize_config_array', []);
+        $token_key = $options['cloudflare']['apiToken'] ?? null;
+        $zone_id = $options['cloudflare']['zone_id'] ?? null;
 
-
-        $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
-        $api_token = $config_array['cloudflare']['api'] ?? null;
-
-        if ($zone_id === null || $api_token === null || $purge_type === null || $url === null || !is_array($url)) {
-            return json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT);
+        if ($options['cloudflare']['state'] !== "true") {
+            return -1;
+            // wp_die(json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
         }
 
-        $ch = curl_init();
+        $result = false;
 
-        if ($purge_type === 'full_purge') {
-            $host = esc_url($url[0]);
-            $host = str_replace("https://", '', $host);
-
-            curl_setopt_array($ch, [
-                CURLOPT_URL => "https://api.cloudflare.com/client/v4/zones/{$zone_id}/purge_cache",
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => "{\n  \"files\": [\n \"{$host}\"\n ]\n}",
-                CURLOPT_HTTPHEADER => [
-                    "Authorization: Bearer {$api_token}",
-                    "Content-Type: application/json"
-                ],
-            ]);
-        } elseif ($purge_type === 'part_purge') {
-            $tmp = "{\n  \"prefixes\": [\n ";
-            foreach ($url as $prefix) {
-                $prefix = esc_url($prefix);
-                $tmp .= "\"$prefix\", ";
+        // If removing the entire cache for the domain
+        if ($cache_type == 'full') {
+            $result = wp_remote_request(
+                "https://api.cloudflare.com/client/v4/zones/{$zone_id}/purge_cache",
+                [
+                    'method' => 'POST',
+                    'timeout' => 45,
+                    'sslverify' => false,
+                    'headers' => [
+                        "Authorization" => "Bearer " . $token_key,
+                        "Content-Type" => "application/json"
+                    ],
+                    'body' => json_encode(['purge_everything' => true]
+                    )
+                ]
+            );
+        }
+        else {
+            if ($url === null) {
+                return -1;
+                // wp_die(json_encode(array('code' => "NO_URL"), JSON_PRETTY_PRINT));
             }
 
-            $tmp = substr($tmp, 0, -2);
-            $tmp .= "\n ]\n}";
-
-            curl_setopt_array($ch, [
-                CURLOPT_URL => "https://api.cloudflare.com/client/v4/zones/{$zone_id}/purge_cache",
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_ENCODING => "",
-                CURLOPT_MAXREDIRS => 10,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-                CURLOPT_CUSTOMREQUEST => "POST",
-                CURLOPT_POSTFIELDS => $tmp,
-                CURLOPT_HTTPHEADER => [
-                    "Authorization: Bearer {$api_token}",
-                    "Content-Type: application/json"
-                ],
-            ]);
-        } else {
-            error_log(json_encode(array('code' => "UNDEFINED_PTYPE", 'data' => $purge_type), JSON_PRETTY_PRINT));
-            return json_encode(array('code' => "UNDEFINED_PTYPE", 'data' => $purge_type), JSON_PRETTY_PRINT);
+            $url = esc_url($url);
+            $result = wp_remote_request(
+                "https://api.cloudflare.com/client/v4/zones/{$zone_id}/purge_cache",
+                [
+                    'method' => 'POST',
+                    'timeout' => 45,
+                    'sslverify' => false,
+                    'headers' => [
+                        "Authorization" => "Bearer " . $token_key,
+                        "Content-Type" => "application/json"
+                    ],
+                    'body' => json_encode(['files' => [
+                        'https://' . parse_url($url, PHP_URL_HOST) . parse_url($url, PHP_URL_PATH)
+                    ]])
+                ]
+            );
         }
 
-        $response = curl_exec($ch);
-        curl_close($ch);
+        // Failed to cURL the API
+        if (is_wp_error($result)) {
+            return -1;
+            // wp_die(json_encode(['code' => "ERROR_CURL", 'data' => $result], JSON_PRETTY_PRINT));
+        }
 
-        $response = json_decode($response, true);
+        // Get the response and decode the JSON
+        $body = wp_remote_retrieve_body($result);
+        $result = json_decode($body, true);
+        // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log(json_encode(array('code' => "ERROR_DECODE", 'data' => $response), JSON_PRETTY_PRINT));
-            return json_encode(array('code' => "ERROR_DECODE", 'data' => $response), JSON_PRETTY_PRINT);
+            return -1;
+            // wp_die(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
         }
 
-        if ($response['success']) {
-            error_log(json_encode(array('code' => "SUCCESS", 'data' => $response), JSON_PRETTY_PRINT));
-            return json_encode(array('code' => "SUCCESS", 'data' => $response), JSON_PRETTY_PRINT);
-        } else {
-            error_log(json_encode(array('code' => "FAIL_PURGE", 'data' => $response), JSON_PRETTY_PRINT));
-            return json_encode(array('code' => "FAIL_PURGE", 'data' => $response), JSON_PRETTY_PRINT);
+        // Check if the request was successful
+        $success = $result['success'] ?? false;
+
+        // If the request was not successful, we cannot proceed
+        if (!$success) {
+            return -1;
+            // wp_die(json_encode(array('code' => "REQUEST_FAILED", 'data' => $result), JSON_PRETTY_PRINT));
         }
+
+        // Cache cleared, we can continue
+        // wp_die(json_encode(array('code' => "SUCCESS", 'data' => $result), JSON_PRETTY_PRINT));
+        return 0;
+    }
+
+    public function lws_optimize_change_cloudflare_ttl(int $ttl) {
+        $options = get_option('lws_optimize_config_array', []);
+        $token_key = $options['cloudflare']['api_token'] ?? null;
+        $zone_id = $options['cloudflare']['zone_id'] ?? null;
+
+        if ($options['cloudflare']['state'] !== "true") {
+            wp_die(json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
+        }
+
+        // CloudFlare allowed values: 0, 30, 60, 300, 1200, 1800, 3600, 7200, 10800, 14400, 18000, 28800, 43200, 57600, 72000, 86400, 172800, 259200, 345600, 432000, 691200, 1382400, 2073600, 2678400
+        switch ($ttl) {
+            case 'lws_daily':
+                $ttl = "86400";
+                break;
+            case 'lws_weekly':
+                $ttl = "691200";
+                break;
+            case 'lws_monthly':
+                $ttl = "2678400";
+                break;
+            case 'lws_thrice_monthly':
+                $ttl = "5356800";
+                break;
+            case 'lws_biyearly':
+                $ttl = "16070400";
+                break;
+            case 'lws_yearly':
+                $ttl = "31536000";
+                break;
+            case 'lws_two_years':
+            case 'lws_never':
+                $ttl = "31536000";
+                break;
+            default:
+                $ttl = "31536000";
+                break;
+        }
+
+
+        $result = wp_remote_request(
+            "https://api.cloudflare.com/client/v4/zones/{$zone_id}/settings/browser_cache_ttl",
+            [
+            'method' => 'PATCH',
+            'timeout' => 45,
+            'sslverify' => false,
+            'headers' => [
+                "Authorization" => "Bearer " . $token_key,
+                "Content-Type" => "application/json"
+            ],
+            'body' => json_encode(
+                [
+                'value' => intval($ttl)
+                ]
+            )
+            ]
+        );
+
+        if (is_wp_error($result)) {
+            wp_die(json_encode(['code' => "ERROR_CURL", 'data' => $result], JSON_PRETTY_PRINT));
+        }
+
+        $body = wp_remote_retrieve_body($result);
+        $result = json_decode($body, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_die(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
+        }
+
+        if (!($result['success'] ?? false)) {
+            wp_die(json_encode(array('code' => "REQUEST_FAILED", 'data' => $result), JSON_PRETTY_PRINT));
+        }
+
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $result), JSON_PRETTY_PRINT));
     }
 
     public function lws_optimize_check_cf_key() {
         check_ajax_referer('lwsop_check_cloudflare_key_nonce', '_ajax_nonce');
         $token_key = $_POST['key'] ?? null;
 
+        // Get the Token Key, necessary to check the Cloudflare API
         if ($token_key === null) {
             wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
         }
 
         $token_key = sanitize_text_field($token_key);
 
+        // Verify the token validity
         $response = wp_remote_get(
             "https://api.cloudflare.com/client/v4/user/tokens/verify",
+            [
+                'timeout' => 45,
+                'headers' => [
+                    "Authorization" => "Bearer " . $token_key,
+                    "Content-Type" => "application/json"
+                ]
+            ]
+        );
+
+        // Failed to cURL the API
+        if (is_wp_error($response)) {
+            wp_die(json_encode(['code' => "ERROR_CURL", 'data' => $response], JSON_PRETTY_PRINT));
+        }
+
+        // Get the response and decode the JSON
+        $body = wp_remote_retrieve_body($response);
+        $response = json_decode($body, true);
+
+        // Error during decoding, it was (probably) not a JSON
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            wp_die(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
+        }
+
+        // Get the Token status
+        $status = $response['result']['status'] ?? 'inactive';
+
+        // Cannot proceed if the token is not active, we do not have access to the API
+        if ($status == "inactive") {
+            wp_die(json_encode(array('code' => "INACTIVE_TOKEN", 'data' => $response), JSON_PRETTY_PRINT));
+        }
+
+        // Use the token to get every zones managed by the account
+        // Which we filter by the current domain
+        $zones_response = wp_remote_get(
+            "https://api.cloudflare.com/client/v4/zones?per_page=50&name=" . $_SERVER['SERVER_NAME'],
             [
                 'timeout' => 45,
                 'sslverify' => false,
@@ -123,222 +240,200 @@ class LwsOptimizeCloudFlare {
             ]
         );
 
-        if (is_wp_error($response)) {
-            wp_die(json_encode(array('code' => "ERROR_CURL", 'data' => $response), JSON_PRETTY_PRINT));
+
+        // Failed to cURL the API
+        if (is_wp_error($zones_response)) {
+            wp_die(json_encode(['code' => "ERROR_CURL_ZONES", 'data' => $response], JSON_PRETTY_PRINT));
         }
 
-        $response = json_decode($response['body'], true);
+        // Get the response and decode the JSON
+        $body = wp_remote_retrieve_body($zones_response);
+        $zones_response = json_decode($body, true);
+
+        // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_die(json_encode(array('code' => "ERROR_DECODE", 'data' => $response), JSON_PRETTY_PRINT));
+            wp_die(json_encode(['code' => "ERROR_DECODE_ZONES", 'data' => $body], JSON_PRETTY_PRINT));
         }
 
-        $success = $response['success'] ?? null;
-        $status = $response['result']['status'] ?? null;
+        // Check if the request was successful
+        $success = $zones_response['success'] ?? false;
 
-        // The verification has succeeded
-        if ($success !== null && $success === true) {
-            // If the key is active, we now check for zones
-            if ($status == "active") {
-                $zones_response = wp_remote_get(
-                    "https://api.cloudflare.com/client/v4/zones",
-                    [
-                        'timeout' => 45,
-                        'sslverify' => false,
-                        'headers' => [
-                            "Authorization" => "Bearer " . $token_key,
-                            "Content-Type" => "application/json"
-                        ]
-                    ]
-                );
+        // If the request was not successful, we cannot proceed
+        if (!$success) {
+            wp_die(json_encode(array('code' => "REQUEST_ZONE_FAILED", 'data' => $zones_response), JSON_PRETTY_PRINT));
+        }
 
-                if (is_wp_error($zones_response)) {
-                    wp_die(json_encode(array('code' => "ERROR_CURL_ZONES", 'data' => $zones_response), JSON_PRETTY_PRINT));
-                }
-
-                $zones_response = json_decode($zones_response['body'], true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    wp_die(json_encode(array('code' => "ERROR_DECODE_ZONES", 'data' => $zones_response), JSON_PRETTY_PRINT));
-                }
-
-                $zone_id = null;
-                $account_id = null;
-                $success = $zones_response['success'] ?? null;
-                if ($success !== null && $success === true) {
-                    $amount = $zones_response['result_info']['count'];
-                    if ($amount <= 0) {
-                        wp_die(json_encode(array('code' => "NO_ZONES", 'data' => $zones_response), JSON_PRETTY_PRINT));
-                    } else {
-                        foreach ($zones_response['result'] as $zone) {
-                            if ($zone['name'] == $_SERVER['SERVER_NAME']) {
-                                $zone_id = $zone['id'];
-                                $account_id = $zone['account']['id'];
-                                break;
-                            }
-                        }
-
-                        if ($zone_id === null) {
-                            wp_die(json_encode(array('code' => "NO_ZONE_FOR_DOMAIN", 'data' => $zones_response), JSON_PRETTY_PRINT));
-                        }
-                    }
-                } else {
-                    wp_die(json_encode(array('code' => "ERROR_REQUEST_ZONES", 'data' => $response), JSON_PRETTY_PRINT));
-                }
-
-                $tmp = $config_array = get_option('lws_optimize_config_array', array());
-                $config_array['cloudflare']['api'] = $token_key;
-                $config_array['cloudflare']['zone_id'] = $zone_id;
-                $config_array['cloudflare']['account_id'] = $account_id;
-                $saved = update_option('lws_optimize_config_array', $config_array);
-                if ($saved === true || empty(array_diff($config_array, $tmp))) {
-                    wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-                } else {
-                    wp_die(json_encode(array('code' => "FAILED_SAVE", 'data' => $response), JSON_PRETTY_PRINT));
-                }
-            } else {
-                wp_die(json_encode(array('code' => "INVALID", 'data' => $response), JSON_PRETTY_PRINT));
+        // Prepare to get all useful information about the zone
+        $zone_infos = [];
+        foreach ($zones_response['result'] as $zone) {
+            if ($zone['name'] == $_SERVER['SERVER_NAME']) {
+                $zone_infos = [
+                    'api_token' => $token_key,
+                    'name' => $zone['name'],
+                    'id' => $zone['id'],
+                    'account' => $zone['account']['id'],
+                    'account_name' => $zone['account']['name'],
+                    'status' => $zone['status'],
+                    'name_servers' => $zone['name_servers'],
+                    'original_name_servers' => $zone['original_name_servers'],
+                    'type' => $zone['type'],
+                ];
+                break;
             }
-        } else {
-            wp_die(json_encode(array('code' => "ERROR_REQUEST", 'data' => $response), JSON_PRETTY_PRINT));
         }
+
+        // Failed to get a zone, either an error or the zone does not exist
+        if (empty($zone_infos)) {
+            wp_die(json_encode(array('code' => "NO_ZONE", 'data' => $zones_response), JSON_PRETTY_PRINT));
+        }
+
+        // Zone fetched, we can continue
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $zone_infos), JSON_PRETTY_PRINT));
     }
 
-    public function lws_optimize_cf_tools_deactivation () {
-        check_ajax_referer('lwsop_opti_cf_tools_nonce', '_ajax_nonce');
-        $min_css = $_POST['min_css'] ?? null;
-        $min_js = $_POST['min_js'] ?? null;
-        $dynamic_cache = $_POST['cache_deactivate'] ?? null;
+    public function lws_optimize_complete_cloudflare_integration() {
+        check_ajax_referer('lwsop_complete_cf_integration_nonce', '_ajax_nonce');
+        $zone = $_POST['zone'] ?? [];
 
-        $config_array = get_option('lws_optimize_config_array', []);
+        if (!is_array($zone)) {
+            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+        }
 
-        $config_array['cloudflare']['tools'] = [
-            'min_css' => $min_css === null ? false : true,
-            'min_js' => $min_js === null ? false : true,
-            'dynamic_cache' => $dynamic_cache === null ? false : true,
+        $token_key = '';
+        $zone_id = '';
+
+        foreach ($zone as $key => $value) {
+            if ($key === 'apiToken') {
+                $token_key = sanitize_text_field($value);
+            } elseif ($key === 'id') {
+                $zone_id = sanitize_text_field($value);
+            }
+        }
+
+        if ($token_key === null || $zone_id === null) {
+            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+        }
+
+        $options = get_option('lws_optimize_config_array', []);
+
+        // Get the current filecache timer before expiration
+        $timer = $options['filebased_cache']['timer'] ?? 'lws_yearly';
+        // CloudFlare allowed values: 0, 30, 60, 300, 1200, 1800, 3600, 7200, 10800, 14400, 18000, 28800, 43200, 57600, 72000, 86400, 172800, 259200, 345600, 432000, 691200, 1382400, 2073600, 2678400, 5356800, 16070400, 31536000
+        switch ($timer) {
+            case 'lws_daily':
+                $cdn_date = "86400";
+                break;
+            case 'lws_weekly':
+                $cdn_date = "691200";
+                break;
+            case 'lws_monthly':
+                $cdn_date = "2678400";
+                break;
+            case 'lws_thrice_monthly':
+                $cdn_date = "5356800";
+                break;
+            case 'lws_biyearly':
+                $cdn_date = "16070400";
+                break;
+            case 'lws_yearly':
+                $cdn_date = "31536000";
+                break;
+            case 'lws_two_years':
+            case 'lws_never':
+                $cdn_date = "31536000";
+                break;
+            default:
+                $cdn_date = "31536000";
+                break;
+        }
+
+        $options['cloudflare'] = [
+            'state' => "true",
+            'api_token' => $token_key,
+            'zone_id' => $zone_id,
+            'lifespan' => $cdn_date,
+            'deactivate_tools' => true,
         ];
-        update_option('lws_optimize_config_array', $config_array);
-        $GLOBALS['lws_optimize']->optimize_options = $config_array;
 
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-    }
+        $set_ttl_cache = wp_remote_request(
+            "https://api.cloudflare.com/client/v4/zones/{$zone_id}/settings/browser_cache_ttl",
+            [
+                'method' => 'PATCH',
+                'timeout' => 45,
+                'sslverify' => false,
+                'headers' => [
+                    "Authorization" => "Bearer " . $token_key,
+                    "Content-Type" => "application/json"
+                ],
+                'body' => json_encode(
+                    [
+                    'value' => intval($cdn_date)
+                    ]
+                )
+            ]
+        );
 
-    public function lws_optimize_cf_cache_duration () {
-        check_ajax_referer('lwsop_opti_cf_duration_nonce', '_ajax_nonce');
-        $cache_span = $_POST['lifespan'] ?? null;
-
-        if ($cache_span !== null) {
-            $config_array = get_option('lws_optimize_config_array', []);
-            $config_array['cloudflare']['lifespan'] = sanitize_text_field($cache_span);
-            update_option('lws_optimize_config_array', $config_array);
-            $GLOBALS['lws_optimize']->optimize_options = $config_array;
+        // Failed to cURL the API
+        if (is_wp_error($set_ttl_cache)) {
+            wp_die(json_encode(['code' => "ERROR_CURL_TTL", 'data' => $set_ttl_cache], JSON_PRETTY_PRINT));
         }
 
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-    }
+        // Get the response and decode the JSON
+        $body = wp_remote_retrieve_body($set_ttl_cache);
+        $set_ttl_cache = json_decode($body, true);
 
-    public function lws_optimize_cf_finish_config () {
-        check_ajax_referer('lwsop_cloudflare_finish_config_nonce', '_ajax_nonce');
-
-        $config_array = get_option('lws_optimize_config_array', []);
-        $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
-        $api_token = $config_array['cloudflare']['api'] ?? null;
-        $cache_span = $config_array['cloudflare']['lifespan'] ?? null;
-        $tools = $config_array['cloudflare']['tools'] ?? null;
-
-        if ($zone_id === null || $api_token === null || $cache_span === null || $tools === null) {
-            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
-        }
-
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => "https://api.cloudflare.com/client/v4/zones/{$zone_id}/settings/browser_cache_ttl",
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "PATCH",
-            CURLOPT_POSTFIELDS => "{\n  \"value\": " . $cache_span . "\n}",
-            CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer {$api_token}",
-                "Content-Type: application/json"
-            ],
-        ]);
-
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        $response = json_decode($response, true);
+        // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_die(json_encode(array('code' => "ERROR_DECODE", 'data' => $response), JSON_PRETTY_PRINT));
+            wp_die(json_encode(['code' => "ERROR_DECODE_TTL", 'data' => $body], JSON_PRETTY_PRINT));
         }
 
-        if ($response['success'] === true) {
-            // Redefine the cloudflare entry with the latest info + state true
-            $config_array['cloudflare'] = [
-                'zone_id' => $zone_id,
-                'api' => $api_token,
-                'lifespan' => $cache_span,
-                'tools' => $tools,
-                'state' => "true"
+        // Check if the request was successful
+        $success = $set_ttl_cache['success'] ?? false;
 
-            ];
-
-            // Deactivate the tools chosen by the user
-
-            if ($tools['min_css'] === true) {
-                $config_array['minify_css']['state'] = "false";
-            }
-            if ($tools['min_js'] === true) {
-                $config_array['minify_js']['state'] = "false";
-            }
-            $config_array['dynamic_cache']['state'] = "false";
-
-            update_option('lws_optimize_config_array', $config_array);
-            $GLOBALS['lws_optimize']->optimize_options = $config_array;
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array), JSON_PRETTY_PRINT));
-        } else {
-            unset($config_array['cloudflare']);
-            wp_die(json_encode(array('code' => "FAILED_PATCH", 'data' => $config_array), JSON_PRETTY_PRINT));
+        // If the request was not successful, we cannot proceed
+        if (!$success) {
+            wp_die(json_encode(array('code' => "REQUEST_CF_FAILED", 'data' => $set_ttl_cache), JSON_PRETTY_PRINT));
         }
+
+        update_option('lws_optimize_config_array', $options);
+        $GLOBALS['lws_optimize']->optimize_options = $options;
+
+        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $options['cloudflare']), JSON_PRETTY_PRINT));
+
     }
 
-    public function lws_optimize_deactivate_cf_inte() {
-        check_ajax_referer('lwsop_deactivate_cf_integration_nonce', '_ajax_nonce');
+    public function lws_optimize_cloudflare_deactivation() {
+        check_ajax_referer('lwsop_complete_cf_deactivation_nonce', '_ajax_nonce');
 
-        $config_array = get_option('lws_optimize_config_array', []);
+        // Get the Token Key and the Zone ID to change the CF cache
+        $options = get_option('lws_optimize_config_array', []);
+        $token_key = $options['cloudflare']['api_token'] ?? null;
+        $zone_id = $options['cloudflare']['zone_id'] ?? null;
 
-        $zone_id = $config_array['cloudflare']['zone_id'] ?? null;
-        $api_token = $config_array['cloudflare']['api'] ?? null;
-        $cache_span = $config_array['cloudflare']['lifespan'] ?? null;
+        // Set the integration to false and update
+        $options['cloudflare']['state'] = "false";
+        update_option('lws_optimize_config_array', $options);
+        $GLOBALS['lws_optimize']->optimize_options = $options;
 
-        if ($zone_id === null || $api_token === null || $cache_span === null) {
-            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $config_array), JSON_PRETTY_PRINT));
-        }
+        // Additionnaly reset the cache to its default value (whether it worked or not)
+        $set_ttl_cache = wp_remote_request(
+            "https://api.cloudflare.com/client/v4/zones/{$zone_id}/settings/browser_cache_ttl",
+            [
+                'method' => 'PATCH',
+                'timeout' => 45,
+                'sslverify' => false,
+                'headers' => [
+                    "Authorization" => "Bearer " . $token_key,
+                    "Content-Type" => "application/json"
+                ],
+                'body' => json_encode(
+                    [
+                    'value' => '14400'
+                    ]
+                )
+            ]
+        );
 
-        unset($config_array['cloudflare']);
-
-        update_option('lws_optimize_config_array', $config_array);
-        $GLOBALS['lws_optimize']->optimize_options = $config_array;
-
-        // Set the Cloudflare cache to its default value. Whether or not it works, continue
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL => "https://api.cloudflare.com/client/v4/zones/{$zone_id}/settings/browser_cache_ttl",
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "PATCH",
-            CURLOPT_POSTFIELDS => "{\n  \"value\": 14400\n}",
-            CURLOPT_HTTPHEADER => [
-                "Authorization: Bearer {$api_token}",
-                "Content-Type: application/json"
-            ],
-        ]);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $config_array, 'cache' => $response), JSON_PRETTY_PRINT));
+        wp_die(json_encode(array('code' => "SUCCESS"), JSON_PRETTY_PRINT));
     }
 }

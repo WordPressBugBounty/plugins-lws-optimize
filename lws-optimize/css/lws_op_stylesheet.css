@@ -2014,6 +2014,10 @@ button.lwsop_validatebutton {
     gap: 3px;
 }
 
+.lwsop_bluebanner_alt.no_blue {
+    background-color: #ffffff;
+}
+
 h2.lwsop_bluebanner_title {
     font: normal normal bold 18px/28px sans-serif;
     font-family: Poppins, sans-serif;
@@ -2113,6 +2117,7 @@ span.lwsop_contentblock_select_label {
     align-items: center;
     gap: 10px;
     margin-top: 15px;
+    flex-wrap: wrap;
 }
 
 .lwsop_contentblock_fbcache_select>select {
@@ -2157,6 +2162,7 @@ button.lwsop_blue_button:disabled {
     align-items: center;
     gap: 15px;
     margin-top: 20px;
+    flex-wrap: wrap;
 }
 
 button.lwsop_darkblue_button {
@@ -2584,7 +2590,6 @@ div.modal-content.cloudflare_content {
     align-items: center;
     justify-content: flex-start;
     padding: 16px 20px;
-    margin: 0 30px;
 }
 
 form#lws_optimize_cloudflare_manage_form {
@@ -2601,11 +2606,45 @@ form#lws_optimize_cloudflare_manage_form {
     margin: 0 30px;
 }
 
+.cloudflare_info_block {
+    background: #F5F5F5 0% 0% no-repeat padding-box;
+    border-radius: 10px;
+    padding: 8px;
+    margin: 20px 0;
+}
+
+.cloudflare_info_row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.cloudflare_info_recap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.cloudflare_info_recap > ul {
+    list-style: disc;
+    background: #F5F5F5 0% 0% no-repeat padding-box;
+    border-radius: 10px;
+    padding: 8px;
+    padding-left: 30px;
+    margin: 0;
+}
+
+span.info_label {
+    font-weight: bold;
+}
+
 label.cloudflare_token_label {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-top: 30px;
 }
 
 span.cloudflare_token_label_text {
@@ -2801,8 +2840,7 @@ span.lwsop_prom_bullet_point_plugin_specific {
 /* FORCE "Margin 20px" at all times */
 #wpcontent {
     height: 100%;
-    padding-left: 20px;
-    padding-right: 20px;
+    padding: 0 20px;
 }
 
 body.wp-admin {
@@ -3108,6 +3146,7 @@ div#lwsop_popup_alerting {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
+    z-index: 10000;
 }
 div.lwsop_information_popup {
     position: relative;
@@ -3712,15 +3751,14 @@ table.lwsop_error_listing {
     min-width: 200px;
     cursor: pointer;
     justify-content: space-between;
-    background: #1C469D 0% 0% no-repeat padding-box;
-    border-radius: 22px;
-    font: normal normal normal 14px/24px sans-serif;
-    font-family: Poppins, sans-serif;
-    letter-spacing: 0px;
-    color: #FFFFFF;
-    border: none;
     height: 40px;
     padding: 0 20px;
+    font: normal normal 500 14px/24px Poppins;
+    color: #1C469D;
+    border: 1px solid #1C469D;
+    border-radius: 22px;
+    background-color: #fff;
+    margin-left: 15px;
 }
 
 .lwsop_dropdown_arrow {
@@ -3807,6 +3845,8 @@ h3.lws_optimize_image_convertion_modal_element_title {
     display: flex;
     flex-direction: row;
     gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 h2.lws_optimize_image_conversion_title {
@@ -3821,7 +3861,7 @@ button.lws_optimize_image_conversion_refresh {
     border: 1px solid #1C469D;
     border-radius: 22px;
     background: none;
-    padding: 10px 15px 8px 15px;
+    padding: 4px 15px 3px 15px;
     font: normal normal normal 14px/24px Poppins, sans-serif;
     color: #1C469D;
     display: flex;
@@ -3868,7 +3908,8 @@ button.lws_optimize_action_button {
     background: #F5F5F5 0% 0% no-repeat padding-box;
     border-radius: 10px;
     width: fit-content;
-    padding: 10px;
+    padding: 8px;
+    flex-wrap: wrap;
 }
 .lws_optimize_conversion_bar_element {
     display: flex;
@@ -4139,6 +4180,329 @@ body.mobile.modal-open #wpwrap {
 .modal {
     z-index: 10000 !important;
 }
+
+
+.lwsop_oneclickconfig_main {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.lwsop_oneclickconfig_block {
+    background-color: #fff;
+    box-shadow: 0px 0px 15px #00000012;
+    border-radius: 10px;
+    padding: 30px;
+    width: 100%;
+}
+
+.lwsop_oneclickconfig_title {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.lwsop_oneclickconfig_title_left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.lwsop_oneclickconfig_title_left_main {
+    font: normal normal bold 20px/30px Poppins;
+    color: #1D2327;
+}
+
+.lwsop_oneclickconfig_title_left_sub {
+    font: normal normal normal 13px/22px Poppins;
+    color: #1D2327;
+}
+
+.lwsop_oneclickconfig_floating_bubble {
+    position: absolute;
+    background: #ECF5FE 0% 0% no-repeat padding-box;
+    border-radius: 16px;
+    font: normal normal 500 13px/22px Poppins;
+    letter-spacing: 0px;
+    color: #2893E9;
+    padding: 3px 10px;
+    top: -15px;
+    left: 13%;
+}
+
+.lwsop_oneclickconfig_button {
+    background: #008A56 0% 0% no-repeat padding-box;
+    border-radius: 22px;
+    border: none;
+    color: #FFFFFF;
+    font-size: 14px;
+    line-height: 24px;
+    font-family: 'Poppins';
+    font-weight: 500;
+    padding: 8px 20px;
+}
+.lwsop_oneclickconfig_button:disabled {
+    opacity: 0.5;
+}
+
+.lwsop_oneclickconfig_table {
+    display: flex;
+    width: fit-content;
+    flex-direction: row;
+    align-items: stretch;
+    border: 1px solid #C6C7C8;
+    border-radius: 10px;
+}
+
+.lwsop_oneclickconfig_table_column {
+    border-right: 1px solid #C6C7C8;
+    min-width: 306px;
+    position: relative;
+}
+
+.lwsop_oneclickconfig_table_column:last-child {
+    border-right: none;
+}
+
+.lwsop_oneclickconfig_table_column_header {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid #C6C7C8;
+    padding: 20px;
+}
+
+.lwsop_oneclickconfig_table_column_header_radio {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+}
+
+.lwsop_oneclickconfig_radiobutton {
+
+}
+
+.lwsop_oneclickconfig_table_column_header_title {
+    font: normal normal bold 16px/26px Poppins;
+    color: #1D2327;
+}
+
+.lwsop_oneclickconfig_table_column_header_description {
+    font: normal normal normal 13px/22px Poppins;
+    color: #1D2327;
+}
+
+.lwsop_oneclickconfig_table_column_content {
+    width: 100%;
+    padding: 20px;
+}
+
+.lwsop_oneclickconfig_option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lwsop_onclickconfig_option_left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lwsop_oneclickconfig_table_column_content_title {
+    font: normal normal normal 13px/22px Poppins;
+    color: #1D2327;
+}
+
+.lwsop_oneclickconfig_table_column_content_title.bold {
+    font: normal normal bold 13px/22px Poppins;
+}
+
+.lwsop_oneclickconfig_table_column_content_list {
+    margin: 0;
+}
+
+h3.lwsop_oneclickconfig_subtitle {
+    font: normal normal 600 15px/25px Poppins;
+    color: #1D2327;
+    margin: 0;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.lwsop_oneclickconfig_button_whiteblue {
+    border: 1px solid #1C469D;
+    border-radius: 22px;
+    font: normal normal 500 13px/24px Poppins;
+    letter-spacing: 0px;
+    color: #1C469D;
+    background-color: white;
+    padding: 3px 15px;
+}
+
+.lwsop_oneclickconfig_cachestats {
+    background: #F5F5F5 0% 0% no-repeat padding-box;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+    font: normal normal normal 13px/22px Poppins;
+    color: #1D2327;
+    margin: 10px 0;
+    position: relative;
+}
+
+.lwsop_oneclickconfig_cachestats_element {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lwosp_oneclickconfig_cachestate_group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 10px 0 20px 0;
+}
+
+span.lwosp_oneclickconfig_cachestate_line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.lwsop_oneclickconfig_cachestate_bottomtext {
+    font: italic normal normal 13px/22px Poppins;
+    color: #1D2327;
+    margin-bottom: 20px;
+}
+
+span.lwsop_oneclickconfig_cachestate_link {
+    font: italic normal 600 13px/22px Poppins;
+    letter-spacing: 0px;
+    color: #1C469D;
+    cursor: pointer;
+}
+
+
+input.lwsop_oneclickconfig_radiobutton[type=radio]:checked::before {
+    content: "";
+    height: 12px;
+    width: 12px;
+    background-image: url("../images/check_bleu.svg");
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 2px;
+    border-radius: 0; /* Remove the default circular shape */
+    background-color: transparent; /* Make background transparent */
+    transform: scale(1); /* Reset any transform WordPress might apply */
+}
+
+/* Add this to ensure default dot is completely hidden */
+input.lwsop_oneclickconfig_radiobutton[type=radio] {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px solid #1D2327;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background-color: #fff;
+    /* Ensure WordPress admin doesn't override */
+    box-shadow: none;
+    margin: 0;
+}
+
+input.lwsop_oneclickconfig_radiobutton[type=radio]:checked {
+    border-color: #006EDC;
+}
+
+input.lwsop_oneclickconfig_radiobutton[type=radio]:focus {
+    outline: none;
+    border-color: #006EDC;
+    box-shadow: 0 0 0 1px #006EDC;
+}
+
+.lwsoptimize_validate_changes {
+    position: sticky;
+    bottom: 0;
+    left: auto;
+    right: auto;
+    background: white;
+    padding: 15px 30px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    /* max-width: 1400px; */
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.lws_op_return_to_dashboard {
+    background: #1C469D 0% 0% no-repeat padding-box;
+    border: 1px solid #1C469D;
+    border-radius: 22px;
+    font: normal normal 400 14px/24px Poppins;
+    color: #FFFFFF;
+    padding: 7px 20px;
+}
+
+span.loading-spinner {
+    position: absolute;
+    left: -35px;
+    top: 2px;
+}
+
+@media only screen and (max-width: 1500px) {
+    .lwsop_oneclickconfig_main {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+@media only screen and (max-width: 1230px) {
+    .lwsop_oneclickconfig_table {
+        display: flex;
+        width: fit-content;
+        flex-direction: column;
+        align-items: stretch;
+        border: 1px solid #C6C7C8;
+        border-radius: 10px;
+        place-self: center;
+    }
+
+    .lwsop_oneclickconfig_table_column {
+        border-right: 1px solid #C6C7C8;
+        min-width: 240px;
+        position: relative;
+        border-bottom: 1px solid #C6C7C8;
+        border-right: none;
+    }
+
+    .lwsop_oneclickconfig_table_column:last-child {
+        border-bottom: none;
+    }
+}
+
+
 
 @media only screen and (max-width: 1280px) {
     .lwsoptimize_container_top {

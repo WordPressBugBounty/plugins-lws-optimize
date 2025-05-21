@@ -27,7 +27,7 @@ class LwsOptimizeManageAdmin
         add_action('admin_notices', function () {
             if (substr(get_current_screen()->id, 0, 29) == "toplevel_page_lws-op-config") {
                 remove_all_actions('admin_notices');
-                if (get_transient('lws_optimize_deactivate_temporarily') && (is_plugin_active('wp-rocket/wp-rocket.php') || is_plugin_active('powered-cache/powered-cache.php') || is_plugin_active('wp-super-cache/wp-cache.php')
+                if (get_option('lws_optimize_deactivate_temporarily') && (is_plugin_active('wp-rocket/wp-rocket.php') || is_plugin_active('powered-cache/powered-cache.php') || is_plugin_active('wp-super-cache/wp-cache.php')
                     || is_plugin_active('wp-optimize/wp-optimize.php') || is_plugin_active('wp-fastest-cache/wpFastestCache.php') || is_plugin_active('w3-total-cache/w3-total-cache.php'))) {
                     $this->lws_optimize_warning_incompatibiliy();
                 }
@@ -57,13 +57,22 @@ class LwsOptimizeManageAdmin
             [$this, 'lws_optimize_options_page'],
             LWS_OP_URL . 'images/plugin_lws_optimize.svg'
         );
+
+        add_submenu_page(
+            null,
+            __('Advanced Settings', 'lws-optimize'),
+            __('Advanced Settings', 'lws-optimize'),
+            'manage_options',
+            'lws-op-config-advanced',
+            [$this, 'lws_optimize_options_page']
+        );
     }
 
     // Create the options page of LWSOptimize
     public function lws_optimize_options_page()
     {
         // Only load this file, everything else will be loaded within tabs.php
-        include_once LWS_OP_DIR . '/views/tabs.php';
+        include_once LWS_OP_DIR . '/views/main_page.php';
     }
 
     // Add every JS and CSS for the admin
@@ -73,7 +82,7 @@ class LwsOptimizeManageAdmin
         wp_enqueue_style('lws_optimize_adminbar', LWS_OP_URL . "css/lws_op_stylesheet_adminbar.css");
 
         // On the LwsOptimize option page
-        if (get_current_screen()->base == ('toplevel_page_lws-op-config')) {
+        if (get_current_screen()->base == ('toplevel_page_lws-op-config') || get_current_screen()->base == ('admin_page_lws-op-config-advanced')) {
             wp_enqueue_style('lws_optimize_options_css', LWS_OP_URL . "css/lws_op_stylesheet.css?v=" . $this->version);
             wp_enqueue_style('lws_optimize_Poppins_font', 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
             wp_enqueue_style("lws_optimize_bootstrap_css", LWS_OP_URL . 'css/bootstrap.min.css?v=' . $this->version);
@@ -302,7 +311,7 @@ class LwsOptimizeManageAdmin
             is_plugin_active('wp-fastest-cache/wpFastestCache.php') ||
             is_plugin_active('w3-total-cache/w3-total-cache.php')
         ) {
-            set_transient('lws_optimize_deactivate_temporarily', true, 86400);
+            add_option('lws_optimize_deactivate_temporarily', true, time() + 86400);
             $GLOBALS['lws_optimize']->lws_optimize_set_cache_htaccess();
             $GLOBALS['lws_optimize']->lws_optimize_reset_header_htaccess();
             $GLOBALS['lws_optimize']->lwsop_dump_all_dynamic_caches();

@@ -1402,11 +1402,11 @@ msgstr "<b>Exclusif :</b> Obtenez <b>15%</b> de réduction sur les hébergements
 msgid "Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached."
 msgstr "Redis Cache est déjà activé sur ce site et pourrait provoquer des incompatibilitées avec Memcached. Veuillez désactiver Redis Cache afin d'utiliser Memcached."
 
-msgid "Activate GZIP Compression"
-msgstr "Activer la compression GZIP"
+msgid "Activate GZIP/Brotli Compression"
+msgstr "Activer la compression GZIP/Brotli"
 
-msgid "GZIP Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times."
-msgstr "La compression GZIP permet de compresser vos fichiers HTML, CSS et JS afin qu'ils soient plus légers, et donc plus rapides à télécharger, ce qui peut améliorer les temps de chargement."
+msgid "GZIP or Brotli Compression compress your HTML, CSS and JS files so they are smaller, and as such faster to download, which will improve your website loading times."
+msgstr "La compression GZIP ou Brotli permet de compresser vos fichiers HTML, CSS et JS afin qu'ils soient plus légers, et donc plus rapides à télécharger, ce qui peut améliorer les temps de chargement."
 
 msgid "Preloading status: "
 msgstr "Statut du pré-chargement : "
@@ -1416,6 +1416,9 @@ msgstr "Etat du pré-chargement : "
 
 msgid "Next preloading: "
 msgstr "Prochain pré-chargement : "
+
+msgid "Next optimization: "
+msgstr "Prochaine optimisation : "
 
 msgid "Page cached / Total pages: "
 msgstr "Pages en cache / Pages totales : "
@@ -2026,8 +2029,8 @@ msgstr "Une erreur est survenue et les données n'ont pas pu être récupérées
 msgid "An error occured and the action could not be executed. Please try again."
 msgstr "Une erreur est survenue et l'action n'a pas pu être exécutée. Veuillez réessayer."
 
-msgid "Deactivate for: "
-msgstr "Désactiver pendant : "
+msgid "Deactivate temporarily: "
+msgstr "Désactiver temporairement : "
 
 msgid "5 minutes"
 msgstr "5 minutes"
@@ -2187,3 +2190,273 @@ msgstr "Dernier"
 
 msgid "Setting a high preload value may cause performance issues on your website. For most sites, a value of 1-2 pages per minute is recommended."
 msgstr "Définir une valeur de préchargement élevée peut causer des problèmes de performance sur votre site. Pour la plupart des sites, une valeur de 1 à 2 pages par minute est recommandée."
+
+msgid "Back to simple mode"
+msgstr "Retour au mode simplifié"
+
+msgid "Save new configuration"
+msgstr "Enregistrer la nouvelle configuration"
+
+msgid "Essential"
+msgstr "Essentiel"
+
+msgid "Optimized"
+msgstr "Optimisé"
+
+msgid "Balance performance and stability"
+msgstr "Équilibre entre performance et stabilité"
+
+msgid "Max"
+msgstr "Maximum"
+
+msgid "Beginner-friendly"
+msgstr "Adapté aux débutants"
+
+msgid "Advanced, for confirmed users"
+msgstr "Avancé, pour utilisateurs confirmés"
+
+msgid "Everything in Essential"
+msgstr "Tout ce qui est dans Essentiel"
+
+msgid "Everything in Optimized"
+msgstr "Tout ce qui est dans Optimisé"
+
+msgid "Speed up your website in 1 clic"
+msgstr "Accélérez votre site en 1 clic"
+
+msgid "Choose an optimization level with one click and/or access advanced settings to customize."
+msgstr "Choisissez un niveau d'optimisation en un clic et/ou accédez aux paramètres avancés pour personnaliser."
+
+msgid "Personnalized in advanced mode"
+msgstr "Personnalisé en mode avancé"
+
+msgid "Cache statistics"
+msgstr "Statistiques de cache"
+
+msgid "Cache state"
+msgstr "État du cache"
+
+msgid "Filecache"
+msgstr "Cache de fichiers"
+
+msgid "Server cache"
+msgstr "Cache serveur"
+
+msgid "Not detected"
+msgstr "Non détecté"
+
+msgid "To manage the cache, autopurge, preload and more, go to the "
+msgstr "Pour gérer le cache, la purge automatique, le préchargement et plus, allez dans le "
+
+msgid "advanced mode"
+msgstr "mode avancé"
+
+msgid "Go to advanced mode"
+msgstr "Aller au mode avancé"
+
+msgid "Images Compression"
+msgstr "Compression d'images"
+
+msgid "Convert and compress your images to modern formats (WebP/AVIF) to significantly improve website loading speed."
+msgstr "Convertissez et compressez vos images vers des formats modernes (WebP/AVIF) pour améliorer significativement la vitesse de chargement du site."
+
+msgid "To see the complete list of compressed images, restore images or automatically convert images on upload, go to the "
+msgstr "Pour voir la liste complète des images compressées, restaurer des images ou convertir automatiquement les images au téléversement, allez dans le "
+
+msgid "File caching"
+msgstr "Cache de fichiers"
+
+msgid "Reduce loading times and alleviate the load on the server, boosting performances"
+msgstr "Réduisez les temps de chargement et allégez la charge sur le serveur, améliorant les performances"
+
+msgid "Cache Preloading"
+msgstr "Préchargement du cache"
+
+msgid "Preload the filecache for your pages before they are accessed to drastically improve performances"
+msgstr "Préchargez le cache de fichiers pour vos pages avant qu'elles ne soient consultées pour améliorer drastiquement les performances"
+
+msgid "Automatically purge the cache when you update your website to always keep it up to date"
+msgstr "Purgez automatiquement le cache quand vous mettez à jour votre site pour le garder toujours à jour"
+
+msgid "Caching via .htaccess"
+msgstr "Cache via .htaccess"
+
+msgid "Add rules to your htaccess file to take over loading cache files, resulting in faster loading times"
+msgstr "Ajoutez des règles à votre fichier htaccess pour gérer le chargement des fichiers en cache, résultant en des temps de chargement plus rapides"
+
+msgid "CSS Minification"
+msgstr "Minification CSS"
+
+msgid "Reduce the size of CSS files to improve loading times"
+msgstr "Réduisez la taille des fichiers CSS pour améliorer les temps de chargement"
+
+msgid "JavaScript Minification"
+msgstr "Minification JavaScript"
+
+msgid "Reduce the size of JavaScript files to improve loading times"
+msgstr "Réduisez la taille des fichiers JavaScript pour améliorer les temps de chargement"
+
+msgid "Reduce the size of HTML files by removing superfluous spaces, comments and characters"
+msgstr "Réduire la taille des fichiers HTML en supprimant les espaces, commentaires et caractères superflus"
+
+msgid "Gzip Compression"
+msgstr "Compression Gzip"
+
+msgid "Compress files to reduce their size, making them faster to download"
+msgstr "Compresser les fichiers pour réduire leur taille, les rendant plus rapides à télécharger"
+
+msgid "Lazy Loading"
+msgstr "Chargement différé"
+
+msgid "Load images/iframes/videos only when they are visible on your screen, reducing the amount of files to download on page load"
+msgstr "Charger les images/iframes/vidéos uniquement lorsqu'elles sont visibles à l'écran, réduisant la quantité de fichiers à télécharger au chargement de la page"
+
+msgid "CSS Combination"
+msgstr "Combinaison CSS"
+
+msgid "Combine CSS files together to reduce the number of requests made to the server"
+msgstr "Combiner les fichiers CSS ensemble pour réduire le nombre de requêtes faites au serveur"
+
+msgid "CSS Preloading"
+msgstr "Préchargement CSS"
+
+msgid "Preload CSS files to improve page rendering by loading important CSS first"
+msgstr "Précharger les fichiers CSS pour améliorer le rendu de la page en chargeant d'abord les CSS importantes"
+
+msgid "Font Preloading"
+msgstr "Préchargement des polices"
+
+msgid "Preload fonts to improve page rendering by loading important fonts first"
+msgstr "Précharger les polices pour améliorer le rendu de la page en chargeant d'abord les polices importantes"
+
+msgid "Image Dimensions"
+msgstr "Dimensions des images"
+
+msgid "Add width and height attributes to images, to reduce layout shifts. Even if images load slowly, the space will be reserved for them on the page."
+msgstr "Ajouter les attributs de largeur et hauteur aux images, pour réduire les décalages de mise en page. Même si les images se chargent lentement, l'espace leur sera réservé sur la page."
+
+msgid "JavaScript Combination"
+msgstr "Combinaison JavaScript"
+
+msgid "Combine JavaScript files together to reduce the number of requests made to the server. Some plugins or themes may be incompatible with this option"
+msgstr "Combiner les fichiers JavaScript ensemble pour réduire le nombre de requêtes faites au serveur. Certains plugins ou thèmes peuvent être incompatibles avec cette option"
+
+msgid "Defer JavaScript"
+msgstr "Report du JavaScript"
+
+msgid "Load JavaScript files after the page has loaded to accelerate the rendering. May cause issues on JS-heavy websites"
+msgstr "Charger les fichiers JavaScript après le chargement de la page pour accélérer le rendu. Peut causer des problèmes sur les sites utilisant beaucoup de JS"
+
+msgid "Emoji Removal"
+msgstr "Suppression des emoji"
+
+msgid "Remove the emoji script from your website to reduce loading times"
+msgstr "Supprimer le script des emoji de votre site web pour réduire les temps de chargement"
+
+msgid "Query String Removal"
+msgstr "Suppression des chaînes de requête"
+
+msgid "Remove query strings from static resources to improve caching"
+msgstr "Supprimer les chaînes de requête des ressources statiques pour améliorer la mise en cache"
+
+msgid "Unused CSS Removal"
+msgstr "Suppression du CSS inutilisé"
+
+msgid "Remove unused CSS from your website to reduce the size of CSS files. This may be incompatible with some plugins or themes and will increase preloading times due to having to call an API"
+msgstr "Supprimer le CSS inutilisé de votre site web pour réduire la taille des fichiers CSS. Cela peut être incompatible avec certains plugins ou thèmes et augmentera les temps de préchargement en raison de l'appel à une API"
+
+msgid "Generate critical CSS for your website to improve loading times. This may be incompatible with some plugins or themes and will increase preloading times due to having to call an API"
+msgstr "Générer le CSS critique pour votre site web pour améliorer les temps de chargement. Cela peut être incompatible avec certains plugins ou thèmes et augmentera les temps de préchargement en raison de l'appel à une API"
+
+msgid "Delay JavaScript"
+msgstr "Retarder JavaScript"
+
+msgid "Load JavaScript only after user interaction (mouse movement, keyboard press, touch), reducing initial load time and improving page speed scores"
+msgstr "Charger JavaScript uniquement après une interaction utilisateur (mouvement de souris, appui clavier, toucher), réduisant le temps de chargement initial et améliorant les scores de vitesse de page"
+
+msgid "Plugin configuration updated"
+msgstr "Configuration du plugin mise à jour"
+
+msgid "Computer"
+msgstr "Ordinateur"
+
+msgid "Bad data returned. Please try again"
+msgstr "Mauvaise données retournée. Veuillez réessayer"
+
+msgid "Token verified. A zone has been found."
+msgstr "Jeton vérifié. Une zone a été trouvée."
+
+msgid "No API Token provided."
+msgstr "Pas de jeton API fourni."
+
+msgid "Unable to connect to Cloudflare. Please try again."
+msgstr "Impossible de se connecter à Cloudflare. Veuillez réessayer."
+
+msgid "The token is inactive. Please check your Cloudflare account."
+msgstr "Le jeton est inactif. Veuillez vérifier votre compte Cloudflare."
+
+msgid "Unable to connect to Cloudflare. Please check your API Token."
+msgstr "Impossible de se connecter à Cloudflare. Veuillez vérifier votre jeton API."
+
+msgid "Unable to read zones from Cloudflare. Please try again."
+msgstr "Impossible de lire les zones depuis Cloudflare. Veuillez réessayer."
+
+msgid "Unable to retrieve zones from Cloudflare. Please try again."
+msgstr "Impossible de récupérer les zones depuis Cloudflare. Veuillez réessayer."
+
+msgid "No zone were found for this token. Make sure the domain has been linked to your account"
+msgstr "Aucune zone n'a été trouvée pour ce jeton. Assurez-vous que le domaine a été lié à votre compte"
+
+msgid "Unknown data returned."
+msgstr "Inconnue données retournée."
+
+msgid "CloudFlare Zone found"
+msgstr "Zone CloudFlare trouvée"
+
+msgid "A zone matching your domain has been found. Make sure to read the instructions before validating"
+msgstr "Une zone correspondant à votre domaine a été trouvée. Veuillez lire les instructions avant de valider"
+
+msgid "Domain:"
+msgstr "Domaine :"
+
+msgid "Status:"
+msgstr "Statut :"
+
+msgid "Name Servers:"
+msgstr "Serveurs de noms :"
+
+msgid "CSS and JS minification will be deactivated as Cloudflare already handles this optimization"
+msgstr "La minification CSS et JS sera désactivée car Cloudflare gère déjà cette optimisation"
+
+msgid "Cloudflare browser cache TTL will be set to match the duration of the filecache"
+msgstr "Le TTL du cache navigateur Cloudflare sera configuré pour correspondre à la durée du cache des fichiers"
+
+msgid "Cloudflare cache will be automatically purged when clearing LWS Optimize cache"
+msgstr "Le cache Cloudflare sera automatiquement purgé lors du nettoyage du cache LWS Optimize"
+
+msgid "Cloudflare Dev Mode will be manageable from the website"
+msgstr "Le mode développeur Cloudflare sera gérable depuis le site web"
+
+msgid "Continue"
+msgstr "Continuer"
+
+msgid "Cloudflare integration has been activated"
+msgstr "L'intégration Cloudflare a été activée"
+
+msgid "No Zone or Token API found"
+msgstr "Aucune Zone ou Token API trouvé"
+
+msgid "Unable to read TTL from Cloudflare. Please try again."
+msgstr "Impossible de lire le TTL depuis Cloudflare. Veuillez réessayer."
+
+msgid "Unable to set TTL on Cloudflare. Please try again."
+msgstr "Impossible de configurer le TTL sur Cloudflare. Veuillez réessayer."
+
+msgid "Verify"
+msgstr "Vérifier"
+
+msgid "Enter your API Token below to allow LWS Optimize access to the CloudFlare API"
+msgstr "Entrez votre jeton API ci-dessous pour permettre à LWS Optimize d'accéder à l'API CloudFlare"
+
+msgid "LWS Optimize is currently integrated with CloudFlare. Would you like to terminate this connection?"
+msgstr "LWS Optimize est actuellement intégré à CloudFlare. Souhaitez-vous mettre fin à cette connexion ?"

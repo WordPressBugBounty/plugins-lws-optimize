@@ -9,7 +9,7 @@ class LwsOptimizeImageOptimizationPro
 
     public function __construct()
     {
-        $state = get_transient('lws_optimize_deactivate_temporarily');
+        $state = get_option('lws_optimize_deactivate_temporarily');
 
         // Create log file in uploads directory if it doesn't exist
         $upload_dir = wp_upload_dir();
