@@ -10,7 +10,7 @@ class LwsOptimizeCloudFlare {
     }
 
     // Clear CloudFlare cache on-demand
-    public function lws_optimize_clear_cloudflare_cache(string|null $cache_type = null, string|null $url = null)
+    public function lws_optimize_clear_cloudflare_cache(?string $cache_type = null, ?string $url = null)
     {
         switch ($cache_type) {
             case 'full':
@@ -29,7 +29,7 @@ class LwsOptimizeCloudFlare {
         $token_key = $options['cloudflare']['apiToken'] ?? null;
         $zone_id = $options['cloudflare']['zone_id'] ?? null;
 
-        if ($options['cloudflare']['state'] !== "true") {
+        if (!isset($options['cloudflare']['state']) || $options['cloudflare']['state'] !== "true") {
             return -1;
             // wp_die(json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
         }
@@ -111,7 +111,7 @@ class LwsOptimizeCloudFlare {
         $token_key = $options['cloudflare']['api_token'] ?? null;
         $zone_id = $options['cloudflare']['zone_id'] ?? null;
 
-        if ($options['cloudflare']['state'] !== "true") {
+        if (!isset($options['cloudflare']['state']) || $options['cloudflare']['state'] !== "true") {
             wp_die(json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
         }
 

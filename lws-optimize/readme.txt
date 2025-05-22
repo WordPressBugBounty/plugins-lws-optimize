@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.3
+Stable tag: 3.3.3.1
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,9 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 3.3.3.1 = 
+* Fixed issue where new Cloudflare option would cause errors when trying to create/modify a page with the autopurge activated
 
 = 3.3.3 =
 * New page for easier access to the configurations and more simple interface
