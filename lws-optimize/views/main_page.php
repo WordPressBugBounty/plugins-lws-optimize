@@ -167,7 +167,7 @@ $filecache_state = $config_array["filebased_cache"]['state'] ? $config_array['fi
 $memcache_state = ($memcache_state && isset($config_array["memcached"]['state']) && $config_array["memcached"]['state'] == "true") ? true : false;
 
 // Check server cache state using environment variables
-$cache_state = "false";
+$cache_state = null;
 $used_cache = "unsupported";
 $clean_used_cache = "";
 
@@ -304,7 +304,9 @@ foreach ($plugins as $slug => $plugin) {
 </script>
 
 <div class="lwsoptimize_container">
-
+    <?php if ($is_deactivated) : ?>
+        <div class="lwsoptimize_main_content_fogged"></div>
+    <?php endif ?>
     <div class="lwsop_title_banner">
         <div class="lwsop_top_banner" <?php if ($cache_state !== null) : ?>style="max-width: none;" <?php endif ?>>
             <img src="<?php echo esc_url(plugins_url('images/plugin_lws_optimize_logo.svg', __DIR__)) ?>" alt="LWS Optimize Logo" width="80px" height="80px">
@@ -526,6 +528,8 @@ foreach ($plugins as $slug => $plugin) {
                         <img src="<?php echo esc_url(plugins_url('images/inactif.svg', __DIR__)) ?>" alt="Inactive" width="12px" height="12px">
                     <?php endif; ?>
                     <span class="lwsop_oneclickconfig_cachestate_text"><?php esc_html_e('Filecache', 'lws-optimize'); ?></span>
+                    <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
+                    data-original-title="<?php echo esc_html_e('File caching helps improve website performance by storing static files locally, reducing server load and decreasing page load times for subsequent visits. It stores copies of static files like images, CSS, and JavaScript in a temporary storage.', 'lws-optimize'); ?>">
                 </span>
 
                 <span class="lwosp_oneclickconfig_cachestate_line">
@@ -535,6 +539,8 @@ foreach ($plugins as $slug => $plugin) {
                         <img src="<?php echo esc_url(plugins_url('images/inactif.svg', __DIR__)) ?>" alt="Inactive" width="12px" height="12px">
                     <?php endif; ?>
                     <span class="lwsop_oneclickconfig_cachestate_text"><?php esc_html_e('Memcached', 'lws-optimize'); ?></span>
+                    <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
+                    data-original-title="<?php echo esc_html_e('Memcached is a high-performance caching system that speeds up websites by storing frequently used database queries and API calls in memory', 'lws-optimize'); ?>">
                 </span>
 
                 <span class="lwosp_oneclickconfig_cachestate_line">
@@ -552,6 +558,8 @@ foreach ($plugins as $slug => $plugin) {
                                 (<?php echo esc_html($clean_used_cache); ?>)
                             <?php endif; ?>
                     </span>
+                    <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
+                    data-original-title="<?php echo esc_html_e('A server cache stores static copies of web pages to reduce server load and improve performance by serving those copies instead of fetching the page each request', 'lws-optimize'); ?>">
                 </span>
             </div>
 
@@ -934,228 +942,229 @@ foreach ($plugins as $slug => $plugin) {
         }
     });
 
+    <?php if (!$is_deactivated) : ?>
+        function lwsop_refresh_global_stats(button) {
+            let originalText = '';
+            if (button) {
+                button.disabled = true;
+                originalText = button.innerHTML;
+                button.innerHTML = `
+                    <span name="loading" style="padding-left:5px">
+                        <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
+                    </span>
+                `;
+            }
 
-    function lwsop_refresh_global_stats(button) {
-        let originalText = '';
-        if (button) {
-            button.disabled = true;
-            originalText = button.innerHTML;
-            button.innerHTML = `
-                <span name="loading" style="padding-left:5px">
-                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
-                </span>
-            `;
-        }
+            let cache_stats = document.getElementById('cache_stats_element');
+            let overlay = document.getElementById('cache_stats_loading_overlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
 
-        let cache_stats = document.getElementById('cache_stats_element');
-        let overlay = document.getElementById('cache_stats_loading_overlay');
-        if (overlay) {
-            overlay.style.display = 'flex';
-        }
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    action: "lwsop_regenerate_cache_general",
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_cache_fb')); ?>'
+                },
+                success: function(data) {
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
 
-        let ajaxRequest = jQuery.ajax({
-            url: ajaxurl,
-            type: "POST",
-            timeout: 120000,
-            context: document.body,
-            data: {
-                action: "lwsop_regenerate_cache_general",
-                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_cache_fb')); ?>'
-            },
-            success: function(data) {
-                if (overlay) {
-                    overlay.style.display = 'none';
-                }
+                    button.disabled = false;
+                    button.innerHTML = originalText;
 
-                button.disabled = false;
-                button.innerHTML = originalText;
+                    if (data === null || typeof data != 'string') {
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
+                        return 0;
+                    }
 
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    return 0;
-                }
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
+                        console.log(e);
+                        return 0;
+                    }
 
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    console.log(e);
-                    return 0;
-                }
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            let stats = returnData['data'];
 
-                switch (returnData['code']) {
-                    case 'SUCCESS':
-                        let stats = returnData['data'];
-
-                        if (cache_stats) {
-                            let cacheStatsHtml = `
-                                    <div class="lwsop_loading_overlay" id="cache_stats_loading_overlay" style="display: none;">
-                                        <div class="lwsop_loading_spinner"></div>
-                                    </div>
-                            `;
-
-                            for (let type in stats) {
-                                cacheStatsHtml += `
-                                    <div class="lwsop_oneclickconfig_cachestats_element">
-                                        <img src="${stats[type].image_file}" alt="${stats[type].image_alt}" width="25px" height="25px">
-                                        <span>${stats[type].alt_title} : </span>
-                                        <span><b>${stats[type].size}</b> / ${stats[type].amount} elements</span>
-                                    </div>
+                            if (cache_stats) {
+                                let cacheStatsHtml = `
+                                        <div class="lwsop_loading_overlay" id="cache_stats_loading_overlay" style="display: none;">
+                                            <div class="lwsop_loading_spinner"></div>
+                                        </div>
                                 `;
+
+                                for (let type in stats) {
+                                    cacheStatsHtml += `
+                                        <div class="lwsop_oneclickconfig_cachestats_element">
+                                            <img src="${stats[type].image_file}" alt="${stats[type].image_alt}" width="25px" height="25px">
+                                            <span>${stats[type].alt_title} : </span>
+                                            <span><b>${stats[type].size}</b> / ${stats[type].amount} elements</span>
+                                        </div>
+                                    `;
+                                }
+
+                                cache_stats.innerHTML = cacheStatsHtml;
                             }
+                            callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
+                            break;
+                        default:
+                            callPopup('error', "<?php esc_html_e("Unknown data returned."); ?>");
+                            break;
+                    }
+                },
+                error: function(error) {
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
 
-                            cache_stats.innerHTML = cacheStatsHtml;
-                        }
-                        callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
-                        break;
-                    default:
-                        callPopup('error', "<?php esc_html_e("Unknown data returned."); ?>");
-                        break;
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
+                    console.log(error);
                 }
-            },
-            error: function(error) {
-                if (overlay) {
-                    overlay.style.display = 'none';
-                }
+            });
 
-                button.disabled = false;
-                button.innerHTML = originalText;
-                callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
-                console.log(error);
-            }
-        });
-
-    }
-
-    function lwsop_clear_all_cache(button) {
-        let originalText = '';
-        if (button) {
-            button.disabled = true;
-            originalText = button.innerHTML;
-            button.innerHTML = `
-                <span name="loading" style="padding-left:5px">
-                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
-                </span>
-            `;
-        }
-        let ajaxRequest = jQuery.ajax({
-            url: ajaxurl,
-            type: "POST",
-            timeout: 120000,
-            context: document.body,
-            data: {
-                action: "lws_clear_fb_cache",
-                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('clear_fb_caching')); ?>'
-            },
-            success: function(data) {
-                button.disabled = false;
-                button.innerHTML = originalText;
-
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    console.log(e);
-                    return 0;
-                }
-
-                switch (returnData['code']) {
-                    case 'SUCCESS':
-                        callPopup('success', "<?php esc_html_e("All caches have been deleted", "lws-optimize"); ?>");
-                        break;
-                    default:
-                        callPopup('error', "<?php esc_html_e("Failed to empty cache"); ?>");
-                        break;
-                }
-            },
-            error: function(error) {
-                button.disabled = false;
-                button.innerHTML = originalText;
-                callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
-                console.log(error);
-            }
-        });
-    }
-
-    function lwsop_change_settings_group(button) {
-        let originalText = '';
-        if (button) {
-            button.disabled = true;
-            originalText = button.innerHTML;
-            button.innerHTML = `
-                <span name="loading" style="padding-left:5px">
-                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
-                </span>
-            `;
         }
 
-        let radios = document.querySelectorAll("input[name='lwsop_oneclickconfig_radio[]']");
-        let value = '';
-
-        radios.forEach(function(radio) {
-            if (radio.checked) {
-                value = radio.value;
+        function lwsop_clear_all_cache(button) {
+            let originalText = '';
+            if (button) {
+                button.disabled = true;
+                originalText = button.innerHTML;
+                button.innerHTML = `
+                    <span name="loading" style="padding-left:5px">
+                        <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                    </span>
+                `;
             }
-        })
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    action: "lws_op_clear_all_caches",
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_op_clear_all_caches_nonce')); ?>'
+                },
+                success: function(data) {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
 
-        let ajaxRequest = jQuery.ajax({
-            url: ajaxurl,
-            type: "POST",
-            timeout: 120000,
-            context: document.body,
-            data: {
-                value: value,
-                _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_change_optimize_configuration_nonce")); ?>",
-                action: "lwsop_change_optimize_configuration",
-            },
+                    if (data === null || typeof data != 'string') {
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
+                        return 0;
+                    }
 
-            success: function(data) {
-                button.disabled = false;
-                button.innerHTML = originalText;
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
+                        console.log(e);
+                        return 0;
+                    }
 
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    return 0;
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            callPopup('success', "<?php esc_html_e("All caches have been deleted", "lws-optimize"); ?>");
+                            break;
+                        default:
+                            callPopup('error', "<?php esc_html_e("Failed to empty cache"); ?>");
+                            break;
+                    }
+                },
+                error: function(error) {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
+                    console.log(error);
                 }
+            });
+        }
 
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    console.log(e);
-                    return 0;
-                }
-
-                switch (returnData['code']) {
-                    case 'SUCCESS':
-                        callPopup('success', "<?php esc_html_e('New configuration applied.', 'lws-optimize'); ?>");
-                        location.reload();
-                        break;
-                    default:
-                        callPopup('error', "<?php esc_html_e('Failed to configurate the plugin.', 'lws-optimize'); ?>");
-                        break;
-                }
-            },
-            error: function(error) {
-                button.disabled = false;
-                button.innerHTML = originalText;
-                callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
-                console.log(error);
+        function lwsop_change_settings_group(button) {
+            let originalText = '';
+            if (button) {
+                button.disabled = true;
+                originalText = button.innerHTML;
+                button.innerHTML = `
+                    <span name="loading" style="padding-left:5px">
+                        <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                    </span>
+                `;
             }
+
+            let radios = document.querySelectorAll("input[name='lwsop_oneclickconfig_radio[]']");
+            let value = '';
+
+            radios.forEach(function(radio) {
+                if (radio.checked) {
+                    value = radio.value;
+                }
+            })
+
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    value: value,
+                    _ajax_nonce: "<?php echo esc_html(wp_create_nonce("lwsop_change_optimize_configuration_nonce")); ?>",
+                    action: "lwsop_change_optimize_configuration",
+                },
+
+                success: function(data) {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+
+                    if (data === null || typeof data != 'string') {
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
+                        return 0;
+                    }
+
+                    try {
+                        var returnData = JSON.parse(data);
+                    } catch (e) {
+                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
+                        console.log(e);
+                        return 0;
+                    }
+
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            callPopup('success', "<?php esc_html_e('New configuration applied.', 'lws-optimize'); ?>");
+                            location.reload();
+                            break;
+                        default:
+                            callPopup('error', "<?php esc_html_e('Failed to configurate the plugin.', 'lws-optimize'); ?>");
+                            break;
+                    }
+                },
+                error: function(error) {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    callPopup('error', "<?php esc_html_e("Unknown error.", "lws-optimize"); ?>");
+                    console.log(error);
+                }
+            });
+        }
+
+        let radio_config = document.querySelector("input[value='<?php echo $config_array['autosetup_type'] ?? ''; ?>']");
+        if (radio_config) {
+            radio_config.checked = true;
+        }
+
+        jQuery(document).ready(function() {
+            jQuery('[data-toggle="tooltip"]').tooltip();
         });
-    }
-
-    let radio_config = document.querySelector("input[value='<?php echo $config_array['autosetup_type'] ?? ''; ?>']");
-    if (radio_config) {
-        radio_config.checked = true;
-    }
-
-    jQuery(document).ready(function() {
-        jQuery('[data-toggle="tooltip"]').tooltip();
-    });
+    <?php endif; ?>
 </script>

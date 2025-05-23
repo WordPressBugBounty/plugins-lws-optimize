@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.3.1
+Stable tag: 3.3.4
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -186,7 +186,16 @@ After activation, we recommend starting with the pre-configured optimization pro
 
 == Changelog ==
 
-= 3.3.3.1 = 
+= 3.3.4 =
+* Added more logs for images and htaccess in wp-content/uploads/lwsoptimize/debug.log
+* Fixed an issue where sometimes the API would fail to get the correct site_url() (http instead of https) and fails to convert
+* Updated .htaccess to add missing Brotli rules
+* Updated the way the htaccess is managed to remove unecessary spaces and breaking
+* Fixed "Purge all" button not working properly
+* Fixed missing translations
+* Fixed issue when reactivating plugin
+
+= 3.3.3.1 =
 * Fixed issue where new Cloudflare option would cause errors when trying to create/modify a page with the autopurge activated
 
 = 3.3.3 =

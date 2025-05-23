@@ -260,15 +260,15 @@ class LwsOptimizeFileCache
         }
 
         // We can put the current page to cache. We now apply the chosen options to the file (minify CSS/JS, combine CSS/JS, ...)
-        if ($this->base->lwsop_check_option('cloudflare')['state'] == "false" || !isset($this->base->lwsop_check_option('cloudflare')['data']['tools']['min_css'])) {
-            if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
-                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
-                $data = $lwsOptimizeCssManager->combine_css_update();
-                $modified = $data['html'];
+        if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
+            $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
+            $data = $lwsOptimizeCssManager->combine_css_update();
+            $modified = $data['html'];
 
-                $cached_elements['css']['file'] += $data['files']['file'];
-                $cached_elements['css']['size'] += $data['files']['size'];
-            } elseif ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
+            $cached_elements['css']['file'] += $data['files']['file'];
+            $cached_elements['css']['size'] += $data['files']['size'];
+        } elseif ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
+            if ($this->base->lwsop_check_option('cloudflare')['state'] == "false") {
                 $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
                 $data = $lwsOptimizeCssManager->minify_css();
                 $modified = $data['html'];
@@ -278,16 +278,16 @@ class LwsOptimizeFileCache
             }
         }
 
-        if ($this->base->lwsop_check_option('cloudflare')['state'] == "false" && !isset($this->base->lwsop_check_option('cloudflare')['data']['tools']['min_js'])) {
-            if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
-                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
-                $data = $lwsOptimizeJsManager->combine_js_update();
+        if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
+            $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+            $data = $lwsOptimizeJsManager->combine_js_update();
 
-                $modified = $data['html'];
+            $modified = $data['html'];
 
-                $cached_elements['js']['file'] += $data['files']['file'];
-                $cached_elements['js']['size'] += $data['files']['size'];
-            } elseif ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
+            $cached_elements['js']['file'] += $data['files']['file'];
+            $cached_elements['js']['size'] += $data['files']['size'];
+        } elseif ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
+            if ($this->base->lwsop_check_option('cloudflare')['state'] == "false") {
                 $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
                 $data = $lwsOptimizeJsManager->minify_js();
 

@@ -125,119 +125,6 @@ class LwsOptimize
                 }
             }
 
-            if ($this->lwsop_check_option('gzip_compression')['state'] === "true") {
-                $gzip_ok = false;
-
-                $available_htaccess = true;
-
-                // Check if .htaccess exists
-                if (!file_exists(ABSPATH . '.htaccess')) {
-                    // Try to create .htaccess
-                    if (!touch(ABSPATH . '.htaccess')) {
-                        // Failed to create, check permissions
-                        $old_umask = umask(0);
-                        if (!chmod(ABSPATH, 0755)) {
-                            // Could not change directory permissions
-                            error_log("LWSOptimize: Could not change directory permissions for .htaccess");
-                            $available_htaccess = false;
-                        }
-
-                        // Try creating again with new permissions
-                        if (!touch(ABSPATH . '.htaccess')) {
-                            // Still failed, abort
-                            error_log("LWSOptimize: Could not create .htaccess file");
-                            umask($old_umask);
-                            $available_htaccess = false;
-                        }
-                        umask($old_umask);
-                    }
-                }
-
-                // Check if .htaccess is writable
-                if (!is_writable(ABSPATH . '.htaccess')) {
-                    // Try to make writable
-                    if (!chmod(ABSPATH . '.htaccess', 0644)) {
-                        error_log("LWSOptimize: Could not make .htaccess writable");
-                        $available_htaccess = false;
-                    }
-                }
-
-                if ($available_htaccess && is_file(ABSPATH . '.htaccess')) {
-                    $f = file(ABSPATH . '.htaccess');
-                    foreach ($f as $line) {
-                        if (trim($line) == '#LWS OPTIMIZE - GZIP COMPRESSION') {
-                            $gzip_ok = true;
-                            break;
-                        }
-                    }
-                }
-
-                if ($available_htaccess && !$gzip_ok) {
-                    // Get htaccess content
-                    $htaccess = ABSPATH . "/.htaccess";
-                    if (file_exists($htaccess) && is_writable($htaccess)) {
-                        $htaccess_content = file_get_contents($htaccess);
-
-                        // Remove existing GZIP rules if they exist
-                        $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
-                        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                        // Write back to file
-                        file_put_contents($htaccess, $htaccess_content);
-                    } else {
-                        error_log("LWSOptimize: Could not modify .htaccess - file doesn't exist or is not writable");
-                    }
-                    $htaccess = ABSPATH . "/.htaccess";
-
-                    if (!get_option('lws_optimize_deactivate_temporarily')) {
-                        $hta = '';
-                        $hta .= "<IfModule mod_deflate.c>\n";
-                        $hta .= "SetOutputFilter DEFLATE\n";
-
-
-                        // Add all the types of files to compress
-                        $hta .= "<IfModule mod_filter.c>\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/javascript\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/json\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/rss+xml\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/xml\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/atom+xml\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/vnd.ms-fontobject\n";
-                        $hta .= "AddOutputFilterByType DEFLATE application/x-font-ttf\n";
-                        $hta .= "AddOutputFilterByType DEFLATE font/opentype\n";
-                        $hta .= "AddOutputFilterByType DEFLATE text/plain\n";
-                        $hta .= "AddOutputFilterByType DEFLATE text/pxml\n";
-                        $hta .= "AddOutputFilterByType DEFLATE text/html\n";
-                        $hta .= "AddOutputFilterByType DEFLATE text/css\n";
-                        $hta .= "AddOutputFilterByType DEFLATE text/x-component\n";
-                        $hta .= "AddOutputFilterByType DEFLATE image/svg+xml\n";
-                        $hta .= "AddOutputFilterByType DEFLATE image/x-icon\n";
-                        $hta .= "</IfModule>\n";
-                        $hta .= "</IfModule>\n";
-
-                        if ($hta != '') {
-                            $hta =
-                                "#LWS OPTIMIZE - GZIP COMPRESSION\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta #END LWS OPTIMIZE - GZIP COMPRESSION\n";
-
-                            if (is_file($htaccess)) {
-                                $hta .= file_get_contents($htaccess);
-                            }
-
-                            if (($f = fopen($htaccess, 'w+')) !== false) {
-                                if (!fwrite($f, $hta)) {
-                                    fclose($f);
-                                    error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                                } else {
-                                    fclose($f);
-                                }
-                            } else {
-                                error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-                            }
-                        }
-                    }
-                }
-            }
-
             if ($this->lwsop_check_option('image_add_sizes')['state'] === "true") {
                 LwsOptimizeImageFrontManager::startImageWidth();
             }
@@ -355,6 +242,7 @@ class LwsOptimize
                 }
 
                 add_action("wp_ajax_lws_clear_fb_cache", [$this, "lws_optimize_clear_cache"]);
+                add_action("wp_ajax_lws_op_clear_all_caches", [$this, "lws_op_clear_all_caches"]);
                 add_action("wp_ajax_lws_clear_opcache", [$this, "lws_clear_opcache"]);
                 add_action("wp_ajax_lws_clear_html_fb_cache", [$this, "lws_optimize_clear_htmlcache"]);
                 add_action("wp_ajax_lws_clear_style_fb_cache", [$this, "lws_optimize_clear_stylecache"]);
@@ -418,10 +306,19 @@ class LwsOptimize
 
         if ($duration == 0) {
             delete_option('lws_optimize_deactivate_temporarily');
-            // Update htaccess cache rules if enabled
+
+            // Update all .htaccess files by removing or adding the rules
             if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
                 $this->lws_optimize_set_cache_htaccess();
+            } else {
+                $this->unset_cache_htaccess();
             }
+            if (isset($optimize_options['gzip_compression']['state']) && $optimize_options['gzip_compression']['state'] == "true") {
+                $this->set_gzip_brotli_htaccess();
+            } else {
+                $this->unset_gzip_brotli_htaccess();
+            }
+            $this->lws_optimize_reset_header_htaccess();
         } else {
             $transient_set = update_option('lws_optimize_deactivate_temporarily', time() + $duration);
 
@@ -430,54 +327,16 @@ class LwsOptimize
                 wp_die(json_encode(array('code' => "TRANSIENT_ERROR", 'data' => "Could not set temporary deactivation"), JSON_PRETTY_PRINT));
             }
 
-            // Get htaccess content
-            $htaccess = ABSPATH . '/.htaccess';
-            if (file_exists($htaccess) && is_writable($htaccess)) {
-                // Read htaccess content
-                $htaccess_content = file_get_contents($htaccess);
+            // Remove .htaccess rules
+            $this->unset_cache_htaccess();
+            $this->unset_gzip_brotli_htaccess();
+            $this->unset_header_htaccess();
 
-                // Remove caching rules if they exist
-                $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
-                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                // Write back to file
-                file_put_contents($htaccess, $htaccess_content);
-            } else {
-                // Log error if htaccess can't be modified
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
-                fclose($logger);
+            // Verify the transient was set correctly
+            $transient_value = get_option('lws_optimize_deactivate_temporarily', false);
+            if ($transient_value === false) {
+                wp_die(json_encode(array('code' => "TRANSIENT_VERIFY_ERROR", 'data' => "Temporary deactivation may not work correctly"), JSON_PRETTY_PRINT));
             }
-        }
-
-        // // If memcached was enabled, flush it on temporary deactivation
-        // if ($this->lwsop_check_option('memcached')['state'] === "true") {
-        //     if (class_exists('Memcached') && extension_loaded('memcached')) {
-        //         try {
-        //             $memcached = new \Memcached();
-        //             if (empty($memcached->getServerList())) {
-        //                 $memcached->addServer('localhost', 11211);
-        //             }
-        //             if ($memcached->getVersion() !== false) {
-        //                 $memcached->flush();
-        //                 // Delete object-cache.php to ensure WordPress doesn't use it
-        //                 if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-        //                     @unlink(LWSOP_OBJECTCACHE_PATH);
-        //                 }
-        //             }
-        //         } catch (\Exception $e) {
-        //             // Log memcached error
-        //             $logger = fopen($this->log_file, 'a');
-        //             fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Memcached error: ' . $e->getMessage() . PHP_EOL);
-        //             fclose($logger);
-        //         }
-        //     }
-        // }
-
-        // Verify the transient was set correctly
-        $transient_value = get_option('lws_optimize_deactivate_temporarily', false);
-        if ($transient_value === false) {
-            wp_die(json_encode(array('code' => "TRANSIENT_VERIFY_ERROR", 'data' => "Temporary deactivation may not work correctly"), JSON_PRETTY_PRINT));
         }
 
         wp_die(json_encode(array('code' => "SUCCESS", 'data' => array('duration' => $duration, 'transient' => $transient_value)), JSON_PRETTY_PRINT));
@@ -498,53 +357,24 @@ class LwsOptimize
             delete_option('lws_op_fb_preload_state');
 
             delete_option('lws_optimize_preload_is_ongoing');
-            global $wpdb;
 
-            // Force deactivate memcached for everyone
-            $options = get_option('lws_optimize_config_array', []);
-            $options['memcached']['state'] = "false";
+            $optimize_options = get_option('lws_optimize_config_array', []);
 
-            $options['filebased_cache']['saved_urls'] = [];
-
-            if (!isset($options['htaccess_rules']['state'])) {
+            // Update all .htaccess files by removing or adding the rules
+            if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
                 $this->lws_optimize_set_cache_htaccess();
-                $options['htaccess_rules']['state'] = "true";
-
-            } else if (isset($options['htaccess_rules']['state']) && $options['htaccess_rules']['state'] == "true") {
-                $this->lws_optimize_set_cache_htaccess();
+            } else {
+                $this->unset_cache_htaccess();
+            }
+            if (isset($optimize_options['gzip_compression']['state']) && $optimize_options['gzip_compression']['state'] == "true") {
+                $this->set_gzip_brotli_htaccess();
+            } else {
+                $this->unset_gzip_brotli_htaccess();
             }
             $this->lws_optimize_reset_header_htaccess();
 
             apply_filters("lws_optimize_clear_filebased_cache", false, "lws_optimize_after_update_actions");
-
-            $all_medias_to_convert = get_option('lws_optimize_images_convertion', []);
-            $posts = get_posts(['post_type' => array('page', 'post')]);
-            foreach ($posts as $post) {
-                $content = $post->post_content;
-                foreach ($all_medias_to_convert as $image) {
-                    $actual = explode('.', $image['original_url']);
-                    array_pop($actual);
-                    $actual = implode('.', $actual) . "." . $image['extension'];
-                    $original = $image['original_url'];
-
-                    if (strpos($content, $actual)) {
-                        $content = str_replace($actual, $original, $content);
-                    }
-                }
-
-                $data = ['post_content' => $content];
-                $where = ['ID' => $post->ID];
-                $wpdb->update($wpdb->prefix . 'posts', $data, $where);
-            }
-
-            $options['combine_css']['state'] = "false";
-            $options['combine_js']['state'] = "false";
-            // 2 preload per minute by default
-            $options['filebased_cache']['preload_amount'] = 2;
-
-            delete_transient('wp_lwsoptimize_post_update');
-            update_option('lws_optimize_config_array', $options);
-            $this->optimize_options = $options;
+            delete_option('wp_lwsoptimize_post_update');
         }
     }
 
@@ -1293,37 +1123,18 @@ class LwsOptimize
             $optimize_options['filebased_cache']['preload_ongoing'] = "true";
         }
 
-        // Update .htaccess based on state
-        if ($state == "true") {
-            $this->lws_optimize_reset_header_htaccess();
-        } else {
-            // Read the htaccess file
-            $htaccess = ABSPATH . "/.htaccess";
-            if (file_exists($htaccess) && is_writable($htaccess)) {
-                $htaccess_content = file_get_contents($htaccess);
-
-                // Remove the expire header section using regex
-                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
-                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                // Write back to file
-                $return_code = file_put_contents($htaccess, $htaccess_content) ? 0 : 1;
-                $output = [];
-            } else {
-                $return_code = 1;
-                $output = ["Cannot access or write to .htaccess file"];
-            }
-            if ($return_code != 0) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess headers: ' . implode("\n", $output) . PHP_EOL);
-                fclose($logger);
-            }
-        }
-
-        // Update htaccess cache rules if enabled
+        // Update all .htaccess files by removing or adding the rules
         if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
             $this->lws_optimize_set_cache_htaccess();
+        } else {
+            $this->unset_cache_htaccess();
         }
+        if (isset($optimize_options['gzip_compression']['state']) && $optimize_options['gzip_compression']['state'] == "true") {
+            $this->set_gzip_brotli_htaccess();
+        } else {
+            $this->unset_gzip_brotli_htaccess();
+        }
+        $this->lws_optimize_reset_header_htaccess();
 
         // Clear dynamic cache
         $this->lwsop_dump_all_dynamic_caches();
@@ -1333,6 +1144,108 @@ class LwsOptimize
         $this->optimize_options = $optimize_options;
 
         wp_die(json_encode(['code' => "SUCCESS", 'data' => $state]), JSON_PRETTY_PRINT);
+    }
+
+    public function set_gzip_brotli_htaccess() {
+        $htaccess = ABSPATH . '.htaccess';
+        $logger = fopen($this->log_file, 'a');
+
+        try {
+            // Create or verify .htaccess file
+            if (!file_exists($htaccess)) {
+                $old_umask = umask(0);
+
+                if (!chmod(ABSPATH, 0755)) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not change directory permissions for .htaccess' . PHP_EOL);
+                    umask($old_umask);
+                    fclose($logger);
+                    return;
+                }
+
+                if (!touch($htaccess)) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not create .htaccess file' . PHP_EOL);
+                    umask($old_umask);
+                    fclose($logger);
+                    return;
+                }
+
+                chmod($htaccess, 0644);
+                umask($old_umask);
+            }
+
+            // Ensure file is writable
+            if (!is_writable($htaccess)) {
+                if (!chmod($htaccess, 0644)) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not make .htaccess writable' . PHP_EOL);
+                    fclose($logger);
+                    return;
+                }
+            }
+
+            // Read existing content
+            $htaccess_content = file_get_contents($htaccess);
+            if ($htaccess_content === false) {
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not read .htaccess file' . PHP_EOL);
+                fclose($logger);
+                return;
+            }
+
+            // Remove existing GZIP rules
+            $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
+            $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+            // Skip if temporarily deactivated
+            if (get_option('lws_optimize_deactivate_temporarily')) {
+                if (file_put_contents($htaccess, $htaccess_content) === false) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
+                }
+                fclose($logger);
+                return;
+            }
+
+            // Build new GZIP rules
+            $hta = '';
+            // Brotli compression rules
+            $hta .= "<IfModule mod_brotli.c>\n";
+            $compress_types = [
+                'application/javascript', 'application/json', 'application/rss+xml',
+                'application/xml', 'application/atom+xml', 'application/vnd.ms-fontobject',
+                'application/x-font-ttf', 'font/opentype', 'text/plain', 'text/pxml',
+                'text/html', 'text/css', 'text/x-component', 'image/svg+xml', 'image/x-icon'
+            ];
+            foreach ($compress_types as $type) {
+                $hta .= "AddOutputFilterByType BROTLI_COMPRESS " . $type . "\n";
+            }
+            $hta .= "</IfModule>\n\n";
+
+            // Deflate compression rules
+            $hta .= "<IfModule mod_deflate.c>\n";
+            $hta .= "SetOutputFilter DEFLATE\n";
+            $hta .= "<IfModule mod_filter.c>\n";
+            foreach ($compress_types as $type) {
+                $hta .= "AddOutputFilterByType DEFLATE " . $type . "\n";
+            }
+            $hta .= "</IfModule>\n";
+            $hta .= "</IfModule>\n";
+
+            // Add header and combine content
+            $hta = "#LWS OPTIMIZE - GZIP COMPRESSION\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n"
+                  . $hta
+                  . "#END LWS OPTIMIZE - GZIP COMPRESSION\n";
+            $new_content = $hta . $htaccess_content;
+
+            // Write new content
+            if (file_put_contents($htaccess, $new_content) === false) {
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
+            } else {
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully updated GZIP rules in .htaccess' . PHP_EOL);
+            }
+
+        } catch (\Exception $e) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
+        }
+
+        fclose($logger);
     }
 
     public function lws_optimize_set_cache_htaccess() {
@@ -1508,7 +1421,7 @@ class LwsOptimize
                 $hta .= "</If>\n";
                 $hta .= "</FilesMatch>\n";
 
-                $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n\n";
+                $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n";
 
                 if (is_file($htaccess)) {
                     $hta .= file_get_contents($htaccess);
@@ -1517,12 +1430,12 @@ class LwsOptimize
                 if (($f = fopen($htaccess, 'w+')) !== false) {
                     if (!fwrite($f, $hta)) {
                         fclose($f);
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
+                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | Caching | .htaccess file is not writtable")));
                     } else {
                         fclose($f);
                     }
                 } else {
-                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
+                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | Caching | .htaccess file is not openable")));
                 }
             }
         }
@@ -1572,65 +1485,72 @@ class LwsOptimize
         return $hta;
     }
 
+    public function unset_gzip_brotli_htaccess() {
+        $htaccess = ABSPATH . '.htaccess';
+        $logger = fopen($this->log_file, 'a');
+
+        // Check if .htaccess exists
+        if (!file_exists($htaccess)) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
+            fclose($logger);
+            return;
+        }
+
+        // Read htaccess content
+        $htaccess_content = file_get_contents($htaccess);
+
+        // Remove GZIP rules using regex
+        $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
+        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+        // Write back to file
+        if (file_put_contents($htaccess, $htaccess_content) === false) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
+        } else {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully removed GZIP rules from .htaccess' . PHP_EOL);
+        }
+
+        fclose($logger);
+    }
+
+    public function unset_cache_htaccess() {
+        $htaccess = ABSPATH . '.htaccess';
+        $logger = fopen($this->log_file, 'a');
+
+        // Check if .htaccess exists
+        if (!file_exists($htaccess)) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
+            fclose($logger);
+            return;
+        }
+
+        // Read htaccess content
+        $htaccess_content = file_get_contents($htaccess);
+
+        // Remove caching rules using regex
+        $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
+        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+        // Write back to file
+        if (file_put_contents($htaccess, $htaccess_content) === false) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
+        } else {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully removed caching rules from .htaccess' . PHP_EOL);
+        }
+
+        fclose($logger);
+    }
+
     /**
      * Set the expiration headers in the .htaccess. Will remove it before adding it back.
      * If the cache is not active or an error occurs, headers won't be added
      */
     function lws_optimize_reset_header_htaccess() {
+        $htaccess = ABSPATH . '.htaccess';
+        $logger = fopen($this->log_file, 'a');
+
         $optimize_options = get_option('lws_optimize_config_array', []);
-
-        $state = $optimize_options['filebased_cache']['state'] ?? "false";
         $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_yearly";
-
-        // Path to .htaccess
-        $htaccess = ABSPATH . "/.htaccess";
-        $available_htaccess = true;
-
-        // Check if .htaccess exists
-        if (!file_exists($htaccess)) {
-            // Try to create .htaccess
-            if (!touch($htaccess)) {
-                // Failed to create, check permissions
-                $old_umask = umask(0);
-                if (!chmod(ABSPATH, 0755)) {
-                    // Could not change directory permissions
-                    error_log("LWSOptimize: Could not change directory permissions for .htaccess");
-                    $available_htaccess = false;
-                }
-
-                // Try creating again with new permissions
-                if (!touch($htaccess)) {
-                    // Still failed, abort
-                    error_log("LWSOptimize: Could not create .htaccess file");
-                    umask($old_umask);
-                    $available_htaccess = false;
-                }
-                umask($old_umask);
-            }
-        }
-
-
-        if ($available_htaccess && $state != "true") {
-            // Read the htaccess file
-            $htaccess = ABSPATH . '/.htaccess';
-            if (file_exists($htaccess) && is_writable($htaccess)) {
-                // Read htaccess content
-                $htaccess_content = file_get_contents($htaccess);
-
-                // Remove expire header section using regex
-                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
-                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                // Write back to file
-                $return_code = file_put_contents($htaccess, $htaccess_content) ? 0 : 1;
-                $eOut = [];
-            } else {
-                $return_code = 1;
-                $eOut = ["Cannot access or write to .htaccess file"];
-            }
-            error_log(json_encode(array('code' => 'NOT_ACTIVATED', 'data' => $eOut)));
-            return 0;
-        }
 
         switch ($timer) {
             case 'lws_daily':
@@ -1671,80 +1591,135 @@ class LwsOptimize
                 break;
         }
 
-        if ($available_htaccess) {
-            // Remove the old htaccess related to HEADER before adding it back updated
-            // Read the htaccess file
-            $htaccess = ABSPATH . '/.htaccess';
-            if (file_exists($htaccess) && is_writable($htaccess)) {
-                // Read htaccess content
-                $htaccess_content = file_get_contents($htaccess);
+        try {
+            // Create or verify .htaccess file
+            if (!file_exists($htaccess)) {
+                $old_umask = umask(0);
 
-                // Remove expire header section using regex
-                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
-                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                // Write back to file
-                $result = file_put_contents($htaccess, $htaccess_content);
-                if ($result === false) {
-                    error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "Failed to update .htaccess file")));
-                    return 0;
+                if (!chmod(ABSPATH, 0755)) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not change directory permissions for .htaccess' . PHP_EOL);
+                    umask($old_umask);
+                    fclose($logger);
+                    return;
                 }
+
+                if (!touch($htaccess)) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not create .htaccess file' . PHP_EOL);
+                    umask($old_umask);
+                    fclose($logger);
+                    return;
+                }
+
+                chmod($htaccess, 0644);
+                umask($old_umask);
+            }
+
+            // Ensure file is writable
+            if (!is_writable($htaccess)) {
+                if (!chmod($htaccess, 0644)) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not make .htaccess writable' . PHP_EOL);
+                    fclose($logger);
+                    return;
+                }
+            }
+
+            // Read existing content
+            $htaccess_content = file_get_contents($htaccess);
+            if ($htaccess_content === false) {
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not read .htaccess file' . PHP_EOL);
+                fclose($logger);
+                return;
+            }
+
+            // Remove expire header section using regex
+            $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
+            $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+            // Skip if temporarily deactivated
+            if (get_option('lws_optimize_deactivate_temporarily')) {
+                if (file_put_contents($htaccess, $htaccess_content) === false) {
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
+                }
+                fclose($logger);
+                return;
+            }
+
+            // Build new expire header rules
+            $hta = '';
+            $hta .= "<IfModule mod_expires.c>\n";
+            $hta .= "ExpiresActive On\n";
+            $hta .= "AddOutputFilterByType DEFLATE application/json\n";
+
+            $expire_types = [
+                'image/jpg', 'image/jpeg', 'image/gif', 'image/png',
+                'image/svg', 'image/x-icon', 'text/css', 'application/pdf',
+                'application/javascript', 'application/x-javascript',
+                'application/x-shockwave-flash'
+            ];
+
+            foreach ($expire_types as $type) {
+                $hta .= "ExpiresByType $type \"access $date\"\n";
+            }
+
+            $hta .= "ExpiresByType text/html A0\n";
+            $hta .= "ExpiresDefault \"access $date\"\n";
+            $hta .= "</IfModule>\n\n";
+
+            $hta .= "<FilesMatch \"index_[0-2]\\.(html|htm)$\">\n";
+            $hta .= "<IfModule mod_headers.c>\n";
+            $hta .= "Header set Cache-Control \"public, max-age=0, no-cache, must-revalidate\"\n";
+            $hta .= "Header set CDN-Cache-Control \"public, maxage=$cdn_date\"\n";
+            $hta .= "Header set Pragma \"no-cache\"\n";
+            $hta .= "Header set Expires \"Mon, 29 Oct 1923 20:30:00 GMT\"\n";
+            $hta .= "</IfModule>\n";
+            $hta .= "</FilesMatch>\n";
+
+            // Add header and combine content
+            $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n"
+                  . $hta
+                  . "#END LWS OPTIMIZE - EXPIRE HEADER\n";
+            $new_content = $hta . $htaccess_content;
+
+            // Write new content
+            if (file_put_contents($htaccess, $new_content) === false) {
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
             } else {
-                error_log(json_encode(array('code' => 'NOT_REMOVED', 'data' => "Cannot access or write to .htaccess file")));
-                return 0;
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully updated Header rules in .htaccess' . PHP_EOL);
             }
 
-
-            if (!get_option('lws_optimize_deactivate_temporarily')) {
-                // Set expiration date for the cache, based on selected value (in the "Cache" tab)
-                $hta = "#LWS OPTIMIZE - EXPIRE HEADER\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n
-                <IfModule mod_expires.c>
-                ExpiresActive On
-                AddOutputFilterByType DEFLATE application/json
-                ExpiresByType image/jpg \"access $date\"
-                ExpiresByType image/jpeg \"access $date\"
-                ExpiresByType image/gif \"access $date\"
-                ExpiresByType image/png \"access $date\"
-                ExpiresByType image/svg \"access $date\"
-                ExpiresByType image/x-icon \"access $date\"
-                ExpiresByType text/css \"access $date\"
-                ExpiresByType application/pdf \"access $date\"
-                ExpiresByType application/javascript \"access $date\"
-                ExpiresByType application/x-javascript \"access $date\"
-                ExpiresByType application/x-shockwave-flash \"access $date\"
-                ExpiresByType text/html A0
-                ExpiresDefault \"access $date\"
-                </IfModule>
-                <FilesMatch \"index_[0-2]\.(html|htm)$\">
-                <IfModule mod_headers.c>
-                    Header set Cache-Control \"public, max-age=0, no-cache, must-revalidate\"
-                    Header set CDN-Cache-Control \"public, maxage=$cdn_date\"
-                    Header set Pragma \"no-cache\"
-                    Header set Expires \"Mon, 29 Oct 1923 20:30:00 GMT\"
-                </IfModule>
-                </FilesMatch>
-
-                #END LWS OPTIMIZE - EXPIRE HEADER\n\n";
-
-                if (is_file($htaccess)) {
-                    $hta .= file_get_contents($htaccess);
-                }
-
-                if (($f = fopen($htaccess, 'w+')) !== false) {
-                    if (!fwrite($f, $hta)) {
-                        fclose($f);
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                        return json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable"));
-                    }
-                    fclose($f);
-                } else {
-                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-                    return json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable"));
-                }
-
-                return json_encode(array('code' => 'SUCCESS', 'data' => ""));
-            }
+        } catch (\Exception $e) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
         }
+
+        fclose($logger);
+    }
+
+    function unset_header_htaccess() {
+        $htaccess = ABSPATH . '.htaccess';
+        $logger = fopen($this->log_file, 'a');
+
+        // Check if .htaccess exists
+        if (!file_exists($htaccess)) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
+            fclose($logger);
+            return;
+        }
+
+        // Read htaccess content
+        $htaccess_content = file_get_contents($htaccess);
+
+        // Remove expire header section using regex
+        $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
+        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
+
+        // Write back to file
+        if (file_put_contents($htaccess, $htaccess_content) === false) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
+        } else {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully removed expire headers from .htaccess' . PHP_EOL);
+        }
+
+        fclose($logger);
     }
 
     /**
@@ -1779,29 +1754,21 @@ class LwsOptimize
         if ($fb_options['state'] == "true") {
            $this->lws_optimize_reset_header_htaccess();
         } else {
-            // Read the htaccess file
-            $htaccess = ABSPATH . "/.htaccess";
-            if (file_exists($htaccess) && is_writable($htaccess)) {
-                // Read htaccess content
-                $htaccess_content = file_get_contents($htaccess);
-
-                // Remove expire header section using regex
-                $pattern = '/#LWS OPTIMIZE - EXPIRE HEADER[\s\S]*?#END LWS OPTIMIZE - EXPIRE HEADER\n?/';
-                $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                // Write back to file
-                $result = file_put_contents($htaccess, $htaccess_content);
-                if ($result === false) {
-                    error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | Error removing expire headers from .htaccess")));
-                }
-            } else {
-                error_log(json_encode(array('code' => 'CANT_ACCESS', 'data' => "LWSOptimize | Cannot access or write to .htaccess file")));
-            }
+            $this->unset_header_htaccess();
         }
 
+        // Update all .htaccess files by removing or adding the rules
         if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
             $this->lws_optimize_set_cache_htaccess();
+        } else {
+            $this->unset_cache_htaccess();
         }
+        if (isset($optimize_options['gzip_compression']['state']) && $optimize_options['gzip_compression']['state'] == "true") {
+            $this->set_gzip_brotli_htaccess();
+        } else {
+            $this->unset_gzip_brotli_htaccess();
+        }
+        $this->lws_optimize_reset_header_htaccess();
 
         $optimize_options['filebased_cache']['timer'] = $timer;
 
@@ -1927,111 +1894,15 @@ class LwsOptimize
             }
         } elseif ($element == "gzip_compression") {
             if ($state == "true") {
-                $htaccess = ABSPATH . "/.htaccess";
-                if (file_exists($htaccess) && is_writable($htaccess)) {
-                    $htaccess_content = file_get_contents($htaccess);
-
-                    // Remove GZIP compression rules if they exist
-                    $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
-                    $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                    // Write back to file
-                    file_put_contents($htaccess, $htaccess_content);
-                } else {
-                    // Log error if htaccess can't be modified
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
-                    fclose($logger);
-                }
-                $htaccess = ABSPATH . "/.htaccess";
-
-                $hta = '';
-                $hta .= "<IfModule mod_deflate.c>\n";
-                $hta .= "SetOutputFilter DEFLATE\n";
-
-
-                // Add all the types of files to compress
-                $hta .= "<IfModule mod_filter.c>\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/javascript\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/json\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/rss+xml\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/xml\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/atom+xml\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/vnd.ms-fontobject\n";
-                $hta .= "AddOutputFilterByType DEFLATE application/x-font-ttf\n";
-                $hta .= "AddOutputFilterByType DEFLATE font/opentype\n";
-                $hta .= "AddOutputFilterByType DEFLATE text/plain\n";
-                $hta .= "AddOutputFilterByType DEFLATE text/pxml\n";
-                $hta .= "AddOutputFilterByType DEFLATE text/html\n";
-                $hta .= "AddOutputFilterByType DEFLATE text/css\n";
-                $hta .= "AddOutputFilterByType DEFLATE text/x-component\n";
-                $hta .= "AddOutputFilterByType DEFLATE image/svg+xml\n";
-                $hta .= "AddOutputFilterByType DEFLATE image/x-icon\n";
-                $hta .= "</IfModule>\n";
-
-                $hta .= "</IfModule>\n";
-
-                if ($hta != '') {
-                    $hta =
-                        "#LWS OPTIMIZE - GZIP COMPRESSION\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta #END LWS OPTIMIZE - GZIP COMPRESSION\n";
-
-                    if (is_file($htaccess)) {
-                        $hta .= file_get_contents($htaccess);
-                    }
-
-                    if (($f = fopen($htaccess, 'w+')) !== false) {
-                        if (!fwrite($f, $hta)) {
-                            fclose($f);
-                            error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | .htaccess file is not writtable")));
-                        } else {
-                            fclose($f);
-                        }
-                    } else {
-                        error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | GZIP | .htaccess file is not openable")));
-                    }
-                }
+                $this->set_gzip_brotli_htaccess();
             } else {
-                // Read the htaccess file
-                $htaccess = ABSPATH . "/.htaccess";
-                if (file_exists($htaccess) && is_writable($htaccess)) {
-                    // Read htaccess content
-                    $htaccess_content = file_get_contents($htaccess);
-
-                    // Remove GZIP compression rules if they exist
-                    $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
-                    $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                    // Write back to file
-                    $result = file_put_contents($htaccess, $htaccess_content);
-                    if ($result === false) {
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | GZIP | Failed to update .htaccess file")));
-                    }
-                } else {
-                    // Log error if htaccess can't be modified
-                    error_log(json_encode(array('code' => 'CANT_ACCESS', 'data' => "LWSOptimize | GZIP | Cannot access or write to .htaccess file")));
-                }
+                $this->unset_gzip_brotli_htaccess();
             }
         } elseif ($element == "htaccess_rules") {
-            if ($state == "false") {
-                // Read the htaccess file
-                $htaccess = ABSPATH . "/.htaccess";
-                if (file_exists($htaccess) && is_writable($htaccess)) {
-                    $htaccess_content = file_get_contents($htaccess);
-
-                    // Remove caching rules if they exist
-                    $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
-                    $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                    // Write back to file
-                    file_put_contents($htaccess, $htaccess_content);
-                } else {
-                    // Log error if htaccess can't be modified
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
-                    fclose($logger);
-                }
-            } else {
+            if ($state == "true") {
                 $this->lws_optimize_set_cache_htaccess();
+            } elseif ($state == "false") {
+                $this->unset_cache_htaccess();
             }
         }
 
@@ -2178,147 +2049,15 @@ class LwsOptimize
 
             } elseif ($id == "gzip_compression") {
                 if ($state == "true") {
-                    $htaccess = ABSPATH . "/.htaccess";
-                    if (file_exists($htaccess) && is_writable($htaccess)) {
-                        $htaccess_content = file_get_contents($htaccess);
-
-                        // Remove GZIP compression rules if they exist
-                        $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
-                        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                        // Write back to file
-                        file_put_contents($htaccess, $htaccess_content);
-                    } else {
-                        // Log error if htaccess can't be modified
-                        $errors[$id] = 'HTACCESS_NOT_WRITABLE';
-                        $logger = fopen($this->log_file, 'a');
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
-                        fclose($logger);
-                        continue;
-                    }
-
-                    $htaccess = ABSPATH . "/.htaccess";
-                    $hta = '';
-                    $hta .= "<IfModule mod_brotli.c>\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/javascript\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/json\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/rss+xml\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/xml\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/atom+xml\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/vnd.ms-fontobject\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS application/x-font-ttf\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS font/opentype\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS text/plain\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS text/pxml\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS text/html\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS text/css\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS text/x-component\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS image/svg+xml\n";
-                    $hta .= "AddOutputFilterByType BROTLI_COMPRESS image/x-icon\n";
-                    $hta .= "</IfModule>\n\n";
-
-                    $hta .= "<IfModule mod_deflate.c>\n";
-                    $hta .= "SetOutputFilter DEFLATE\n";
-                    $hta .= "<IfModule mod_filter.c>\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/javascript\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/json\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/rss+xml\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/xml\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/atom+xml\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/vnd.ms-fontobject\n";
-                    $hta .= "AddOutputFilterByType DEFLATE application/x-font-ttf\n";
-                    $hta .= "AddOutputFilterByType DEFLATE font/opentype\n";
-                    $hta .= "AddOutputFilterByType DEFLATE text/plain\n";
-                    $hta .= "AddOutputFilterByType DEFLATE text/pxml\n";
-                    $hta .= "AddOutputFilterByType DEFLATE text/html\n";
-                    $hta .= "AddOutputFilterByType DEFLATE text/css\n";
-                    $hta .= "AddOutputFilterByType DEFLATE text/x-component\n";
-                    $hta .= "AddOutputFilterByType DEFLATE image/svg+xml\n";
-                    $hta .= "AddOutputFilterByType DEFLATE image/x-icon\n";
-                    $hta .= "</IfModule>\n";
-                    $hta .= "</IfModule>\n";
-
-                    if ($hta != '') {
-                        $hta = "#LWS OPTIMIZE - GZIP COMPRESSION\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta #END LWS OPTIMIZE - GZIP COMPRESSION\n";
-
-                        if (is_file($htaccess)) {
-                            $hta .= file_get_contents($htaccess);
-                        }
-
-                        if (($f = fopen($htaccess, 'w+')) !== false) {
-                            if (!fwrite($f, $hta)) {
-                                fclose($f);
-                                $errors[$id] = 'HTACCESS_WRITE_FAILED';
-                                $logger = fopen($this->log_file, 'a');
-                                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not write GZIP rules to .htaccess' . PHP_EOL);
-                                fclose($logger);
-                                continue;
-                            }
-                            fclose($f);
-                        } else {
-                            $errors[$id] = 'HTACCESS_OPEN_FAILED';
-                            $logger = fopen($this->log_file, 'a');
-                            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not open .htaccess for writing' . PHP_EOL);
-                            fclose($logger);
-                            continue;
-                        }
-                    }
+                    $this->set_gzip_brotli_htaccess();
                 } else {
-                    // Read the htaccess file
-                    $htaccess = ABSPATH . "/.htaccess";
-                    if (file_exists($htaccess) && is_writable($htaccess)) {
-                        $htaccess_content = file_get_contents($htaccess);
-
-                        // Remove GZIP compression rules if they exist
-                        $pattern = '/#LWS OPTIMIZE - GZIP COMPRESSION[\s\S]*?#END LWS OPTIMIZE - GZIP COMPRESSION\n?/';
-                        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                        // Write back to file
-                        if (file_put_contents($htaccess, $htaccess_content) === false) {
-                            $errors[$id] = 'HTACCESS_UPDATE_FAILED';
-                            $logger = fopen($this->log_file, 'a');
-                            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
-                            fclose($logger);
-                            continue;
-                        }
-                    } else {
-                        $errors[$id] = 'HTACCESS_NOT_WRITABLE';
-                        $logger = fopen($this->log_file, 'a');
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cannot access or write to .htaccess file' . PHP_EOL);
-                        fclose($logger);
-                        continue;
-                    }
+                    $this->unset_gzip_brotli_htaccess();
                 }
-
             } elseif ($id == "htaccess_rules") {
-                if ($state == "false") {
-                    // Read the htaccess file
-                    $htaccess = ABSPATH . "/.htaccess";
-                    if (file_exists($htaccess) && is_writable($htaccess)) {
-                        $htaccess_content = file_get_contents($htaccess);
-
-                        // Remove caching rules if they exist
-                        $pattern = '/#LWS OPTIMIZE - CACHING[\s\S]*?#END LWS OPTIMIZE - CACHING\n?/';
-                        $htaccess_content = preg_replace($pattern, '', $htaccess_content);
-
-                        // Write back to file
-                        if (file_put_contents($htaccess, $htaccess_content) === false) {
-                            $errors[$id] = 'HTACCESS_UPDATE_FAILED';
-                            $logger = fopen($this->log_file, 'a');
-                            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
-                            fclose($logger);
-                            continue;
-                        }
-                    } else {
-                        // Log error if htaccess can't be modified
-                        $errors[$id] = 'HTACCESS_NOT_WRITABLE';
-                        $logger = fopen($this->log_file, 'a');
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
-                        fclose($logger);
-                        continue;
-                    }
-                } else {
+                if ($state == "true") {
                     $this->lws_optimize_set_cache_htaccess();
+                } elseif ($state == "false") {
+                    $this->unset_cache_htaccess();
                 }
             }
         }
@@ -2549,6 +2288,21 @@ class LwsOptimize
     }
 
     /**
+     * Clear every caches avaialble on Optimize
+    */
+    public function lws_op_clear_all_caches() {
+        check_ajax_referer('lws_op_clear_all_caches_nonce', '_ajax_nonce');
+
+        $this->lws_optimize_clean_filebased_cache();
+
+        delete_option('lws_optimize_sitemap_urls');
+        delete_option('lws_optimize_preload_is_ongoing');
+        $this->lwsop_recalculate_stats("all");
+
+        wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
+    }
+
+    /**
      * Clear the file-based cache completely
      */
     public function lws_optimize_clear_cache()
@@ -2626,7 +2380,6 @@ class LwsOptimize
         $this->lwsop_recalculate_stats("minus", ['file' => $amount, 'size' => $size], $is_mobile);
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
     }
-
 
     public function lws_optimize_delete_directory($dir, $class_this)
     {
@@ -3514,7 +3267,17 @@ class LwsOptimize
                 break;
         }
 
-        $this->lws_optimize_set_cache_htaccess();
+        // Update all .htaccess files by removing or adding the rules
+        if (isset($options['htaccess_rules']['state']) && $options['htaccess_rules']['state'] == "true") {
+            $this->lws_optimize_set_cache_htaccess();
+        } else {
+            $this->unset_cache_htaccess();
+        }
+        if (isset($options['gzip_compression']['state']) && $options['gzip_compression']['state'] == "true") {
+            $this->set_gzip_brotli_htaccess();
+        } else {
+            $this->unset_gzip_brotli_htaccess();
+        }
         $this->lws_optimize_reset_header_htaccess();
 
         apply_filters("lws_optimize_clear_filebased_cache", false, "lwsop_auto_setup_optimize");

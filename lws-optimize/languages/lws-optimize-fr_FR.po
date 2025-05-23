@@ -2460,3 +2460,15 @@ msgstr "Entrez votre jeton API ci-dessous pour permettre à LWS Optimize d'accé
 
 msgid "LWS Optimize is currently integrated with CloudFlare. Would you like to terminate this connection?"
 msgstr "LWS Optimize est actuellement intégré à CloudFlare. Souhaitez-vous mettre fin à cette connexion ?"
+
+msgid "File caching helps improve website performance by storing static files locally, reducing server load and decreasing page load times for subsequent visits. It stores copies of static files like images, CSS, and JavaScript in a temporary storage."
+msgstr "Le cache de fichiers aide à améliorer les performances du site en stockant les fichiers statiques localement, réduisant la charge du serveur et diminuant les temps de chargement des pages lors des visites suivantes. Il stocke des copies de fichiers statiques comme les images, CSS et JavaScript dans un stockage temporaire."
+
+msgid "Memcached is a high-performance caching system that speeds up websites by storing frequently used database queries and API calls in memory"
+msgstr "Memcached est un système de mise en cache haute performance qui accélère les sites en stockant les requêtes de base de données et les appels d'API fréquemment utilisés en mémoire"
+
+msgid "A server cache stores static copies of web pages to reduce server load and improve performance by serving those copies instead of fetching the page each request"
+msgstr "Un cache serveur stocke des copies statiques de pages web pour réduire la charge du serveur et améliorer les performances en servant ces copies au lieu de récupérer la page à chaque requête"
+
+msgid "All caches have been deleted"
+msgstr "Tous les caches ont été supprimés"

@@ -83,7 +83,7 @@ class LwsOptimizeManageAdmin
 
         // On the LwsOptimize option page
         if (get_current_screen()->base == ('toplevel_page_lws-op-config') || get_current_screen()->base == ('admin_page_lws-op-config-advanced')) {
-            wp_enqueue_style('lws_optimize_options_css', LWS_OP_URL . "css/lws_op_stylesheet.css?v=" . $this->version);
+            wp_enqueue_style('lws_optimize_options_css', LWS_OP_URL . "css/lws_op_stylesheet.css");
             wp_enqueue_style('lws_optimize_Poppins_font', 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
             wp_enqueue_style("lws_optimize_bootstrap_css", LWS_OP_URL . 'css/bootstrap.min.css?v=' . $this->version);
             wp_enqueue_script("lws_optimize_bootstrap_js", LWS_OP_URL . 'js/bootstrap.min.js?v=' . $this->version, array('jquery'));

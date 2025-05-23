@@ -487,7 +487,7 @@ $format_support = [
 
         // Check the total size reduction
         if (conversion_gains) {
-            conversion_gains.innerHTML = data['size_reduction'] ? parseFloat(data['size_reduction']).toFixed(2) + "%" : "0%";
+            conversion_gains.innerHTML = (data['size_reduction'] ? parseFloat(data['size_reduction']).toFixed(2) + "%" : "0%") + (data['size_reduction_num'] ? " | " + (data['size_reduction_num']) : '0');
         }
 
         // Check if autoconversion is active
@@ -772,7 +772,7 @@ $format_support = [
                             <div class="lwsop_checkbox_container">
                                 <label class="lwsop_checkbox_label">
                                     <label class="lwsop_checkbox">
-                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)">
+                                        <input type="checkbox" id="lwsoppro_use_api_check" value="autoupload" onchange="switchConversionType(this)">
                                         <span class="slider round"></span>
                                     </label>
                                 </label>
@@ -829,7 +829,7 @@ $format_support = [
                             <div class="lwsop_checkbox_container">
                                 <label class="lwsop_checkbox_label">
                                     <label class="lwsop_checkbox">
-                                        <input type="checkbox" id="lwsoppro_use_api_check" onchange="switchConversionType(this)" checked>
+                                        <input type="checkbox" id="lwsoppro_use_api_check" value="autoupload" onchange="switchConversionType(this)" checked>
                                         <span class="slider round"></span>
                                     </label>
                                 </label>
