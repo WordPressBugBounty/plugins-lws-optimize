@@ -2260,8 +2260,8 @@ msgstr "Compression d'images"
 msgid "Convert and compress your images to modern formats (WebP/AVIF) to significantly improve website loading speed."
 msgstr "Convertissez et compressez vos images vers des formats modernes (WebP/AVIF) pour améliorer significativement la vitesse de chargement du site."
 
-msgid "To see the complete list of compressed images, restore images or automatically convert images on upload, go to the "
-msgstr "Pour voir la liste complète des images compressées, restaurer des images ou convertir automatiquement les images au téléversement, allez dans le "
+msgid "To see the complete list of compressed images ot restore images, go to the "
+msgstr "Pour voir la liste complète des images compressées ou restaurer des images, allez dans le "
 
 msgid "File caching"
 msgstr "Cache de fichiers"
@@ -2472,3 +2472,4 @@ msgstr "Un cache serveur stocke des copies statiques de pages web pour réduire 
 
 msgid "All caches have been deleted"
 msgstr "Tous les caches ont été supprimés"
+

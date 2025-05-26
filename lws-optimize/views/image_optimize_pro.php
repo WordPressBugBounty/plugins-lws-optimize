@@ -487,7 +487,7 @@ $format_support = [
 
         // Check the total size reduction
         if (conversion_gains) {
-            conversion_gains.innerHTML = (data['size_reduction'] ? parseFloat(data['size_reduction']).toFixed(2) + "%" : "0%") + (data['size_reduction_num'] ? " | " + (data['size_reduction_num']) : '0');
+            conversion_gains.innerHTML = (data['size_reduction'] ? parseFloat(data['size_reduction']).toFixed(2) + "%" : "0%") + (data['size_reduction_num'] ? " | " + (data['size_reduction_num']) : '');
         }
 
         // Check if autoconversion is active

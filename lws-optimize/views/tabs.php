@@ -252,19 +252,35 @@
                 };
 
                 let current_configuration = JSON.parse(localStorage.getItem('lws_optimize_current_configuration_changes'));
-                // Remove existing entry with same type if present
-                current_configuration = current_configuration.filter(item => item.type !== type);
-                // Add new entry
-                current_configuration.push({
-                    'type': type,
-                    'state': state
-                });
+                // Find existing entry with same type
+                let existingIndex = current_configuration.findIndex(item => item.type === type);
+
+                if (existingIndex !== -1) {
+                    // Remove if exists
+                    current_configuration.splice(existingIndex, 1);
+                } else {
+                    // Add if doesn't exist
+                    current_configuration.push({
+                        'type': type,
+                        'state': state
+                    });
+                }
                 localStorage.setItem('lws_optimize_current_configuration_changes', JSON.stringify(current_configuration));
 
-                if (button) {
-                    button.disabled = false;
+                // Amount of configuration elements
+                let amount_elements = current_configuration.length;
+                let amount_elements_text = document.getElementById('lws_optimize_amount_configuration_elements');
+                if (amount_elements_text) {
+                    amount_elements_text.innerHTML = amount_elements;
                 }
 
+                if (button) {
+                    if (amount_elements > 0) {
+                        button.disabled = false;
+                    } else {
+                        button.disabled = true;
+                    }
+                }
 
 
                 // document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
@@ -413,7 +429,16 @@
                             let status = returnData['data'] == "true" ? "<?php esc_html_e('activated', 'lws-optimize'); ?>" : "<?php esc_html_e('deactivated', 'lws-optimize'); ?>";
                             callPopup('success', "<?php esc_html_e('Plugin configuration updated', 'lws-optimize'); ?>");
 
-                            if (!empty(returnData['errors'])) {
+
+                            let current_configuration = JSON.parse(localStorage.getItem('lws_optimize_current_configuration_changes'));
+                            localStorage.setItem('lws_optimize_current_configuration_changes', JSON.stringify([]));
+
+                            let amount_elements_text = document.getElementById('lws_optimize_amount_configuration_elements');
+                            if (amount_elements_text) {
+                                amount_elements_text.innerHTML = 0;
+                            }
+
+                            if (returnData['errors'] && returnData['errors'].length > 0) {
                                 let errors = returnData['errors'];
                                 for (let i = 0; i < errors.length; i++) {
                                     switch (errors[i]) {
@@ -450,6 +475,60 @@
                                         default:
                                             break;
                                     }
+                                }
+                            }
+
+                            // Check if preload cache is enabled and update the interface
+                            let preload_cache_config = current_configuration.find(item => item.type === "lws_optimize_preload_cache_check");
+                            if (preload_cache_config) {
+                                let value = preload_cache_config.state;
+
+                                if (value) {
+                                    callPopup('success', "<?php esc_html_e("File-based cache is now preloading. Depending on the amount of URLs, it may take a few minutes for the process to be done.", "lws-optimize"); ?>");
+                                    let p_info = document.getElementById('lwsop_current_preload_info');
+                                    let p_done = document.getElementById('lwsop_current_preload_done');
+                                    let p_next = document.getElementById('lwsop_next_preload_info');
+
+                                    if (p_info != null) {
+                                        p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
+                                    }
+                                    var currentdate = new Date();
+                                    var datetime = currentdate.getDate() + "-" +
+                                        (currentdate.getMonth() + 1) + "-" +
+                                        currentdate.getFullYear() + " " +
+                                        currentdate.getHours() + ":" +
+                                        currentdate.getMinutes() + ":" +
+                                        currentdate.getSeconds();
+                                    if (p_next != null) {
+                                        p_next.innerHTML = datetime;
+                                    }
+
+                                    let block = document.getElementById('lwsop_preloading_status_block');
+                                    if (block != null) {
+                                        block.classList.remove('hidden');
+                                    }
+
+                                    if (p_done != null) {
+                                        p_done.innerHTML = returnData['data']['filebased_cache']['preload_done'] + "/" + returnData['data']['filebased_cache']['preload_quantity']
+                                    }
+                                } else {
+                                    let p_info = document.getElementById('lwsop_current_preload_info');
+                                    let p_done = document.getElementById('lwsop_current_preload_done');
+
+
+                                    if (p_info != null) {
+                                        p_info.innerHTML = "<?php esc_html_e("Done", "lws-optimize"); ?>";
+                                    }
+
+                                    let block = document.getElementById('lwsop_preloading_status_block');
+                                    if (block != null) {
+                                        block.classList.add('hidden');
+                                    }
+
+                                    if (p_done != null) {
+                                        p_done.innerHTML = returnData['data']['filebased_cache']['preload_done'] + "/" + returnData['data']['filebased_cache']['preload_quantity']
+                                    }
+                                    callPopup('success', "<?php esc_html_e("Preloading is now deactivated.", "lws-optimize"); ?>");
                                 }
                             }
                             break;

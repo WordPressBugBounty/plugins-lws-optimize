@@ -146,7 +146,7 @@ $format_support = [
     </div>
 </div>
 
-<div class="lws_optimize_conversion_details">
+<div class="lws_optimize_conversion_details" style="border-bottom: 1px solid #d9dbdb;">
     <div class="lws_optimize_conversion_details_element">
         <img src="<?php echo esc_url(plugins_url('images/type-mime.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
         <span><?php esc_html_e('Conversion format', 'lws-optimize'); ?></span>
@@ -174,8 +174,25 @@ $format_support = [
     </div>
 </div>
 
+<div class="lws_optimize_image_conversion_main">
+    <div class="lws_optimize_image_conversion_main_left">
+        <h2 class="lws_optimize_image_conversion_title">
+            <span><?php esc_html_e('Automatic conversion on upload', 'lws-optimize'); ?></span>
+        </h2>
+        <div class="lws_optimize_image_conversion_description">
+            <span><?php esc_html_e('Automatically convert new images uploaded on your WordPress website.', 'lws-optimize'); ?></span>
+        </div>
+    </div>
+    <div class="lws_optimize_image_conversion_main_right">
+        <label class="lwsop_checkbox">
+            <input type="checkbox" id="lwsoppro_image_autoconversion_check" onchange="checkAutoupload(this)">
+            <span class="slider round"></span>
+        </label>
+    </div>
+</div>
+
 <div class="lwsop_oneclickconfig_cachestate_bottomtext" style="padding: 30px;">
-    <?php esc_html_e('To see the complete list of compressed images, restore images or automatically convert images on upload, go to the ', 'lws-optimize'); ?>
+    <?php esc_html_e('To see the complete list of compressed images ot restore images, go to the ', 'lws-optimize'); ?>
     <span class="lwsop_oneclickconfig_cachestate_link" onclick="window.location.href='?page=lws-op-config-advanced'"><?php esc_html_e('advanced mode', 'lws-optimize'); ?></span>.
 </div>
 

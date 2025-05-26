@@ -74,10 +74,15 @@ class LwsOptimizeImageOptimizationPro
      * and check the status of the conversion processes
      */
     public function lws_optimize_refresh_conversion_data() {
-
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Refreshing conversion data' . PHP_EOL);
-        fclose($logger);
+        try {
+            $logger = fopen($this->log_file, 'a');
+            if ($logger) {
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Refreshing conversion data' . PHP_EOL);
+                fclose($logger);
+            }
+        } catch (\Exception $e) {
+            error_log('Failed to write to log file: ' . $e->getMessage());
+        }
 
         // Format allowed to be converted
         $format = $this->format;
@@ -133,6 +138,22 @@ class LwsOptimizeImageOptimizationPro
             $path_info = pathinfo($file_path);
             $extension = strtolower($path_info['extension'] ?? '');
 
+            // Check if the filename contains multiple _lwsoptimized suffixes and fix it
+            if (preg_match('/_lwsoptimized(_lwsoptimized)+/', $path_info['filename'])) {
+                // Fix the filename to have only one _lwsoptimized suffix
+                $base_filename = preg_replace('/_lwsoptimized(_lwsoptimized)+/', '', $path_info['filename']);
+                $new_filename = $base_filename . '_lwsoptimized';
+                $new_file_path = $path_info['dirname'] . '/' . $new_filename . '.' . $extension;
+
+                // Rename the file if it exists
+                if (file_exists($file_path)) {
+                    rename($file_path, $new_file_path);
+                    // Update the attachment metadata
+                    update_post_meta($id, '_wp_attached_file', str_replace(ABSPATH, '', $new_file_path));
+                    $file_path = $new_file_path;
+                    $path_info['filename'] = $new_filename;
+                }
+            }
 
             // Check the file extension against the allowed formats array
             // If the extension is in there, then we have to convert it
@@ -147,6 +168,12 @@ class LwsOptimizeImageOptimizationPro
                 // but the files somehow exist, we delete them
                 // as it may means the conversion failed
                 if (file_exists($webp_path)) {
+                    if ($extension == "webp" && isset($images_listing[$id])) {
+                        if ($images_listing[$id]['format'] == 'webp') {
+                            $images_listing[$id]['converted'] = true;
+                            continue;
+                        }
+                    }
                     unlink($webp_path);
                 }
                 if (file_exists($avif_path)) {
@@ -176,8 +203,9 @@ class LwsOptimizeImageOptimizationPro
                     if (!empty($images_listing[$id])) {
                         // If the file does not exist but there is an original, we consider it not converted
                         if (!file_exists($file_path)) {
+                            $images_listing[$id]['path'] = str_replace('_lwsoptimized', '', $images_listing[$id]['path']);
                             if (file_exists($images_listing[$id]['path'])) {
-                                array_merge($images_listing[$id], [
+                                $images_listing[$id] = array_merge($images_listing[$id], [
                                     'converted' => false,
                                     'converted_path' => null,
                                     'converted_format' => null,
@@ -187,7 +215,8 @@ class LwsOptimizeImageOptimizationPro
 
                                 continue;
                             } else {
-                                unlink($images_listing[$id]);
+                                unset($images_listing[$id]);
+                                continue;
                             }
                         }
 
@@ -195,7 +224,7 @@ class LwsOptimizeImageOptimizationPro
                         $converted_size = filesize($file_path);
 
                         // Update the array with fresh data about the converted image without overriding the informations about the original
-                        array_merge($images_listing[$id], [
+                        $images_listing[$id] = array_merge($images_listing[$id], [
                             'converted' => true,
                             'converted_path' => $file_path,
                             'converted_format' => $extension,
@@ -241,6 +270,17 @@ class LwsOptimizeImageOptimizationPro
                         }
 
                     }
+                } else {
+                    if ($extension == 'webp') {
+                        // Add the image to the listing
+                        $images_listing[$id] = [
+                            'name' => $image->post_title,
+                            'path' => $file_path,
+                            'format' => $extension,
+                            'size' => filesize($file_path),
+                            'converted' => false,
+                        ];
+                    }
                 }
             }
         }
@@ -250,6 +290,9 @@ class LwsOptimizeImageOptimizationPro
         $converted_count = 0;
         $total_compression = 0;
 
+        $original_size = 0;
+        $converted_size = 0;
+
         foreach ($images_listing as $image) {
             if (isset($image['converted']) && $image['converted'] === true) {
                 $converted_count++;
@@ -257,11 +300,19 @@ class LwsOptimizeImageOptimizationPro
                 if (isset($image['compression'])) {
                     $total_compression += $image['compression'];
                 }
+
+                if (isset($image['converted_size']) && isset($image['size'])) {
+                    $converted_size += $image['converted_size'];
+                    $original_size += $image['size'];
+                }
             }
         }
 
+        $size_reduction_num = 0;
         if ($converted_count > 0) {
+            // Calculate the size reduction percentage
             $size_reduction = round($total_compression / $converted_count, 2) * 100;
+            $size_reduction_num = $original_size - $converted_size;
         } else {
             $size_reduction = 0;
         }
@@ -273,6 +324,7 @@ class LwsOptimizeImageOptimizationPro
         $conversion_options['images_converted'] = $converted_count;
         $conversion_options['images_left_to_convert'] = count($images_listing) - $converted_count;
         $conversion_options['size_reduction'] = $size_reduction;
+        $conversion_options['size_reduction_num'] = $this->lwsOpSizeConvert($size_reduction_num);
 
         // Manage the different crons. Only one cron can be active at any given time and priority is given to the pro version
 
@@ -297,7 +349,6 @@ class LwsOptimizeImageOptimizationPro
             wp_unschedule_event($pro_conversion, "lws_optimize_pro_image_conversion_cron");
             wp_unschedule_event($deconversion, "lws_optimize_image_deconversion_cron");
             $deconversion = false;
-            $standard_deconversion = false;
 
             $logger = fopen($this->log_file, 'a');
             fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Conflict : Both pro conversion and deconversion activated at the same time. Both removed.' . PHP_EOL);
@@ -341,17 +392,14 @@ class LwsOptimizeImageOptimizationPro
         if (isset($result['code']) && $result['code'] == 'SUCCESS') {
             $conversion_options['remaining_credits'] = $result['data']['credits'] ?? 2000;
             $conversion_options['api_key'] = $result['data']['api_key'] ?? '';
-        } else {
-            // error_log(json_encode(['code' => 'API_ERROR', 'message' => 'Failed to get remaining credits', 'data' => $response]));
-            $conversion_options['remaining_credits'] = "2000";
         }
 
-        // Save the updated options
+        // Save the updated options regardless of API response
         update_option('lws_optimize_image_conversion_options', $conversion_options);
 
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $conversion_options), JSON_PRETTY_PRINT));
-    }
 
+    }
 
     /**
      * Convert all images on the WordPress website using an external API
@@ -586,11 +634,27 @@ class LwsOptimizeImageOptimizationPro
         $logger = fopen($this->log_file, 'a');
         fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron lock now in place' . PHP_EOL);
         fclose($logger);
+        sleep(2);
 
 
         // Process up to 10 images per cron run to avoid timeouts
         $images_processed = 0;
         $max_images_per_run = 30;
+
+        // Determine max_images_per_run based on PHP's max_execution_time
+        $max_execution_time = ini_get('max_execution_time');
+        // If max_execution_time is 0 (unlimited) or high, use a reasonable default
+        if ($max_execution_time == 0 || $max_execution_time > 90) {
+            $max_images_per_run = 30;
+        } else {
+            // Estimate approximately 5-6 seconds per image conversion
+            // For 30 second timeout, process 5 images; for 60 seconds, process 10
+            $max_images_per_run = max(1, min(30, floor($max_execution_time / 2)));
+        }
+
+        // The max amount of times the convert_image function can fail on a HTTP_ERROR before stopping the process
+        $max_errors_allowed = 20;
+        $current_errors = 0;
 
         // Get all format allowed to be converted
         $format = $this->format;
@@ -623,6 +687,14 @@ class LwsOptimizeImageOptimizationPro
                 break;
             }
 
+            if ($current_errors >= $max_errors_allowed) {
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Maximum errors reached. Stopping cron at ' . $max_errors_allowed . ' errors' . PHP_EOL);
+                fclose($logger);
+
+                break;
+            }
+
             // If there is no converted key, then consider the image as not converted
             if (empty($image['converted'])) {
                 $image['converted'] = false;
@@ -630,17 +702,15 @@ class LwsOptimizeImageOptimizationPro
 
             // If the image is already converted...
             if ($image['converted']) {
-                // ... but the converted image cannot be found, convert it again
-                if (empty($image['converted_path']) || !file_exists($image['converted_path'])) {
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image at [{$image['converted_path']}] does not exist. Converting again" . PHP_EOL);
-                    fclose($logger);
-
+                // Check if the converted file exists, if not mark it as unconverted
+                if (!file_exists($image['converted_path'])) {
                     $image['converted'] = false;
-                } else {
-                    // ... otherwise skip it
-                    continue;
+
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Converted image [{$image['converted_path']}] not found, marking as unconverted" . PHP_EOL);
+                    fclose($logger);
                 }
+                continue;
             }
 
             // If the image has no PATH or does not exists, skip it and mark it as unavailable
@@ -654,12 +724,13 @@ class LwsOptimizeImageOptimizationPro
             }
 
             try {
-                $response = $this->convert_image($image['path']);
+                $response = $this->convert_image($image['path'], null);
             } catch (\Exception $e) {
                 $logger = fopen($this->log_file, 'a');
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error: {$e->getMessage()}" . PHP_EOL);
                 fclose($logger);
 
+                $current_errors++;
                 error_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
                 continue;
             }
@@ -680,8 +751,15 @@ class LwsOptimizeImageOptimizationPro
             if (!isset($result['code']) || $result['code'] !== 'SUCCESS') {
                 error_log($response);
 
+                // Add a HTTP failure to the count. If the API returns HTTP_ERRORs, generally it will NEVER return SUCCESS
+                if ($result['code'] == 'HTTP_ERROR') {
+                    $current_errors++;
+                }
+
                 $logger = fopen($this->log_file, 'a');
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error code: {$result['code']}" . PHP_EOL);
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error message: {$result['message']}" . PHP_EOL);
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error data: " . json_encode($result['data']) . PHP_EOL);
                 fclose($logger);
 
                 if ($result["code"] == "NO_CREDITS") {
@@ -733,16 +811,22 @@ class LwsOptimizeImageOptimizationPro
             $image['converted_size'] = $converted_size;
             $image['compression'] = $compression;
 
-            // Update the attachment in WordPress to use the new optimized file
-            $attachment = array(
-                'ID' => $key,
-                'post_mime_type' => 'image/' . $converted_format,
-            );
+            // Only update the attachment if the new format is different from the original
+            if ($converted_format !== $image['format']) {
+                $attachment = array(
+                    'ID' => $key,
+                    'post_mime_type' => 'image/' . $converted_format,
+                );
+                wp_update_post($attachment);
+            }
 
             // Update the attachment with the new mime type
+            // Delete old attachment metadata
+            delete_post_meta($key, '_wp_attachment_metadata');
+
+            // Update with new metadata
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $result['data']['optimized_path']));
             update_post_meta($key, '_wp_attached_file', str_replace(ABSPATH, '', $result['data']['optimized_path']));
-            wp_update_post($attachment);
 
             $logger = fopen($this->log_file, 'a');
             fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] has been updated in WordPress. Conversion successful" . PHP_EOL);
@@ -976,6 +1060,8 @@ class LwsOptimizeImageOptimizationPro
             if (!isset($result['code']) || $result['code'] !== 'SUCCESS') {
                 $logger = fopen($this->log_file, 'a');
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error code: {$result['code']}" . PHP_EOL);
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error message: {$result['message']}" . PHP_EOL);
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error data: " . json_encode($result['data']) . PHP_EOL);
                 fclose($logger);
 
                 error_log($response);
@@ -1015,16 +1101,21 @@ class LwsOptimizeImageOptimizationPro
             $image['converted_size'] = $converted_size;
             $image['compression'] = $compression;
 
-            // Update the attachment in WordPress to use the new optimized file
-            $attachment = array(
-                'ID' => $key,
-                'post_mime_type' => 'image/' . $converted_format,
-            );
+            // Only update the attachment if the new format is different from the original
+            if ($converted_format !== $image['format']) {
+                $attachment = array(
+                    'ID' => $key,
+                    'post_mime_type' => 'image/' . $converted_format,
+                );
+                wp_update_post($attachment);
+            }
+
+            // Delete old attachment metadata
+            delete_post_meta($key, '_wp_attachment_metadata');
 
             // Update the attachment with the new mime type
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $converted_path));
             update_post_meta($key, '_wp_attached_file', str_replace(ABSPATH, '', $converted_path));
-            wp_update_post($attachment);
 
             $logger = fopen($this->log_file, 'a');
             fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] has been updated in WordPress. Conversion successful" . PHP_EOL);
@@ -1177,9 +1268,11 @@ class LwsOptimizeImageOptimizationPro
             }
 
             // Do not deconvert images that are not converted
-            if (!$image['converted']) {
+            if (!$image['converted'] && strpos($image['converted_path'], '_lwsoptimized') === false) {
                 continue;
             }
+
+            $image['path'] = str_replace('_lwsoptimized', '', $image['path']);
 
             // If the original image cannot be found, then consider this image as unavailable
             if (empty($image['path']) || !file_exists($image['path'])) {
@@ -1201,17 +1294,21 @@ class LwsOptimizeImageOptimizationPro
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
             }
+            // Only update the attachment if the format is different
+            if ($format !== $image['converted_format']) {
+                $attachment = array(
+                    'ID' => $key,
+                    'post_mime_type' => 'image/' . $format,
+                );
+                wp_update_post($attachment);
+            }
 
-            // Update the attachment in WordPress to use the old file
-            $attachment = array(
-                'ID' => $key,
-                'post_mime_type' => 'image/' . $format,
-            );
+            // Delete old attachment metadata first
+            delete_post_meta($key, '_wp_attachment_metadata');
 
-            // Update the attachment with the new mime type
+            // Update the attachment with original file and mime type
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $image['path']));
             update_post_meta($key, '_wp_attached_file', str_replace(ABSPATH, '', $image['path']));
-            wp_update_post($attachment);
 
             $logger = fopen($this->log_file, 'a');
             fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image['path']}] has been updated in WordPress. Deconversion successful" . PHP_EOL);
@@ -1323,7 +1420,7 @@ class LwsOptimizeImageOptimizationPro
     {
         // Only convert if the file type is image ; otherwise just return the untouched $file array
         if (substr($file['type'], 0, 5) === "image") {
-            // Only convert JPGs and PNGs
+            // Only convert JPGs, PNGs and WebP
             $format = $this->format;
 
             $format_string = implode('|', $format);
@@ -1435,32 +1532,68 @@ class LwsOptimizeImageOptimizationPro
                 $filename = $pathInfo['filename'];
                 $dirname = $pathInfo['dirname'];
 
-                // First check AVIF (higher priority)
-                $optimized_avif = "$dirname/{$filename}_lwsoptimized.avif";
-                if (file_exists($optimized_avif)) {
-                    $optimized_url = str_replace($image_path, $optimized_avif, $image_url);
-                    $optimized_cache[$image_path] = $optimized_url;
+                // Check if this is a thumbnail by looking for dimensions in filename (e.g. -150x150)
+                if (preg_match('/-(\d+x\d+)$/', $filename, $matches)) {
+                    // Extract base name before dimensions and dimensions separately
+                    $baseName = preg_replace('/-(\d+x\d+)$/', '', $filename);
+                    $dimensions = $matches[1];
 
-                    // Add type attribute for browsers
-                    $img_tag = str_replace($image_url, $optimized_url, $img_tag);
-                    if (strpos($img_tag, 'type=') === false) {
-                        $img_tag = str_replace('<img ', '<img type="image/avif" ', $img_tag);
+                    // First check AVIF with _lwsoptimized before dimensions
+                    $optimized_avif = "$dirname/{$baseName}_lwsoptimized{$dimensions}.avif";
+                    if (file_exists($optimized_avif)) {
+                        $optimized_url = str_replace($image_path, $optimized_avif, $image_url);
+                        $optimized_cache[$image_path] = $optimized_url;
+
+                        // Add type attribute for browsers
+                        $img_tag = str_replace($image_url, $optimized_url, $img_tag);
+                        if (strpos($img_tag, 'type=') === false) {
+                            $img_tag = str_replace('<img ', '<img type="image/avif" ', $img_tag);
+                        }
+                        return $img_tag;
                     }
-                    return $img_tag;
-                }
 
-                // Then check WebP
-                $optimized_webp = "$dirname/{$filename}_lwsoptimized.webp";
-                if (file_exists($optimized_webp)) {
-                    $optimized_url = str_replace($image_path, $optimized_webp, $image_url);
-                    $optimized_cache[$image_path] = $optimized_url;
+                    // Then check WebP with _lwsoptimized before dimensions
+                    $optimized_webp = "$dirname/{$baseName}_lwsoptimized{$dimensions}.webp";
+                    if (file_exists($optimized_webp)) {
+                        $optimized_url = str_replace($image_path, $optimized_webp, $image_url);
+                        $optimized_cache[$image_path] = $optimized_url;
 
-                    // Add type attribute for browsers
-                    $img_tag = str_replace($image_url, $optimized_url, $img_tag);
-                    if (strpos($img_tag, 'type=') === false) {
-                        $img_tag = str_replace('<img ', '<img type="image/webp" ', $img_tag);
+                        // Add type attribute for browsers
+                        $img_tag = str_replace($image_url, $optimized_url, $img_tag);
+                        if (strpos($img_tag, 'type=') === false) {
+                            $img_tag = str_replace('<img ', '<img type="image/webp" ', $img_tag);
+                        }
+                        return $img_tag;
                     }
-                    return $img_tag;
+                } else {
+                    // Regular image (not thumbnail)
+                    // First check AVIF (higher priority)
+                    $optimized_avif = "$dirname/{$filename}_lwsoptimized.avif";
+                    if (file_exists($optimized_avif)) {
+                        $optimized_url = str_replace($image_path, $optimized_avif, $image_url);
+                        $optimized_cache[$image_path] = $optimized_url;
+
+                        // Add type attribute for browsers
+                        $img_tag = str_replace($image_url, $optimized_url, $img_tag);
+                        if (strpos($img_tag, 'type=') === false) {
+                            $img_tag = str_replace('<img ', '<img type="image/avif" ', $img_tag);
+                        }
+                        return $img_tag;
+                    }
+
+                    // Then check WebP
+                    $optimized_webp = "$dirname/{$filename}_lwsoptimized.webp";
+                    if (file_exists($optimized_webp)) {
+                        $optimized_url = str_replace($image_path, $optimized_webp, $image_url);
+                        $optimized_cache[$image_path] = $optimized_url;
+
+                        // Add type attribute for browsers
+                        $img_tag = str_replace($image_url, $optimized_url, $img_tag);
+                        if (strpos($img_tag, 'type=') === false) {
+                            $img_tag = str_replace('<img ', '<img type="image/webp" ', $img_tag);
+                        }
+                        return $img_tag;
+                    }
                 }
 
                 // No optimized version found
@@ -1570,7 +1703,7 @@ class LwsOptimizeImageOptimizationPro
      * @param string|null $endpath The PATH where to save the new image (mainly to use with the on-upload conversion)
      * @return string JSON response from the API, either an error or the converted image
      */
-    public function convert_image($path, $endpath = null) {
+    public function convert_image($path, $endpath = null, $origin = null) {
         // The API Key is unique to each domain and generated by the API the first time.
         // If using a key not corresponding with the domain, then the API will return an error.
         $api_key = get_option('lws_optimize_image_api_key', false);
@@ -1578,6 +1711,11 @@ class LwsOptimizeImageOptimizationPro
         // Check for the existence of the file at $path
         if (!file_exists($path)) {
             return json_encode(['code' => 'FILE_NOT_FOUND', 'message' => 'File not found', 'data' => $path]);
+        }
+
+        if (empty($origin)) {
+            $wpdb = $GLOBALS['wpdb'];
+            $origin = $wpdb->get_var("SELECT option_value FROM {$wpdb->options} WHERE option_name = 'siteurl'");
         }
 
         // Create the file to be sent via cURL
@@ -1592,7 +1730,7 @@ class LwsOptimizeImageOptimizationPro
             'image' => $cfile,
         ]);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Origin: ' . site_url() ?: '',
+            'Origin: ' . $origin,
             $api_key ? "X-Api-Key: $api_key" : null
         ]);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -1922,5 +2060,14 @@ class LwsOptimizeImageOptimizationPro
                 'domains' => $domains
             ]
         ]);
+    }
+
+    public function lwsOpSizeConvert($size)
+    {
+        $unit = array(__('b', 'lws-optimize'), __('K', 'lws-optimize'), __('M', 'lws-optimize'), __('G', 'lws-optimize'), __('T', 'lws-optimize'), __('P', 'lws-optimize'));
+        if ($size <= 0) {
+            return '0 ' . $unit[1];
+        }
+        return @round($size / pow(1024, ($i = floor(log($size, 1024)))), 2) . '' . $unit[$i];
     }
 }

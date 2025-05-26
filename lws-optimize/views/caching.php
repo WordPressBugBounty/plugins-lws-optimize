@@ -376,8 +376,8 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
-        <label class="lwsop_checkbox" for="lws_op_fb_cache_manage_preload">
-            <input type="checkbox" name="lws_op_fb_cache_manage_preload" id="lws_op_fb_cache_manage_preload" <?php echo isset($config_array['filebased_cache']['preload']) && $config_array['filebased_cache']['preload'] == "true" ? esc_attr("checked") : ""; ?>>
+        <label class="lwsop_checkbox" for="lws_optimize_preload_cache_check">
+            <input type="checkbox" name="lws_optimize_preload_cache_check" id="lws_optimize_preload_cache_check" <?php echo isset($config_array['filebased_cache']['preload']) && $config_array['filebased_cache']['preload'] == "true" ? esc_attr("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -739,130 +739,6 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 }
             });
         }, 750);
-    });
-
-    document.getElementById('lws_op_fb_cache_manage_preload').addEventListener('change', function() {
-        let button = this;
-        let value = this.checked;
-        this.disabled = true;
-        let amount = document.getElementById('lws_op_fb_cache_preload_amount');
-        amount = amount.value ?? 3;
-
-        let originalText = '';
-        let originalLoading = button.previousElementSibling;
-        if (!originalLoading || !originalLoading.classList.contains('loading-spinner')) {
-            let loadingSpan = document.createElement('span');
-            loadingSpan.classList.add('loading-spinner');
-            loadingSpan.innerHTML = `
-            <span name="loading" style="padding-left:5px">
-                <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading_blue.svg') ?>" alt="" width="18px" height="18px">
-            </span>
-            `;
-            button.parentNode.insertBefore(loadingSpan, button);
-            originalText = button.innerHTML;
-        }
-
-        let ajaxRequest = jQuery.ajax({
-            url: ajaxurl,
-            type: "POST",
-            timeout: 120000,
-            context: document.body,
-            data: {
-                action: "lwsop_start_preload_fb",
-                state: value,
-                amount: amount,
-                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('update_fb_preload')); ?>'
-            },
-            success: function(data) {
-                button.disabled = false;
-                let originalLoading = button.previousElementSibling;
-                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
-                    originalLoading.remove();
-                }
-
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e("Bad data returned. Cannot activate preloading.", "lws-optimize"); ?>");
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e("Bad data returned. Cannot activate preloading.", "lws-optimize"); ?>");
-                    console.log(e);
-                    return 0;
-                }
-
-                switch (returnData['code']) {
-                    case 'SUCCESS':
-                        if (value) {
-                            callPopup('success', "<?php esc_html_e("File-based cache is now preloading. Depending on the amount of URLs, it may take a few minutes for the process to be done.", "lws-optimize"); ?>");
-                            let p_info = document.getElementById('lwsop_current_preload_info');
-                            let p_done = document.getElementById('lwsop_current_preload_done');
-                            let p_next = document.getElementById('lwsop_next_preload_info');
-
-                            if (p_info != null) {
-                                p_info.innerHTML = "<?php esc_html_e("Ongoing", "lws-optimize"); ?>";
-                            }
-                            var currentdate = new Date();
-                            var datetime = currentdate.getDate() + "-" +
-                                (currentdate.getMonth() + 1) + "-" +
-                                currentdate.getFullYear() + " " +
-                                currentdate.getHours() + ":" +
-                                currentdate.getMinutes() + ":" +
-                                currentdate.getSeconds();
-                            if (p_next != null) {
-                                p_next.innerHTML = datetime;
-                            }
-
-                            let block = document.getElementById('lwsop_preloading_status_block');
-                            if (block != null) {
-                                block.classList.remove('hidden');
-                            }
-
-                            if (p_done != null) {
-                                p_done.innerHTML = returnData['data']['preload_done'] + "/" + returnData['data']['preload_quantity']
-                            }
-                        } else {
-                            let p_info = document.getElementById('lwsop_current_preload_info');
-                            let p_done = document.getElementById('lwsop_current_preload_done');
-
-
-                            if (p_info != null) {
-                                p_info.innerHTML = "<?php esc_html_e("Done", "lws-optimize"); ?>";
-                            }
-
-                            let block = document.getElementById('lwsop_preloading_status_block');
-                            if (block != null) {
-                                block.classList.add('hidden');
-                            }
-
-                            if (p_done != null) {
-                                p_done.innerHTML = returnData['data']['preload_done'] + "/" + returnData['data']['preload_quantity']
-                            }
-                            callPopup('success', "<?php esc_html_e("Preloading is now deactivated.", "lws-optimize"); ?>");
-                        }
-                        break;
-                    case 'FAILED_ACTIVATE':
-                        callPopup('error', "<?php esc_html_e("Preloading failed to be modified.", "lws-optimize"); ?>");
-                        button.checked = !button.checked;
-                        break;
-                    default:
-                        callPopup('error', "<?php esc_html_e("Unknown data returned. Preloading state cannot be verified.", "lws-optimize"); ?>");
-                        break;
-                }
-            },
-            error: function(error) {
-                button.disabled = false;
-                let originalLoading = button.previousElementSibling;
-                if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
-                    originalLoading.remove();
-                }
-                callPopup('error', "<?php esc_html_e("Unknown error. Cannot change preloading state.", "lws-optimize"); ?>");
-                console.log(error);
-            }
-        });
-
     });
 
     // Global event listener for the modal
@@ -1633,7 +1509,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         preload_check_button.addEventListener('click', lwsop_refresh_preloading_cache);
 
         function lwsop_refresh_preloading_cache() {
-            let checkbox_preload = document.getElementById('lws_op_fb_cache_manage_preload');
+            let checkbox_preload = document.getElementById('lws_optimize_preload_cache_check');
             if (checkbox_preload.checked != true) {
                 return 0;
             }

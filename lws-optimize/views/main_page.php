@@ -382,10 +382,6 @@ foreach ($plugins as $slug => $plugin) {
                     <span class="lwsop_oneclickconfig_title_left_main"><?php esc_html_e('Speed up your website in 1 clic', 'lws-optimize'); ?></span>
                     <span class="lwsop_oneclickconfig_title_left_sub"><?php esc_html_e('Choose an optimization level with one click and/or access advanced settings to customize.', 'lws-optimize'); ?></span>
                 </div>
-                <button class="lwsop_oneclickconfig_button" id="lwsop_oneclickconfig" onclick="lwsop_change_settings_group(this)">
-                    <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                    <?php esc_html_e('Save', 'lws-optimize'); ?>
-                </button>
             </h2>
 
             <div class="lwsop_oneclickconfig_table">
@@ -493,6 +489,13 @@ foreach ($plugins as $slug => $plugin) {
                     </div>
                 </div>
             </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+                <button class="lwsop_oneclickconfig_button" id="lwsop_oneclickconfig" onclick="lwsop_change_settings_group(this)">
+                    <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
+                    <?php esc_html_e('Save', 'lws-optimize'); ?>
+                </button>
+        </div>
         </div>
 
         <div class="lwsop_oneclickconfig_block">
@@ -602,6 +605,7 @@ foreach ($plugins as $slug => $plugin) {
         <button id="lws_optimize_validate_changes" class="lwsop_oneclickconfig_button" disabled onclick="lws_op_update_configuration(this)">
         <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
         <?php esc_html_e('Save new configuration', 'lws-optimize'); ?>
+        <div class="lws_op_config_button_amounts" id="lws_optimize_amount_configuration_elements">0</div>
     </div>
 <?php endif; ?>
 

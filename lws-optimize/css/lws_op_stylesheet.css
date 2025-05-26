@@ -4248,9 +4248,24 @@ body.mobile.modal-open #wpwrap {
     font-family: 'Poppins';
     font-weight: 500;
     padding: 8px 20px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
+
 .lwsop_oneclickconfig_button:disabled {
     opacity: 0.5;
+}
+
+.lws_op_config_button_amounts {
+    width: 30px;
+    height: 30px;
+    border-radius: 20px;
+    background: #1C469D 0% 0% no-repeat padding-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .lwsop_oneclickconfig_table {
@@ -4457,7 +4472,7 @@ input.lwsop_oneclickconfig_radiobutton[type=radio]:focus {
     margin-top: 30px;
     flex-wrap: wrap;
     gap: 10px;
-    z-index: 50;
+    z-index: 10000;
 }
 
 .lws_op_return_to_dashboard {

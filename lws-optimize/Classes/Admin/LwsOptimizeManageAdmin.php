@@ -147,7 +147,7 @@ class LwsOptimizeManageAdmin
                 let target = event.target;
 
                 if (target.closest('#wp-admin-bar-lws_optimize_clearcache')) {
-                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: fixed; width: 100%; height: 100%; background: #000000a3; z-index: 10000';></div>");
+                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: fixed; width: 100%; height: 100%; background: #000000a3; z-index: 100000';></div>");
                     jQuery.ajax({
                         url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",
@@ -166,7 +166,7 @@ class LwsOptimizeManageAdmin
                         }
                     });
                 } else if (target.closest('#wp-admin-bar-lws_optimize_clearopcache')) {
-                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: fixed; width: 100%; height: 100%; background: #000000a3; z-index: 10000';></div>");
+                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: fixed; width: 100%; height: 100%; background: #000000a3; z-index: 100000';></div>");
                     jQuery.ajax({
                         url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",
@@ -221,7 +221,7 @@ class LwsOptimizeManageAdmin
                         }
                     });
                 } else if (target.closest('#wp-admin-bar-lws_optimize_clearcache_page')) {
-                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: absolute; width: 100%; height: 100%; background: #000000a3; z-index: 10000';></div>");
+                    document.body.insertAdjacentHTML('afterbegin', "<div id='lws_optimize_temp_black' style='position: absolute; width: 100%; height: 100%; background: #000000a3; z-index: 100000';></div>");
                     jQuery.ajax({
                         url: "<?php echo esc_url(admin_url('admin-ajax.php')); ?>",
                         type: "POST",

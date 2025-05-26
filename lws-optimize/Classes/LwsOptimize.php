@@ -2059,11 +2059,42 @@ class LwsOptimize
                 } elseif ($state == "false") {
                     $this->unset_cache_htaccess();
                 }
+            } elseif ($id == "preload_cache") {
+                // Clean previous preload data
+                delete_option('lws_optimize_sitemap_urls');
+                delete_option('lws_optimize_preload_is_ongoing');
+
+                // Update preload configuration
+                $optimize_options['filebased_cache']['preload'] = $state;
+                $optimize_options['filebased_cache']['preload_amount'] = $optimize_options['filebased_cache']['preload_amount'] ?: 3;
+                $optimize_options['filebased_cache']['preload_done'] = 0;
+                $optimize_options['filebased_cache']['preload_ongoing'] = $state;
+
+                // Get sitemap URLs
+                $urls = $this->get_sitemap_urls();
+                $optimize_options['filebased_cache']['preload_quantity'] = count($urls);
+
+                // Manage scheduled preload task
+                if ($state === "false") {
+                    // Disable scheduled preload
+                    if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                        wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
+                    }
+                } else {
+                    // Enable scheduled preload
+                    if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+                        wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
+                    }
+                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                }
             }
         }
 
         // Clear cache when updating data
         apply_filters("lws_optimize_clear_filebased_cache", false, "lws_optimize_manage_config");
+        if (function_exists("opcache_reset")) {
+            opcache_reset();
+        }
 
         if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
             $this->lws_optimize_set_cache_htaccess();
