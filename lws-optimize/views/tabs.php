@@ -35,6 +35,22 @@
     <?php endforeach ?>
 </div>
 
+<div class="modal fade" id="lws_optimize_exclusion_modale" tabindex='-1' role='dialog' aria-hidden='true'>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <h2 class="lwsop_exclude_title" id="lws_optimize_exclusion_modale_title"></h2>
+            <form method="POST" id="lws_optimize_exclusion_modale_form"></form>
+            <div class="lwsop_modal_buttons" id="lws_optimize_exclusion_modale_buttons">
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" id="lws_optimize_exclusion_form_fe" class="lwsop_validatebutton">
+                    <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
+                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const tabs = document.querySelectorAll('.tab_nav_lwsoptimize[role="tab"]');
 
@@ -832,87 +848,13 @@
             });
         }
 
-        // Global event listener
-        document.addEventListener("click", function(event) {
-            let domain = "<?php echo esc_url(site_url()); ?>"
-            var element = event.target;
-
-            // Remove exception
-            if (element.getAttribute('name') == "lwsoptimize_less_urls") {
-                let amount_element = document.getElementsByName("lwsoptimize_exclude_url").length;
-                if (amount_element > 1) {
-                    let element_remove = element.closest('div.lwsoptimize_exclude_element');
-                    element_remove.remove();
-                } else {
-                    // Empty the last remaining field instead of removing it
-                    element.parentNode.parentNode.querySelector('input[name="lwsoptimize_exclude_url"]').value = ""
-                }
-
-                let exclude_amount = document.querySelectorAll('div#lwsoptimize_exclude_element_grid input[name="lwsoptimize_exclude_url"]').length;
-                if (exclude_amount <= 1 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "block";
-                } else if (exclude_amount == 2 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "0";
-                } else if (document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "30px";
-                }
-            }
-
-            // Add new exception
-            if (element.getAttribute('name') == "lwsoptimize_more_urls") {
-                let amount_element = document.getElementsByName("lwsoptimize_exclude_url").length;
-                let element_create = element.closest('div.lwsoptimize_exclude_element');
-
-                let new_element = document.createElement("div");
-                new_element.insertAdjacentHTML("afterbegin", `
-                <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="">
-                <div class="lwsoptimize_exclude_action_buttons">
-                    <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
-                    <div class="lwsoptimize_exclude_action_button green" name="lwsoptimize_more_urls">+</div>
-                </div>
-            `);
-                new_element.classList.add('lwsoptimize_exclude_element');
-
-                element_create.after(new_element);
-
-                let exclude_amount = document.querySelectorAll('div#lwsoptimize_exclude_element_grid input[name="lwsoptimize_exclude_url"]').length;
-                if (exclude_amount <= 1 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "block";
-                } else if (exclude_amount == 2 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "0";
-                } else if (document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
-                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "30px";
-                }
-            }
-
-            // Save exceptions
-            if (element.getAttribute('id') == "lws_optimize_exclusion_form_fe") {
-                let form = document.getElementById('lws_optimize_exclusion_modale_form');
-                if (form !== null) {
-                    form.dispatchEvent(new Event('submit'));
-                }
-            }
-
-            // Save exceptions (media)
-            if (element.getAttribute('id') == "lws_optimize_exclusion_form_media") {
-                let form = document.getElementById('lws_optimize_exclusion_lazyload_form');
-                if (form !== null) {
-                    form.dispatchEvent(new Event('submit'));
-                }
-            }
-        });
-
         // Fetch exceptions and send them to the server
         if (document.getElementById('lws_optimize_exclusion_modale_form') !== null) {
             document.getElementById('lws_optimize_exclusion_modale_form').addEventListener("submit", function(event) {
+                event.preventDefault();
                 var element = event.target;
 
                 if (element.getAttribute('id') == "lws_optimize_exclusion_modale_form") {
-                    event.preventDefault();
                     document.body.style.pointerEvents = "none";
                     let formData = jQuery(element).serializeArray();
 
@@ -1172,13 +1114,13 @@
                 let buttons = document.getElementById('lws_optimize_exclusion_modale_buttons');
                 let form = document.getElementById('lws_optimize_exclusion_modale_form');
                 form.innerHTML = `
-                <div class="loading_animation">
-                    <img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="120px" height="105px">
-                </div>
-            `;
-                buttons.innerHTML = `
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
-            `;
+                    <div class="loading_animation">
+                        <img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="120px" height="105px">
+                    </div>
+                `;
+                    buttons.innerHTML = `
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                `;
 
                 title.innerHTML = "<?php esc_html_e('Add fonts to preload', 'lws-optimize'); ?>";
                 let ajaxRequest = jQuery.ajax({
@@ -1276,5 +1218,79 @@
                 jQuery("#lws_optimize_exclusion_modale").modal('show');
             });
         }
+
+        // Global event listener
+        document.addEventListener("click", function(event) {
+            let domain = "<?php echo esc_url(site_url()); ?>"
+            var element = event.target;
+
+            // Remove exception
+            if (element.getAttribute('name') == "lwsoptimize_less_urls") {
+                let amount_element = document.getElementsByName("lwsoptimize_exclude_url").length;
+                if (amount_element > 1) {
+                    let element_remove = element.closest('div.lwsoptimize_exclude_element');
+                    element_remove.remove();
+                } else {
+                    // Empty the last remaining field instead of removing it
+                    element.parentNode.parentNode.querySelector('input[name="lwsoptimize_exclude_url"]').value = ""
+                }
+
+                let exclude_amount = document.querySelectorAll('div#lwsoptimize_exclude_element_grid input[name="lwsoptimize_exclude_url"]').length;
+                if (exclude_amount <= 1 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "block";
+                } else if (exclude_amount == 2 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "0";
+                } else if (document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "30px";
+                }
+            }
+
+            // Add new exception
+            if (element.getAttribute('name') == "lwsoptimize_more_urls") {
+                let amount_element = document.getElementsByName("lwsoptimize_exclude_url").length;
+                let element_create = element.closest('div.lwsoptimize_exclude_element');
+
+                let new_element = document.createElement("div");
+                new_element.insertAdjacentHTML("afterbegin", `
+                <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="">
+                <div class="lwsoptimize_exclude_action_buttons">
+                    <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
+                    <div class="lwsoptimize_exclude_action_button green" name="lwsoptimize_more_urls">+</div>
+                </div>
+            `);
+                new_element.classList.add('lwsoptimize_exclude_element');
+
+                element_create.after(new_element);
+
+                let exclude_amount = document.querySelectorAll('div#lwsoptimize_exclude_element_grid input[name="lwsoptimize_exclude_url"]').length;
+                if (exclude_amount <= 1 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "block";
+                } else if (exclude_amount == 2 && document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "0";
+                } else if (document.getElementById('lwsoptimize_exclude_element_grid') !== null) {
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.display = "grid";
+                    document.getElementById('lwsoptimize_exclude_element_grid').style.rowGap = "30px";
+                }
+            }
+
+            // Save exceptions
+            if (element.getAttribute('id') == "lws_optimize_exclusion_form_fe") {
+                let form = document.getElementById('lws_optimize_exclusion_modale_form');
+                if (form !== null) {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            }
+
+            // Save exceptions (media)
+            if (element.getAttribute('id') == "lws_optimize_exclusion_form_media") {
+                let form = document.getElementById('lws_optimize_exclusion_lazyload_form');
+                if (form !== null) {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
     </script>
 <?php endif ?>

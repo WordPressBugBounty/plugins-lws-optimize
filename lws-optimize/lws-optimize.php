@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimizeWpCli;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.3.5
+ * Version:           3.3.6
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.8
@@ -127,7 +127,19 @@ function lws_optimize_deactivation()
 function lws_optimize_deletion()
 {
     // Remove the cache folder
-    apply_filters("lws_optimize_clear_filebased_cache", false);
+    $cache_dir = ABSPATH . 'wp-content/cache/lwsoptimize/';
+    if (file_exists($cache_dir)) {
+        WP_Filesystem();
+        global $wp_filesystem;
+        $wp_filesystem->rmdir($cache_dir, true);
+    }
+
+    $upload_dir = ABSPATH . 'wp-content/uploads/lwsoptimize/';
+    if (file_exists($upload_dir)) {
+        WP_Filesystem();
+        global $wp_filesystem;
+        $wp_filesystem->rmdir($upload_dir, true);
+    }
 
     // Deactivate the cron of the preloading and convertion
     wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');

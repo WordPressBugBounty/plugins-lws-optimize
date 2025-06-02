@@ -1166,9 +1166,9 @@ class LwsOptimizeImageOptimizationPro
             // If there are no unconverted images or all remaining ones are unavailable
             if ($unconverted_images == 0 || $all_unavailable) {
                 // Unschedule the cron
-                $next_conversion = wp_next_scheduled("lws_optimize_pro_image_conversion_cron");
+                $next_conversion = wp_next_scheduled("lws_optimize_image_conversion_cron");
                 if ($next_conversion) {
-                    wp_unschedule_event($next_conversion, "lws_optimize_pro_image_conversion_cron");
+                    wp_unschedule_event($next_conversion, "lws_optimize_image_conversion_cron");
 
                     $logger = fopen($this->log_file, 'a');
                     fwrite($logger, '[' . date('Y-m-d H:i:s') . '] No more images to convert or all remaining images are unavailable. Stopping cron.' . PHP_EOL);

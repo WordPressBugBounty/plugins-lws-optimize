@@ -750,7 +750,7 @@ class LwsOptimizeWpCli {
      * ## OPTIONS
      *
      * <action>
-     * : The action to perform on configuration (status|clear|activate|deactivate|basic|advanced|complete)
+     * : The action to perform on configuration (activate|deactivate|basic|advanced|complete)
      *
      * [<time>]
      * : Duration for deactivation (in seconds) for <deactivate> action. Must be 300, 1800, 3600, or 86400 seconds. Default is 300 seconds.

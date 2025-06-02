@@ -517,8 +517,8 @@ msgid "Boost your website easily!"
 msgstr "Boostez votre site web facilement !"
 
 #: tabs.php:
-msgid "LWS Optimize lets you get better performances on your WordPress website. Improve your loading times thanks to our tools: caching, media optimisation, files minification and concatenation..."
-msgstr "Le plugin LWS Optimize vous permet d'obtenir de meilleures performances sur votre site WordPress. Améliorez vos temps de chargement grâce aux outils disponibles : mise en cache, optimisation des médias, minification et concaténation des fichiers..."
+msgid "Your WordPress website, faster, lighter, smoother. LWS Optimize improves loading speed through caching, media optimization, minification, file concatenation..."
+msgstr "Votre site WordPress, plus rapide, plus léger, plus fluide. LWS Optimize améliore la vitesse de chargement grâce à la mise en cache, l’optimisation des médias, la minification, la concaténation des fichiers…"
 
 #: tabs.php:
 msgid "Toolkits and shortcuts to manage, secure and optimise your WordPress website."
@@ -2473,3 +2473,5 @@ msgstr "Un cache serveur stocke des copies statiques de pages web pour réduire 
 msgid "All caches have been deleted"
 msgstr "Tous les caches ont été supprimés"
 
+msgid "<b>-15%</b> on our <a href=\"https://www.lws.fr/support/\" target=\"_blank\" class=\"link_to_support\">WordPress hostings</a> with the code"
+msgstr "<b>-15%</b> sur nos <a href=\"https://www.lws.fr/support/\" target=\"_blank\" class=\"link_to_support\">hébergements WordPress</a> avec le code"

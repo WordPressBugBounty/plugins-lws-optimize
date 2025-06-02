@@ -866,7 +866,7 @@ input.lws_op_checkbox_file_based_cache[type="checkbox"]:checked::before {
     animation-name: tip;
     animation-duration: .6s;
     animation-fill-mode: both;
-    bottom: -25px;
+    bottom: -5px;
 }
 
 .tip:before {
@@ -2017,6 +2017,7 @@ button.lwsop_validatebutton {
 
 .lwsop_bluebanner_alt.no_blue {
     background-color: #ffffff;
+    border-radius: 10px;
 }
 
 h2.lwsop_bluebanner_title {
@@ -3225,7 +3226,6 @@ svg.checkmark {
     background: #FFFFFF 0% 0% no-repeat padding-box;
     box-shadow: 0px 0px 15px #00000012;
     border-radius: 10px;
-    max-width: 1040px;
     gap: 30px;
 }
 
@@ -3239,7 +3239,7 @@ svg.checkmark {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
 }
 
@@ -3291,19 +3291,56 @@ span.logo_lws {
     padding: 20px 30px;
 }
 
-.lwsop_top_rateus {
+.lwsop_rate_block {
     background: #E9F4FD 0% 0% no-repeat padding-box;
     border-radius: 10px;
     font: normal normal 600 13px/23px sans-serif;
     font-family: Poppins, sans-serif;
-    max-width: 480px;
+    max-width: 493px;
     width: 100%;
-    padding: 10px 15px;
+    padding: 12px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.lwsop_top_code {
+    border: 1px solid #1D2327;
+    border-radius: 5px;
+    font: normal normal normal 13px/22px Poppins;
+    color: #1D2327;
+    padding: 5px 10px;
+}
+
+.lwsop_top_rateus {
+    font: normal normal 600 13px/23px sans-serif;
+    font-family: Poppins, sans-serif;
+    width: 100%;
     display: flex;
     align-items: center;
     flex-direction: row;
     gap: 3px;
     flex-wrap: wrap;
+    border-bottom: 1px solid #BCD0E0;
+    padding-bottom: 10px;
+}
+
+.lwsop_bottom_rateus {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    gap: 3px;
+    flex-wrap: wrap;
+    padding-top: 13px;
+    font: normal normal normal 13px/22px Poppins, sans-serif;
+    color: #1D2327;
+}
+
+a.link_to_support {
+    text-decoration: underline;
+    font: normal normal normal 13px/22px Poppins;
+    color: #2893E9;
 }
 
 a.link_to_rating_with_stars {
@@ -4472,7 +4509,7 @@ input.lwsop_oneclickconfig_radiobutton[type=radio]:focus {
     margin-top: 30px;
     flex-wrap: wrap;
     gap: 10px;
-    z-index: 10000;
+    z-index: 9999;
 }
 
 .lws_op_return_to_dashboard {
@@ -4518,6 +4555,15 @@ span.loading-spinner {
 
     .lwsop_oneclickconfig_table_column:last-child {
         border-bottom: none;
+    }
+
+    .lwsop_top_title_block {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: nowrap;
+        gap: 10px;
+        flex-direction: column;
     }
 }
 

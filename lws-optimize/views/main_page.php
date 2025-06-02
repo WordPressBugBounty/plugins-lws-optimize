@@ -13,6 +13,9 @@ function lwsOpSizeConvert($size)
 // Fetch the configuration for each elements of LWSOptimize
 $config_array = get_option('lws_optimize_config_array', []);
 
+$personnalized = $config_array['personnalized'] ?? "false";
+$autosetup  = $config_array['autosetup_type'] ?? "essential";
+
 // Check whether the plugin is deactivated temporarily or not
 $is_deactivated = get_option('lws_optimize_deactivate_temporarily');
 if ($is_deactivated) {
@@ -308,70 +311,63 @@ foreach ($plugins as $slug => $plugin) {
         <div class="lwsoptimize_main_content_fogged"></div>
     <?php endif ?>
     <div class="lwsop_title_banner">
-        <div class="lwsop_top_banner" <?php if ($cache_state !== null) : ?>style="max-width: none;" <?php endif ?>>
+        <div class="lwsop_top_banner">
             <img src="<?php echo esc_url(plugins_url('images/plugin_lws_optimize_logo.svg', __DIR__)) ?>" alt="LWS Optimize Logo" width="80px" height="80px">
             <div class="lwsop_top_banner_text">
                 <div class="lwsop_top_title_block">
-                    <div class="lwsop_top_title">
-                        <span><?php echo esc_html('LWS Optimize'); ?></span>
-                        <span><?php esc_html_e('by', 'lws-optimize'); ?></span>
-                        <span class="logo_lws"></span>
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <div class="lwsop_top_title">
+                            <span><?php echo esc_html('LWS Optimize'); ?></span>
+                            <span><?php esc_html_e('by', 'lws-optimize'); ?></span>
+                            <span class="logo_lws"></span>
 
-                        <button class="lwsop_dropdown_button">
-                            <span class="lwsop_dropdown_text">
-                                <?php if ($is_deactivated) : ?>
-                                    <?php echo esc_html__('Deactivated for: ', 'lws-optimize') . $is_deactivated; ?>
-                                <?php else : ?>
-                                    <?php esc_html_e('Deactivate temporarily: ', 'lws-optimize'); ?>
-                                <?php endif; ?>
-                            </span>
-                            <span class="lwsop_dropdown_arrow">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
-                            </span>
-                            <div class="lwsop_dropdown_content">
-                                <?php if ($is_deactivated) : ?>
-                                    <a href="#" data-config="0"><?php esc_html_e('Activate', 'lws-optimize'); ?></a>
-                                <?php else : ?>
-                                    <a href="#" data-config="300"><?php esc_html_e('5 minutes', 'lws-optimize'); ?></a>
-                                    <a href="#" data-config="1800"><?php esc_html_e('30 minutes', 'lws-optimize'); ?></a>
-                                    <a href="#" data-config="3600"><?php esc_html_e('1 hour', 'lws-optimize'); ?></a>
-                                    <a href="#" data-config="86400"><?php esc_html_e('1 day', 'lws-optimize'); ?></a>
-                                <?php endif; ?>
+                            <button class="lwsop_dropdown_button">
+                                <span class="lwsop_dropdown_text">
+                                    <?php if ($is_deactivated) : ?>
+                                        <?php echo esc_html__('Deactivated for: ', 'lws-optimize') . $is_deactivated; ?>
+                                    <?php else : ?>
+                                        <?php esc_html_e('Deactivate temporarily: ', 'lws-optimize'); ?>
+                                    <?php endif; ?>
+                                </span>
+                                <span class="lwsop_dropdown_arrow">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </span>
+                                <div class="lwsop_dropdown_content">
+                                    <?php if ($is_deactivated) : ?>
+                                        <a href="#" data-config="0"><?php esc_html_e('Activate', 'lws-optimize'); ?></a>
+                                    <?php else : ?>
+                                        <a href="#" data-config="300"><?php esc_html_e('5 minutes', 'lws-optimize'); ?></a>
+                                        <a href="#" data-config="1800"><?php esc_html_e('30 minutes', 'lws-optimize'); ?></a>
+                                        <a href="#" data-config="3600"><?php esc_html_e('1 hour', 'lws-optimize'); ?></a>
+                                        <a href="#" data-config="86400"><?php esc_html_e('1 day', 'lws-optimize'); ?></a>
+                                    <?php endif; ?>
+                                </div>
+                            </button>
+                        </div>
+
+                        <div class="lwsop_top_description">
+                            <?php echo esc_html_e('Your WordPress website, faster, lighter, smoother. LWS Optimize improves loading speed through caching, media optimization, minification, file concatenation...', 'lws-optimize'); ?>
+                        </div>
+                    </div>
+                    <div class="lwsop_rate_block">
+                        <div class="lwsop_top_rateus">
+                            <?php echo esc_html_e('You like this plugin ? ', 'lws-optimize'); ?>
+                            <?php echo wp_kses(__('A <a href="https://wordpress.org/support/plugin/lws-optimize/reviews/#new-post" target="_blank" class="link_to_rating_with_stars"><div class="lwsop_stars">★★★★★</div> rating</a> will motivate us a lot.', 'lws-optimize'), ['a' => ['class' => [], 'href' => [], 'target' => []], 'div' => ['class' => []]]); ?>
+                        </div>
+                        <div class="lwsop_bottom_rateus">
+                            <img src="<?php echo esc_url(plugins_url('images/flamme.svg', __DIR__)) ?>" alt="Flamme Logo" width="16px" height="20px" style="margin-right: 5px;">
+                            <?php echo wp_kses(__('<b>-15%</b> on our <a href="https://www.lws.fr/support/" target="_blank" class="link_to_support">WordPress hostings</a> with the code', 'lws-optimize'), ['b' => [], 'a' => ['class' => [], 'href' => [], 'target' => []]]); ?>
+                            <div class="lwsop_top_code">
+                                WPEXT15
+                                <img src="<?php echo esc_url(plugins_url('images/copier_new.svg', __DIR__)) ?>" alt="Logo Copy Element" width="15px" height="18px" onclick="lwsoptimize_copy_clipboard(this)" readonly text="WPEXT15">
                             </div>
-                        </button>
+                        </div>
                     </div>
-
-
-                    <div class="lwsop_top_rateus">
-                        <?php echo esc_html_e('You like this plugin ? ', 'lws-optimize'); ?>
-                        <?php echo wp_kses(__('A <a href="https://wordpress.org/support/plugin/lws-optimize/reviews/#new-post" target="_blank" class="link_to_rating_with_stars"><div class="lwsop_stars">★★★★★</div> rating</a> will motivate us a lot.', 'lws-optimize'), ['a' => ['class' => [], 'href' => [], 'target' => []], 'div' => ['class' => []]]); ?>
-                    </div>
-                </div>
-                <div class="lwsop_top_description">
-                    <?php echo esc_html_e('LWS Optimize lets you get better performances on your WordPress website. Improve your loading times thanks to our tools: caching, media optimisation, files minification and concatenation...', 'lws-optimize'); ?>
                 </div>
             </div>
         </div>
-
-        <?php if ($cache_state === null) : ?>
-            <div class="lwsop_top_banner_right">
-                <div class="lwsop_top_banner_right_top">
-                    <img src="<?php echo esc_url(plugins_url('images/wordpress_black.svg', __DIR__)) ?>" alt="Logo WP noir" width="20px" height="20px">
-                    <div>
-                        <?php echo wp_kses(__('<b>Exclusive</b>: Get <b>15%</b> off your WordPress hosting', 'lws-optimize'), ['b' => []]); ?>
-                    </div>
-                </div>
-                <div class="lwsop_top_banner_right_bottom">
-                    <label onclick="lwsoptimize_copy_clipboard(this)" readonly text="WPEXT15">
-                        <span><?php echo esc_html('WPEXT15'); ?></span>
-                        <img src="<?php echo esc_url(plugins_url('images/copier_new.svg', __DIR__)) ?>" alt="Logo Copy Element" width="15px" height="18px">
-                    </label>
-                    <a target="_blank" href="<?php echo esc_url('https://www.lws.fr/hebergement_wordpress.php'); ?>"><?php esc_html_e("Let's go!", 'lws-optimize'); ?></a>
-                </div>
-            </div>
-        <?php endif ?>
     </div>
 
     <?php if (sanitize_text_field($_GET['page']) === 'lws-op-config') : ?>
@@ -386,9 +382,11 @@ foreach ($plugins as $slug => $plugin) {
 
             <div class="lwsop_oneclickconfig_table">
                 <div class="lwsop_oneclickconfig_table_column">
+                    <?php if ($personnalized == "true" && $autosetup == "essential") : ?>
                     <div class="lwsop_oneclickconfig_floating_bubble">
                         <?php esc_html_e('Personnalized in advanced mode', 'lws-optimize'); ?>
                     </div>
+                    <?php endif; ?>
                     <div class="lwsop_oneclickconfig_table_column_header">
                         <div class="lwsop_oneclickconfig_table_column_header_radio">
                             <input class="lwsop_oneclickconfig_radiobutton" type="radio" name="lwsop_oneclickconfig_radio[]" value="essential">
@@ -417,6 +415,11 @@ foreach ($plugins as $slug => $plugin) {
                     </div>
                 </div>
                 <div class="lwsop_oneclickconfig_table_column">
+                    <?php if ($personnalized == "true" && $autosetup == "optimized") : ?>
+                    <div class="lwsop_oneclickconfig_floating_bubble">
+                        <?php esc_html_e('Personnalized in advanced mode', 'lws-optimize'); ?>
+                    </div>
+                    <?php endif; ?>
                     <div class="lwsop_oneclickconfig_table_column_header">
                         <div class="lwsop_oneclickconfig_table_column_header_radio">
                             <input class="lwsop_oneclickconfig_radiobutton" type="radio" name="lwsop_oneclickconfig_radio[]" value="optimized">
@@ -453,6 +456,11 @@ foreach ($plugins as $slug => $plugin) {
                     </div>
                 </div>
                 <div class="lwsop_oneclickconfig_table_column">
+                    <?php if ($personnalized == "true" && $autosetup == "max") : ?>
+                    <div class="lwsop_oneclickconfig_floating_bubble">
+                        <?php esc_html_e('Personnalized in advanced mode', 'lws-optimize'); ?>
+                    </div>
+                    <?php endif; ?>
                     <div class="lwsop_oneclickconfig_table_column_header">
                         <div class="lwsop_oneclickconfig_table_column_header_radio">
                             <input class="lwsop_oneclickconfig_radiobutton" type="radio" name="lwsop_oneclickconfig_radio[]" value="max">
@@ -661,22 +669,6 @@ foreach ($plugins as $slug => $plugin) {
 
 <div id="lwsop_popup_alerting"></div>
 
-<div class="modal fade" id="lws_optimize_exclusion_modale" tabindex='-1' role='dialog' aria-hidden='true'>
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <h2 class="lwsop_exclude_title" id="lws_optimize_exclusion_modale_title"></h2>
-            <form method="POST" id="lws_optimize_exclusion_modale_form"></form>
-            <div class="lwsop_modal_buttons" id="lws_optimize_exclusion_modale_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
-                <button type="button" id="lws_optimize_exclusion_form_fe" class="lwsop_validatebutton">
-                    <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
     // Execute the function callback after ms milliseconds unless delay() is called again
     function delay(callback, ms) {
@@ -795,13 +787,16 @@ foreach ($plugins as $slug => $plugin) {
     }
 
     function lwsoptimize_copy_clipboard(input) {
-        navigator.clipboard.writeText(input.innerText.trim());
+        let text = input.getAttribute('text');
+        let element = input.parentNode;
+        navigator.clipboard.writeText(text);
+        jQuery(element).append("<div class='tip' id='copied_tip'>" +
+            "<?php esc_html_e('Copied!', 'lws-optimize'); ?>" +
+            "</div>");
+
         setTimeout(function() {
             jQuery('#copied_tip').remove();
         }, 500);
-        jQuery(input).append("<div class='tip' id='copied_tip'>" +
-            "<?php esc_html_e('Copied!', 'lws-optimize'); ?>" +
-            "</div>");
     }
 
     // Toggle dropdown when hovering or clicking the button
