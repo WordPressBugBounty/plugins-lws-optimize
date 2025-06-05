@@ -2475,3 +2475,21 @@ msgstr "Tous les caches ont été supprimés"
 
 msgid "<b>-15%</b> on our <a href=\"https://www.lws.fr/support/\" target=\"_blank\" class=\"link_to_support\">WordPress hostings</a> with the code"
 msgstr "<b>-15%</b> sur nos <a href=\"https://www.lws.fr/support/\" target=\"_blank\" class=\"link_to_support\">hébergements WordPress</a> avec le code"
+
+msgid "Memcached has been found but a connexion could not be made: Memcached server is not responding and cannot be activated."
+msgstr "Memcached a été trouvé mais une connexion n'a pas pu être établie : le serveur Memcached ne répond pas et ne peut pas être activé."
+
+msgid "The Memcached module could not be found and no connexions could be made. Please make sure Memcached is activated on your server."
+msgstr "Le module Memcached n'a pas pu être trouvé et aucune connexion n'a pu être établie. Veuillez vous assurer que Memcached est activé sur votre serveur."
+
+msgid "VarnishCache is not activated on this cPanel. Please go to your cPanel and activate it."
+msgstr "VarnishCache n'est pas activé sur ce cPanel. Veuillez vous rendre dans votre cPanel et l'activer."
+
+msgid "The .htaccess file is not writable. Please check the permissions of this file."
+msgstr "Le fichier .htaccess n'est pas accessible en écriture. Veuillez vérifier les permissions de ce fichier."
+
+msgid "The .htaccess file could not be opened. Please check the permissions of this file."
+msgstr "Le fichier .htaccess n'a pas pu être ouvert. Veuillez vérifier les permissions de ce fichier."
+
+msgid "The .htaccess file could not be updated. Please check the permissions of this file."
+msgstr "Le fichier .htaccess n'a pas pu être mis à jour. Veuillez vérifier les permissions de ce fichier."

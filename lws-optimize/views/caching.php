@@ -126,13 +126,6 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 <span class="slider round"></span>
             </label>
         </div>
-    <?php elseif ($memcached_locked) : ?>
-        <div class="lwsop_contentblock_rightside custom">
-            <label class="lwsop_checkbox" for="lws_open_prom_lws_memcached_checkbox">
-                <input type="checkbox" name="" id="lws_open_prom_lws_memcached_checkbox" data-toggle="modal" data-target="#lws_optimize_lws_prom">
-                <span class="slider round"></span>
-            </label>
-        </div>
     <?php else : ?>
         <div class="lwsop_contentblock_rightside">
             <label class="lwsop_checkbox" for="lws_optimize_memcached_check">

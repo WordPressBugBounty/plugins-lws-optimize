@@ -68,6 +68,9 @@ class LwsOptimize
         // Store the array globally to avoid updating it each time
         $this->optimize_options = $optimize_options;
 
+        // Add custom action hooks for external cache clearing
+        add_action('lws_optimize_clear_all_cache', [$this, 'clear_all_cache_external']);
+        add_action('lws_optimize_clear_url_cache', [$this, 'clear_url_cache_external'], 10, 1);
 
         // If it got installed by the LWS Auto-installer, then proceed to activate it on recommended by default
         $auto_installer_mode = get_option('lws_from_autoinstall_optimize', false);
@@ -262,6 +265,92 @@ class LwsOptimize
 
         add_action('init', [$this, "lws_optimize_init"]);
         add_action("wp_ajax_lws_optimize_do_pagespeed", [$this, "lwsop_do_pagespeed_test"]);
+    }
+
+    /**
+     * Clear all cache via external do_action hook
+     * Usage: do_action('lws_optimize_clear_all_cache');
+     */
+    public function clear_all_cache_external() {
+        $logger = fopen($this->log_file, 'a');
+        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] External request: Clearing all cache' . PHP_EOL);
+        fclose($logger);
+
+        // Delete file-based cache directories
+        $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
+
+        // Clear dynamic cache if available
+        $this->lwsop_dump_all_dynamic_caches();
+
+        // Clear opcache if available
+        if (function_exists("opcache_reset")) {
+            opcache_reset();
+        }
+
+        // Reset preloading state if needed
+        delete_option('lws_optimize_sitemap_urls');
+        delete_option('lws_optimize_preload_is_ongoing');
+        $this->after_cache_purge_preload();
+
+        return true;
+    }
+
+    /**
+     * Clear cache for a specific URL via external do_action hook
+     * Usage: do_action('lws_optimize_clear_url_cache', 'https://example.com/page/');
+     *
+     * @param string $url The URL to clear cache for
+     * @return bool True on success, false on failure
+     */
+    public function clear_url_cache_external($url) {
+        if (empty($url)) {
+            return false;
+        }
+
+        $logger = fopen($this->log_file, 'a');
+        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] External request: Clearing cache for URL: ' . $url . PHP_EOL);
+        fclose($logger);
+
+        // Parse the URL to get the path
+        $parsed_url = parse_url($url);
+        $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
+
+        if (empty($path_uri)) {
+            return false;
+        }
+
+        // Get cache paths for desktop and mobile
+        $path_desktop = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri);
+        $path_mobile = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri, true);
+
+        $removed = false;
+
+        // Remove desktop cache files
+        $files_desktop = glob($path_desktop . '/index_*');
+        if (!empty($files_desktop)) {
+            array_map('unlink', array_filter($files_desktop, 'is_file'));
+            $removed = true;
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed desktop cache for: ' . $path_uri . PHP_EOL);
+            fclose($logger);
+        }
+
+        // Remove mobile cache files
+        $files_mobile = glob($path_mobile . '/index_*');
+        if (!empty($files_mobile)) {
+            array_map('unlink', array_filter($files_mobile, 'is_file'));
+            $removed = true;
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed mobile cache for: ' . $path_uri . PHP_EOL);
+            fclose($logger);
+        }
+
+        // If cache was cleared, also clear dynamic cache for this URL
+        if ($removed) {
+            $this->lwsop_dump_all_dynamic_caches();
+        }
+
+        return $removed;
     }
 
     /**

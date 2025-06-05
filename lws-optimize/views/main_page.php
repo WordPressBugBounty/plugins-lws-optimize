@@ -15,6 +15,9 @@ $config_array = get_option('lws_optimize_config_array', []);
 
 $personnalized = $config_array['personnalized'] ?? "false";
 $autosetup  = $config_array['autosetup_type'] ?? "essential";
+if (!in_array($autosetup, ['essential', 'optimized', 'max'])) {
+    $autosetup = "essential";
+}
 
 // Check whether the plugin is deactivated temporarily or not
 $is_deactivated = get_option('lws_optimize_deactivate_temporarily');

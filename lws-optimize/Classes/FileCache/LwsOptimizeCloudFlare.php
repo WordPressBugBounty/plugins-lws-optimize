@@ -106,13 +106,13 @@ class LwsOptimizeCloudFlare {
         return 0;
     }
 
-    public function lws_optimize_change_cloudflare_ttl(int $ttl) {
+    public function lws_optimize_change_cloudflare_ttl($ttl) {
         $options = get_option('lws_optimize_config_array', []);
         $token_key = $options['cloudflare']['api_token'] ?? null;
         $zone_id = $options['cloudflare']['zone_id'] ?? null;
 
         if (!isset($options['cloudflare']['state']) || $options['cloudflare']['state'] !== "true") {
-            wp_die(json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
+            return (json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
         }
 
         // CloudFlare allowed values: 0, 30, 60, 300, 1200, 1800, 3600, 7200, 10800, 14400, 18000, 28800, 43200, 57600, 72000, 86400, 172800, 259200, 345600, 432000, 691200, 1382400, 2073600, 2678400
@@ -164,21 +164,21 @@ class LwsOptimizeCloudFlare {
         );
 
         if (is_wp_error($result)) {
-            wp_die(json_encode(['code' => "ERROR_CURL", 'data' => $result], JSON_PRETTY_PRINT));
+            return(json_encode(['code' => "ERROR_CURL", 'data' => $result], JSON_PRETTY_PRINT));
         }
 
         $body = wp_remote_retrieve_body($result);
         $result = json_decode($body, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_die(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
+            return(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
         }
 
         if (!($result['success'] ?? false)) {
-            wp_die(json_encode(array('code' => "REQUEST_FAILED", 'data' => $result), JSON_PRETTY_PRINT));
+            return(json_encode(array('code' => "REQUEST_FAILED", 'data' => $result), JSON_PRETTY_PRINT));
         }
 
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $result), JSON_PRETTY_PRINT));
+        return(json_encode(array('code' => "SUCCESS", 'data' => $result), JSON_PRETTY_PRINT));
     }
 
     public function lws_optimize_check_cf_key() {

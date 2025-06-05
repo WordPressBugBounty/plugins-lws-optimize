@@ -454,43 +454,64 @@
                                 amount_elements_text.innerHTML = 0;
                             }
 
-                            if (returnData['errors'] && returnData['errors'].length > 0) {
-                                let errors = returnData['errors'];
-                                for (let i = 0; i < errors.length; i++) {
-                                    switch (errors[i]) {
-                                        case 'MEMCACHE_NOT_WORK':
-                                            callPopup('error', "<?php esc_html_e("Memcached has been found but a connexion could not be made: Memcached server is not responding and cannot be activated.", "lws-optimize"); ?>");
-                                            break;
-                                        case 'MEMCACHE_NOT_FOUND':
-                                            callPopup('error', "<?php esc_html_e("The Memcached module could not be found and no connexions could be made. Please make sure Memcached is activated on your server.", "lws-optimize"); ?>");
-                                            break;
-                                        case 'REDIS_ALREADY_HERE':
-                                            callPopup('error', "<?php esc_html_e("Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached.", "lws-optimize"); ?>");
-                                            break;
-                                        case 'PANEL_CACHE_OFF':
-                                            callPopup('warning', "<?php esc_html_e('LWSCache is not activated on this hosting. Please go to your LWSPanel and activate it.', 'lws-optimize'); ?>");
-                                            break;
-                                        case 'CPANEL_CACHE_OFF':
-                                            callPopup('warning', "<?php esc_html_e('VarnishCache is not activated on this cPanel. Please go to your cPanel and activate it.', 'lws-optimize'); ?>");
-                                            break;
-                                        case 'INCOMPATIBLE':
-                                            callPopup('error', "<?php esc_html_e('LWSCache is not available on this hosting. Please migrate to a LWS hosting to use this action.', 'lws-optimize'); ?>");
-                                            break;
-                                        case 'HTACCESS_NOT_WRITABLE':
-                                            callPopup('error', "<?php esc_html_e('The .htaccess file is not writable. Please check the permissions of this file.', 'lws-optimize'); ?>");
-                                            break;
-                                        case 'HTACCESS_WRITE_FAILED':
-                                            callPopup('error', "<?php esc_html_e('The .htaccess file could not be updated. Please check the permissions of this file.', 'lws-optimize'); ?>");
-                                            break;
-                                        case 'HTACCESS_OPEN_FAILED':
-                                            callPopup('error', "<?php esc_html_e('The .htaccess file could not be opened. Please check the permissions of this file.', 'lws-optimize'); ?>");
-                                            break;
-                                        case 'HTACCESS_UPDATE_FAILED':
-                                            callPopup('error', "<?php esc_html_e('The .htaccess file could not be updated. Please check the permissions of this file.', 'lws-optimize'); ?>");
-                                            break;
-                                        default:
-                                            break;
-                                    }
+
+                            let memcached = document.getElementById('lws_optimize_memcached_check');
+                            let errors = returnData['errors'];
+                            // Check if errors is an array or object and process accordingly
+                            if (Array.isArray(errors)) {
+                                errors.forEach(function(error) {
+                                    processError(error);
+                                });
+                            } else if (typeof errors === 'object' && errors !== null) {
+                                Object.keys(errors).forEach(function(key) {
+                                    processError(errors[key]);
+                                });
+                            }
+
+
+                            function processError(error) {
+                                switch (error) {
+                                    case 'MEMCACHE_NOT_WORK':
+                                        if (memcached) {
+                                            memcached.checked = false;
+                                        }
+                                        callPopup('error', "<?php esc_html_e("Memcached has been found but a connexion could not be made: Memcached server is not responding and cannot be activated.", "lws-optimize"); ?>");
+                                        break;
+                                    case 'MEMCACHE_NOT_FOUND':
+                                        if (memcached) {
+                                            memcached.checked = false;
+                                        }
+                                        callPopup('error', "<?php esc_html_e("The Memcached module could not be found and no connexions could be made. Please make sure Memcached is activated on your server.", "lws-optimize"); ?>");
+                                        break;
+                                    case 'REDIS_ALREADY_HERE':
+                                        if (memcached) {
+                                            memcached.checked = false;
+                                        }
+                                        callPopup('error', "<?php esc_html_e("Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached.", "lws-optimize"); ?>");
+                                        break;
+                                    case 'PANEL_CACHE_OFF':
+                                        callPopup('warning', "<?php esc_html_e('LWSCache is not activated on this hosting. Please go to your LWSPanel and activate it.', 'lws-optimize'); ?>");
+                                        break;
+                                    case 'CPANEL_CACHE_OFF':
+                                        callPopup('warning', "<?php esc_html_e('VarnishCache is not activated on this cPanel. Please go to your cPanel and activate it.', 'lws-optimize'); ?>");
+                                        break;
+                                    case 'INCOMPATIBLE':
+                                        callPopup('error', "<?php esc_html_e('LWSCache is not available on this hosting. Please migrate to a LWS hosting to use this action.', 'lws-optimize'); ?>");
+                                        break;
+                                    case 'HTACCESS_NOT_WRITABLE':
+                                        callPopup('error', "<?php esc_html_e('The .htaccess file is not writable. Please check the permissions of this file.', 'lws-optimize'); ?>");
+                                        break;
+                                    case 'HTACCESS_WRITE_FAILED':
+                                        callPopup('error', "<?php esc_html_e('The .htaccess file could not be updated. Please check the permissions of this file.', 'lws-optimize'); ?>");
+                                        break;
+                                    case 'HTACCESS_OPEN_FAILED':
+                                        callPopup('error', "<?php esc_html_e('The .htaccess file could not be opened. Please check the permissions of this file.', 'lws-optimize'); ?>");
+                                        break;
+                                    case 'HTACCESS_UPDATE_FAILED':
+                                        callPopup('error', "<?php esc_html_e('The .htaccess file could not be updated. Please check the permissions of this file.', 'lws-optimize'); ?>");
+                                        break;
+                                    default:
+                                        break;
                                 }
                             }
 
