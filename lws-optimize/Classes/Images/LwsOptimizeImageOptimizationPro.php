@@ -114,15 +114,32 @@ class LwsOptimizeImageOptimizationPro
 
         $images_listing = $conversion_options['images_listing'] ?? [];
 
-        // Get all images from the media library
+        // Get all images from the media library with pagination to reduce memory usage
         $args = array(
             'post_type'      => 'attachment',
             'post_mime_type' => 'image',
             'post_status'    => 'inherit',
-            'posts_per_page' => -1,
+            'posts_per_page' => 200, // Process in chunks to avoid memory issues
+            'paged'          => 1,
         );
-        $query = new \WP_Query($args);
-        $images = $query->posts;
+
+        $images = [];
+        $has_more = true;
+
+        while ($has_more) {
+            // Use global namespace for WordPress core classes
+            $query = new \WP_Query($args);
+
+            if (!empty($query->posts)) {
+                $images = array_merge($images, $query->posts);
+                $args['paged']++;
+            } else {
+                $has_more = false;
+            }
+
+            // Free memory
+            wp_reset_postdata();
+        }
 
         foreach ($images as $image) {
             $id = $image->ID;
@@ -1730,7 +1747,7 @@ class LwsOptimizeImageOptimizationPro
             'image' => $cfile,
         ]);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Origin: ' . $origin,
+            'Origin: ' . rtrim($origin, '/'),
             $api_key ? "X-Api-Key: $api_key" : null
         ]);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);

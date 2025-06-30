@@ -70,27 +70,6 @@ $format_support = [
 </div>
 
 <div class="lwop_compatibility_alerts">
-    <?php if ($format_support['gd']['avif'] == false && $format_support['gd']['webp'] == false) : ?>
-        <div class="lwop_alert lwop_alert_warning">
-            <i class="dashicons dashicons-warning"></i>
-            <?php esc_html_e('Your server cannot create WebP or AVIF image thumbnails. JPEG will be used instead.', 'lws-optimize'); ?>
-            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF or WebP formats. WordPress uses this library to generate thumbnails of your images, so they will be created in JPEG format instead.", "lws-optimize"); ?>">
-        </div>
-    <?php else : ?>
-        <?php if ($format_support['gd']['avif'] == false) : ?>
-            <div class="lwop_alert lwop_alert_warning">
-                <i class="dashicons dashicons-warning"></i>
-                <?php esc_html_e('Your server cannot create AVIF thumbnails. JPEG will be used instead for thumbnails.', 'lws-optimize'); ?>
-                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF format. Since WordPress uses this library to generate thumbnail versions of your images, AVIF thumbnails will be created as JPEG instead.", "lws-optimize"); ?>">
-            </div>
-        <?php elseif ($format_support['gd']['webp'] == false) : ?>
-            <div class="lwop_alert lwop_alert_warning">
-                <i class="dashicons dashicons-info-outline"></i>
-                <?php esc_html_e('Your server cannot create WebP thumbnails. JPEG will be used instead for thumbnails.', 'lws-optimize'); ?>
-                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support WebP format. Since WordPress uses this library to generate thumbnail versions of your images, WebP thumbnails will be created as JPEG instead.", "lws-optimize"); ?>">
-            </div>
-        <?php endif; ?>
-    <?php endif; ?>
     <?php if ($format_support['imagick']['available'] == false) : ?>
         <div class="lwop_alert lwop_alert_error">
             <i class="dashicons dashicons-dismiss"></i>
@@ -129,7 +108,7 @@ $format_support = [
                     <?php echo esc_html__('Remaining credits: ', 'lws-optimize'); ?>
                 </span>
                 <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsoppro_conversion_credits">-</span>
-                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('Credits are used to convert images with our API. You get 2000 free credits to start with. Additional credits will soon be purchasable on our website.', 'lws-optimize'); ?>">
+                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e('Credits are used to convert images with our API. You get 20000 free credits to start with. Additional credits will soon be purchasable on our website.', 'lws-optimize'); ?>">
             </div>
         </div>
 
@@ -635,6 +614,41 @@ $format_support = [
                 modal_title = '<?php esc_html_e('Convert images', 'lws-optimize'); ?>';
 
                 modal_text = `
+                    <div class="lwop_compatibility_alerts">
+                        <?php if ($format_support['gd']['avif'] == false && $format_support['gd']['webp'] == false) : ?>
+                            <div class="lwop_alert lwop_alert_warning">
+                                <i class="dashicons dashicons-warning"></i>
+                                <?php esc_html_e('Your server cannot create WebP or AVIF image thumbnails. JPEG will be used instead.', 'lws-optimize'); ?>
+                                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF or WebP formats. WordPress uses this library to generate thumbnails of your images, so they will be created in JPEG format instead.", "lws-optimize"); ?>">
+                            </div>
+                        <?php else : ?>
+                            <?php if ($format_support['gd']['avif'] == false) : ?>
+                                <div class="lwop_alert lwop_alert_warning">
+                                    <i class="dashicons dashicons-warning"></i>
+                                    <?php esc_html_e("AVIF conversion is not available on your server. While images can still be converted to AVIF, their thumbnails, generated by WordPress automatically, won't. JPEG will be used for thoses.", 'lws-optimize'); ?>
+                                </div>
+                            <?php elseif ($format_support['gd']['webp'] == false) : ?>
+                                <div class="lwop_alert lwop_alert_warning">
+                                    <i class="dashicons dashicons-info-outline"></i>
+                                    <?php esc_html_e("WebP conversion is not available on your server. While images can still be converted to WebP, their thumbnails, generated by WordPress automatically, won't. JPEG will be used for thoses.", 'lws-optimize'); ?>
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <?php if ($format_support['imagick']['available'] == false) : ?>
+                            <div class="lwop_alert lwop_alert_error">
+                                <i class="dashicons dashicons-dismiss"></i>
+                                <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
+                                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("The Imagick PHP extension is not installed on your server. This extension is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
+                            </div>
+                        <?php elseif ($format_support['imagick']['webp'] == false) : ?>
+                            <div class="lwop_alert lwop_alert_error">
+                                <i class="dashicons dashicons-dismiss"></i>
+                                <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
+                                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's Imagick library doesn't support WebP format. This library is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
                     <span class="lws_optimize_image_conversion_modal_element" style="position: relative;">
                         <h3 class="lws_optimize_image_conversion_modal_element_title" style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; width: 100%;">
                             <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
@@ -757,6 +771,43 @@ $format_support = [
                 modal_title = '<?php esc_html_e('Convert images on upload', 'lws-optimize'); ?>';
 
                 modal_text = `
+                    <div class="lwop_compatibility_alerts">
+                        <?php if ($format_support['gd']['avif'] == false && $format_support['gd']['webp'] == false) : ?>
+                            <div class="lwop_alert lwop_alert_warning">
+                                <i class="dashicons dashicons-warning"></i>
+                                <?php esc_html_e('Your server cannot create WebP or AVIF image thumbnails. JPEG will be used instead.', 'lws-optimize'); ?>
+                                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF or WebP formats. WordPress uses this library to generate thumbnails of your images, so they will be created in JPEG format instead.", "lws-optimize"); ?>">
+                            </div>
+                        <?php else : ?>
+                            <?php if ($format_support['gd']['avif'] == false) : ?>
+                                <div class="lwop_alert lwop_alert_warning">
+                                    <i class="dashicons dashicons-warning"></i>
+                                    <?php esc_html_e('Your server cannot create AVIF thumbnails. JPEG will be used instead for thumbnails.', 'lws-optimize'); ?>
+                                    <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF format. Since WordPress uses this library to generate thumbnail versions of your images, AVIF thumbnails will be created as JPEG instead.", "lws-optimize"); ?>">
+                                </div>
+                            <?php elseif ($format_support['gd']['webp'] == false) : ?>
+                                <div class="lwop_alert lwop_alert_warning">
+                                    <i class="dashicons dashicons-info-outline"></i>
+                                    <?php esc_html_e('Your server cannot create WebP thumbnails. JPEG will be used instead for thumbnails.', 'lws-optimize'); ?>
+                                    <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support WebP format. Since WordPress uses this library to generate thumbnail versions of your images, WebP thumbnails will be created as JPEG instead.", "lws-optimize"); ?>">
+                                </div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <?php if ($format_support['imagick']['available'] == false) : ?>
+                            <div class="lwop_alert lwop_alert_error">
+                                <i class="dashicons dashicons-dismiss"></i>
+                                <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
+                                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("The Imagick PHP extension is not installed on your server. This extension is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
+                            </div>
+                        <?php elseif ($format_support['imagick']['webp'] == false) : ?>
+                            <div class="lwop_alert lwop_alert_error">
+                                <i class="dashicons dashicons-dismiss"></i>
+                                <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
+                                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's Imagick library doesn't support WebP format. This library is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
                     <span class="lws_optimize_image_conversion_modal_element" style="position: relative;">
                         <h3 class="lws_optimize_image_conversion_modal_element_title" style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; width: 100%;">
                             <span style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
@@ -798,6 +849,10 @@ $format_support = [
                 </button>
             </div>
         `;
+
+        jQuery(document).ready(function() {
+            jQuery('[data-toggle="tooltip"]').tooltip();
+        });
     }
 
     // Manage the fake select in the conversion modal

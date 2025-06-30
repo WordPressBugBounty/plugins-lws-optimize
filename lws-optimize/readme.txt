@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.7
+Stable tag: 3.3.8
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -186,6 +186,13 @@ After activation, we recommend starting with the pre-configured optimization pro
 
 == Changelog ==
 
+= 3.3.8 =
+* Dynamic Cache now removed when deactivating plugin
+* Fixed issue where "Clear all" button would not empty dynamic cache
+* Fixed typos
+* Image warnings (if librairy is too old) now moved to the modale
+* Autopurge will now purge related pages (like /blog, tags and categories pages)
+
 = 3.3.7 =
 * Fixed issue where Filecache could not be deactivated
 * Fixed Memcached (and others) errors not being reported when updating in advanced mode
@@ -198,7 +205,7 @@ After activation, we recommend starting with the pre-configured optimization pro
 * Automatic purge modified to fix error where cache would be deleted entirely
 
 = 3.3.5 =
-* Now allows WebP to be converted using the API, resulting in either compressed WebP or AVIF 
+* Now allows WebP to be converted using the API, resulting in either compressed WebP or AVIF
 * Thumbnails should now correctly use their optimized format
 * Some options were still updating instantly in the option page and should now be updated with the new button
 * CSS ajustments

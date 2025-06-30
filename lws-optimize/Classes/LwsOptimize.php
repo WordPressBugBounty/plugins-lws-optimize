@@ -430,6 +430,8 @@ class LwsOptimize
             }
         }
 
+        $this->lwsop_dump_dynamic_cache();
+
         wp_die(json_encode(array('code' => "SUCCESS", 'data' => array('duration' => $duration)), JSON_PRETTY_PRINT));
     }
 
@@ -1455,7 +1457,9 @@ class LwsOptimize
                 // Add instructions to load cache file without starting PHP
                 $hta .= "#Last Modification: $current_date\n";
                 $hta .= "<IfModule mod_rewrite.c>"."\n";
+                $hta .= "#---- STARTING DIRECTIVES ----#\n";
                 $hta .= "RewriteEngine On"."\n";
+                $hta .= "#### ####\n";
                 $hta .= "RewriteBase " . rtrim($http_path, '/') . "/\n";
 
                 // If connected users have their own cache
@@ -2429,6 +2433,8 @@ class LwsOptimize
         delete_option('lws_optimize_preload_is_ongoing');
         $this->after_cache_purge_preload();
 
+        $this->lwsop_dump_all_dynamic_caches();
+
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
     }
 
@@ -2639,29 +2645,30 @@ class LwsOptimize
             }
 
             // Additionally clear cache for categories, tags and pagination
-            if ($directory === false || $directory === '/') {
-                $taxonomy_urls = $this->get_taxonomy_and_pagination_urls();
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
+            $taxonomy_urls = $this->get_taxonomy_and_pagination_urls();
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
 
-                foreach ($taxonomy_urls as $url) {
-                    $parsed_url = parse_url($url);
-                    $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
+            foreach ($taxonomy_urls as $url) {
+                $parsed_url = parse_url($url);
+                $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
 
-                    // Clear desktop cache
-                    $path = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri);
-                    $files = glob($path . '/index_*');
-                    if (!empty($files)) {
-                        array_map('unlink', array_filter($files, 'is_file'));
-                    }
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Clearing URL " . htmlspecialchars($url) . PHP_EOL);
 
-                    // Clear mobile cache
-                    $path_mobile = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri, true);
-                    $files = glob($path_mobile . '/index_*');
-                    if (!empty($files)) {
-                        array_map('unlink', array_filter($files, 'is_file'));
-                    }
+                // Clear desktop cache
+                $path = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri);
+                $files = glob($path . '/index_*');
+                if (!empty($files)) {
+                    array_map('unlink', array_filter($files, 'is_file'));
+                }
+
+                // Clear mobile cache
+                $path_mobile = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri, true);
+                $files = glob($path_mobile . '/index_*');
+                if (!empty($files)) {
+                    array_map('unlink', array_filter($files, 'is_file'));
                 }
             }
+
 
             // Handle preload configuration
             $optimize_options = get_option('lws_optimize_config_array', []);
