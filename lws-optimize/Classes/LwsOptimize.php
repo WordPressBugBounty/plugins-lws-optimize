@@ -167,6 +167,9 @@ class LwsOptimize
             add_filter('lws_optimize_convert_media_cron', [$this, 'lws_optimize_convert_media_cron'], 10, 2);
             add_filter('lws_optimize_clear_filebased_cache', [$this, 'lws_optimize_clean_filebased_cache'], 10, 2);
             add_filter('lws_optimize_clear_filebased_cache_cron', [$this, 'lws_optimize_clean_filebased_cache_cron'], 10, 2);
+            add_filter('lws_optimize_clear_all_filebased_cache', [$this, 'lws_optimize_clean_all_filebased_cache'], 10, 1);
+
+
 
             add_action('lws_optimize_start_filebased_preload', [$this, 'lws_optimize_start_filebased_preload']);
 
@@ -430,7 +433,7 @@ class LwsOptimize
             }
         }
 
-        $this->lwsop_dump_dynamic_cache();
+        $this->lwsop_dump_all_dynamic_caches();
 
         wp_die(json_encode(array('code' => "SUCCESS", 'data' => array('duration' => $duration)), JSON_PRETTY_PRINT));
     }
@@ -2419,7 +2422,7 @@ class LwsOptimize
     }
 
     /**
-     * Clear every caches avaialble on Optimize
+     * Clear every caches available on Optimize
     */
     public function lws_op_clear_all_caches() {
         check_ajax_referer('lws_op_clear_all_caches_nonce', '_ajax_nonce');
@@ -2599,6 +2602,46 @@ class LwsOptimize
     /**
      * Clean the given directory.
      */
+    public function lws_optimize_clean_all_filebased_cache($action = "???")
+    {
+        $logger = fopen($this->log_file, 'a');
+
+        try {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Starting [FULL] cache clearing for action [$action]..." . PHP_EOL);
+
+            // Delete file-based cache directories
+            $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
+
+            // Clear dynamic cache if available
+            $this->lwsop_dump_all_dynamic_caches();
+
+            // Clear opcache if available
+            if (function_exists("opcache_reset")) {
+                opcache_reset();
+            }
+
+            // Reset preloading state if needed
+            delete_option('lws_optimize_sitemap_urls');
+            delete_option('lws_optimize_preload_is_ongoing');
+            $this->after_cache_purge_preload();
+
+            if (function_exists('wp_cache_flush')) {
+                wp_cache_flush();
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
+            }
+            return json_encode(['code' => 'SUCCESS'], JSON_PRETTY_PRINT);
+        } catch (\Exception $e) {
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
+            return json_encode(['code' => 'ERROR', 'message' => $e->getMessage()], JSON_PRETTY_PRINT);
+        } finally {
+            fclose($logger);
+        }
+    }
+
+
+    /**
+     * Clean the given directory.
+     */
     public function lws_optimize_clean_filebased_cache($directory = false, $action = "???")
     {
         $logger = fopen($this->log_file, 'a');
@@ -2651,8 +2694,6 @@ class LwsOptimize
             foreach ($taxonomy_urls as $url) {
                 $parsed_url = parse_url($url);
                 $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
-
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Clearing URL " . htmlspecialchars($url) . PHP_EOL);
 
                 // Clear desktop cache
                 $path = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri);
@@ -3528,7 +3569,7 @@ class LwsOptimize
                     if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                         wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
                     }
-                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                    wp_schedule_event(time() + 10, "lws_minute", "lws_optimize_start_filebased_preload");
                 }
                 break;
             default:

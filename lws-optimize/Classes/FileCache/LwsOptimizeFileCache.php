@@ -340,11 +340,12 @@ class LwsOptimizeFileCache
                     // Configure advanced minification options
                     $htmlMin->doOptimizeViaHtmlDomParser(true);   // Enable HTML DOM optimization
                     $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
-                    $htmlMin->doRemoveOmittedQuotes(true);        // Remove quotes when possible
-                    $htmlMin->doRemoveOmittedHtmlTags(true);      // Remove optional HTML tags
+                    $htmlMin->doRemoveOmittedQuotes(false);       // Don't remove quotes to preserve attribute values
+                    $htmlMin->doRemoveOmittedHtmlTags(false);     // Don't remove optional HTML tags
                     $htmlMin->doSumUpWhitespace(true);            // Combine multiple whitespace
                     $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
                     $htmlMin->doRemoveHttpPrefixFromAttributes(true); // Remove http: when possible
+
                     $modified = $htmlMin->minify($modified);
                 } else {
                     $no_minify = false;
@@ -360,8 +361,8 @@ class LwsOptimizeFileCache
                         $htmlMin->doOptimizeViaHtmlDomParser(true);   // Enable HTML DOM optimization
                         $htmlMin->doRemoveComments(true);             // Remove HTML comments
                         $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
-                        $htmlMin->doRemoveOmittedQuotes(true);        // Remove quotes when possible
-                        $htmlMin->doRemoveOmittedHtmlTags(true);      // Remove optional HTML tags
+                        $htmlMin->doRemoveOmittedQuotes(false);       // Don't remove quotes to preserve attribute values
+                        $htmlMin->doRemoveOmittedHtmlTags(false);     // Don't remove optional HTML tags
                         $htmlMin->doSumUpWhitespace(true);            // Combine multiple whitespace
                         $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
                         $htmlMin->doRemoveHttpPrefixFromAttributes(true); // Remove http: when possible

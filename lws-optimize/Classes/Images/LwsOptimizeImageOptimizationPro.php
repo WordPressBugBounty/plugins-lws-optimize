@@ -798,15 +798,15 @@ class LwsOptimizeImageOptimizationPro
             $converted_path = $result['data']['optimized_path'] ?? '';
             $converted_format = $result['data']['format'] ?? '';
 
-            if (!file_exists($converted_path)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] does not exist. Conversion has failed and will not be attempted again" . PHP_EOL);
-                fclose($logger);
+            // if (!file_exists($converted_path)) {
+            //     $logger = fopen($this->log_file, 'a');
+            //     fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] does not exist. Conversion has failed and will not be attempted again" . PHP_EOL);
+            //     fclose($logger);
 
-                error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
-                $images_to_process[$key]['unavailable'] = true;
-                continue;
-            }
+            //     error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
+            //     $images_to_process[$key]['unavailable'] = true;
+            //     continue;
+            // }
 
             if (empty($converted_format)) {
                 $logger = fopen($this->log_file, 'a');
@@ -1088,15 +1088,15 @@ class LwsOptimizeImageOptimizationPro
             $converted_path = $result['data']['optimized_path'] ?? '';
             $converted_format = $result['data']['format'] ?? '';
 
-            if (!file_exists($converted_path)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] does not exist. Conversion has failed and will not be attempted again" . PHP_EOL);
-                fclose($logger);
+            // if (!file_exists($converted_path)) {
+            //     $logger = fopen($this->log_file, 'a');
+            //     fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] does not exist. Conversion has failed and will not be attempted again" . PHP_EOL);
+            //     fclose($logger);
 
-                error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
-                $images_to_process[$key]['unavailable'] = true;
-                continue;
-            }
+            //     error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
+            //     $images_to_process[$key]['unavailable'] = true;
+            //     continue;
+            // }
 
             if (empty($converted_format)) {
                 $logger = fopen($this->log_file, 'a');
@@ -1938,7 +1938,7 @@ class LwsOptimizeImageOptimizationPro
             $img->destroy();
 
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image}} converted from {$starting_type} to {$ending_type}". PHP_EOL);
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image}] converted from {$starting_type} to {$ending_type}". PHP_EOL);
             fclose($logger);
 
             return json_encode(['code' => 'SUCCESS', 'message' => 'Image successfully optimized','data' => [

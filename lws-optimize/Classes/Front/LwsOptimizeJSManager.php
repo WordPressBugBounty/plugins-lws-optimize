@@ -206,7 +206,7 @@ class LwsOptimizeJSManager
                     return ['final_url' => false, 'problematic' => $problematic_files];
                 }
 
-                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.js");
+                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.min.js");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
                 // Do not add into cache if the file already exists
@@ -296,6 +296,11 @@ class LwsOptimizeJSManager
                 $href = $href[1] ?? "";
                 $href = trim($href);
 
+                // Check if file is already minified
+                if (preg_match('/(\.min\.js|\.min-[\w\d]+\.js)(\?.*)?$/i', $href)) {
+                    continue; // Skip already minified files
+                }
+
                 // Get the script ID if available
                 preg_match("/id\=[\'\"]([^\'\"]+)[\'\"]/", $element, $id);
                 $script_id = $id[1] ?? "";
@@ -348,7 +353,7 @@ class LwsOptimizeJSManager
                     continue;
                 }
 
-                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.js");
+                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.min.js");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
                 // Do not add into cache if the file already exists
@@ -694,7 +699,7 @@ class LwsOptimizeJSManager
 
         if (is_dir($this->content_directory)) {
             $minify = new Minify\JS($content);
-            $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.js");
+            $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.min.js");
             $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
             // Minify and combine all files into one, saved in $path

@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.8
+Stable tag: 3.3.9
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,16 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 3.3.9 =
+* Clear cache after any changes have been made in the "Customize" page
+* Added back a filter to clear all cache : lws_optimize_clear_all_filebased_cache
+* In the same vein, the filter lws_optimize_clear_filebased_cache, taking an url as argument, clear the cache of said url
+* Changed image conversion to prevent cron from failling to start, forcing users to start it multiple times
+* Fixed bug where deactivating/activating plugin would fail with a 403 at the end
+* Fixed issue where files already minified (i.e. : .min.js | .min.css) would get re-minified, causing potential issues
+* Changed Min/Combine files from .css|.js to .min.css|.min.css
+* Minor changes to the HTML Minification
 
 = 3.3.8 =
 * Dynamic Cache now removed when deactivating plugin

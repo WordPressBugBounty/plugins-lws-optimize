@@ -7,9 +7,9 @@ class LwsOptimizeAutoPurge
     public function start_autopurge()
     {
 
-        add_action('comment_post', [$this, 'lws_optimize_clear_cache_on_comment']);
-        add_action('edit_comment', [$this, 'lws_optimize_clear_cache_on_comment']);
-        add_action('transition_comment_status', [$this, 'lws_optimize_clear_cache_on_comment']);
+        add_action('comment_post', [$this, 'lws_optimize_clear_cache_on_comment', 10, 2]);
+        add_action('edit_comment', [$this, 'lws_optimize_clear_cache_on_comment', 10, 2]);
+        add_action('transition_comment_status', [$this, 'lws_optimize_clear_cache_on_comment'], 10, 2);
 
         add_action('post_updated', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
 
@@ -27,6 +27,13 @@ class LwsOptimizeAutoPurge
         add_action('deleted_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
         add_action('trashed_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
         add_action('untrashed_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
+
+        add_action('customize_save_after', [$this, 'lwsop_remove_cache_customize_saved'], 10, 2);
+    }
+
+    // After updating the "Customize" settings, clear the cache
+    public function lwsop_remove_cache_customize_saved($manager) {
+        apply_filters("lws_optimize_clear_all_filebased_cache", "customize_save_after");
     }
 
     public function purge_specified_url()

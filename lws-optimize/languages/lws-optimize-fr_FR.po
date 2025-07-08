@@ -2020,6 +2020,12 @@ msgstr "Ajoute automatiquement les attributs de largeur et de hauteur aux images
 msgid " images left to restore."
 msgstr " images restantes à convertir."
 
+msgid " images left to convert."
+msgstr " images restantes à restaurer."
+
+msgid " images left to deconvert."
+msgstr " images restantes à déconvertir."
+
 msgid "Invalid response format received. Please try again."
 msgstr "Format de réponse invalide reçu. Veuillez réessayer."
 

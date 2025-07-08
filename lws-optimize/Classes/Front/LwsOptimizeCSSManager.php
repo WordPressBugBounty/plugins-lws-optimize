@@ -235,7 +235,7 @@ class LwsOptimizeCSSManager
                     return ['final_url' => '', 'problematic' => $problematic_files];
                 }
 
-                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.css");
+                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.min.css");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
                 // Do not add into cache if the file already exists
@@ -353,6 +353,12 @@ class LwsOptimizeCSSManager
                 $rel = trim($rel[1]);
                 $type = trim($type[1]);
 
+                // Check if file is already minified
+                if (preg_match('/(\.min\.css|\.min-[\w\d]+\.css)(\?.*)?$/i', $href)) {
+                    continue; // Skip already minified files
+                }
+
+
                 if ($rel !== "stylesheet" || $this->check_for_exclusion($href, "minify")) {
                     continue;
                 }
@@ -382,7 +388,7 @@ class LwsOptimizeCSSManager
                         }
                     }
 
-                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.css");
+                $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.min.css");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
                 // Do not add into cache if the file already exists
