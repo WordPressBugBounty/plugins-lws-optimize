@@ -3444,7 +3444,7 @@ class LwsOptimize
                 $options['minify_js']['state'] = "true";
                 $options['defer_js']['state'] = "false";
                 $options['delay_js']['state'] = "false";
-                $options['minify_html']['state'] = "true";
+                $options['minify_html']['state'] = "false";
                 $options['autopurge']['state'] = "true";
                 $options['memcached']['state'] = "false";
                 $options['gzip_compression']['state'] = "true";

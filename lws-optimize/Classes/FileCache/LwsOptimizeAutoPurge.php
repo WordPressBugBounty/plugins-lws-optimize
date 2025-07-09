@@ -7,9 +7,9 @@ class LwsOptimizeAutoPurge
     public function start_autopurge()
     {
 
-        add_action('comment_post', [$this, 'lws_optimize_clear_cache_on_comment', 10, 2]);
-        add_action('edit_comment', [$this, 'lws_optimize_clear_cache_on_comment', 10, 2]);
-        add_action('transition_comment_status', [$this, 'lws_optimize_clear_cache_on_comment'], 10, 2);
+        add_action('comment_post', [$this, 'lws_optimize_clear_cache_on_comment'], 10, 1);
+        add_action('edit_comment', [$this, 'lws_optimize_clear_cache_on_comment'], 10, 1);
+        add_action('transition_comment_status', [$this, 'lws_optimize_clear_cache_on_comment'], 10, 1);
 
         add_action('post_updated', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
 
@@ -54,15 +54,18 @@ class LwsOptimizeAutoPurge
     /**
      * Clear cache whenever a new comment is posted
      */
-    public function lws_optimize_clear_cache_on_comment($comment_id, $comment)
+    public function lws_optimize_clear_cache_on_comment($comment_id)
     {
-        $post_id = $comment->comment_post_ID;
-        $action = current_filter();
+        $comment = get_comment( $comment_id );
+        if ($comment) {
+            $post_id = $comment->comment_post_ID;
+            $action = current_filter();
 
-        $uri = get_permalink($post_id);
-        $this->purge_specified_url();
+            $uri = get_permalink($post_id);
+            $this->purge_specified_url();
 
-        apply_filters("lws_optimize_clear_filebased_cache", $uri, $action, true);
+            apply_filters("lws_optimize_clear_filebased_cache", $uri, $action, true);
+        }
     }
 
     /**

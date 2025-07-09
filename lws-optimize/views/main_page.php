@@ -72,11 +72,6 @@ $essential_options = [
         'description' => __('Reduce the size of JavaScript files to improve loading times', 'lws-optimize'),
         'safe' => true,
     ],
-    'minify_html' => [
-        'name' => __('HTML Minification', 'lws-optimize'),
-        'description' => __('Reduce the size of HTML files by removing superfluous spaces, comments and characters', 'lws-optimize'),
-        'safe' => true,
-    ],
     'gzip_compression' => [
         'name' => __('Gzip Compression', 'lws-optimize'),
         'description' => __('Compress files to reduce their size, making them faster to download', 'lws-optimize'),
@@ -118,6 +113,11 @@ $optimized_options = [
     'differ_js' => [
         'name' => __('Defer JavaScript', 'lws-optimize'),
         'description' => __('Load JavaScript files after the page has loaded to accelerate the rendering. May cause issues on JS-heavy websites', 'lws-optimize'),
+        'safe' => false,
+    ],
+    'minify_html' => [
+        'name' => __('HTML Minification', 'lws-optimize'),
+        'description' => __('Reduce the size of HTML files by removing superfluous spaces, comments and characters', 'lws-optimize'),
         'safe' => false,
     ],
 ];
