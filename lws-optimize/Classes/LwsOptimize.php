@@ -27,16 +27,6 @@ class LwsOptimize
     {
         // Store the class in GLOBALS for later usage
         $GLOBALS['lws_optimize'] = $this;
-        $GLOBALS['lws_optimize_cache_timestamps'] = [
-            'lws_daily' => [86400, __('Once a day', 'lws-optimize')],
-            'lws_weekly' => [604800, __('Once a week', 'lws-optimize')],
-            'lws_monthly' => [2629743, __('Once a month', 'lws-optimize')],
-            'lws_thrice_monthly' => [7889232, __('Once every 3 months', 'lws-optimize')],
-            'lws_biyearly' => [15778463, __('Once every 6 months', 'lws-optimize')],
-            'lws_yearly' => [31556926, __('Once a year', 'lws-optimize')],
-            'lws_two_years' => [63113852, __('Once every 2 years', 'lws-optimize')],
-            'lws_never' => [0, __('Never expire', 'lws-optimize')],
-        ];
 
         // Create the log file if needed, otherwise just get the path
         $this->setupLogfile();
@@ -364,6 +354,17 @@ class LwsOptimize
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
+
+        $GLOBALS['lws_optimize_cache_timestamps'] = [
+            'lws_daily' => [86400, __('Once a day', 'lws-optimize')],
+            'lws_weekly' => [604800, __('Once a week', 'lws-optimize')],
+            'lws_monthly' => [2629743, __('Once a month', 'lws-optimize')],
+            'lws_thrice_monthly' => [7889232, __('Once every 3 months', 'lws-optimize')],
+            'lws_biyearly' => [15778463, __('Once every 6 months', 'lws-optimize')],
+            'lws_yearly' => [31556926, __('Once a year', 'lws-optimize')],
+            'lws_two_years' => [63113852, __('Once every 2 years', 'lws-optimize')],
+            'lws_never' => [0, __('Never expire', 'lws-optimize')],
+        ];
 
         // Add all options referring to the WPAdmin page or the AdminBar
         $admin_manager = new LwsOptimizeManageAdmin();
