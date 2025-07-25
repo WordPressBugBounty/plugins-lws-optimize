@@ -488,7 +488,19 @@ class LwsOptimize
      */
     public function lws_optimize_timestamp_crons($schedules)
     {
-        foreach ($GLOBALS['lws_optimize_cache_timestamps'] as $code => $schedule) {
+
+        $lws_optimize_cache_timestamps = [
+            'lws_daily' => [86400, __('Once a day', 'lws-optimize')],
+            'lws_weekly' => [604800, __('Once a week', 'lws-optimize')],
+            'lws_monthly' => [2629743, __('Once a month', 'lws-optimize')],
+            'lws_thrice_monthly' => [7889232, __('Once every 3 months', 'lws-optimize')],
+            'lws_biyearly' => [15778463, __('Once every 6 months', 'lws-optimize')],
+            'lws_yearly' => [31556926, __('Once a year', 'lws-optimize')],
+            'lws_two_years' => [63113852, __('Once every 2 years', 'lws-optimize')],
+            'lws_never' => [0, __('Never expire', 'lws-optimize')],
+        ];
+
+        foreach ($lws_optimize_cache_timestamps as $code => $schedule) {
             $schedules[$code] = array(
                 'interval' => $schedule[0],
                 'display' => $schedule[1]

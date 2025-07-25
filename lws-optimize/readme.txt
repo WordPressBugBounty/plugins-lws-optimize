@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
 Requires at least: 6.0
 Tested up to: 6.8
-Stable tag: 3.3.10.5
+Stable tag: 3.3.11
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
