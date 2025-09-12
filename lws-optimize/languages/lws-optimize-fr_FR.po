@@ -2505,3 +2505,12 @@ msgstr "Le fichier .htaccess n'a pas pu être ouvert. Veuillez vérifier les per
 
 msgid "The .htaccess file could not be updated. Please check the permissions of this file."
 msgstr "Le fichier .htaccess n'a pas pu être mis à jour. Veuillez vérifier les permissions de ce fichier."
+
+msgid "Cron Logs"
+msgstr "Journaux Cron"
+
+msgid "This section lets you easily view the latest logs from this plugin cron jobs. Those includes crons related to image optimization and cache preloading."
+msgstr "Cette section vous permet de visualiser facilement les derniers journaux des tâches cron de ce plugin. Ceux-ci incluent les tâches cron liées à l'optimisation des images et au préchargement du cache."
+
+msgid "Log files have a maximum size of 5MB. Once this size is reached, a new file will be created. Older logs can be found in /uploads/lwsoptimize/."
+msgstr "Les fichiers journaux ont une taille maximale de 5 Mo. Une fois cette taille atteinte, un nouveau fichier sera créé. Les anciens journaux peuvent être trouvés dans /uploads/lwsoptimize/."

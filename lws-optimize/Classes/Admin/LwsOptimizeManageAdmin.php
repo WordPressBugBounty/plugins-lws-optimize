@@ -106,36 +106,39 @@ class LwsOptimizeManageAdmin
     // Add the "LWSOptimize" adminbar when connected
     public function lws_optimize_admin_bar(\WP_Admin_Bar $Wp_Admin_Bar)
     {
-        $Wp_Admin_Bar->add_menu(
-            [
-                'id' => "lws_optimize_managecache",
-                'parent' => null,
-                'href' => esc_url(admin_url('admin.php?page=lws-op-config')),
-                'title' => '<span class="lws_optimize_admin_icon">' . __('LWS Optimize', 'lws-optimize') . '</span>',
-            ]
-        );
-        $Wp_Admin_Bar->add_menu(
-            [
-                'id' => "lws_optimize_clearcache",
-                'parent' => "lws_optimize_managecache",
-                'title' => __('Clear all cache', 'lws-optimize')
-            ]
-        );
-        $Wp_Admin_Bar->add_menu(
-            [
-                'id' => "lws_optimize_clearopcache",
-                'parent' => "lws_optimize_managecache",
-                'title' => __('Clear OPcache', 'lws-optimize')
-            ]
-        );
-        if (!is_admin()) {
+
+        if (current_user_can('manage_options')) {
             $Wp_Admin_Bar->add_menu(
                 [
-                    'id' => "lws_optimize_clearcache_page",
-                    'parent' => "lws_optimize_managecache",
-                    'title' => __('Clear current page cache files', 'lws-optimize')
+                    'id' => "lws_optimize_managecache",
+                    'parent' => null,
+                    'href' => esc_url(admin_url('admin.php?page=lws-op-config')),
+                    'title' => '<span class="lws_optimize_admin_icon">' . __('LWS Optimize', 'lws-optimize') . '</span>',
                 ]
             );
+            $Wp_Admin_Bar->add_menu(
+                [
+                    'id' => "lws_optimize_clearcache",
+                    'parent' => "lws_optimize_managecache",
+                    'title' => __('Clear all cache', 'lws-optimize')
+                ]
+            );
+            $Wp_Admin_Bar->add_menu(
+                [
+                    'id' => "lws_optimize_clearopcache",
+                    'parent' => "lws_optimize_managecache",
+                    'title' => __('Clear OPcache', 'lws-optimize')
+                ]
+            );
+            if (!is_admin()) {
+                $Wp_Admin_Bar->add_menu(
+                    [
+                        'id' => "lws_optimize_clearcache_page",
+                        'parent' => "lws_optimize_managecache",
+                        'title' => __('Clear current page cache files', 'lws-optimize')
+                    ]
+                );
+            }
         }
     }
 

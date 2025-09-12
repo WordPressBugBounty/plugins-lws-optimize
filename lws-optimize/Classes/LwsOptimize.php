@@ -930,10 +930,13 @@ class LwsOptimize
         $first_run = ($done == 0);
         $current_try = 0;
 
+        $current_error_try = 0; // Track errors to stop if too much are found
+        $max_error_try = 20; // Stop if we have 20 errors during the loop (to avoid infinite loops)
+
         // Define user agents for preloading
         $userAgents = [
-            'desktop' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36; compatible; LWSOptimizePreload/1.0',
-            'mobile' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15.0 Safari/604.1; compatible; LWSOptimizePreload/1.0'
+            'desktop' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36; compatible; LWSOptimizePreload/1.0',
+            'mobile' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6.2 Mobile/15E148 Safari/604.1; compatible; LWSOptimizePreload/1.0'
         ];
 
         // Remove mobile agent if mobile caching is disabled
@@ -951,7 +954,7 @@ class LwsOptimize
         // Process URLs from the sitemap
         foreach ($urls as $key => $url) {
             // Stop after reaching maximum number of tries
-            if ($current_try >= $max_try) {
+            if ($current_try >= $max_try || $current_error_try >= $max_error_try) {
                 break;
             }
 
@@ -1000,7 +1003,8 @@ class LwsOptimize
                 'sslverify'   => false,
                 'blocking'    => true,
                 'cookies'     => [], // Clean request with no cookies
-                'reject_unsafe_urls' => false // Allow URLs with query strings
+                'reject_unsafe_urls' => false, // Allow URLs with query strings
+                'redirection' => 3 // Don't follow too many redirects
                 ]
             );
             }
@@ -1016,12 +1020,21 @@ class LwsOptimize
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Successfully cached: $url" . PHP_EOL);
                 fclose($logger);
             } else {
+                $current_error_try++;
+
                 // Log failed cache attempt
                 $logger = fopen($this->log_file, 'a');
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to cache: $url - removed from queue" . PHP_EOL);
                 fclose($logger);
                 unset($urls[$key]);
             }
+        }
+
+        if ($current_error_try >= $max_error_try) {
+            // Log excessive errors
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload batch stopped due to excessive errors ($current_error_try)" . PHP_EOL);
+            fclose($logger);
         }
 
         // Only log if we actually tried to cache something in this batch

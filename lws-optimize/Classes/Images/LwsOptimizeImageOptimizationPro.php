@@ -74,15 +74,15 @@ class LwsOptimizeImageOptimizationPro
      * and check the status of the conversion processes
      */
     public function lws_optimize_refresh_conversion_data() {
-        try {
-            $logger = fopen($this->log_file, 'a');
-            if ($logger) {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Refreshing conversion data' . PHP_EOL);
-                fclose($logger);
-            }
-        } catch (\Exception $e) {
-            error_log('Failed to write to log file: ' . $e->getMessage());
-        }
+        // try {
+        //     $logger = fopen($this->log_file, 'a');
+        //     if ($logger) {
+        //         fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Refreshing conversion data' . PHP_EOL);
+        //         fclose($logger);
+        //     }
+        // } catch (\Exception $e) {
+        //     error_log('Failed to write to log file: ' . $e->getMessage());
+        // }
 
         // Format allowed to be converted
         $format = $this->format;
@@ -693,7 +693,6 @@ class LwsOptimizeImageOptimizationPro
         fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Images to process using the API: ' . $unconverted_images . PHP_EOL);
         fclose($logger);
 
-
         foreach ($images_to_process as $key => $image) {
             // Check if we have reached the maximum number of images to process
             if ($images_processed >= $max_images_per_run) {
@@ -774,7 +773,7 @@ class LwsOptimizeImageOptimizationPro
                 }
 
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error code: {$result['code']}" . PHP_EOL);
+                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]." . PHP_EOL . "Error code: {$result['code']}" . PHP_EOL);
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error message: {$result['message']}" . PHP_EOL);
                 fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error data: " . json_encode($result['data']) . PHP_EOL);
                 fclose($logger);
@@ -792,6 +791,15 @@ class LwsOptimizeImageOptimizationPro
 
                     return $response;
                 }
+
+                // 403 means Forbidden, AKA the APIKey is not valid. In that case, remove it from the options to get it anew
+                if ($result['message'] == "403") {
+                    delete_option('lws_optimize_image_api_key');
+                    $logger = fopen($this->log_file, 'a');
+                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] API Key was not valid and has been removed. Correct APIKey will be retrieved next conversion." . PHP_EOL);
+                    fclose($logger);
+                }
+
                 continue;
             }
 
@@ -864,10 +872,6 @@ class LwsOptimizeImageOptimizationPro
 
             // Increment the processed images count
             $images_processed++;
-
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, "---------------------------" . PHP_EOL);
-            fclose($logger);
         }
 
         // If no images were processed in this run and there are no images left to convert
@@ -1153,10 +1157,6 @@ class LwsOptimizeImageOptimizationPro
 
             // Increment the processed images count
             $images_processed++;
-
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, "---------------------------" . PHP_EOL);
-            fclose($logger);
         }
 
         // Store the changes made to the images data
@@ -1362,10 +1362,6 @@ class LwsOptimizeImageOptimizationPro
 
             // Increment the processed images count
             $images_processed++;
-
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, "---------------------------" . PHP_EOL);
-            fclose($logger);
         }
 
         // If no images were processed in this run, stop the cron
@@ -1767,7 +1763,7 @@ class LwsOptimizeImageOptimizationPro
         }
 
         if ($code !== 200) {
-            return json_encode(['code' => 'HTTP_ERROR', 'message' => "API returned code $code", 'data' => $response]);
+            return json_encode(['code' => 'HTTP_ERROR', 'message' => "$code", 'data' => $response]);
         }
 
         $result = json_decode($response, true);
@@ -2050,7 +2046,7 @@ class LwsOptimizeImageOptimizationPro
         curl_close($ch);
 
         if ($code !== 200) {
-            return json_encode(['code' => 'HTTP_ERROR', 'message' => "API returned code $code", 'data' => $response]);
+            return json_encode(['code' => 'HTTP_ERROR', 'message' => "$code", 'data' => $response]);
         }
 
         $result = json_decode($response, true);

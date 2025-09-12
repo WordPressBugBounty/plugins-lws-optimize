@@ -37,6 +37,7 @@ $tabs_list = array(
     array('cdn', __('CDN', 'lws-optimize')),
     array('database', __('Database', 'lws-optimize')),
     array('pagespeed', __('Pagespeed test', 'lws-optimize')),
+    ['logs', __('Logs', 'lws-optimize')],
     array('plugins', __('Our others plugins', 'lws-optimize')),
 );
 
