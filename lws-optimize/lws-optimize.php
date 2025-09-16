@@ -8,7 +8,7 @@ use Lws\Classes\LwsOptimizeWpCli;
  * Plugin Name:       LWS Optimize
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.3.12
+ * Version:           3.3.13
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      6.8
@@ -18,48 +18,68 @@ use Lws\Classes\LwsOptimizeWpCli;
  * @since   1.0
  * @package lws-optimize
  *
- * This plugin is greatly based on a fork of WPFastestCache (https://wordpress.org/plugins/wp-fastest-cache/) by Emre Vona,
- * specifically the JS/CSS optimisation (minify, combine, ...) and the filebased-cache verifications (when not to cache the current page)
  */
 
 if (!defined('ABSPATH')) {
-    exit; //Exit if accessed directly
+    exit;
 }
 
-// Actions to execute when the plugin is activated / deleted / upgraded
-register_activation_hook(__FILE__, 'lws_optimize_activation');
-register_deactivation_hook(__FILE__, 'lws_optimize_deactivation');
-register_uninstall_hook(__FILE__, 'lws_optimize_deletion');
-// add_action('upgrader_process_complete', 'lws_optimize_upgrading', 10, 2);
 
-function lws_optimize_check_update() {
-    $ancienne_version = get_option('lwsop_plugin_version', 0);
-    $nouvelle_version = '3.2.2.1'; // Remplacez par la version actuelle du plugin.
-
-    if ($ancienne_version !== $nouvelle_version) {
-        add_option( 'wp_lwsoptimize_post_update', 1);
-
-        // Mettre à jour la version en base.
-        update_option('lwsop_plugin_version', $nouvelle_version);
+// Polyfills of useful PHP8+ functions for PHP < 8
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle)
+    {
+        return strlen($needle) === 0 || strpos($haystack, $needle) === 0;
     }
 }
-add_action('plugins_loaded', 'lws_optimize_check_update');
+if (!function_exists('str_contains')) {
+    function str_contains($haystack, $needle)
+    {
+        return strlen($needle) === 0 || strpos($haystack, $needle) !== false;
+    }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle)
+    {
+        return strlen($needle) === 0 || substr($haystack, -strlen($needle)) === $needle;
+    }
+}
 
 
-// Actions to do when the plugin is activated
-function lws_optimize_activation()
-{
-    // Unused
-    set_transient('lwsop_remind_me', 691200);
+// https://example.fr/wp-content/plugins/lws-optimize/
+if (!defined('LWS_OP_URL')) {
+    define('LWS_OP_URL', plugin_dir_url(__FILE__));
+}
+
+// ABSPATH/wp-content/plugins/lws-optimize/
+if (!defined('LWS_OP_DIR')) {
+    define('LWS_OP_DIR', plugin_dir_path(__FILE__));
+}
+
+// ABSPATH/wp-content/cache/lwsoptimize/
+if (!defined('LWS_OP_UPLOADS')) {
+    define('LWS_OP_UPLOADS', WP_CONTENT_DIR . '/cache/lwsoptimize/');
+}
+
+// lws-optimize/lws-optimize.php
+if (!defined('LWS_OP_BASENAME')) {
+    define('LWS_OP_BASENAME', plugin_basename(__FILE__));
+}
+
+// Path to the object-cache file (for Memcached)
+if (!defined('LWSOP_OBJECTCACHE_PATH')) {
+    define('LWSOP_OBJECTCACHE_PATH', WP_CONTENT_DIR . '/object-cache.php');
+}
+
+
+// Function declarations for hook callbacks
+function lws_optimize_activation_callback() {
     delete_option('lws_optimize_preload_is_ongoing');
 
     $optimize_options = get_option('lws_optimize_config_array', []);
 
-    $GLOBALS['lws_optimize'] ->lws_optimize_set_cache_htaccess();
-    $GLOBALS['lws_optimize'] ->lws_optimize_reset_header_htaccess();
-
-    //@deactivate_plugins("lwscache/lwscache.php");
-
+    $GLOBALS['lws_optimize']->lws_optimize_set_cache_htaccess();
+    $GLOBALS['lws_optimize']->lws_optimize_reset_header_htaccess();
 
     // Deactivate the preloading on plugin activation to prevent issues
     if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {
@@ -72,8 +92,6 @@ function lws_optimize_activation()
         $optimize_options['filebased_cache']['preload_ongoing'] = "true";
 
         update_option('lws_optimize_config_array', $optimize_options);
-
-        //wp_schedule_event(time() + 3, "lws_minute", "lws_optimize_start_filebased_preload");
     }
 
     wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
@@ -87,15 +105,13 @@ function lws_optimize_activation()
     }
 }
 
-// Actions to do when the plugin is deactivated
-function lws_optimize_deactivation()
-{
-    // Deactivate the cron of the preloading and convertion
+function lws_optimize_deactivation_callback() {
+    delete_option('lws_optimize_preload_is_ongoing');
+
+    // Deactivate all crons
     wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
     wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-    // Deactivate cron for the maintenance
     wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
-    // Deactivate cron that revert the images
     wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
 
     // Remove .htaccess content
@@ -116,37 +132,28 @@ function lws_optimize_deactivation()
         // Write the modified content back to the file
         file_put_contents($htaccess_file, $htaccess_content);
     }
-
-    delete_option('lws_optimize_preload_is_ongoing');
-
-    // Unused
-    delete_transient('lwsop_remind_me');
 }
 
-// Actions to do when the plugin is to be deleted
-function lws_optimize_deletion()
-{
+function lws_optimize_uninstall_callback() {
     // Remove the cache folder
-    $cache_dir = ABSPATH . 'wp-content/cache/lwsoptimize/';
+    $cache_dir = WP_CONTENT_DIR . '/cache/lwsoptimize/';
+    $upload_dir = WP_CONTENT_DIR . '/uploads/lwsoptimize/';
+
+    WP_Filesystem();
+    global $wp_filesystem;
+
     if (file_exists($cache_dir)) {
-        WP_Filesystem();
-        global $wp_filesystem;
         $wp_filesystem->rmdir($cache_dir, true);
     }
 
-    $upload_dir = ABSPATH . 'wp-content/uploads/lwsoptimize/';
     if (file_exists($upload_dir)) {
-        WP_Filesystem();
-        global $wp_filesystem;
         $wp_filesystem->rmdir($upload_dir, true);
     }
 
-    // Deactivate the cron of the preloading and convertion
+        // Deactivate all crons
     wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
     wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-    // Deactivate cron for the maintenance
     wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
-    // Deactivate cron that revert the images
     wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
 
     // Remove .htaccess content
@@ -169,77 +176,33 @@ function lws_optimize_deletion()
     }
 
     // Remove all options on delete
-    if (get_option('lws_optimize_config_array', null) !== null) {
-        delete_option('lws_optimize_config_array');
-    }
-
+    delete_option('lws_optimize_config_array');
     delete_option('lws_optimize_preload_is_ongoing');
-
-    // Unused
-    delete_transient('lwsop_remind_me');
+    delete_option('lws_optimize_image_api_key');
+    delete_option('lws_optimize_cache_statistics');
+    delete_option('lws_optimize_image_conversion_options');
+    delete_option('lwsop_plugin_version');
 }
 
-// Actions to do when the plugin is updated
-function lws_optimize_upgrading($upgrader_object, $options)
-{
-    if ($options['action'] == 'update' && $options['type'] == 'plugin') {
-        foreach ($options['plugins'] as $plugin) {
-            // If the plugin getting updated is LWS Optimize
-            if ($plugin == plugin_basename(__FILE__)) {
-                add_option( 'wp_lwsoptimize_post_update', 1);
-            }
-        }
+// Actions to execute when the plugin is activated / deactivated / deleted / upgraded
+register_activation_hook(__FILE__, 'lws_optimize_activation_callback');
+register_deactivation_hook(__FILE__, 'lws_optimize_deactivation_callback');
+register_uninstall_hook(__FILE__, 'lws_optimize_uninstall_callback');
+
+add_action('plugins_loaded', function() {
+    $ancienne_version = get_option('lwsop_plugin_version', 0);
+    $nouvelle_version = '3.3.11'; // Remplacez par la version actuelle du plugin.
+
+    if ($ancienne_version !== $nouvelle_version) {
+        add_option( 'wp_lwsoptimize_post_update', 1);
+
+        // Mettre à jour la version en base.
+        update_option('lwsop_plugin_version', $nouvelle_version);
     }
-}
+});
 
-
-// https://example.fr/wp-content/plugins/lws-optimize/
-if (!defined('LWS_OP_URL')) {
-    define('LWS_OP_URL', plugin_dir_url(__FILE__));
-}
-
-// ABSPATH/wp-content/plugins/lws-optimize/
-if (!defined('LWS_OP_DIR')) {
-    define('LWS_OP_DIR', plugin_dir_path(__FILE__));
-}
-
-// ABSPATH/wp-content/cache/lwsoptimize/
-if (!defined('LWS_OP_UPLOADS')) {
-    define('LWS_OP_UPLOADS', ABSPATH . 'wp-content/cache/lwsoptimize/');
-}
-
-// lws-optimize/lws-optimize.php
-if (!defined('LWS_OP_BASENAME')) {
-    define('LWS_OP_BASENAME', plugin_basename(__FILE__));
-}
-
-// Polyfills of useful PHP8+ functions for PHP < 8
-if (!function_exists('str_starts_with')) {
-    function str_starts_with($haystack, $needle)
-    {
-        return strlen($needle) === 0 || strpos($haystack, $needle) === 0;
-    }
-}
-
-if (!function_exists('str_contains')) {
-    function str_contains($haystack, $needle)
-    {
-        return strlen($needle) === 0 || strpos($haystack, $needle) !== false;
-    }
-}
-
-if (!function_exists('str_ends_with')) {
-    function str_ends_with($haystack, $needle)
-    {
-        return strlen($needle) === 0 || substr($haystack, -strlen($needle)) === $needle;
-    }
-}
-
-//AJAX DL Plugin//
+// Manage the "Our plugins" tab, allowing users to install our plugins
 add_action("wp_ajax_lws_op_downloadPlugin", "wp_ajax_install_plugin");
-//
-
-//AJAX Activate Plugin//
 add_action("wp_ajax_lws_op_activatePlugin", function()
 {
     check_ajax_referer('activate_plugin', '_ajax_nonce');
@@ -247,9 +210,6 @@ add_action("wp_ajax_lws_op_activatePlugin", function()
         switch (sanitize_textarea_field($_POST['ajax_slug'])) {
             case 'lws-hide-login':
                 activate_plugin('lws-hide-login/lws-hide-login.php');
-                break;
-            case 'lws-sms':
-                activate_plugin('lws-sms/lws-sms.php');
                 break;
             case 'lws-tools':
                 activate_plugin('lws-tools/lws-tools.php');
@@ -260,17 +220,10 @@ add_action("wp_ajax_lws_op_activatePlugin", function()
             case 'lws-cleaner':
                 activate_plugin('lws-cleaner/lws-cleaner.php');
                 break;
-            case 'lwscache':
-                activate_plugin('lwscache/lwscache.php');
-                break;
-            case 'lws-optimize':
-                activate_plugin('lws-optimize/lws-optimize.php');
-                break;
             default:
                 break;
         }
     }
-    wp_die();
 });
 
 $deactivated = get_option('lws_optimize_deactivate_temporarily', false);
@@ -280,7 +233,7 @@ if ($deactivated) {
     }
 }
 
-$GLOBALS['lws_optimize'] = $lwsop = new LwsOptimize();
+$GLOBALS['lws_optimize'] = new LwsOptimize();
 
 // Register WP-CLI commands once the plugin is loaded
 if (defined('WP_CLI') && WP_CLI) {
