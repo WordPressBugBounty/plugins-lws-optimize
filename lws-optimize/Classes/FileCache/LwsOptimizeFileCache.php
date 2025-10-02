@@ -261,8 +261,14 @@ class LwsOptimizeFileCache
 
         // We can put the current page to cache. We now apply the chosen options to the file (minify CSS/JS, combine CSS/JS, ...)
         if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
-            $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
-            $data = $lwsOptimizeCssManager->combine_css_update();
+            if ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
+                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update, true);
+                $data = $lwsOptimizeCssManager->combine_css_update(true);
+            } else {
+                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
+                $data = $lwsOptimizeCssManager->combine_css_update();
+            }
+
             $modified = $data['html'];
 
             $cached_elements['css']['file'] += $data['files']['file'];
@@ -279,8 +285,13 @@ class LwsOptimizeFileCache
         }
 
         if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
-            $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
-            $data = $lwsOptimizeJsManager->combine_js_update();
+            if ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
+                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified, true);
+                $data = $lwsOptimizeJsManager->combine_js_update();
+            } else {
+                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+                $data = $lwsOptimizeJsManager->combine_js_update();
+            }
 
             $modified = $data['html'];
 

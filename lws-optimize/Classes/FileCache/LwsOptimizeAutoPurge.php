@@ -96,27 +96,29 @@ class LwsOptimizeAutoPurge
     {
         $post = get_post($post_id);
 
-        $post_name = site_url() . "/" . $post->post_name;
-        // Remove '__trashed' suffix if present
-        if (strpos($post_name, '__trashed') !== false) {
-            $post_name = str_replace('__trashed', '', $post_name);
+        if ($post) {
+            $post_name = site_url() . "/" . $post->post_name;
+            // Remove '__trashed' suffix if present
+            if (strpos($post_name, '__trashed') !== false) {
+                $post_name = str_replace('__trashed', '', $post_name);
+            }
+
+            $action = current_filter();
+
+            // If WooCommerce is active, then remove the shop cache when removing products
+            if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins'))) && $post->post_type == "product") {
+                $shop_id = \wc_get_page_id('shop');
+
+                $uri = get_permalink($shop_id);
+
+                apply_filters("lws_optimize_clear_filebased_cache", $uri, $action . "_woocommerce", true);
+            }
+
+            $uri = get_permalink($post_id);
+            $this->purge_specified_url();
+
+            apply_filters("lws_optimize_clear_filebased_cache", $post_name, $action, true);
         }
-
-        $action = current_filter();
-
-        // If WooCommerce is active, then remove the shop cache when removing products
-        if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins'))) && $post->post_type == "product") {
-            $shop_id = \wc_get_page_id('shop');
-
-            $uri = get_permalink($shop_id);
-
-            apply_filters("lws_optimize_clear_filebased_cache", $uri, $action . "_woocommerce", true);
-        }
-
-        $uri = get_permalink($post_id);
-        $this->purge_specified_url();
-
-        apply_filters("lws_optimize_clear_filebased_cache", $post_name, $action, true);
     }
 
     // BeTheme support

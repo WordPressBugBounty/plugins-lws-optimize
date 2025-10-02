@@ -15,10 +15,11 @@ class LwsOptimizeCSSManager
     private $preloadable_urls;
     private $preloadable_urls_fonts;
     private $media_convertion;
+    private $minify = false;
 
     public $files = ['file' => 0, 'size' => 0];
 
-    public function __construct($content, array $preloadable = [], array $preloadable_fonts = [], $media_convertion = [])
+    public function __construct($content, array $preloadable = [], array $preloadable_fonts = [], $media_convertion = [], $minify_before_combine = false)
     {
         // Get the page content and the PATH to the cache directory as well as creating it if needed
         $this->content = $content;
@@ -26,6 +27,8 @@ class LwsOptimizeCSSManager
         $this->preloadable_urls = $preloadable;
         $this->preloadable_urls_fonts = $preloadable_fonts;
         $this->media_convertion = $media_convertion;
+
+        $this->minify = $minify_before_combine;
 
         if (!is_dir($this->content_directory)) {
             mkdir($this->content_directory, 0755, true);
@@ -191,6 +194,7 @@ class LwsOptimizeCSSManager
                 $retry_needed = false;
                 $minify = new Minify\CSS();
                 $name = "";
+                $full_content = "";
 
                 // Add each CSS file to the minifier
                 foreach ($links as $link) {
@@ -215,7 +219,11 @@ class LwsOptimizeCSSManager
                         $content = @file_get_contents($file_path);
                         if ($content !== false) {
                             $name = base_convert(crc32($name . $link), 20, 36);
-                            $minify->add($content);
+                            if ($this->minify) {
+                                $minify->add($content);
+                            } else {
+                                $full_content .= "\n/* Source: $link */\n" . $content;
+                            }
                         } else {
                             // If we can't fetch the remote file, add it to problematic files
                             $problematic_files[] = $link;
@@ -225,7 +233,11 @@ class LwsOptimizeCSSManager
                         }
                     } else {
                         if (file_exists($file_path)) {
-                            $minify->add($file_path);
+                            if ($this->minify) {
+                                $minify->add($file_path);
+                            } else {
+                                $full_content .= "\n/* Source: $link */\n" . file_get_contents($file_path);
+                            }
                             $name = base_convert(crc32($name . $link), 20, 36);
                         }
                     }
@@ -247,7 +259,7 @@ class LwsOptimizeCSSManager
                 // Minify and combine all files into one, saved in $path
                 // If it worked, we can prepare the new <link> tag
                 try {
-                    if ($minify->minify($path) && file_exists($path)) {
+                    if ($this->minify && $minify->minify($path) && file_exists($path)) {
                         $file_contents = file_get_contents($path);
                         foreach ($this->media_convertion as $media_element) {
                             $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);
@@ -260,7 +272,19 @@ class LwsOptimizeCSSManager
                         }
 
                         return ['final_url' => $path_url, 'problematic' => $problematic_files];
+                    } else {
+                        // Save the combined content without minification
+                        file_put_contents($path, $full_content);
+                        if (file_exists($path)) {
+                            if ($add_cache) {
+                                $this->files['file'] += 1;
+                                $this->files['size'] += filesize($path) ?? 0;
+                            }
 
+                            return ['final_url' => $path_url, 'problematic' => $problematic_files];
+                        }
+                        // If we couldn't save the file, return false
+                        return ['final_url' => false, 'problematic' => $problematic_files];
                     }
                 } catch (\MatthiasMullie\Minify\Exceptions\FileImportException $e) {
                     // Log the error
@@ -529,6 +553,11 @@ class LwsOptimizeCSSManager
             preg_match("#(/bootstrap[^/]*\.css|/bootstrap/|bootstrap-[^/]*\.css)#i", $url) ||
             preg_match("#(fonts\.googleapis\.com|fonts\.gstatic\.com)#i", $url) || // Google Fonts
             preg_match("#(fontawesome|font-awesome)#i", $url)) { // Font Awesome
+            return true;
+        }
+
+        // If the file is already minified, do not minify it again
+        if ($this->minify && preg_match('/(\.min\.css|\.min-[\w\d]+\.css)(\?.*)?$/i', $url)) {
             return true;
         }
 

@@ -14,16 +14,18 @@ class LwsOptimizeJSManager
     private $content;
     private $content_directory;
     private $excluded_scripts;
+    private $minify = false;
 
     public $files = ['file' => 0, 'size' => 0];
 
-    public function __construct($content)
+    public function __construct($content, $minify = false)
     {
         // Get the page content and the PATH to the cache directory as well as creating it if needed
         $this->content = $content;
         $this->content_directory = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/");
 
         $this->_set_excluded();
+        $this->minify = $minify;
 
         if (!is_dir($this->content_directory)) {
             mkdir($this->content_directory, 0755, true);
@@ -54,6 +56,14 @@ class LwsOptimizeJSManager
                 preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $src);
                 preg_match("/id\=[\'\"]([^\'\"]+)[\'\"]/", $element, $id);
 
+
+                // Ignore <script> tags with type="module"
+                preg_match('/type\s*=\s*[\'"]([^\'"]+)[\'"]/', $element, $type_match);
+                $script_type = isset($type_match[1]) ? strtolower(trim($type_match[1])) : '';
+                if ($script_type === 'module') {
+                    continue;
+                }
+
                 $src = $src[1] ?? "";
                 $id = $id[1] ?? "";
 
@@ -61,7 +71,13 @@ class LwsOptimizeJSManager
                 $src = trim($src);
 
                 // Check if script ID contains 'bootstrap' or 'jquery' and ignore
-                if (!empty($id) && (stripos($id, 'bootstrap') !== false || stripos($id, 'jquery') !== false)) {
+                if (
+                    !empty($id) && (
+                        stripos($id, 'bootstrap') !== false ||
+                        stripos($id, 'jquery') !== false ||
+                        stripos($id, 'fluent-booking-public-js') !== false
+                    )
+                ) {
                     $file_result = $this->combine_current_js($current_scripts);
                     if (!empty($file_result['final_url']) && $file_result['final_url'] !== false) {
                         $newLink = "<script id='$ids' type='text/javascript' src='{$file_result['final_url']}'></script>";
@@ -155,6 +171,7 @@ class LwsOptimizeJSManager
             do {
                 $retry_needed = false;
                 $minify = new Minify\JS();
+                $full_content = "";
                 $name = "";
 
                 // Add each JS file to the minifier
@@ -180,8 +197,18 @@ class LwsOptimizeJSManager
                     if (strpos($file_path, 'http') === 0) {
                         $content = @file_get_contents($file_path);
                         if ($content !== false) {
+                            // Ensure proper JavaScript termination
+                            $processed_content = $this->ensureProperJSTermination($content);
+
+                            if ($this->minify) {
+                                // Replace both http:// and https:// with their escaped versions
+                                $processed_content = preg_replace('#http://#', 'http:\/\/', $processed_content);
+                                $processed_content = preg_replace('#https://#', 'https:\/\/', $processed_content);
+                                $minify->add($processed_content);
+                            } else {
+                                $full_content .= "\n/* Source: $script */\n" . $processed_content;
+                            }
                             $name = base_convert(crc32($name . $script), 20, 36);
-                            $minify->add($content);
                         } else {
                             // If we can't fetch the remote file, add it to problematic files
                             $problematic_files[] = $script;
@@ -191,8 +218,21 @@ class LwsOptimizeJSManager
                         }
                     } else {
                         if (file_exists($file_path)) {
-                            $minify->add($file_path);
+                            $content = file_get_contents($file_path);
+
+                            // Ensure proper JavaScript termination
+                            $processed_content = $this->ensureProperJSTermination($content);
+
+                            if ($this->minify) {
+                                // Replace both http:// and https:// with their escaped versions
+                                $processed_content = preg_replace('#http://#', 'http:\/\/', $processed_content);
+                                $processed_content = preg_replace('#https://#', 'https:\/\/', $processed_content);
+                                $minify->add($processed_content);
+                            } else {
+                                $full_content .= "\n/* Source: $script */\n" . $processed_content;
+                            }
                             $name = base_convert(crc32($name . $script), 20, 36);
+
                         } else {
                             $problematic_files[] = $script;
                             $retry_needed = true;
@@ -214,13 +254,33 @@ class LwsOptimizeJSManager
 
                 // Minify and combine all files into one, saved in $path
                 try {
-                    if ($minify->minify($path) && file_exists($path)) {
+                    if ($this->minify && $minify->minify($path) && file_exists($path)) {
                         if ($add_cache) {
                             $this->files['file'] += 1;
                             $this->files['size'] += filesize($path) ?? 0;
                         }
 
+                        $combined_content = @file_get_contents($path);
+                        if ($combined_content) {
+                            $combined_content = preg_replace('#https:\\\\/\\\\/#', 'https://', $combined_content);
+                            $combined_content = preg_replace('#http:\\\\/\\\\/#', 'http://', $combined_content);
+                            file_put_contents($path, $combined_content);
+                        }
+
                         return ['final_url' => $path_url, 'problematic' => $problematic_files];
+                    } else {
+                        // Save the combined content without minification
+                        file_put_contents($path, $full_content);
+                        if (file_exists($path)) {
+                            if ($add_cache) {
+                                $this->files['file'] += 1;
+                                $this->files['size'] += filesize($path) ?? 0;
+                            }
+
+                            return ['final_url' => $path_url, 'problematic' => $problematic_files];
+                        }
+                        // If we couldn't save the file, return false
+                        return ['final_url' => false, 'problematic' => $problematic_files];
                     }
                 } catch (\Exception $e) {
                     // Log the error
@@ -307,7 +367,13 @@ class LwsOptimizeJSManager
                 $script_id = trim($script_id);
 
                 // Skip if ID contains bootstrap or jquery
-                if (!empty($script_id) && (stripos($script_id, 'bootstrap') !== false || stripos($script_id, 'jquery') !== false)) {
+                if (
+                    !empty($script_id) && (
+                        stripos($script_id, 'bootstrap') !== false ||
+                        stripos($script_id, 'jquery') !== false ||
+                        stripos($script_id, 'fluent-booking-public-js') !== false
+                    )
+                ) {
                     continue;
                 }
 
@@ -360,27 +426,63 @@ class LwsOptimizeJSManager
                 $add_cache = !file_exists($path);
 
                 try {
-                    $minify = new Minify\JS($file_path);
+                    // Read and validate JavaScript content first
+                    $js_content = '';
+                    if (strpos($file_path, 'http') === 0) {
+                        $js_content = @file_get_contents($file_path);
+                    } else {
+                        $js_content = file_exists($file_path) ? file_get_contents($file_path) : '';
+                    }
+
+                    // Ensure proper JavaScript termination
+                    $processed_content = $this->ensureProperJSTermination($js_content);
+
+                    // Replace both http:// and https:// with their escaped versions
+                    $processed_content = preg_replace('#http://#', 'http:\/\/', $processed_content);
+                    $processed_content = preg_replace('#https://#', 'https:\/\/', $processed_content);
+
+                    // Create temporary file with processed content
+                    $temp_processed_file = $path . '.tmp';
+                    file_put_contents($temp_processed_file, $processed_content);
+
+                    $minify = new Minify\JS($temp_processed_file);
 
                     if ($minify->minify($path) && file_exists($path)) {
+
+                        $combined_content = @file_get_contents($path);
+                        if ($combined_content) {
+                            $combined_content = preg_replace('#https:\\\\/\\\\/#', 'https://', $combined_content);
+                            $combined_content = preg_replace('#http:\\\\/\\\\/#', 'http://', $combined_content);
+                            file_put_contents($path, $combined_content);
+                        }
+
                         if ($add_cache) {
                             $this->files['file'] += 1;
                             $this->files['size'] += filesize($path) ?? 0;
                         }
 
                         // Create a new script tag with the newly minified URL
+                        // Replace the script src with the minified file and add a comment with the original source
                         $newLink = preg_replace("/src\=[\'\"]([^\'\"]+)[\'\"]/", "src='$path_url'", $element);
+                        $newLink = "<!-- Source: $href -->\n" . $newLink;
                         $this->content = str_replace($element, $newLink, $this->content);
                     }
 
-                    // Clean up temp file if it was created for a remote resource
+                    // Clean up temporary files
+                    if (file_exists($temp_processed_file)) {
+                        unlink($temp_processed_file);
+                    }
                     if (isset($temp_file) && file_exists($temp_file)) {
                         unlink($temp_file);
                     }
                 } catch (\Exception $e) {
                     error_log('LwsOptimize JS Minification Error: ' . $e->getMessage() . ' for file: ' . $href);
 
-                    // Clean up temp file if it was created for a remote resource
+                    // Clean up temporary files on error
+                    $temp_processed_file = $path . '.tmp';
+                    if (file_exists($temp_processed_file)) {
+                        unlink($temp_processed_file);
+                    }
                     if (isset($temp_file) && file_exists($temp_file)) {
                         unlink($temp_file);
                     }
@@ -690,47 +792,6 @@ class LwsOptimizeJSManager
         }
     }
 
-    public function merge_js($name, $content, $value, $last = false)
-    {
-        // Create the main cache directory if it does not exist yet
-        if (!is_dir($this->content_directory)) {
-            mkdir($this->content_directory, 0755, true);
-        }
-
-        if (is_dir($this->content_directory)) {
-            $minify = new Minify\JS($content);
-            $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.min.js");
-            $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
-
-            // Minify and combine all files into one, saved in $path
-            // If it worked, we can prepare the new <link> tag
-            if ($minify->minify($path)) {
-                $stats = get_option('lws_optimize_cache_statistics', [
-                    'desktop' => ['amount' => 0, 'size' => 0],
-                    'mobile' => ['amount' => 0, 'size' => 0],
-                    'css' => ['amount' => 0, 'size' => 0],
-                    'js' => ['amount' => 0, 'size' => 0],
-                ]);
-
-                $stats['js']['amount'] += 1;
-                $stats['js']['size'] += filesize($path);
-                update_option('lws_optimize_cache_statistics', $stats);
-
-                $combined_link = "<script src='" . $path_url . "' type=\"text/javascript\"></script>";
-
-                $script_tag = substr($this->content, $value["start"], ($value["end"] - $value["start"] + 1));
-
-                if ($last) {
-                    $script_tag = $combined_link . "\n<!-- " . $script_tag . " -->\n";
-                } else {
-                    $script_tag = $combined_link . "\n" . $script_tag;
-                }
-
-                $this->content = substr_replace($this->content, "\n$script_tag\n", $value["start"], ($value["end"] - $value["start"]) + 1);
-            }
-        }
-    }
-
     public function lwsop_check_option(string $option)
     {
         $optimize_options = get_option('lws_optimize_config_array', []);
@@ -756,25 +817,89 @@ class LwsOptimizeJSManager
     }
 
     /**
+     * Add proper JavaScript semicolon handling and statement separation
+     * @param string $js_content The JavaScript content to process
+     * @return string The processed content with proper statement separation
+     */
+    private function ensureProperJSTermination($js_content)
+    {
+        // Remove existing trailing whitespace and semicolons
+        $js_content = rtrim($js_content);
+
+        // Check if the content ends with a semicolon, closing brace, or other valid terminator
+        $last_char = substr($js_content, -1);
+        $valid_terminators = [';', '}', ')', ']'];
+
+        if (!in_array($last_char, $valid_terminators)) {
+            // Add semicolon if needed
+            $js_content .= ';';
+        }
+
+        // Ensure newline for better separation in combined files
+        $js_content .= "\n";
+
+        return $js_content;
+    }
+
+    /**
      * Compare the given $url of $type (minify/combine) with the exceptions.
      * If there is a match, $url is excluded
      */
     public function check_for_exclusion($url, $type)
     {
-        if (empty($type)) {
+        if (empty($type) || empty($url)) {
             return true;
         }
 
-        // Exclude jQuery and Bootstrap scripts
-        if (str_contains(strtolower($url), "jquery")) {
+        // If the file is already minified, do not minify it again
+        if ($type === 'minify' && preg_match('/(\.min\.js|\.min-[\w\d]+\.js)(\?.*)?$/i', $url)) {
             return true;
         }
 
-
+        // Exclude jQuery and Bootstrap scripts with more specific patterns
+        if (preg_match('/(jquery|bootstrap)(-[\d\.]+)?(\.min)?\.js/i', $url)) {
+            return true;
+        }
 
         // Always exclude lazy load script to prevent conflicts
         if (strpos($url, 'lws_op_lazyload.js') !== false) {
             return true;
+        }
+
+        // Exclude ES6 modules
+        if (preg_match('/type\s*=\s*[\'"]module[\'"]/', $url)) {
+            return true;
+        }
+
+        // Exclude critical WordPress core scripts
+        $wp_core_exclusions = [
+            'wp-admin', 'wp-includes/js/admin-bar', 'wp-includes/js/customize-',
+            'wp-includes/js/media-', 'wp-includes/js/quicktags', 'wp-includes/js/tinymce',
+            'wp-includes/js/plupload', 'wp-includes/js/wplink', 'wp-includes/js/heartbeat'
+        ];
+        foreach ($wp_core_exclusions as $core_script) {
+            if (strpos($url, $core_script) !== false) {
+                return true;
+            }
+        }
+
+
+        // Exclude common problematic scripts (payment, analytics, ads, captcha, chat, CDN, etc.)
+        $default_exclusions = [
+            'recaptcha', 'grecaptcha', 'stripe', 'paypal', 'mollie', 'klarna', 'checkout',
+            'analytics', 'gtag', 'tagmanager', 'facebook', 'fbq', 'pixel', 'adsbygoogle',
+            'googletag', 'adservice', 'amazon-adsystem', 'doubleclick', 'googlesyndication',
+            'cloudflare', 'jsdelivr', 'cdn.jsdelivr.net', 'cdnjs.cloudflare.com',
+            'addthis', 'sharethis', 'disqus', 'hotjar', 'optimizely', 'cookieconsent', 'cookiebot',
+            'livechat', 'tawk', 'zendesk', 'intercom', 'chatwoot', 'smartsupp', 'hubspot',
+            'matomo', 'piwik', 'yandex', 'mixpanel', 'segment', 'sentry', 'plausible',
+            'onesignal', 'pushwoosh', 'pushcrew', 'pushengage',
+        ];
+
+        foreach ($default_exclusions as $pattern) {
+            if (stripos($url, $pattern) !== false) {
+                return true;
+            }
         }
 
         $httpHost = str_replace("www.", "", $_SERVER["HTTP_HOST"]);
@@ -844,6 +969,21 @@ class LwsOptimizeJSManager
                 if (preg_match("$regex_pattern", $url)) {
                     return true;
                 }
+            }
+
+            $content = @file_get_contents($url);
+            if ($content !== false) {
+                if (
+                    strpos($content, 'createElementNS') !== false ||
+                    strpos($content, 'setAttributeNS') !== false ||
+                    strpos($content, 'getAttributeNS') !== false
+                ) {
+                    return true;
+                }
+
+
+
+
             }
         } elseif ($type == "combine") {
             $options_combine = $this->lwsop_check_option('combine_js');
@@ -916,21 +1056,6 @@ class LwsOptimizeJSManager
                     }
                 }
             }
-        }
-
-        return false;
-    }
-
-    public function checkInternal($link)
-    {
-        $httpHost = str_replace("www.", "", $_SERVER["HTTP_HOST"]);
-
-        if (
-            preg_match("/^<script[^\>]+\>/i", $link, $script) && preg_match("/src=[\"\'](.*?)[\"\']/", $script[0], $src)
-            && !preg_match("/alexa\.com\/site\_stats/i", $src[1]) && preg_match("/^\/[^\/]/", $src[1])
-            && preg_match("/" . preg_quote($httpHost, "/") . "/i", $src[1]) && !preg_match("/[\?\=].*" . preg_quote($httpHost, "/") . "/i", $src[1])
-        ) {
-            return $src[1];
         }
 
         return false;
