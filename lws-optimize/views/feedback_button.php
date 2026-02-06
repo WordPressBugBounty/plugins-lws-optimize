@@ -26,50 +26,50 @@ $t = [
 ?>
 
 <!-- Floating Feedback Button -->
-<button class="feedbackButton" onclick="openFeedbackModal()" aria-label="<?= htmlspecialchars($t['buttonText']) ?>">
-    <?= htmlspecialchars($t['buttonText']) ?>
+<button class="feedbackButton" onclick="openFeedbackModal()" aria-label="<?php echo htmlspecialchars($t['buttonText']) ?>">
+    <?php echo htmlspecialchars($t['buttonText']) ?>
 </button>
 
 <!-- Modal -->
 <div class="modalOverlay" id="feedbackModal" style="display: none;">
     <div class="modalContent">
         <div class="modalHeader">
-            <h3><?= htmlspecialchars($t['modalTitle']) ?></h3>
+            <h3><?php echo htmlspecialchars($t['modalTitle']) ?></h3>
             <button class="closeButton" onclick="closeFeedbackModal()" aria-label="Close">×</button>
         </div>
 
         <div id="feedbackForm" class="form">
             <form onsubmit="handleSubmit(event)">
                 <div class="formGroup">
-                    <label for="feedbackType"><?= htmlspecialchars($t['typeLabel']) ?></label>
+                    <label for="feedbackType"><?php echo htmlspecialchars($t['typeLabel']) ?></label>
                     <select id="feedbackType" name="type" required>
                         <?php foreach ($t['types'] as $key => $value): ?>
-                            <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($value) ?></option>
+                            <option value="<?php echo htmlspecialchars($key) ?>"><?php echo htmlspecialchars($value) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="formGroup">
-                    <label for="feedbackName"><?= htmlspecialchars($t['nameLabel']) ?></label>
-                    <input type="text" id="feedbackName" name="name" placeholder="<?= htmlspecialchars($t['namePlaceholder']) ?>">
+                    <label for="feedbackName"><?php echo htmlspecialchars($t['nameLabel']) ?></label>
+                    <input type="text" id="feedbackName" name="name" placeholder="<?php echo htmlspecialchars($t['namePlaceholder']) ?>">
                 </div>
 
                 <div class="formGroup">
-                    <label for="feedbackEmail"><?= htmlspecialchars($t['emailLabel']) ?></label>
-                    <input type="email" id="feedbackEmail" name="email" placeholder="<?= htmlspecialchars($t['emailPlaceholder']) ?>">
+                    <label for="feedbackEmail"><?php echo htmlspecialchars($t['emailLabel']) ?></label>
+                    <input type="email" id="feedbackEmail" name="email" placeholder="<?php echo htmlspecialchars($t['emailPlaceholder']) ?>">
                 </div>
 
                 <div class="formGroup">
-                    <label for="feedbackMessage"><?= htmlspecialchars($t['feedbackLabel']) ?></label>
-                    <textarea id="feedbackMessage" name="feedback" placeholder="<?= htmlspecialchars($t['feedbackPlaceholder']) ?>" rows="4" required></textarea>
+                    <label for="feedbackMessage"><?php echo htmlspecialchars($t['feedbackLabel']) ?></label>
+                    <textarea id="feedbackMessage" name="feedback" placeholder="<?php echo htmlspecialchars($t['feedbackPlaceholder']) ?>" rows="4" required></textarea>
                 </div>
 
                 <div class="formActions">
                     <button type="button" onclick="closeFeedbackModal()" class="cancelButton">
-                        <?= htmlspecialchars($t['cancelButton']) ?>
+                        <?php echo htmlspecialchars($t['cancelButton']) ?>
                     </button>
                     <button type="submit" class="submitButton" id="submitBtn">
-                        <?= htmlspecialchars($t['submitButton']) ?>
+                        <?php echo htmlspecialchars($t['submitButton']) ?>
                     </button>
                 </div>
             </form>
@@ -80,7 +80,7 @@ $t = [
 </div>
 
 <script>
-const translations = <?= json_encode($t) ?>;
+const translations = <?php echo json_encode($t) ?>;
 let isSubmitting = false;
 
 function openFeedbackModal() {

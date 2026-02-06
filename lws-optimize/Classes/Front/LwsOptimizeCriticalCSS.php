@@ -25,7 +25,7 @@ class LwsOptimizeCriticalCSS
         preg_match_all("/(<link[^>]*rel=['\"]stylesheet['\"][^>]*>|<style[^>]*>.*?<\/style>)/is", $this->content, $css_elements);
 
         if (!empty($css_elements[0])) {
-            $site_domain = parse_url(site_url(), PHP_URL_HOST);
+            $site_domain = wp_parse_url(site_url(), PHP_URL_HOST);
 
             foreach ($css_elements[0] as $element) {
                 // Handle <style> tags
@@ -42,7 +42,7 @@ class LwsOptimizeCriticalCSS
                         $url = trim($href[1]);
 
                         // Check if CSS is from the same domain
-                        $css_domain = parse_url($url, PHP_URL_HOST);
+                        $css_domain = wp_parse_url($url, PHP_URL_HOST);
                         if ($css_domain && $css_domain === $site_domain) {
                             $response = wp_remote_get($url);
                             if (!is_wp_error($response) && $response['response']['code'] === 200) {

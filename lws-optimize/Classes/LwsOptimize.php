@@ -83,7 +83,7 @@ class LwsOptimize
                         if ($memcached->getVersion() === false) {
                             $optimize_options['memcached']['state'] = "false";
                             if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                                unlink(LWSOP_OBJECTCACHE_PATH);
+                                wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                             }
                         } else {
                             if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
@@ -94,13 +94,13 @@ class LwsOptimize
                         $optimize_options['memcached']['state'] = "false";
                         if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
                             var_dump("no_class");
-                            unlink(LWSOP_OBJECTCACHE_PATH);
+                            wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                         }
                     }
                 }
             } else {
                 if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                    unlink(LWSOP_OBJECTCACHE_PATH);
+                    wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                 }
             }
 
@@ -185,7 +185,7 @@ class LwsOptimize
      */
     public function clear_all_cache_external() {
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] External request: Clearing all cache' . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] External request: Clearing all cache' . PHP_EOL);
         fclose($logger);
 
         // Delete file-based cache directories
@@ -220,7 +220,7 @@ class LwsOptimize
         }
 
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] External request: Clearing cache for URL: ' . $url . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] External request: Clearing cache for URL: ' . $url . PHP_EOL);
         fclose($logger);
 
         // Parse the URL to get the path
@@ -243,7 +243,7 @@ class LwsOptimize
             array_map('unlink', array_filter($files_desktop, 'is_file'));
             $removed = true;
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed desktop cache for: ' . $path_uri . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed desktop cache for: ' . $path_uri . PHP_EOL);
             fclose($logger);
         }
 
@@ -253,7 +253,7 @@ class LwsOptimize
             array_map('unlink', array_filter($files_mobile, 'is_file'));
             $removed = true;
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed mobile cache for: ' . $path_uri . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed mobile cache for: ' . $path_uri . PHP_EOL);
             fclose($logger);
         }
 
@@ -294,11 +294,42 @@ class LwsOptimize
             include_once ABSPATH . 'wp-admin/includes/image.php';
         }
 
+        $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_yearly";
+        switch ($timer) {
+            case 'lws_daily':
+                $cdn_date = "86400";
+                break;
+            case 'lws_weekly':
+                $cdn_date = "604800";
+                break;
+            case 'lws_monthly':
+                $cdn_date = "2592000";
+                break;
+            case 'lws_thrice_monthly':
+                $cdn_date = "7776000";
+                break;
+            case 'lws_biyearly':
+                $cdn_date = "15552000";
+                break;
+            case 'lws_yearly':
+                $cdn_date = "31104000";
+                break;
+            case 'lws_two_years':
+                $cdn_date = "62208000";
+                break;
+            case 'lws_never':
+                $cdn_date = "93312000";
+                break;
+            default:
+                $cdn_date = "7776000";
+                break;
+        }
+
         // Schedule the cache cleanout again if it has been deleted
         // If the plugin is OFF or the filecached is deactivated, unregister the WPCron
         if (isset($optimize_options['filebased_cache']['timer']) && !get_option('lws_optimize_deactivate_temporarily')) {
             if (!wp_next_scheduled('lws_optimize_clear_filebased_cache_cron') && $optimize_options['filebased_cache']['timer'] != 0) {
-                wp_schedule_event(time(), $optimize_options['filebased_cache']['timer'], 'lws_optimize_clear_filebased_cache_cron');
+                wp_schedule_event(time() + $cdn_date, $optimize_options['filebased_cache']['timer'], 'lws_optimize_clear_filebased_cache_cron');
             }
         } elseif (get_option('lws_optimize_deactivate_temporarily') || $this->lwsop_check_option('filebased_cache')['state'] === "false") {
             wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache_cron'), 'lws_optimize_clear_filebased_cache_cron');
@@ -343,12 +374,12 @@ class LwsOptimize
             }
             $this->lws_optimize_reset_header_htaccess();
 
-            $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed cache after update' . PHP_EOL);
-            fclose($logger);
+            // $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
+            // $logger = fopen($this->log_file, 'a');
+            // fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed cache after update' . PHP_EOL);
+            // fclose($logger);
 
-            $this->after_cache_purge_preload();
+            // $this->after_cache_purge_preload();
         }
     }
 
@@ -432,13 +463,13 @@ class LwsOptimize
         } else {
             // No cache, no purge
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] No compatible cache found or cache deactivated: no server cache purge' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] No compatible cache found or cache deactivated: no server cache purge' . PHP_EOL);
             fclose($logger);
             return (json_encode(array('code' => "FAILURE", 'data' => "No cache method usable"), JSON_PRETTY_PRINT));
         }
 
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Compatible cache found : starting server cache purge on {$chosen_purger}" . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Compatible cache found : starting server cache purge on {$chosen_purger}" . PHP_EOL);
         fclose($logger);
         return (json_encode(array('code' => "SUCCESS", 'data' => ""), JSON_PRETTY_PRINT));
     }
@@ -476,7 +507,7 @@ class LwsOptimize
         // Check if content is retrieved
         if ($sitemap_content === false) {
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to fetch sitemap: ' . $url . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to fetch sitemap: ' . $url . PHP_EOL);
             fclose($logger);
             return $data;
         }
@@ -534,14 +565,30 @@ class LwsOptimize
         // Set SSL context to avoid verification issues
         stream_context_set_default([
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
+            'verify_peer' => false,
+            'verify_peer_name' => false,
             ],
         ]);
 
-        // Check if sitemap exists
-        $headers = get_headers($sitemap);
-        if (substr($headers[0], 9, 3) == 404) {
+        // Check if sitemap exists and is valid XML
+        $headers = @get_headers($sitemap);
+        $is_valid = false;
+
+        if ($headers && is_array($headers) && isset($headers[0]) && intval(substr($headers[0], 9, 3)) === 200) {
+            // Check if it's actually XML by trying to load it
+            $sitemap_content = @file_get_contents($sitemap);
+            if ($sitemap_content !== false) {
+            libxml_use_internal_errors(true);
+            $xml = @simplexml_load_string($sitemap_content);
+            if ($xml !== false) {
+                $is_valid = true;
+            }
+            libxml_clear_errors();
+            }
+        }
+
+        // Fall back to alternative sitemap if the first one is invalid
+        if (!$is_valid) {
             $sitemap = home_url('/sitemap_index.xml');
         }
 
@@ -555,7 +602,7 @@ class LwsOptimize
 
         // Create log entry
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Starting to fetch sitemap [$sitemap] again" . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting to fetch sitemap [$sitemap] again" . PHP_EOL);
         fclose($logger);
 
         // Otherwise fetch fresh URLs from sitemap
@@ -579,13 +626,13 @@ class LwsOptimize
             if (time() - $ongoing > 600) {
                 // Create log entry
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preloading still ongoing, 600 seconds ellapsed, forcing new instance" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preloading still ongoing, 600 seconds ellapsed, forcing new instance" . PHP_EOL);
                 fclose($logger);
                 delete_option('lws_optimize_preload_is_ongoing');
             } else {
                 // Create log entry
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preloading still ongoing, not starting new instance" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preloading still ongoing, not starting new instance" . PHP_EOL);
                 fclose($logger);
                 exit;
             }
@@ -602,7 +649,7 @@ class LwsOptimize
         if ($time +  3600 < time()) {
             // Create log entry
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] URLs last fetched more than 1 hour ago, fetching new data" . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] URLs last fetched more than 1 hour ago, fetching new data" . PHP_EOL);
             fclose($logger);
 
             // We get the freshest data
@@ -610,7 +657,7 @@ class LwsOptimize
 
             // Create log entry
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] New URLs fetched. Amount: " . count($urls) . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] New URLs fetched. Amount: " . count($urls) . PHP_EOL);
             fclose($logger);
         } else {
             // We get the ones currently saved in base
@@ -623,7 +670,7 @@ class LwsOptimize
 
             // Create log entry
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Filebased cache is disabled, aborting preload" . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Filebased cache is disabled, aborting preload" . PHP_EOL);
             fclose($logger);
             return;
         }
@@ -638,11 +685,12 @@ class LwsOptimize
         $current_error_try = 0; // Track errors to stop if too much are found
         $max_error_try = 20; // Stop if we have 20 errors during the loop (to avoid infinite loops)
 
-        // Define user agents for preloading
+        // Define user agents for preloading with custom identifiers (HTTP/2 compatible)
         $userAgents = [
-            'desktop' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36; compatible; LWSOptimizePreload/1.0',
-            'mobile' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6.2 Mobile/15E148 Safari/604.1; compatible; LWSOptimizePreload/1.0'
+            'desktop' => 'LWSOptimizePreload/2.0 (HTTP/2)',
+            'mobile' => 'LWSOptimizePreload/2.0 (Mobile; HTTP/2)'
         ];
+
 
         // Remove mobile agent if mobile caching is disabled
         if (isset($array['cache_mobile_user']['state']) && $array['cache_mobile_user']['state'] == "true") {
@@ -652,7 +700,7 @@ class LwsOptimize
         if ($array['filebased_cache']['preload_ongoing'] == "true") {
             // Create log entry for the preload process
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Starting preload batch - max: ' . $max_try . ' urls' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Starting preload batch - max: ' . $max_try . ' urls' . PHP_EOL);
             fclose($logger);
         }
 
@@ -679,7 +727,7 @@ class LwsOptimize
             $file_exists_mobile = glob($path_mobile . "index*") ?? [];
 
             // If files exist and this is first run, count it as done
-            if (!empty($file_exists) && (!isset($userAgents['mobile']) || !empty($file_exists_mobile))) {
+            if (!empty($file_exists) && !empty($file_exists_mobile)) {
                 if ($first_run) {
                     $done++;
                 }
@@ -687,31 +735,38 @@ class LwsOptimize
             }
 
             // Fetch pages with appropriate user agents
-            foreach ($userAgents as $agent) {
-            // Ensure the nocache parameter is unique for each request
-            $unique_nocache = 'nocache=' . time() . '-' . mt_rand(1000, 9999);
-            $request_url = str_replace('nocache=' . time(), $unique_nocache, $url);
+            foreach ($userAgents as $type => $agent) {
+                if ($type === 'mobile' && $file_exists_mobile) {
+                    continue; // Skip if mobile cache already exists
+                } else if ($type === 'desktop' && $file_exists) {
+                    continue; // Skip if desktop cache already exists
+                }
 
-            // Make the request with additional cache-busting headers
-            $response = wp_remote_get(
-                $request_url,
-                [
-                'timeout'     => 30,
-                'user-agent'  => $agent,
-                'headers'     => [
-                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
-                    'Pragma'        => 'no-cache',
-                    'Expires'       => '0',
-                    'X-LWS-Preload' => time(), // Additional unique header
-                    'X-No-Cache'    => '1'     // Some servers recognize this
-                ],
-                'sslverify'   => false,
-                'blocking'    => true,
-                'cookies'     => [], // Clean request with no cookies
-                'reject_unsafe_urls' => false, // Allow URLs with query strings
-                'redirection' => 3 // Don't follow too many redirects
-                ]
-            );
+                // Ensure the nocache parameter is unique for each request
+                $unique_nocache = 'nocache=' . time() . '-' . mt_rand(1000, 9999);
+                $request_url = str_replace('nocache=' . time(), $unique_nocache, $url);
+
+                // Make the request with additional cache-busting headers
+                $response = wp_remote_get(
+                    $request_url,
+                    [
+                    'timeout'     => 30,
+                    'httpversion' => '2.0', // Use HTTP/2 if available
+                    'user-agent'  => $agent,
+                    'headers'     => [
+                        'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                        'Pragma'        => 'no-cache',
+                        'Expires'       => '0',
+                        'X-LWS-Preload' => time(), // Additional unique header
+                        'X-No-Cache'    => '1'     // Some servers recognize this
+                    ],
+                    'sslverify'   => false,
+                    'blocking'    => true,
+                    'cookies'     => [], // Clean request with no cookies
+                    'reject_unsafe_urls' => false, // Allow URLs with query strings
+                    'redirection' => 3 // Don't follow too many redirects
+                    ]
+                );
             }
 
             // Check if cache file was created
@@ -722,14 +777,14 @@ class LwsOptimize
 
                 // Log successful cache creation
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Successfully cached: $url" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Successfully cached: $url" . PHP_EOL);
                 fclose($logger);
             } else {
                 $current_error_try++;
 
                 // Log failed cache attempt
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to cache: $url - removed from queue" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Failed to cache: $url - removed from queue" . PHP_EOL);
                 fclose($logger);
                 unset($urls[$key]);
             }
@@ -738,7 +793,7 @@ class LwsOptimize
         if ($current_error_try >= $max_error_try) {
             // Log excessive errors
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload batch stopped due to excessive errors ($current_error_try)" . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preload batch stopped due to excessive errors ($current_error_try)" . PHP_EOL);
             fclose($logger);
         }
 
@@ -746,7 +801,7 @@ class LwsOptimize
         if ($current_try > 0) {
             // Log completion of preload batch with actual stats
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload batch completed - URLs cached: $current_try, total cached: $done" . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preload batch completed - URLs cached: $current_try, total cached: $done" . PHP_EOL);
             fclose($logger);
         }
 
@@ -764,14 +819,14 @@ class LwsOptimize
                 $old_umask = umask(0);
 
                 if (!chmod(ABSPATH, 0755)) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not change directory permissions for .htaccess' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not change directory permissions for .htaccess' . PHP_EOL);
                     umask($old_umask);
                     fclose($logger);
                     return;
                 }
 
                 if (!touch($htaccess)) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not create .htaccess file' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not create .htaccess file' . PHP_EOL);
                     umask($old_umask);
                     fclose($logger);
                     return;
@@ -784,7 +839,7 @@ class LwsOptimize
             // Ensure file is writable
             if (!is_writable($htaccess)) {
                 if (!chmod($htaccess, 0644)) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not make .htaccess writable' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not make .htaccess writable' . PHP_EOL);
                     fclose($logger);
                     return;
                 }
@@ -793,7 +848,7 @@ class LwsOptimize
             // Read existing content
             $htaccess_content = file_get_contents($htaccess);
             if ($htaccess_content === false) {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not read .htaccess file' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not read .htaccess file' . PHP_EOL);
                 fclose($logger);
                 return;
             }
@@ -805,7 +860,7 @@ class LwsOptimize
             // Skip if temporarily deactivated
             if (get_option('lws_optimize_deactivate_temporarily')) {
                 if (file_put_contents($htaccess, $htaccess_content) === false) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
                 }
                 fclose($logger);
                 return;
@@ -844,13 +899,13 @@ class LwsOptimize
 
             // Write new content
             if (file_put_contents($htaccess, $new_content) === false) {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
             } else {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully updated GZIP rules in .htaccess' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully updated GZIP rules in .htaccess' . PHP_EOL);
             }
 
         } catch (\Exception $e) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
         }
 
         fclose($logger);
@@ -917,7 +972,7 @@ class LwsOptimize
         }
 
         // Current date at the time of modification
-        $current_date = date("d/m/Y H:i:s", time());
+        $current_date = gmdate("d/m/Y H:i:s", time());
 
         // Path to .htaccess
         $htaccess = ABSPATH . "/.htaccess";
@@ -968,7 +1023,7 @@ class LwsOptimize
             } else {
                 // Log error if htaccess can't be modified
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Unable to modify .htaccess - file not found or not writable' . PHP_EOL);
                 fclose($logger);
             }
             // Content
@@ -1101,7 +1156,7 @@ class LwsOptimize
 
         // Check if .htaccess exists
         if (!file_exists($htaccess)) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
             fclose($logger);
             return;
         }
@@ -1115,9 +1170,9 @@ class LwsOptimize
 
         // Write back to file
         if (file_put_contents($htaccess, $htaccess_content) === false) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
         } else {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully removed GZIP rules from .htaccess' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully removed GZIP rules from .htaccess' . PHP_EOL);
         }
 
         fclose($logger);
@@ -1129,7 +1184,7 @@ class LwsOptimize
 
         // Check if .htaccess exists
         if (!file_exists($htaccess)) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
             fclose($logger);
             return;
         }
@@ -1143,9 +1198,9 @@ class LwsOptimize
 
         // Write back to file
         if (file_put_contents($htaccess, $htaccess_content) === false) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
         } else {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully removed caching rules from .htaccess' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully removed caching rules from .htaccess' . PHP_EOL);
         }
 
         fclose($logger);
@@ -1207,14 +1262,14 @@ class LwsOptimize
                 $old_umask = umask(0);
 
                 if (!chmod(ABSPATH, 0755)) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not change directory permissions for .htaccess' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not change directory permissions for .htaccess' . PHP_EOL);
                     umask($old_umask);
                     fclose($logger);
                     return;
                 }
 
                 if (!touch($htaccess)) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not create .htaccess file' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not create .htaccess file' . PHP_EOL);
                     umask($old_umask);
                     fclose($logger);
                     return;
@@ -1227,7 +1282,7 @@ class LwsOptimize
             // Ensure file is writable
             if (!is_writable($htaccess)) {
                 if (!chmod($htaccess, 0644)) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not make .htaccess writable' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not make .htaccess writable' . PHP_EOL);
                     fclose($logger);
                     return;
                 }
@@ -1236,7 +1291,7 @@ class LwsOptimize
             // Read existing content
             $htaccess_content = file_get_contents($htaccess);
             if ($htaccess_content === false) {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not read .htaccess file' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not read .htaccess file' . PHP_EOL);
                 fclose($logger);
                 return;
             }
@@ -1248,7 +1303,7 @@ class LwsOptimize
             // Skip if temporarily deactivated
             if (get_option('lws_optimize_deactivate_temporarily')) {
                 if (file_put_contents($htaccess, $htaccess_content) === false) {
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
                 }
                 fclose($logger);
                 return;
@@ -1292,13 +1347,13 @@ class LwsOptimize
 
             // Write new content
             if (file_put_contents($htaccess, $new_content) === false) {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
             } else {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully updated Header rules in .htaccess' . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully updated Header rules in .htaccess' . PHP_EOL);
             }
 
         } catch (\Exception $e) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
         }
 
         fclose($logger);
@@ -1310,7 +1365,7 @@ class LwsOptimize
 
         // Check if .htaccess exists
         if (!file_exists($htaccess)) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] .htaccess file does not exist' . PHP_EOL);
             fclose($logger);
             return;
         }
@@ -1324,9 +1379,9 @@ class LwsOptimize
 
         // Write back to file
         if (file_put_contents($htaccess, $htaccess_content) === false) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
         } else {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Successfully removed expire headers from .htaccess' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully removed expire headers from .htaccess' . PHP_EOL);
         }
 
         fclose($logger);
@@ -1390,7 +1445,7 @@ class LwsOptimize
                 $this->lws_optimize_delete_directory("$dir/$file", $class_this);
             } else {
                 $size = filesize("$dir/$file");
-                @unlink("$dir/$file");
+                @wp_delete_file("$dir/$file");
                 if (file_exists("$dir/$file")) {
                     return false;
                 }
@@ -1468,7 +1523,7 @@ class LwsOptimize
         $logger = fopen($this->log_file, 'a');
 
         try {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Starting [FULL] cache clearing for action [$action]..." . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting [FULL] cache clearing for action [$action]..." . PHP_EOL);
 
             // Delete file-based cache directories
             $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
@@ -1488,11 +1543,11 @@ class LwsOptimize
 
             if (function_exists('wp_cache_flush')) {
                 wp_cache_flush();
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
             }
             return json_encode(['code' => 'SUCCESS'], JSON_PRETTY_PRINT);
         } catch (\Exception $e) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
             return json_encode(['code' => 'ERROR', 'message' => $e->getMessage()], JSON_PRETTY_PRINT);
         } finally {
             fclose($logger);
@@ -1508,7 +1563,7 @@ class LwsOptimize
 
 
         try {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Starting AutoPurge cache clearing for action [$action]... [$directory]" . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting AutoPurge cache clearing for action [$action]... [$directory]" . PHP_EOL);
 
             // Get site URL components for main cache
             $site_url = site_url();
@@ -1528,14 +1583,14 @@ class LwsOptimize
                 // Add desktop and mobile specific cache directories
                 $cache_dirs = array_merge([$cache_desktop => 'desktop specific'], $cache_dirs);
             } else {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Directory $cache_desktop not found." . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Directory for $directory not found. No cache to purge" . PHP_EOL);
             }
 
             if (is_dir($cache_mobile)) {
                 // Add desktop and mobile specific cache directories
                 $cache_dirs = array_merge([$cache_mobile => 'mobile specific'], $cache_dirs);
             } else {
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Directory $cache_mobile not found." . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Directory for $directory not found. No cache to purge" . PHP_EOL);
             }
 
             // Clean each cache directory
@@ -1543,13 +1598,13 @@ class LwsOptimize
                 $files = glob($dir . '/index_*');
                 if (!empty($files)) {
                     array_map('unlink', array_filter($files, 'is_file'));
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removed cache files from $type cache ($dir)" . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Removed cache files from $type cache ($dir)" . PHP_EOL);
                 }
             }
 
             // Additionally clear cache for categories, tags and pagination
             $taxonomy_urls = $this->get_taxonomy_and_pagination_urls();
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
 
             foreach ($taxonomy_urls as $url) {
                 $parsed_url = parse_url($url);
@@ -1588,11 +1643,11 @@ class LwsOptimize
                         // Reschedule if too soon
                         wp_unschedule_event($next_scheduled, "lws_optimize_start_filebased_preload");
                         wp_schedule_event($current_time + 300, "lws_minute", "lws_optimize_start_filebased_preload");
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload rescheduled (+5 min)" . PHP_EOL);
+                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preload rescheduled (+5 min)" . PHP_EOL);
                     } elseif (!$next_scheduled) {
                         // Schedule new if none exists
                         wp_schedule_event($current_time, "lws_minute", "lws_optimize_start_filebased_preload");
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] New preload scheduled" . PHP_EOL);
+                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] New preload scheduled" . PHP_EOL);
                     }
                 } else {
                     // Unschedule if preload disabled
@@ -1609,13 +1664,13 @@ class LwsOptimize
 
             if (function_exists('wp_cache_flush')) {
                 wp_cache_flush();
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
             }
 
             return json_encode(['code' => 'SUCCESS'], JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
             return json_encode(['code' => 'ERROR', 'message' => $e->getMessage()], JSON_PRETTY_PRINT);
         } finally {
             fclose($logger);
@@ -1649,11 +1704,11 @@ class LwsOptimize
                         // Reschedule if too soon
                         wp_unschedule_event($next_scheduled, "lws_optimize_start_filebased_preload");
                         wp_schedule_event($current_time + 300, "lws_minute", "lws_optimize_start_filebased_preload");
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload rescheduled (+5 min)" . PHP_EOL);
+                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preload rescheduled (+5 min)" . PHP_EOL);
                     } elseif (!$next_scheduled) {
                         // Schedule new if none exists
                         wp_schedule_event($current_time, "lws_minute", "lws_optimize_start_filebased_preload");
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] New preload scheduled" . PHP_EOL);
+                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] New preload scheduled" . PHP_EOL);
                     }
                 } else {
                     // Unschedule if preload disabled
@@ -1670,13 +1725,13 @@ class LwsOptimize
 
             if (function_exists('wp_cache_flush')) {
                 wp_cache_flush();
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
             }
 
             return json_encode(['code' => 'SUCCESS'], JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Error: ' . $e->getMessage() . PHP_EOL);
             return json_encode(['code' => 'ERROR', 'message' => $e->getMessage()], JSON_PRETTY_PRINT);
         } finally {
             fclose($logger);
@@ -1688,6 +1743,7 @@ class LwsOptimize
      */
     public function after_cache_purge_preload() {
         $logger = fopen($this->log_file, 'a');
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Restarting preload process after cache purge..." . PHP_EOL);
 
         // Handle preload configuration
         $optimize_options = get_option('lws_optimize_config_array', []);
@@ -1706,11 +1762,11 @@ class LwsOptimize
                     // Reschedule if too soon
                     wp_unschedule_event($next_scheduled, "lws_optimize_start_filebased_preload");
                     wp_schedule_event($current_time + 300, "lws_minute", "lws_optimize_start_filebased_preload");
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Preload rescheduled (+5 min)" . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preload rescheduled (+5 min)" . PHP_EOL);
                 } elseif (!$next_scheduled) {
                     // Schedule new if none exists
                     wp_schedule_event($current_time, "lws_minute", "lws_optimize_start_filebased_preload");
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] New preload scheduled" . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] New preload scheduled" . PHP_EOL);
                 }
             } else {
                 // Unschedule if preload disabled
@@ -2052,7 +2108,7 @@ class LwsOptimize
                 update_option('lws_optimize_config_array', $options);
 
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache_cron'), 'lws_optimize_clear_filebased_cache_cron');
-                wp_schedule_event(time(), 'lws_yearly', 'lws_optimize_clear_filebased_cache_cron');
+                wp_schedule_event(time() + YEAR_IN_SECONDS, 'lws_yearly', 'lws_optimize_clear_filebased_cache_cron');
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
 
                 if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
@@ -2063,7 +2119,7 @@ class LwsOptimize
                     if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                         wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
                     }
-                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                    wp_schedule_event(time() + 60, "lws_minute", "lws_optimize_start_filebased_preload");
                 }
                 break;
             case 'advanced':
@@ -2101,14 +2157,14 @@ class LwsOptimize
                 update_option('lws_optimize_config_array', $options);
 
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache_cron'), 'lws_optimize_clear_filebased_cache_cron');
-                wp_schedule_event(time(), 'lws_yearly', 'lws_optimize_clear_filebased_cache_cron');
+                wp_schedule_event(time() + YEAR_IN_SECONDS, 'lws_yearly', 'lws_optimize_clear_filebased_cache_cron');
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
 
                 if (!$no_preloading) {
                     if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                         wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
                     }
-                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                    wp_schedule_event(time() + 60, "lws_minute", "lws_optimize_start_filebased_preload");
                 }
                 break;
             case 'full':
@@ -2146,14 +2202,14 @@ class LwsOptimize
                 update_option('lws_optimize_config_array', $options);
 
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_clear_filebased_cache'), 'lws_optimize_clear_filebased_cache');
-                wp_schedule_event(time(), 'lws_biyearly', 'lws_optimize_clear_filebased_cache');
+                wp_schedule_event(time() + (6 * MONTH_IN_SECONDS), 'lws_biyearly', 'lws_optimize_clear_filebased_cache_cron');
                 wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
 
                 if (!$no_preloading) {
                     if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                         wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
                     }
-                    wp_schedule_event(time() + 10, "lws_minute", "lws_optimize_start_filebased_preload");
+                    wp_schedule_event(time() + 60, "lws_minute", "lws_optimize_start_filebased_preload");
                 }
                 break;
             default:
@@ -2187,6 +2243,7 @@ class LwsOptimize
     public function lws_optimize_convert_media_cron()
     {
         wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
+        header('Content-Type: application/json');
         wp_die(json_encode(array('code' => "SUCCESS", "data" => [], 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
@@ -2199,7 +2256,7 @@ class LwsOptimize
     {
         check_ajax_referer('lwsop_stop_deconvertion_nonce', '_ajax_nonce');
         wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
-
+        header('Content-Type: application/json');
         wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
     }
 
@@ -2217,7 +2274,7 @@ class LwsOptimize
             if ($file->isDir()) {
                 $this->removeDir($file->getPathname());
             } else {
-                unlink($file->getPathname());
+                wp_delete_file($file->getPathname());
             }
         }
         rmdir($dir);
@@ -2235,7 +2292,7 @@ class LwsOptimize
         // Check if the log file exists and is too large (over 5MB)
         if (file_exists($this->log_file) && filesize($this->log_file) > 5 * 1024 * 1024) {
             // Create a timestamp for the archived log
-            $timestamp = date('Y-m-d-His');
+            $timestamp = gmdate('Y-m-d-His');
 
             // Rename the existing log file
             $archive_name = $log_dir . '/debug-' . $timestamp . '.log';
@@ -2250,7 +2307,7 @@ class LwsOptimize
 
                 $files_to_delete = array_slice($log_files, 0, count($log_files) - 5);
                 foreach ($files_to_delete as $file) {
-                    @unlink($file);
+                    @wp_delete_file($file);
                 }
             }
         }
@@ -2259,7 +2316,7 @@ class LwsOptimize
         if (!file_exists($this->log_file)) {
             touch($this->log_file);
             // Add header to the new log file
-            $header = '[' . date('Y-m-d H:i:s') . '] Log file created' . PHP_EOL;
+            $header = '[' . gmdate('Y-m-d H:i:s') . '] Log file created' . PHP_EOL;
             file_put_contents($this->log_file, $header);
         }
     }

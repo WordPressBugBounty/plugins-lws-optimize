@@ -55,7 +55,7 @@ foreach ($first_bloc_array as $key => $array) {
 
 $next_scheduled_maintenance = wp_next_scheduled('lws_optimize_maintenance_db_weekly');
 if ($next_scheduled_maintenance) {
-    $next_scheduled_maintenance = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_maintenance), 'Y-m-d H:i:s');
+    $next_scheduled_maintenance = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_scheduled_maintenance), 'Y-m-d H:i:s');
 } else {
     $next_scheduled_maintenance = "-";
 }
@@ -168,8 +168,8 @@ if ($next_scheduled_maintenance) {
                         <?php foreach ($maintenance_options as $name => $desc) : ?>
                             document.getElementById('lwsop_maintenance_db_options').insertAdjacentHTML('beforeend', `
                                 <label class="lwsop_maintenance_checkbox">
-                                    <input type="checkbox" id="<?php esc_html_e($name); ?>" name="<?php esc_html_e($name); ?>">
-                                    <div><?php esc_html_e($desc); ?></div>
+                                    <input type="checkbox" id="<?php echo esc_html($name); ?>" name="<?php echo esc_html($name); ?>">
+                                    <div><?php echo esc_html($desc); ?></div>
                                 </label>
                             `);
                         <?php endforeach; ?>
@@ -198,8 +198,8 @@ if ($next_scheduled_maintenance) {
                             form.insertAdjacentHTML('beforeend', `
                                 <div id="lwsop_maintenance_db_options">
                                     <label class="lwsop_maintenance_check_lab">
-                                        <input class="lwsop_maintenance_check" type="checkbox" id="<?php esc_html_e($name); ?>" name="<?php esc_html_e($name); ?>">
-                                        <div class"=lwsop_maintenance_check_text"><?php esc_html_e($desc); ?></div>
+                                        <input class="lwsop_maintenance_check" type="checkbox" id="<?php echo esc_html($name); ?>" name="<?php echo esc_html($name); ?>">
+                                        <div class="lwsop_maintenance_check_text"><?php echo esc_html($desc); ?></div>
                                     </label>
                                 </div>
                             `);

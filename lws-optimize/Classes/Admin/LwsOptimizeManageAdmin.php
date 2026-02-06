@@ -29,7 +29,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         add_action('admin_notices', function () {
             if (substr(get_current_screen()->id, 0, 29) == "toplevel_page_lws-op-config") {
                 remove_all_actions('admin_notices');
-                if (get_option('lws_optimize_deactivate_temporarily') && (is_plugin_active('wp-rocket/wp-rocket.php') || is_plugin_active('powered-cache/powered-cache.php') || is_plugin_active('wp-super-cache/wp-cache.php')
+                if (!get_option('lws_optimize_deactivate_temporarily') && (is_plugin_active('wp-rocket/wp-rocket.php') || is_plugin_active('powered-cache/powered-cache.php') || is_plugin_active('wp-super-cache/wp-cache.php')
                     || is_plugin_active('wp-optimize/wp-optimize.php') || is_plugin_active('wp-fastest-cache/wpFastestCache.php') || is_plugin_active('w3-total-cache/w3-total-cache.php'))) {
                     $this->lws_optimize_warning_incompatibiliy();
                 }
@@ -159,11 +159,11 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             wp_enqueue_style('lws_optimize_options_css', LWS_OP_URL . "css/lws_op_stylesheet.css");
             wp_enqueue_style('lws_optimize_Poppins_font', 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
             wp_enqueue_style("lws_optimize_bootstrap_css", LWS_OP_URL . 'css/bootstrap.min.css?v=' . $this->version);
-            wp_enqueue_script("lws_optimize_bootstrap_js", LWS_OP_URL . 'js/bootstrap.min.js?v=' . $this->version, array('jquery'));
+            wp_enqueue_script("lws_optimize_bootstrap_js", LWS_OP_URL . 'js/bootstrap.min.js?v=' . $this->version, array('jquery'), null, true);
             // DataTable assets
             wp_enqueue_style("lws_optimize_datatable_css", LWS_OP_URL . "css/jquery.dataTables.min.css");
-            wp_enqueue_script("lws_optimize_datatable_js", LWS_OP_URL . "/js/jquery.dataTables.min.js", array('jquery'));
-            wp_enqueue_script("lws_optimize_popper", "https://unpkg.com/@popperjs/core@2");
+            wp_enqueue_script("lws_optimize_datatable_js", LWS_OP_URL . "/js/jquery.dataTables.min.js", array('jquery') , null, true);
+            wp_enqueue_script("lws_optimize_popper", "https://unpkg.com/@popperjs/core@2", array(), null, true);
         }
     }
 
@@ -541,7 +541,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
                 if ($memcached->getVersion() === false) {
                     if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                        unlink(LWSOP_OBJECTCACHE_PATH);
+                        wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                     }
                     wp_die(json_encode(array('code' => "MEMCACHE_NOT_WORK", 'data' => "FAILURE", 'state' => "unknown")));
                 }
@@ -549,7 +549,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 file_put_contents(LWSOP_OBJECTCACHE_PATH, file_get_contents(LWS_OP_DIR . '/views/object-cache.php'));
             } else {
                 if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                    unlink(LWSOP_OBJECTCACHE_PATH);
+                    wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                 }
                 wp_die(json_encode(array('code' => "MEMCACHE_NOT_FOUND", 'data' => "FAILURE", 'state' => "unknown")));
             }
@@ -572,7 +572,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         if (isset($tab) && $tab == "frontend") {
             $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
             $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed cache after configuration change' . PHP_EOL);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed cache after configuration change' . PHP_EOL);
             fclose($logger);
         }
 
@@ -604,7 +604,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
             if (preg_match('/lws_optimize_(.*?)_check/', $id, $match) !== 1) {
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to parse ID for configuration: ' . $id . PHP_EOL);
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to parse ID for configuration: ' . $id . PHP_EOL);
                 fclose($logger);
                 continue;
             }
@@ -639,7 +639,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     $optimize_options[$id]['state'] = "false";
                     $errors[$id] = 'INCOMPATIBLE';
                     $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] LWSCache is incompatible with this hosting' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] LWSCache is incompatible with this hosting' . PHP_EOL);
                     fclose($logger);
                     continue;
                 }
@@ -648,7 +648,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     $optimize_options[$id]['state'] = "false";
                     $errors[$id] = 'PANEL_CACHE_OFF';
                     $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] LWSCache is not activated on LWSPanel' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] LWSCache is not activated on LWSPanel' . PHP_EOL);
                     fclose($logger);
                     continue;
                 }
@@ -657,7 +657,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     $optimize_options[$id]['state'] = "false";
                     $errors[$id] = 'CPANEL_CACHE_OFF';
                     $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Varnish is not activated on cPanel' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Varnish is not activated on cPanel' . PHP_EOL);
                     fclose($logger);
                     continue;
                 }
@@ -675,7 +675,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     $optimize_options[$id]['state'] = "false";
                     $errors[$id] = 'REDIS_ALREADY_HERE';
                     $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Redis cache plugin is already active' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Redis cache plugin is already active' . PHP_EOL);
                     fclose($logger);
                     continue;
                 }
@@ -688,11 +688,11 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
                     if ($memcached->getVersion() === false) {
                         if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                            unlink(LWSOP_OBJECTCACHE_PATH);
+                            wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                         }
                         $errors[$id] = 'MEMCACHE_NOT_WORK';
                         $logger = fopen($this->log_file, 'a');
-                        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Memcached server not responding' . PHP_EOL);
+                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Memcached server not responding' . PHP_EOL);
                         fclose($logger);
                         continue;
                     }
@@ -701,11 +701,11 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
                 } else {
                     if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                        unlink(LWSOP_OBJECTCACHE_PATH);
+                        wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                     }
                     $errors[$id] = 'MEMCACHE_NOT_FOUND';
                     $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Memcached extension not found' . PHP_EOL);
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Memcached extension not found' . PHP_EOL);
                     fclose($logger);
                     continue;
                 }
@@ -748,18 +748,18 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
                         wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
                     }
-                    wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
+                    wp_schedule_event(time() + 60, "lws_minute", "lws_optimize_start_filebased_preload");
                 }
             }
         }
 
         // Clear cache when updating data
-        $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed cache after configuration change' . PHP_EOL);
-        fclose($logger);
+        // $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
+        // $logger = fopen($this->log_file, 'a');
+        // fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed cache after configuration change' . PHP_EOL);
+        // fclose($logger);
 
-        $this->after_cache_purge_preload();
+        // $this->after_cache_purge_preload();
 
         if (function_exists("opcache_reset")) {
             opcache_reset();
@@ -1342,7 +1342,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         $next = wp_next_scheduled('lws_optimize_start_filebased_preload') ?? null;
         if ($next != null) {
-            $next = get_date_from_gmt(date('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
+            $next = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
         } else {
             if (!wp_next_scheduled('lws_optimize_start_filebased_preload')) {
                 wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
@@ -1351,7 +1351,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         $next = wp_next_scheduled('lws_optimize_start_filebased_preload') ?? null;
         if ($next != null) {
-            $next = get_date_from_gmt(date('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
+            $next = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
         }
 
         $data = [
@@ -1394,7 +1394,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         if (!$next) {
             $next = "-";
         } else {
-            $next = get_date_from_gmt(date('Y-m-d H:i:s', intval($next)), 'Y-m-d H:i:s');
+            $next = get_date_from_gmt(gmdate('Y-m-d H:i:s', intval($next)), 'Y-m-d H:i:s');
         }
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $next)), JSON_PRETTY_PRINT);
@@ -1410,7 +1410,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed all caches' . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed all caches' . PHP_EOL);
         fclose($logger);
 
         delete_option('lws_optimize_sitemap_urls');
@@ -1431,7 +1431,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $GLOBALS['lws_optimize']);
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed cache on demand' . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed cache on demand' . PHP_EOL);
         fclose($logger);
 
         delete_option('lws_optimize_sitemap_urls');
@@ -1454,7 +1454,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS . "/cache-js", $this);
 
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed CSS/JS cache' . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed CSS/JS cache' . PHP_EOL);
         fclose($logger);
 
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
@@ -1470,7 +1470,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         $this->after_cache_purge_preload();
 
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Removed HTML cache' . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Removed HTML cache' . PHP_EOL);
         fclose($logger);
 
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
@@ -1485,7 +1485,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         $uri = esc_url($_POST['request_uri']) ?? false;
 
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Starting to remove $uri cache" . PHP_EOL);
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting to remove $uri cache" . PHP_EOL);
         fclose($logger);
 
         if ($uri === false) {
@@ -1600,6 +1600,38 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         $optimize_options['filebased_cache']['timer'] = $timer;
 
+        $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_yearly";
+        switch ($timer) {
+            case 'lws_daily':
+                $cdn_date = "86400";
+                break;
+            case 'lws_weekly':
+                $cdn_date = "604800";
+                break;
+            case 'lws_monthly':
+                $cdn_date = "2592000";
+                break;
+            case 'lws_thrice_monthly':
+                $cdn_date = "7776000";
+                break;
+            case 'lws_biyearly':
+                $cdn_date = "15552000";
+                break;
+            case 'lws_yearly':
+                $cdn_date = "31104000";
+                break;
+            case 'lws_two_years':
+                $cdn_date = "62208000";
+                break;
+            case 'lws_never':
+                $cdn_date = "93312000";
+                break;
+            default:
+                $cdn_date = "7776000";
+                break;
+        }
+
+
         // Update Cloudflare TTL to match filebased cache clear timer
         $this->cloudflare_manager->lws_optimize_change_cloudflare_ttl($timer);
 
@@ -1612,7 +1644,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         // Never start cron if timer is defined as zero (infinite)
         if ($timer != 0) {
-            wp_schedule_event(time(), $timer, 'lws_optimize_clear_filebased_cache_cron');
+            wp_schedule_event(time() + $cdn_date, $timer, 'lws_optimize_clear_filebased_cache_cron');
         }
 
         wp_die(json_encode(array('code' => "SUCCESS", "data" => $timer)), JSON_PRETTY_PRINT);
@@ -1720,7 +1752,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             'speed_unit' => $speedMetricUnit
         ];
 
-        $new_pagespeed = ['date' =>  date("d M Y, H:i", $date) . " GMT+0", 'url' => $url, 'type' => $type, 'scores' => $scores];
+        $new_pagespeed = ['date' =>  gmdate("d M Y, H:i", $date) . " GMT+0", 'url' => $url, 'type' => $type, 'scores' => $scores];
         $config_array[] = $new_pagespeed;
         update_option('lws_optimize_pagespeed_history', $config_array);
 
@@ -1930,7 +1962,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         $name = $formData['name'] ?? 'Anonymous';
         $email = $formData['email'] ?? '';
         $feedback = $formData['feedback'] ?? '';
-        $timestamp = $formData['timestamp'] ?? date('c');
+        $timestamp = $formData['timestamp'] ?? gmdate('c');
         $page = $formData['page'] ?? '';
 
         empty($name) ? $name = 'Anonyme' : $name = htmlspecialchars(trim($name));

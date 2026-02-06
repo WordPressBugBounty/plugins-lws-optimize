@@ -229,7 +229,7 @@ class LwsOptimizeCloudFlare {
         // Use the token to get every zones managed by the account
         // Which we filter by the current domain
         $zones_response = wp_remote_get(
-            "https://api.cloudflare.com/client/v4/zones?per_page=50&name=" . $_SERVER['SERVER_NAME'],
+            "https://api.cloudflare.com/client/v4/zones?per_page=50&name=" . preg_replace('/^www\./i', '', $_SERVER['SERVER_NAME']),
             [
                 'timeout' => 45,
                 'sslverify' => false,
@@ -266,7 +266,7 @@ class LwsOptimizeCloudFlare {
         // Prepare to get all useful information about the zone
         $zone_infos = [];
         foreach ($zones_response['result'] as $zone) {
-            if ($zone['name'] == $_SERVER['SERVER_NAME']) {
+            if ($zone['name'] == preg_replace('/^www\./i', '', $_SERVER['SERVER_NAME'])) {
                 $zone_infos = [
                     'api_token' => $token_key,
                     'name' => $zone['name'],

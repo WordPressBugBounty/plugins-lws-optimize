@@ -1,16 +1,16 @@
-=== LWS Optimize - All-in-One Speed Booster & Cache Plugin ===
+=== LWS Optimize - All-in-One Speed Booster & Cache Tools ===
 Contributors: aurelienlws
-Tags: cache plugin, performance optimization, speed booster, webp converter, page cache, browser cache, object cache, lazy loading, image optimizer, css minify, js minify, cloudflare, critical css, core web vitals
+Tags: cache plugin, performance optimization, speed booster, webp converter, lazy loading
 Requires at least: 6.0
-Tested up to: 6.8
-Stable tag: 3.3.14
+Tested up to: 6.9
+Stable tag: 3.3.19
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-All-in-one speed optimization: powerful caching, WebP/AVIF conversion, critical CSS, lazy loading, and performance tools. Instantly improve Core Web Vitals!
+All-in-one speed optimization: caching, WebP/AVIF, Critical CSS, lazy loading, CDN, and more. Instantly boost Core Web Vitals and site speed!
 
 == License ==
 
@@ -185,6 +185,26 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 3.3.19 =
+* Fixed issue where DataTable would not be loaded for the "Image" tab and cause JS errors 
+* Changed Preload UserAgent to allow HTTP/2 and simplify it
+
+= 3.3.18 =
+* Fixed issue with Cloudflare on rare cases
+* Fixed issue with the checksums of the plugin not matching with SVN (which causes issues with wp verify-checksums, notably)
+
+= 3.3.17 =
+* Only options in "Front-End" now clear cache when changed (instead of all options)
+* Cache is emptied less often now (removed on update, on preload start and on temporary deactivation cleaning)
+* Updated sitemap fetching to prevent issues when WordPress can't find the original sitemap (due to plugins) ; will now check sitemap_index.xml and wp-sitemap.xml more reliably
+Fixed issue with the cache-cleaning cron that would be executed too soon and too often, preventing cache creation 
+
+= 3.3.16 =
+* Fixed issues where directories/files could not be created during page caching, resulting in CSS/JS not being loaded and white page appearing
+
+= 3.3.15 =
+* If an image cannot be converted, then it is now removed from the queue, fixing issues where cron would run forever
 
 = 3.3.14 =
 * Fixed "Warning : Deprecated" showing when WP_DEBUG is active

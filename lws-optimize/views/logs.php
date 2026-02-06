@@ -79,7 +79,7 @@ if (empty($file)) {
                             }
                             break;
                         default:
-                            callPopup('error', "<?php esc_html_e("Unknown data returned."); ?>");
+                            callPopup('error', "<?php esc_html_e("Unknown data returned.", "lws-optimize"); ?>");
                             break;
                     }
                 },

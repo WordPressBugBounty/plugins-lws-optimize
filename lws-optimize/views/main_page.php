@@ -1017,7 +1017,7 @@ foreach ($plugins as $slug => $plugin) {
                             callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
                             break;
                         default:
-                            callPopup('error', "<?php esc_html_e("Unknown data returned."); ?>");
+                            callPopup('error', "<?php esc_html_e("Unknown data returned.", "lws-optimize"); ?>");
                             break;
                     }
                 },
@@ -1077,7 +1077,7 @@ foreach ($plugins as $slug => $plugin) {
                             callPopup('success', "<?php esc_html_e("All caches have been deleted", "lws-optimize"); ?>");
                             break;
                         default:
-                            callPopup('error', "<?php esc_html_e("Failed to empty cache"); ?>");
+                            callPopup('error', "<?php esc_html_e("Failed to empty cache", "lws-optimize"); ?>");
                             break;
                     }
                 },

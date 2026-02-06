@@ -16,7 +16,7 @@ if ($filebased_cache_options['state'] === "true" && !empty($filebased_cache_opti
 $preload_state = $filebased_cache_options['data']['preload'] ?? "false";
 $preload_amount =  intval($filebased_cache_options['data']['preload_amount'] ?? 5);
 $next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
-$local_timestamp = get_date_from_gmt(date('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
+$local_timestamp = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
 
 $autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
 $htaccess_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_rules");
@@ -36,7 +36,7 @@ $memcached_force_off = false;
     <?php foreach ($caches as $type => $cache) : ?>
         <div class="lwsop_stat_block" id="<?php echo esc_attr($cache['id']); ?>">
             <img src="<?php echo esc_url(plugins_url("images/{$cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($cache['image_alt']); ?>" width="<?php echo esc_attr($cache['width']); ?>" height="<?php echo esc_attr($cache['height']); ?>">
-            <span><?php echo esc_html__($cache["title"]); ?></span>
+            <span><?php echo esc_html($cache["title"]); ?></span>
             <div class="lwsop_stats_bold">
                 <span>
                     <?php echo esc_html("{$cache['size']} / {$cache['amount']}"); ?>
@@ -1284,7 +1284,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             callPopup('success', "<?php esc_html_e("File-based cache has been emptied.", "lws-optimize"); ?>");
                             break;
                         default:
-                            callPopup('error', "<?php esc_html_e("Unknown data returned. Cache cannot be emptied."); ?>");
+                            callPopup('error', "<?php esc_html_e("Unknown data returned. Cache cannot be emptied.", "lws-optimize"); ?>");
                             break;
                     }
                 },
@@ -1364,7 +1364,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             callPopup('success', "<?php esc_html_e("File-based cache statistics have been synchronized", "lws-optimize"); ?>");
                             break;
                         default:
-                            callPopup('error', "<?php esc_html_e("Unknown data returned."); ?>");
+                            callPopup('error', "<?php esc_html_e("Unknown data returned.", "lws-optimize"); ?>");
                             break;
                     }
                 },

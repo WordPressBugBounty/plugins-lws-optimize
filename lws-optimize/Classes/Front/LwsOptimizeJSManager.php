@@ -243,14 +243,25 @@ class LwsOptimizeJSManager
                 }
 
                 if (empty($name)) {
-                    return ['final_url' => false, 'problematic' => $problematic_files];
+                    continue;
                 }
 
                 $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-js/$name.min.js");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
                 // Do not add into cache if the file already exists
-                $add_cache = !file_exists($path);
+                $add_cache = false;
+                if (!file_exists($path)) {
+                    $add_cache = true;
+                    // Ensure the directory exists before creating the file
+                    $dir = dirname($path);
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0755, true);
+                    }
+                    if (!file_exists($path)) {
+                        touch($path);
+                    }
+                }
 
                 // Minify and combine all files into one, saved in $path
                 try {
@@ -423,7 +434,18 @@ class LwsOptimizeJSManager
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
 
                 // Do not add into cache if the file already exists
-                $add_cache = !file_exists($path);
+                $add_cache = false;
+                if (!file_exists($path)) {
+                    $add_cache = true;
+                    // Ensure the directory exists before creating the file
+                    $dir = dirname($path);
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0755, true);
+                    }
+                    if (!file_exists($path)) {
+                        touch($path);
+                    }
+                }
 
                 try {
                     // Read and validate JavaScript content first
@@ -470,10 +492,10 @@ class LwsOptimizeJSManager
 
                     // Clean up temporary files
                     if (file_exists($temp_processed_file)) {
-                        unlink($temp_processed_file);
+                        wp_delete_file($temp_processed_file);
                     }
                     if (isset($temp_file) && file_exists($temp_file)) {
-                        unlink($temp_file);
+                        wp_delete_file($temp_file);
                     }
                 } catch (\Exception $e) {
                     error_log('LwsOptimize JS Minification Error: ' . $e->getMessage() . ' for file: ' . $href);
@@ -481,10 +503,10 @@ class LwsOptimizeJSManager
                     // Clean up temporary files on error
                     $temp_processed_file = $path . '.tmp';
                     if (file_exists($temp_processed_file)) {
-                        unlink($temp_processed_file);
+                        wp_delete_file($temp_processed_file);
                     }
                     if (isset($temp_file) && file_exists($temp_file)) {
-                        unlink($temp_file);
+                        wp_delete_file($temp_file);
                     }
                 }
             }

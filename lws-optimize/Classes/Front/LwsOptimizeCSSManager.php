@@ -74,17 +74,19 @@ class LwsOptimizeCSSManager
 
 
                 if ($rel !== "stylesheet" || $this->check_for_exclusion($href, "combine")) {
-                    $file_url = $this->combine_current_css($current_links);
-                    if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                        $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
+                    if (!empty($current_links)) {
+                        $file_url = $this->combine_current_css($current_links);
+                        if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
+                            $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
 
-                        $old_links = '';
+                            $old_links = '';
 
-                        foreach ($file_url['problematic'] as $problem_file) {
-                            $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                            foreach ($file_url['problematic'] as $problem_file) {
+                                $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                            }
+
+                            $this->content = str_replace($element, "$old_links\n$newLink\n$element", $this->content);
                         }
-
-                        $this->content = str_replace($element, "$old_links\n$newLink\n$element", $this->content);
                     }
 
 
@@ -104,19 +106,21 @@ class LwsOptimizeCSSManager
                     $this->content = str_replace($element, "<!-- Removed $href-->", $this->content);
                 } else {
                     // Combine the links stored
-                    $file_url = $this->combine_current_css($current_links);
+                    if (!empty($current_links)) {
+                        $file_url = $this->combine_current_css($current_links);
 
-                    if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                        // Create a new link with the newly combined URL and add it to the DOM
-                        $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
+                        if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
+                            // Create a new link with the newly combined URL and add it to the DOM
+                            $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
 
-                        $old_links = '';
+                            $old_links = '';
 
-                        foreach ($file_url['problematic'] as $problem_file) {
-                            $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                            foreach ($file_url['problematic'] as $problem_file) {
+                                $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                            }
+
+                            $this->content = str_replace($element, "<!-- Removed (2) $href -->\n$old_links\n$newLink", $this->content);
                         }
-
-                        $this->content = str_replace($element, "<!-- Removed (2) $href -->\n$old_links\n$newLink", $this->content);
                     }
 
                     // Empty the array and add in the current <link> being observed
@@ -128,17 +132,19 @@ class LwsOptimizeCSSManager
             // In case of a <style>, we add it the current <link> to the DOM before the style and empty the array
             elseif (substr($element, 0, 6) == "<style") {
 
-                $file_url = $this->combine_current_css($current_links);
-                if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                    $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
+                if (!empty($current_links)) {
+                    $file_url = $this->combine_current_css($current_links);
+                    if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
+                        $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
 
-                    $old_links = '';
+                        $old_links = '';
 
-                    foreach ($file_url['problematic'] as $problem_file) {
-                        $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                        foreach ($file_url['problematic'] as $problem_file) {
+                            $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                        }
+
+                        $this->content = str_replace($element, "$old_links\n$newLink\n$element", $this->content);
                     }
-
-                    $this->content = str_replace($element, "$old_links\n$newLink\n$element", $this->content);
                 }
 
                 $current_links = [];
@@ -148,21 +154,26 @@ class LwsOptimizeCSSManager
             // If we reached the last link, add what is currently in the array to the DOM
             if ($key + 1 == count($elements)) {
                 // Combine the links stored
-                $file_url = $this->combine_current_css($current_links);
-                if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                    // Create a new link with the newly combined URL and add it to the DOM
-                    $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
+                if (!empty($current_links)) {
+                    $file_url = $this->combine_current_css($current_links);
+                    if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
+                        // Create a new link with the newly combined URL and add it to the DOM
+                        $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
 
-                    $old_links = '';
+                        $old_links = '';
 
-                    foreach ($file_url['problematic'] as $problem_file) {
-                        $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
-                    }
+                        foreach ($file_url['problematic'] as $problem_file) {
+                            $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
+                        }
 
-                    if (isset($href)) {
-                        $this->content = str_replace("$href-->", "$href -->\n$old_links\n$newLink", $this->content);
+                        if (isset($href)) {
+                            $this->content = str_replace("$href-->", "$href -->\n$old_links\n$newLink", $this->content);
+                        }
                     }
                 }
+
+                $current_links = [];
+                $current_media = false;
             }
         }
 
@@ -178,7 +189,9 @@ class LwsOptimizeCSSManager
         }
 
         if (!is_dir($this->content_directory)) {
-            mkdir($this->content_directory, 0755, true);
+            if (!is_dir($this->content_directory)) {
+                mkdir($this->content_directory, 0755, true);
+            }
         }
 
         if (is_dir($this->content_directory)) {
@@ -244,7 +257,7 @@ class LwsOptimizeCSSManager
                 }
 
                 if (empty($name)) {
-                    return ['final_url' => '', 'problematic' => $problematic_files];
+                    continue;
                 }
 
                 $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.min.css");
@@ -254,6 +267,14 @@ class LwsOptimizeCSSManager
                 $add_cache = false;
                 if (!file_exists($path)) {
                     $add_cache = true;
+                    // Ensure the directory exists before creating the file
+                    $dir = dirname($path);
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0755, true);
+                    }
+                    if (!file_exists($path)) {
+                        touch($path);
+                    }
                 }
 
                 // Minify and combine all files into one, saved in $path
@@ -390,27 +411,26 @@ class LwsOptimizeCSSManager
                 $name = base_convert(crc32($href), 20, 36);
 
                 if (empty($name)) {
-                    return false;
+                    continue;
                 }
 
-
-                    $file_path = $href;
+                $file_path = $href;
+                $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                $file_path = explode("?ver", $file_path)[0];
+                // If path starts with "//", remove them
+                if (substr($file_path, 0, 2) === "//") {
+                    $file_path = substr($file_path, 2);
+                    // Add http: or https: based on site settings
+                    $file_path = (is_ssl() ? 'https:' : 'http:') . '//' . $file_path;
                     $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
-                    $file_path = explode("?ver", $file_path)[0];
-                    // If path starts with "//", remove them
-                    if (substr($file_path, 0, 2) === "//") {
-                        $file_path = substr($file_path, 2);
-                        // Add http: or https: based on site settings
-                        $file_path = (is_ssl() ? 'https:' : 'http:') . '//' . $file_path;
-                        $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                }
+                // Handle remote URLs (like CDN content)
+                if (strpos($file_path, 'http') === 0) {
+                    $content = @file_get_contents($file_path);
+                    if ($content === false) {
+                        continue;
                     }
-                    // Handle remote URLs (like CDN content)
-                    if (strpos($file_path, 'http') === 0) {
-                        $content = @file_get_contents($file_path);
-                        if ($content === false) {
-                            return ['html' => $this->content, 'files' => $this->files];
-                        }
-                    }
+                }
 
                 $path = $GLOBALS['lws_optimize']->lwsop_get_content_directory("cache-css/$name.min.css");
                 $path_url = str_replace(ABSPATH, get_site_url() . "/", $path);
@@ -419,12 +439,20 @@ class LwsOptimizeCSSManager
                 $add_cache = false;
                 if (!file_exists($path)) {
                     $add_cache = true;
+                    // Ensure the directory exists before creating the file
+                    $dir = dirname($path);
+                    if (!is_dir($dir)) {
+                        mkdir($dir, 0755, true);
+                    }
+                    if (!file_exists($path)) {
+                        touch($path);
+                    }
                 }
 
                 if ($add_cache) {
                     $minify = new Minify\CSS($file_path);
 
-                    if ($minify->minify($path) && file_exists($path)) {
+                    if ($minify->minify($path)) {
                         $file_contents = file_get_contents($path);
                         foreach ($this->media_convertion as $media_element) {
                             $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);

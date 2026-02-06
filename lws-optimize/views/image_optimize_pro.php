@@ -475,7 +475,7 @@ $format_support = [
         }
 
         // Add the images to the Table
-        if (conversion_listing) {
+        if (conversion_listing && jQuery.fn.DataTable) {
             // Destroy the DataTable instance if it exists
             if (jQuery('.lwsop_error_listing').length && jQuery.fn.DataTable.isDataTable('.lwsop_error_listing')) {
                 jQuery('.lwsop_error_listing').DataTable().destroy();
@@ -654,8 +654,8 @@ $format_support = [
                         <div class="lwsop_custom_select image_optimization" onclick="selectManager(this)">
                             <span class="lwsop_custom_option image_optimization">
                                 <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($option_id); ?>">
-                                    <span class="custom_option_content_text image_optimization" value="<?php echo array_key_first($option['select']); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
-                                    <input type="hidden" value="<?php echo array_key_first($option['select']); ?>">
+                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($option['select'])); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
+                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($option['select'])); ?>">
                                 </div>
                                 <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                             </span>
@@ -788,8 +788,8 @@ $format_support = [
                         <div class="lwsop_custom_select image_optimization" onclick="selectManager(this)">
                             <span class="lwsop_custom_option image_optimization">
                                 <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($option_id); ?>">
-                                    <span class="custom_option_content_text image_optimization" value="<?php echo array_key_first($option['select']); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
-                                    <input type="hidden" value="<?php echo array_key_first($option['select']); ?>">
+                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($option['select'])); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
+                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($option['select'])); ?>">
                                 </div>
                                 <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                             </span>

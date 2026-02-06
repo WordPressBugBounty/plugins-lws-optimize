@@ -43,7 +43,7 @@ class LwsOptimizeFileCache
                     if (is_dir("$dir/$file")) {
                         lws_optimize_delete_directory("$dir/$file");
                     } else {
-                        @unlink("$dir/$file");
+                        @wp_delete_file("$dir/$file");
                         if (file_exists("$dir/$file")) {
                             return false;
                         } else {
@@ -119,8 +119,9 @@ class LwsOptimizeFileCache
 
             $content = @file_get_contents($this->cache_directory . "index_$user_id.$extension");
             if ($content) {
-                header ('Edge-Cache-Platform: lwsoptimize');
-                die($content);
+                header('Edge-Cache-Platform: lwsoptimize');
+                echo $content;
+                exit;
             }
         }
 
@@ -802,7 +803,13 @@ class LwsOptimizeFileCache
         }
 
         // No cache if the www. is inconsistent #WPFC
-        if ((preg_match("/www\./i", get_option("home")) && !preg_match("/www\./i", $_SERVER['HTTP_HOST'])) || (!preg_match("/www\./i", get_option("home")) && preg_match("/www\./i", $_SERVER['HTTP_HOST']))) {
+        if (
+            isset($_SERVER['HTTP_HOST']) &&
+            (
+                (preg_match("/www\./i", get_option("home")) && !preg_match("/www\./i", $_SERVER['HTTP_HOST'])) ||
+                (!preg_match("/www\./i", get_option("home")) && preg_match("/www\./i", $_SERVER['HTTP_HOST']))
+            )
+        ) {
             return false;
         }
 

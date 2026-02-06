@@ -2514,3 +2514,6 @@ msgstr "Cette section vous permet de visualiser facilement les derniers journaux
 
 msgid "Log files have a maximum size of 5MB. Once this size is reached, a new file will be created. Older logs can be found in /uploads/lwsoptimize/."
 msgstr "Les fichiers journaux ont une taille maximale de 5 Mo. Une fois cette taille atteinte, un nouveau fichier sera créé. Les anciens journaux peuvent être trouvés dans /uploads/lwsoptimize/."
+
+msgid "Logs have been synchronized"
+msgstr "Les journaux ont été synchronisés"

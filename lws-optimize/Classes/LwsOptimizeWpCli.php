@@ -449,7 +449,7 @@ class LwsOptimizeWpCli {
                         'state' => $state == "true" ? true : false,
                         'preload' => $preload_state == "true" ? true : false,
                         'next' => $next ?? 0,
-                        'next_clear' => $next ? date('Y-m-d H:i:s', $next) : 0,
+                        'next_clear' => $next ? gmdate('Y-m-d H:i:s', $next) : 0,
                         'preload_amount' => intval($preload_amount),
                         'preload_done' => intval($preload_done),
                         'preload_total' => intval($preload_quantity)
@@ -462,7 +462,7 @@ class LwsOptimizeWpCli {
                         \WP_CLI::line('*  Preload amount: ' . $preload_amount . ' pages');
                         \WP_CLI::line('*  Preload done: ' . $preload_done . '/' . $preload_quantity . ' pages preloaded');
                         if ($next) {
-                            \WP_CLI::line('*  Next preload scheduled for: ' . date('Y-m-d H:i:s', $next));
+                            \WP_CLI::line('*  Next preload scheduled for: ' . gmdate('Y-m-d H:i:s', $next));
                         } else {
                             \WP_CLI::line('*  No preload scheduled.');
                         }
@@ -572,16 +572,16 @@ class LwsOptimizeWpCli {
                 if ($next) {
                     if ($json_output) {
                         \WP_CLI::line(json_encode([
-                            'next_clear' => date('Y-m-d H:i:s', $next),
+                            'next_clear' => gmdate('Y-m-d H:i:s', $next),
                             'next' => $next,
                         ]));
                     } else {
-                        \WP_CLI::success("Next preload scheduled for: " . date('Y-m-d H:i:s', $next));
+                        \WP_CLI::success("Next preload scheduled for: " . gmdate('Y-m-d H:i:s', $next));
                     }
                 } else {
                     if ($json_output) {
                         \WP_CLI::line(json_encode([
-                            'next_clear' => date('Y-m-d H:i:s', 0),
+                            'next_clear' => gmdate('Y-m-d H:i:s', 0),
                             'next' => 0,
                         ]));
                     } else {
@@ -709,7 +709,7 @@ class LwsOptimizeWpCli {
                 $options['memcached']['state'] = "true";
                 if (update_option('lws_optimize_config_array', $options)) {
                     // If the option is activated, we need to create the object-cache.php file
-                    @unlink(LWSOP_OBJECTCACHE_PATH);
+                    @wp_delete_file(LWSOP_OBJECTCACHE_PATH);
                     if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
                         file_put_contents(LWSOP_OBJECTCACHE_PATH, file_get_contents(LWS_OP_DIR . '/views/object-cache.php'));
                     }
@@ -730,7 +730,7 @@ class LwsOptimizeWpCli {
                 $options['memcached']['state'] = "false";
                 if (update_option('lws_optimize_config_array', $options)) {
                     // If the option is deactivated, we need to remove the object-cache.php file
-                    @unlink(LWSOP_OBJECTCACHE_PATH);
+                    @wp_delete_file(LWSOP_OBJECTCACHE_PATH);
 
                     \WP_CLI::success('Memcached deactivated.');
                     return 0;

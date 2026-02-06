@@ -110,14 +110,14 @@ $autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')
 
 $next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
 if ($next_scheduled_all_convert) {
-    $next_scheduled_all_convert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_all_convert), 'Y-m-d H:i:s');
+    $next_scheduled_all_convert = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_scheduled_all_convert), 'Y-m-d H:i:s');
 } else {
     $next_scheduled_all_convert = false;
 }
 
 $next_scheduled_deconvert = wp_next_scheduled('lwsop_revertOptimization');
 if ($next_scheduled_deconvert) {
-    $next_scheduled_deconvert = get_date_from_gmt(date('Y-m-d H:i:s', $next_scheduled_deconvert), 'Y-m-d H:i:s');
+    $next_scheduled_deconvert = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_scheduled_deconvert), 'Y-m-d H:i:s');
 } else {
     $next_scheduled_deconvert = false;
 }
@@ -283,7 +283,7 @@ if (!$memory_limit) {
                             <?php if ($attachment['converted']) : ?>
                                 <td><?php echo esc_html($attachment['original_mime'] . " => " . $attachment['mime']); ?></td>
                                 <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
-                                <td><?php echo get_date_from_gmt(date('Y-m-d H:i:s', $attachment['date_convertion']), 'Y-m-d H:i:s'); ?></td>
+                                <td><?php echo get_date_from_gmt(gmdate('Y-m-d H:i:s', $attachment['date_convertion']), 'Y-m-d H:i:s'); ?></td>
                                 <td><?php echo esc_html(($attachment['compression'] ?? 0)) ?></td>
                             <?php else: ?>
                                 <td><?php echo esc_html($attachment['original_mime']); ?></td>

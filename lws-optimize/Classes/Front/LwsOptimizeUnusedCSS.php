@@ -77,9 +77,9 @@ class LwsOptimizeUnusedCSS
                 }
 
                 // Skip external files (not on our domain)
-                $site_url = parse_url(site_url(), PHP_URL_HOST);
+                $site_url = wp_parse_url(site_url(), PHP_URL_HOST);
                 if (preg_match('/href=[\'"]([^\'"]+)[\'"]/i', $link, $temp_href)) {
-                    $link_host = parse_url($temp_href[1], PHP_URL_HOST);
+                    $link_host = wp_parse_url($temp_href[1], PHP_URL_HOST);
                     if ($link_host && $link_host !== $site_url) {
                         continue;
                     }

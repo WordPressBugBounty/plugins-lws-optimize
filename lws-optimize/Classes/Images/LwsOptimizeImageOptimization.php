@@ -335,11 +335,11 @@ class LwsOptimizeImageOptimization
 
             // Remove the original file if we do not keep it
             if (!$image['to_keep']) {
-                unlink($image['original_path']);
+                wp_delete_file($image['original_path']);
                 // Only remove the small sizes if the file got converted
                 foreach ($size_to_remove as $remove) {
                     if (file_exists($remove)) {
-                        unlink($remove);
+                        wp_delete_file($remove);
                     }
                 }
             }
@@ -406,7 +406,7 @@ class LwsOptimizeImageOptimization
                         $file_name = implode('/', $tmp) . "/$type";
 
                         if (file_exists($file_name)) {
-                            unlink($file_name);
+                            wp_delete_file($file_name);
                         }
                     }
                 }
@@ -414,7 +414,7 @@ class LwsOptimizeImageOptimization
 
             // Remove the converted file
             if (file_exists($media['path'])) {
-                unlink($media['path']);
+                wp_delete_file($media['path']);
             }
 
             // Replace the attachment with the old data

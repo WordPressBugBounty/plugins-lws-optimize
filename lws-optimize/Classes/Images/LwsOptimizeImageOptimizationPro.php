@@ -6,20 +6,24 @@ class LwsOptimizeImageOptimizationPro
 {
     private $log_file;
     private $format = ['jpg', 'jpeg', 'jpe', 'png'];
+    private $wp_filesystem;
 
     public function __construct()
     {
+        // Initialize WP_Filesystem
+        $this->init_wp_filesystem();
+
         $state = get_option('lws_optimize_deactivate_temporarily');
 
         // Create log file in uploads directory if it doesn't exist
         $upload_dir = wp_upload_dir();
         $log_dir = $upload_dir['basedir'] . '/lwsoptimize';
-        if (!file_exists($log_dir)) {
+        if (!$this->wp_filesystem->exists($log_dir)) {
             wp_mkdir_p($log_dir);
         }
         $this->log_file = $log_dir . '/debug.log';
-        if (!file_exists($this->log_file)) {
-            touch($this->log_file);
+        if (!$this->wp_filesystem->exists($this->log_file)) {
+            $this->wp_filesystem->put_contents($this->log_file, '', FS_CHMOD_FILE);
         }
 
         // Refresh all informations on the conversion
@@ -68,22 +72,85 @@ class LwsOptimizeImageOptimizationPro
         }
     }
 
+    /**
+     * Initialize WP_Filesystem
+     */
+    private function init_wp_filesystem() {
+        global $wp_filesystem;
+
+        if (empty($wp_filesystem)) {
+            require_once(ABSPATH . '/wp-admin/includes/file.php');
+            WP_Filesystem();
+        }
+
+        $this->wp_filesystem = $wp_filesystem;
+    }
+
+    /**
+     * Write to log file using WP_Filesystem
+     */
+    private function write_log($message) {
+        if (!$this->wp_filesystem) {
+            return;
+        }
+
+        $log_entry = '[' . gmdate('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+
+        // Get existing content if file exists
+        $existing_content = '';
+        if ($this->wp_filesystem->exists($this->log_file)) {
+            $existing_content = $this->wp_filesystem->get_contents($this->log_file);
+        }
+
+        // Append new content
+        $this->wp_filesystem->put_contents($this->log_file, $existing_content . $log_entry, FS_CHMOD_FILE);
+    }
+
+    public function lws_optimize_fetch_conversion_data() {
+        $standard_data = [
+            // All standard informations
+            'conversion_status' => false,
+            'deconversion_status' => false,
+            'autoconversion_status' => false,
+            'next_conversion' => 0,
+            'next_deconversion' => 0,
+            'images_to_convert' => 0,
+            'images_converted' => 0,
+            'images_left_to_convert' => 0,
+            'size_reduction' => 0,
+            'images_listing' => [],
+            'remaining_credits' => "-",
+            'api_key' => "",
+
+            // All informations used in the on-website conversion
+            'images_per_run' => 30,
+            'images_quality' => 'balanced',
+            'images_size' => 2560,
+        ];
+
+        // Get the conversion options from the DB (if any) and merge with the standard data to make sure all basic info is there
+        $conversion_options = get_option('lws_optimize_image_conversion_options', []);
+        $conversion_options = array_merge($standard_data, $conversion_options);
+
+        // Check if a conversion or deconversion is ongoing
+        $is_conversion_ongoing = !empty($conversion_options['conversion_status']);
+        $is_deconversion_ongoing = !empty($conversion_options['deconversion_status']);
+
+        if ($is_conversion_ongoing || $is_deconversion_ongoing) {
+            wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $conversion_options), JSON_PRETTY_PRINT));
+        } else {
+            // Call refresh to get the latest data
+            $this->lws_optimize_refresh_conversion_data();
+            // lws_optimize_refresh_conversion_data() will wp_die itself
+        }
+    }
+
 
     /**
      * Refresh the images to be converted listing
      * and check the status of the conversion processes
      */
     public function lws_optimize_refresh_conversion_data() {
-        // try {
-        //     $logger = fopen($this->log_file, 'a');
-        //     if ($logger) {
-        //         fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Refreshing conversion data' . PHP_EOL);
-        //         fclose($logger);
-        //     }
-        // } catch (\Exception $e) {
-        //     error_log('Failed to write to log file: ' . $e->getMessage());
-        // }
-
         // Format allowed to be converted
         $format = $this->format;
 
@@ -163,8 +230,8 @@ class LwsOptimizeImageOptimizationPro
                 $new_file_path = $path_info['dirname'] . '/' . $new_filename . '.' . $extension;
 
                 // Rename the file if it exists
-                if (file_exists($file_path)) {
-                    rename($file_path, $new_file_path);
+                if ($this->wp_filesystem->exists($file_path)) {
+                    $this->wp_filesystem->move($file_path, $new_file_path);
                     // Update the attachment metadata
                     update_post_meta($id, '_wp_attached_file', str_replace(ABSPATH, '', $new_file_path));
                     $file_path = $new_file_path;
@@ -184,20 +251,20 @@ class LwsOptimizeImageOptimizationPro
                 // If WordPress recognizes the file as NOT WebP/AVIF
                 // but the files somehow exist, we delete them
                 // as it may means the conversion failed
-                if (file_exists($webp_path)) {
+                if ($this->wp_filesystem->exists($webp_path)) {
                     if ($extension == "webp" && isset($images_listing[$id])) {
                         if ($images_listing[$id]['format'] == 'webp') {
                             $images_listing[$id]['converted'] = true;
                             continue;
                         }
                     }
-                    unlink($webp_path);
+                    $this->wp_filesystem->delete($webp_path);
                 }
-                if (file_exists($avif_path)) {
-                    unlink($avif_path);
+                if ($this->wp_filesystem->exists($avif_path)) {
+                    $this->wp_filesystem->delete($avif_path);
                 }
 
-                if (!file_exists($file_path)) {
+                if (!$this->wp_filesystem->exists($file_path)) {
                     // If the file does not exist, we skip it
                     continue;
                 }
@@ -208,7 +275,7 @@ class LwsOptimizeImageOptimizationPro
                     'name' => $image->post_title,
                     'path' => $file_path,
                     'format' => $extension,
-                    'size' => filesize($file_path),
+                    'size' => $this->wp_filesystem->size($file_path),
                     'converted' => false,
                 ];
             }
@@ -219,9 +286,9 @@ class LwsOptimizeImageOptimizationPro
                     // If the image is in our array already
                     if (!empty($images_listing[$id])) {
                         // If the file does not exist but there is an original, we consider it not converted
-                        if (!file_exists($file_path)) {
+                        if (!$this->wp_filesystem->exists($file_path)) {
                             $images_listing[$id]['path'] = str_replace('_lwsoptimized', '', $images_listing[$id]['path']);
-                            if (file_exists($images_listing[$id]['path'])) {
+                            if ($this->wp_filesystem->exists($images_listing[$id]['path'])) {
                                 $images_listing[$id] = array_merge($images_listing[$id], [
                                     'converted' => false,
                                     'converted_path' => null,
@@ -238,7 +305,7 @@ class LwsOptimizeImageOptimizationPro
                         }
 
                         $original_size = $images_listing[$id]['size'] ?? 0;
-                        $converted_size = filesize($file_path);
+                        $converted_size = $this->wp_filesystem->size($file_path);
 
                         // Update the array with fresh data about the converted image without overriding the informations about the original
                         $images_listing[$id] = array_merge($images_listing[$id], [
@@ -259,7 +326,7 @@ class LwsOptimizeImageOptimizationPro
                         // Check each possible format extension to find the original file
                         foreach ($format as $ext) {
                             $possible_original = $path_info['dirname'] . '/' . $original_filename . '.' . $ext;
-                            if (file_exists($possible_original)) {
+                            if ($this->wp_filesystem->exists($possible_original)) {
                                 $original_path = $possible_original;
                                 $original_extension = $ext;
                                 $original_found = true;
@@ -269,8 +336,8 @@ class LwsOptimizeImageOptimizationPro
 
                         // If the original has been found, we can store it in the array
                         if ($original_found) {
-                            $original_size = filesize($original_path);
-                            $converted_size = filesize($file_path);
+                            $original_size = $this->wp_filesystem->size($original_path);
+                            $converted_size = $this->wp_filesystem->size($file_path);
 
                             // Add a new entry for this converted image
                             $images_listing[$id] = [
@@ -294,7 +361,7 @@ class LwsOptimizeImageOptimizationPro
                             'name' => $image->post_title,
                             'path' => $file_path,
                             'format' => $extension,
-                            'size' => filesize($file_path),
+                            'size' => $this->wp_filesystem->size($file_path),
                             'converted' => false,
                         ];
                     }
@@ -355,9 +422,7 @@ class LwsOptimizeImageOptimizationPro
             wp_unschedule_event($standard_conversion, "lws_optimize_image_conversion_cron");
             $standard_conversion = false;
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Conflict : Both conversion crons activated at the same time. Both removed.' . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Conflict : Both conversion crons activated at the same time. Both removed.');
         }
 
 
@@ -367,9 +432,7 @@ class LwsOptimizeImageOptimizationPro
             wp_unschedule_event($deconversion, "lws_optimize_image_deconversion_cron");
             $deconversion = false;
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Conflict : Both pro conversion and deconversion activated at the same time. Both removed.' . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Conflict : Both pro conversion and deconversion activated at the same time. Both removed.');
         }
 
         if ($standard_conversion && $deconversion) {
@@ -378,9 +441,7 @@ class LwsOptimizeImageOptimizationPro
             $standard_conversion = false;
             $deconversion = false;
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Conflict : Both standard conversion and deconversion activated at the same time. Both removed.' . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Conflict : Both standard conversion and deconversion activated at the same time. Both removed.');
         }
 
         // Determine active processes
@@ -424,9 +485,7 @@ class LwsOptimizeImageOptimizationPro
     public function lws_optimize_start_conversion_api() {
         check_ajax_referer('nonce_for_lws_optimize_start_conversion_api', '_ajax_nonce');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Starting pro conversion (API)...' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Starting pro conversion (API)...');
 
         $scheduled = false;
         // Deactivate every cron beforehand...
@@ -438,30 +497,22 @@ class LwsOptimizeImageOptimizationPro
         wp_unschedule_event($pro_conversion, "lws_optimize_pro_image_conversion_cron");
         wp_unschedule_event($deconversion, "lws_optimize_image_deconversion_cron");
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Deactivating all conversion crons' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Deactivating all conversion crons');
 
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Conversion lock removed when starting pro conversion" . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Conversion lock removed when starting pro conversion');
 
         // ...and then schedule the cron for the pro version
         $scheduled = wp_schedule_event(time() + 10, 'lws_minute', 'lws_optimize_pro_image_conversion_cron');
         $conversion_options = $this->lws_optimize_refresh_conversion_data();
 
         if ($scheduled) {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Pro conversion activated. Next run: ' . $scheduled . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Pro conversion activated. Next run: ' . $scheduled);
 
             wp_die(json_encode(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT)));
         } else {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to start pro conversion cron' . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Failed to start pro conversion cron');
 
             wp_die(json_encode(array('code' => 'FAILURE', JSON_PRETTY_PRINT)));
         }
@@ -473,9 +524,7 @@ class LwsOptimizeImageOptimizationPro
     public function lws_optimize_start_conversion_standard() {
         check_ajax_referer('nonce_for_lws_optimize_start_conversion_standard', '_ajax_nonce');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Starting standard conversion...' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Starting standard conversion...');
 
         $quality = sanitize_text_field($_POST['quality'] ?? 'balanced');
         $size = intval($_POST['size'] ?? 2560);
@@ -498,30 +547,22 @@ class LwsOptimizeImageOptimizationPro
         wp_unschedule_event($pro_conversion, "lws_optimize_pro_image_conversion_cron");
         wp_unschedule_event($deconversion, "lws_optimize_image_deconversion_cron");
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Deactivating all conversion crons' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Deactivating all conversion crons');
 
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Conversion lock removed when starting standard conversion" . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Conversion lock removed when starting standard conversion');
 
         // ...and then schedule the cron
         $scheduled = wp_schedule_event(time() + 10, 'lws_minute', 'lws_optimize_image_conversion_cron');
         $conversion_options = $this->lws_optimize_refresh_conversion_data();
 
         if ($scheduled) {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Standard conversion activated. Next run: ' . $scheduled . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Standard conversion activated. Next run: ' . $scheduled);
 
             wp_die(json_encode(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT)));
         } else {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to start standard conversion cron' . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Failed to start standard conversion cron');
 
             wp_die(json_encode(array('code' => 'FAILURE', JSON_PRETTY_PRINT)));
         }
@@ -533,9 +574,7 @@ class LwsOptimizeImageOptimizationPro
     public function lws_optimize_start_deconversion() {
         check_ajax_referer('nonce_for_lws_optimize_start_deconversion', '_ajax_nonce');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Starting Image Deconversion cron...' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Starting Image Deconversion cron...');
 
         $scheduled = false;
         // Deactivate every cron beforehand...
@@ -547,31 +586,22 @@ class LwsOptimizeImageOptimizationPro
         wp_unschedule_event($pro_conversion, "lws_optimize_pro_image_conversion_cron");
         wp_unschedule_event($deconversion, "lws_optimize_image_deconversion_cron");
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Deactivating all conversion crons' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Deactivating all conversion crons');
 
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Conversion lock removed when starting deconversion" . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Conversion lock removed when starting deconversion');
 
         // ...and then schedule the cron for the deconversion
         $scheduled = wp_schedule_event(time() + 10, 'lws_minute', 'lws_optimize_image_deconversion_cron');
         $conversion_options = $this->lws_optimize_refresh_conversion_data();
 
         if ($scheduled) {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Image deconversion activated. Next run: ' . $scheduled . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Image deconversion activated. Next run: ' . $scheduled);
 
             wp_die(json_encode(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT)));
         } else {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Failed to start Image deconversion cron' . PHP_EOL);
-            fclose($logger);
-
+            $this->write_log('Failed to start Image deconversion cron');
 
             wp_die(json_encode(array('code' => 'FAILURE', JSON_PRETTY_PRINT)));
         }
@@ -585,10 +615,7 @@ class LwsOptimizeImageOptimizationPro
     public function lws_optimize_stop_all_conversions() {
         check_ajax_referer('nonce_for_lws_optimize_stop_all_conversions', '_ajax_nonce');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Deactivating all conversion crons...' . PHP_EOL);
-        fclose($logger);
-
+        $this->write_log('Deactivating all conversion crons...');
 
         $standard_conversion = wp_next_scheduled("lws_optimize_image_conversion_cron");
         $pro_conversion = wp_next_scheduled("lws_optimize_pro_image_conversion_cron");
@@ -598,16 +625,12 @@ class LwsOptimizeImageOptimizationPro
         wp_unschedule_event($pro_conversion, "lws_optimize_pro_image_conversion_cron");
         wp_unschedule_event($deconversion, "lws_optimize_image_deconversion_cron");
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] All conversion crons deactivated' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('All conversion crons deactivated');
 
         // Since we're stopping all conversions, we should clear the lock as well
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Conversion lock removed when stopping all conversions" . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Conversion lock removed when stopping all conversions');
 
         wp_die(json_encode(array('code' => 'SUCCESS', JSON_PRETTY_PRINT)));
     }
@@ -631,26 +654,20 @@ class LwsOptimizeImageOptimizationPro
             $stale_threshold = 600; // 10 minutes in seconds
 
             if (time() - $lock_time < $stale_threshold) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron already ongoing. Waiting to convert' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Cron already ongoing. Waiting to convert');
 
                 // Process is already running and not stale, exit
                 return;
             } else {
                 // Lock is stale, log it and continue
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Detected stale lock (created ' . (time() - $lock_time) . ' seconds ago). Overriding.' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Detected stale lock (created ' . (time() - $lock_time) . ' seconds ago). Overriding.');
             }
         }
 
         // Set a lock with timestamp that expires in 5 minutes (300 seconds)
         set_transient('lws_optimize_conversion_lock', ['time' => time()], 300);
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron lock now in place' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Cron lock now in place');
         sleep(2);
 
 
@@ -689,26 +706,25 @@ class LwsOptimizeImageOptimizationPro
         }
 
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Images to process using the API: ' . $unconverted_images . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Images to process using the API: ' . $unconverted_images);
 
         foreach ($images_to_process as $key => $image) {
             // Check if we have reached the maximum number of images to process
             if ($images_processed >= $max_images_per_run) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Maximum reached. Stopping cron at ' . $max_images_per_run . ' images' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Maximum reached. Stopping cron at ' . $max_images_per_run . ' images');
 
                 break;
             }
 
             if ($current_errors >= $max_errors_allowed) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Maximum errors reached. Stopping cron at ' . $max_errors_allowed . ' errors' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Maximum errors reached. Stopping cron at ' . $max_errors_allowed . ' errors');
 
                 break;
+            }
+
+            if ($image['unavailable'] ?? false) {
+                // If the image is marked as unavailable, skip it
+                continue;
             }
 
             // If there is no converted key, then consider the image as not converted
@@ -719,21 +735,17 @@ class LwsOptimizeImageOptimizationPro
             // If the image is already converted...
             if ($image['converted']) {
                 // Check if the converted file exists, if not mark it as unconverted
-                if (!file_exists($image['converted_path'])) {
+                if (!$this->wp_filesystem->exists($image['converted_path'])) {
                     $image['converted'] = false;
 
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Converted image [{$image['converted_path']}] not found, marking as unconverted" . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log("Converted image [{$image['converted_path']}] not found, marking as unconverted");
                 }
                 continue;
             }
 
             // If the image has no PATH or does not exists, skip it and mark it as unavailable
-            if ((empty($image['path']) || !file_exists($image['path']))) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Original image at [{$image['path']}] not found. No conversion can be done" . PHP_EOL);
-                fclose($logger);
+            if ((empty($image['path']) || !$this->wp_filesystem->exists($image['path']))) {
+                $this->write_log("Original image at [{$image['path']}] not found. No conversion can be done");
 
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
@@ -742,11 +754,10 @@ class LwsOptimizeImageOptimizationPro
             try {
                 $response = $this->convert_image($image['path'], null);
             } catch (\Exception $e) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error: {$e->getMessage()}" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to convert image [{$image['path']}]. Error: {$e->getMessage()}");
 
                 $current_errors++;
+                $images_to_process[$key]['unavailable'] = true;
                 error_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
                 continue;
             }
@@ -755,16 +766,17 @@ class LwsOptimizeImageOptimizationPro
 
             // Check for JSON decoding errors
             if (json_last_error() !== JSON_ERROR_NONE) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to decode JSON after converting [{$image['path']}]. Error: [" . json_last_error_msg() ."]" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to decode JSON after converting [{$image['path']}]. Error: [" . json_last_error_msg() ."]");
 
+                $images_to_process[$key]['unavailable'] = true;
                 error_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
                 continue;
             }
 
             // Check for API errors
             if (!isset($result['code']) || $result['code'] !== 'SUCCESS') {
+                $images_to_process[$key]['unavailable'] = true;
+
                 error_log($response);
 
                 // Add a HTTP failure to the count. If the API returns HTTP_ERRORs, generally it will NEVER return SUCCESS
@@ -772,11 +784,9 @@ class LwsOptimizeImageOptimizationPro
                     $current_errors++;
                 }
 
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]." . PHP_EOL . "Error code: {$result['code']}" . PHP_EOL);
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error message: {$result['message']}" . PHP_EOL);
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error data: " . json_encode($result['data']) . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to convert image [{$image['path']}]." . PHP_EOL . "Error code: {$result['code']}");
+                $this->write_log("Error message: {$result['message']}");
+                $this->write_log("Error data: " . json_encode($result['data']));
 
                 if ($result["code"] == "NO_CREDITS") {
                     // If there are no credits left, stop the conversion process
@@ -785,9 +795,12 @@ class LwsOptimizeImageOptimizationPro
                     // Delete lock
                     delete_transient('lws_optimize_conversion_lock');
 
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removing cron lock" . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log("Removing cron lock");
+
+                    // Store the changes made to the images data
+                    $conversion_options['images_listing'] = $images_to_process;
+                    // Update the conversion options in the database
+                    update_option('lws_optimize_image_conversion_options', $conversion_options);
 
                     return $response;
                 }
@@ -795,9 +808,7 @@ class LwsOptimizeImageOptimizationPro
                 // 403 means Forbidden, AKA the APIKey is not valid. In that case, remove it from the options to get it anew
                 if ($result['message'] == "403") {
                     delete_option('lws_optimize_image_api_key');
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] API Key was not valid and has been removed. Correct APIKey will be retrieved next conversion." . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log("API Key was not valid and has been removed. Correct APIKey will be retrieved next conversion.");
                 }
 
                 continue;
@@ -806,20 +817,8 @@ class LwsOptimizeImageOptimizationPro
             $converted_path = $result['data']['optimized_path'] ?? '';
             $converted_format = $result['data']['format'] ?? '';
 
-            // if (!file_exists($converted_path)) {
-            //     $logger = fopen($this->log_file, 'a');
-            //     fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] does not exist. Conversion has failed and will not be attempted again" . PHP_EOL);
-            //     fclose($logger);
-
-            //     error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
-            //     $images_to_process[$key]['unavailable'] = true;
-            //     continue;
-            // }
-
             if (empty($converted_format)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] has no format returned. Conversion has failed and will not be attempted again" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Image [{$converted_path}] has no format returned. Conversion has failed and will not be attempted again");
 
                 error_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format returned', 'data' => $result]));
                 $images_to_process[$key]['unavailable'] = true;
@@ -853,18 +852,14 @@ class LwsOptimizeImageOptimizationPro
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $result['data']['optimized_path']));
             update_post_meta($key, '_wp_attached_file', str_replace(ABSPATH, '', $result['data']['optimized_path']));
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] has been updated in WordPress. Conversion successful" . PHP_EOL);
-            fclose($logger);
+            $this->write_log("Image [{$converted_path}] has been updated in WordPress. Conversion successful");
 
             // Regenerate the image thumbnails for the optimized image
             if (function_exists('wp_generate_attachment_metadata')) {
                 $metadata = wp_generate_attachment_metadata($key, $result['data']['optimized_path']);
                 wp_update_attachment_metadata($key, $metadata);
 
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}]'s thumbnails are being regenerated" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Image [{$converted_path}]'s thumbnails are being regenerated");
             }
 
             // Store the changes to the images
@@ -899,9 +894,7 @@ class LwsOptimizeImageOptimizationPro
                 if ($next_conversion) {
                     wp_unschedule_event($next_conversion, "lws_optimize_pro_image_conversion_cron");
 
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] No more images to convert or all remaining images are unavailable. Stopping cron.' . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log('No more images to convert or all remaining images are unavailable. Stopping cron.');
 
                     // Update the conversion status
                     $conversion_options['conversion_status'] = false;
@@ -919,9 +912,7 @@ class LwsOptimizeImageOptimizationPro
         // Delete lock for next cron
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removing cron lock. Data updated" . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Cron lock removed. Data updated');
 
         // Return the $conversion_options and the amount of processed images
         return json_encode(array('code' => 'SUCCESS', 'data' => array('options' => $conversion_options, 'processed' => $images_processed), JSON_PRETTY_PRINT));
@@ -945,26 +936,20 @@ class LwsOptimizeImageOptimizationPro
             $stale_threshold = 600; // 10 minutes in seconds
 
             if (time() - $lock_time < $stale_threshold) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron already ongoing. Waiting to convert' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Cron already ongoing. Waiting to convert');
 
                 // Process is already running and not stale, exit
                 return json_encode(['code' => 'RUNNING', 'message' => 'Conversion process already running']);
             } else {
                 // Lock is stale, log it and continue
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Detected stale lock (created ' . (time() - $lock_time) . ' seconds ago). Overriding.' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Detected stale lock (created ' . (time() - $lock_time) . ' seconds ago). Overriding.');
             }
         }
 
         // Set a lock with timestamp that expires in 5 minutes (300 seconds)
         set_transient('lws_optimize_conversion_lock', ['time' => time()], 300);
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron lock now in place' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Cron lock now in place');
 
         // Process up to the specified number of images per cron run
         $images_processed = 0;
@@ -1000,19 +985,21 @@ class LwsOptimizeImageOptimizationPro
         }
 
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Images to process using standard method: ' . $unconverted_images . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Images to process using standard method: ' . $unconverted_images);
 
         foreach ($images_to_process as $key => $image) {
             // Check if we have reached the maximum number of images to process
             if ($images_processed >= $max_images_per_run) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Maximum reached. Stopping cron at ' . $max_images_per_run . ' images' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Maximum reached. Stopping cron at ' . $max_images_per_run . ' images');
 
                 break;
             }
+
+            if ($image['unavailable'] ?? false) {
+                // If the image is marked as unavailable, skip it
+                continue;
+            }
+
 
             // If there is no converted key, then consider the image as not converted
             if (empty($image['converted'])) {
@@ -1023,9 +1010,7 @@ class LwsOptimizeImageOptimizationPro
             if ($image['converted']) {
                 // ... but the converted image cannot be found, convert it again
                 if (empty($image['converted_path']) || !file_exists($image['converted_path'])) {
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image at [{$image['converted_path']}] does not exist. Converting again" . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log("Image at [{$image['converted_path']}] does not exist. Converting again");
 
                     $image['converted'] = false;
                 } else {
@@ -1035,10 +1020,8 @@ class LwsOptimizeImageOptimizationPro
             }
 
             // If the image has no PATH or does not exists, skip it and mark it as unavailable
-            if ((empty($image['path']) || !file_exists($image['path']))) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Original image at [{$image['path']}] not found. No conversion can be done" . PHP_EOL);
-                fclose($logger);
+            if ((empty($image['path']) || !$this->wp_filesystem->exists($image['path']))) {
+                $this->write_log("Original image at [{$image['path']}] not found. No conversion can be done");
 
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
@@ -1050,17 +1033,14 @@ class LwsOptimizeImageOptimizationPro
                 $pathInfo = pathinfo($image['path']);
                 $conversion_path = $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_lwsoptimized.webp';
 
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Converting image [{$image['path']}] to WebP format" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Converting image [{$image['path']}] to WebP format");
 
                 // Convert image using the standard method
                 $response = $this->convert_image_standard($image['path'], $conversion_path, $quality, $image['format'], 'webp', $max_size);
             } catch (\Exception $e) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error: {$e->getMessage()}" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to convert image [{$image['path']}]. Error: {$e->getMessage()}");
 
+                $images_to_process[$key]['unavailable'] = true;
                 error_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
                 continue;
             }
@@ -1069,22 +1049,20 @@ class LwsOptimizeImageOptimizationPro
 
             // Check for JSON decoding errors
             if (json_last_error() !== JSON_ERROR_NONE) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to decode JSON after converting [{$image['path']}]. Error: [" . json_last_error_msg() ."]" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to decode JSON after converting [{$image['path']}]. Error: [" . json_last_error_msg() ."]");
 
+                $images_to_process[$key]['unavailable'] = true;
                 error_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
                 continue;
             }
 
             // Check for API errors
             if (!isset($result['code']) || $result['code'] !== 'SUCCESS') {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert image [{$image['path']}]. Error code: {$result['code']}" . PHP_EOL);
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error message: {$result['message']}" . PHP_EOL);
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Error data: " . json_encode($result['data']) . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to convert image [{$image['path']}]. Error code: {$result['code']}");
+                $this->write_log("Error message: {$result['message']}");
+                $this->write_log("Error data: " . json_encode($result['data']));
 
+                $images_to_process[$key]['unavailable'] = true;
                 error_log($response);
                 continue;
             }
@@ -1092,20 +1070,8 @@ class LwsOptimizeImageOptimizationPro
             $converted_path = $result['data']['optimized_path'] ?? '';
             $converted_format = $result['data']['format'] ?? '';
 
-            // if (!file_exists($converted_path)) {
-            //     $logger = fopen($this->log_file, 'a');
-            //     fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] does not exist. Conversion has failed and will not be attempted again" . PHP_EOL);
-            //     fclose($logger);
-
-            //     error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
-            //     $images_to_process[$key]['unavailable'] = true;
-            //     continue;
-            // }
-
             if (empty($converted_format)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] has no format returned. Conversion has failed and will not be attempted again" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Image [{$converted_path}] has no format returned. Conversion has failed and will not be attempted again");
 
                 error_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format returned', 'data' => $result]));
                 $images_to_process[$key]['unavailable'] = true;
@@ -1138,18 +1104,14 @@ class LwsOptimizeImageOptimizationPro
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $converted_path));
             update_post_meta($key, '_wp_attached_file', str_replace(ABSPATH, '', $converted_path));
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}] has been updated in WordPress. Conversion successful" . PHP_EOL);
-            fclose($logger);
+            $this->write_log("Image [{$converted_path}] has been updated in WordPress. Conversion successful");
 
             // Regenerate the image thumbnails for the optimized image
             if (function_exists('wp_generate_attachment_metadata')) {
                 $metadata = wp_generate_attachment_metadata($key, $converted_path);
                 wp_update_attachment_metadata($key, $metadata);
 
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$converted_path}]'s thumbnails are being regenerated" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Image [{$converted_path}]'s thumbnails are being regenerated");
             }
 
             // Store the changes to the images
@@ -1187,9 +1149,7 @@ class LwsOptimizeImageOptimizationPro
                 if ($next_conversion) {
                     wp_unschedule_event($next_conversion, "lws_optimize_image_conversion_cron");
 
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] No more images to convert or all remaining images are unavailable. Stopping cron.' . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log('No more images to convert or all remaining images are unavailable. Stopping cron.');
 
                     // Update the conversion status
                     $conversion_options['conversion_status'] = false;
@@ -1204,9 +1164,7 @@ class LwsOptimizeImageOptimizationPro
         // Delete lock for next cron
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removing cron lock. Data updated" . PHP_EOL);
-        fclose($logger);
+        $this->write_log("Removing cron lock. Data updated");
 
         // Return the $conversion_options and the amount of processed images
         return json_encode(array('code' => 'SUCCESS', 'data' => array('options' => $conversion_options, 'processed' => $images_processed), JSON_PRETTY_PRINT));
@@ -1222,9 +1180,7 @@ class LwsOptimizeImageOptimizationPro
         // Check if another conversion process is already running
         $conversion_lock = get_transient('lws_optimize_conversion_lock');
         if ($conversion_lock) {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron already ongoing. Waiting to deconvert' . PHP_EOL);
-            fclose($logger);
+            $this->write_log('Cron already ongoing. Waiting to deconvert');
 
             // Process is already running, exit
             return;
@@ -1234,9 +1190,7 @@ class LwsOptimizeImageOptimizationPro
         // This ensures only one cron job runs at a time
         set_transient('lws_optimize_conversion_lock', true, 300);
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Cron lock now in place' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Cron lock now in place');
 
         // Process up to 10 images per cron run to avoid timeouts
         $images_processed = 0;
@@ -1266,16 +1220,12 @@ class LwsOptimizeImageOptimizationPro
             }
         }
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Images to deconvert: ' . $converted_images . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Images to deconvert: ' . $converted_images);
 
         foreach ($images_to_process as $key => $image) {
             // Check if we have reached the maximum number of images to process
             if ($images_processed >= $max_images_per_run) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Maximum reached. Stopping cron at ' . $max_images_per_run . ' images deconverted' . PHP_EOL);
-                fclose($logger);
+                $this->write_log('Maximum reached. Stopping cron at ' . $max_images_per_run . ' images deconverted');
                 break;
             }
 
@@ -1293,19 +1243,14 @@ class LwsOptimizeImageOptimizationPro
 
             // If the original image cannot be found, then consider this image as unavailable
             if (empty($image['path']) || !file_exists($image['path'])) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Original image at [{$image['path']}] not found. No deconversion can be done" . PHP_EOL);
-                fclose($logger);
-
+                $this->write_log("Original image at [{$image['path']}] not found. No deconversion can be done");
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
             }
 
             $format = $image['format'];
             if (empty($format)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Original image at [{$image['path']}] has no format. No deconversion can be done" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Original image at [{$image['path']}] has no format. No deconversion can be done");
 
                 error_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format found for the original image']));
                 $images_to_process[$key]['unavailable'] = true;
@@ -1327,27 +1272,21 @@ class LwsOptimizeImageOptimizationPro
             wp_update_attachment_metadata($key, wp_generate_attachment_metadata($key, $image['path']));
             update_post_meta($key, '_wp_attached_file', str_replace(ABSPATH, '', $image['path']));
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image['path']}] has been updated in WordPress. Deconversion successful" . PHP_EOL);
-            fclose($logger);
+            $this->write_log("Image [{$image['path']}] has been updated in WordPress. Deconversion successful");
 
             // Regenerate the image thumbnails for the optimized image
             if (function_exists('wp_generate_attachment_metadata')) {
                 $metadata = wp_generate_attachment_metadata($key, $image['path']);
                 wp_update_attachment_metadata($key, $metadata);
 
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image['path']}]'s thumbnails are being regenerated" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Image [{$image['path']}]'s thumbnails are being regenerated");
             }
 
             if (file_exists($image['converted_path'])) {
                 // Delete the converted image
-                unlink($image['converted_path']);
+                wp_delete_file($image['converted_path']);
 
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Converted image [{$image['converted_path']}] deleted" . PHP_EOL);
-                fclose($logger);
+                $this->write_log("Converted image [{$image['converted_path']}] deleted");
             }
 
             $image['converted'] = false;
@@ -1382,9 +1321,7 @@ class LwsOptimizeImageOptimizationPro
                 if ($next_deconversion) {
                     wp_unschedule_event($next_deconversion, "lws_optimize_image_deconversion_cron");
 
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . '] No more images to deconvert. Stopping cron.' . PHP_EOL);
-                    fclose($logger);
+                    $this->write_log('No more images to deconvert. Stopping cron.');
 
                     // Update the deconversion status
                     $conversion_options['deconversion_status'] = false;
@@ -1402,9 +1339,7 @@ class LwsOptimizeImageOptimizationPro
         // Delete lock for next cron
         delete_transient('lws_optimize_conversion_lock');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Removing cron lock. Data updated" . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Removing cron lock. Data updated');
 
         // Return the $conversion_options and the amount of processed images
         return json_encode(array('code' => 'SUCCESS', 'data' => array('options' => $conversion_options, 'processed' => $images_processed), JSON_PRETTY_PRINT));
@@ -1722,7 +1657,7 @@ class LwsOptimizeImageOptimizationPro
         $api_key = get_option('lws_optimize_image_api_key', false);
 
         // Check for the existence of the file at $path
-        if (!file_exists($path)) {
+        if (!$this->wp_filesystem->exists($path)) {
             return json_encode(['code' => 'FILE_NOT_FOUND', 'message' => 'File not found', 'data' => $path]);
         }
 
@@ -1819,24 +1754,18 @@ class LwsOptimizeImageOptimizationPro
     {
         $timer = microtime(true);
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Starting process to convert image [{$image}} with Imagick". PHP_EOL);
-        fclose($logger);
+        $this->write_log("Starting process to convert image [{$image}] with Imagick");
 
         try {
             // Validate parameters
             if (empty($image) || empty($output) || empty($origin) || empty($end)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Missing parameters [" . $image ?? 'NO IMAGE' . "] [" . $output ?? 'NO OUTPUT' . "] [" . $origin ?? 'NO ORIGIN' . "][" . $end ?? 'NO END' . "]". PHP_EOL);
-                fclose($logger);
+                $this->write_log("Missing parameters [" . $image ?? 'NO IMAGE' . "] [" . $output ?? 'NO OUTPUT' . "] [" . $origin ?? 'NO ORIGIN' . "][" . $end ?? 'NO END' . "]");
                 return json_encode(['code' => 'NO_PARAMETERS', 'message' => 'Missing required parameters', 'time' => microtime(true) - $timer]);
             }
 
             // Check for Imagick availability
             if (!extension_loaded('imagick') || !class_exists('Imagick')) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Imagick not found. Aborting". PHP_EOL);
-                fclose($logger);
+                $this->write_log("Imagick not found. Aborting");
                 return json_encode(['code' => 'IMAGICK_NOT_FOUND', 'message' => 'Imagick extension required for image optimization', 'time' => microtime(true) - $timer]);
             }
 
@@ -1850,9 +1779,7 @@ class LwsOptimizeImageOptimizationPro
 
             // Check format support
             if (!in_array(strtoupper($starting_type), $supported_formats) || !in_array(strtoupper($ending_type), $supported_formats)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image}} cannot be converted as either {$starting_type} or {$ending_type} is not supported". PHP_EOL);
-                fclose($logger);
+                $this->write_log("Image [{$image}] cannot be converted as either {$starting_type} or {$ending_type} is not supported");
 
                 return json_encode([
                     'code' => 'UNSUPPORTED_FORMAT',
@@ -1863,10 +1790,8 @@ class LwsOptimizeImageOptimizationPro
             }
 
             // Read source image
-            if (!file_exists($image) || !$img->readImage($image)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to read [{$image}}, cannot convert". PHP_EOL);
-                fclose($logger);
+            if (!$this->wp_filesystem->exists($image) || !$img->readImage($image)) {
+                $this->write_log("Failed to read [{$image}], cannot convert");
                 return json_encode(['code' => 'IMAGE_UNREADABLE', 'message' => 'Source image not readable', 'data' => $image, 'time' => microtime(true) - $timer]);
             }
 
@@ -1900,9 +1825,7 @@ class LwsOptimizeImageOptimizationPro
 
             // Handle format conversion
             if (!$img->setImageFormat($ending_type)) {
-                $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to convert [{$image}} top {$ending_type}". PHP_EOL);
-                fclose($logger);
+                $this->write_log("Failed to convert [{$image}] to {$ending_type}");
                 return json_encode(['code' => 'CONVERSION_FAIL', 'message' => 'Format conversion failed', 'time' => microtime(true) - $timer]);
             }
 
@@ -1920,9 +1843,7 @@ class LwsOptimizeImageOptimizationPro
                         fclose($fp);
                     }
 
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Failed to write image [{$image}}, conversion failed". PHP_EOL);
-                    fclose($logger);
+                    $this->write_log("Failed to write image [{$image}], conversion failed");
 
                     return json_encode(['code' => 'WRITE_FAIL', 'message' => 'Failed to write output image', 'time' => microtime(true) - $timer]);
                 }
@@ -1933,9 +1854,7 @@ class LwsOptimizeImageOptimizationPro
             $img->clear();
             $img->destroy();
 
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . "] Image [{$image}] converted from {$starting_type} to {$ending_type}". PHP_EOL);
-            fclose($logger);
+            $this->write_log("Image [{$image}] converted from {$starting_type} to {$ending_type}");
 
             return json_encode(['code' => 'SUCCESS', 'message' => 'Image successfully optimized','data' => [
                 'image_path' => $image,
@@ -1958,9 +1877,7 @@ class LwsOptimizeImageOptimizationPro
     public function lws_optimize_start_autoconversion_api() {
         check_ajax_referer('nonce_for_lws_optimize_start_autoconversion_api', '_ajax_nonce');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Activating API autoconversion on upload' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Activating API autoconversion on upload');
 
         $state = boolval($_POST['state'] ?? false);
 
@@ -1975,13 +1892,11 @@ class LwsOptimizeImageOptimizationPro
         // Update the autoconversion options in the database
         update_option('lws_optimize_image_autoconversion_options', $autoconversion_options);
 
-        $logger = fopen($this->log_file, 'a');
         if ($state) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Autoconversion has been activated using API' . PHP_EOL);
+            $this->write_log('Autoconversion has been activated using API');
         } else {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Autoconversion has been deactivated' . PHP_EOL);
+            $this->write_log('Autoconversion has been deactivated');
         }
-        fclose($logger);
 
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $autoconversion_options, JSON_PRETTY_PRINT)));
     }
@@ -1992,9 +1907,7 @@ class LwsOptimizeImageOptimizationPro
     public function lws_optimize_start_autoconversion_standard() {
         check_ajax_referer('nonce_for_lws_optimize_start_autoconversion_standard', '_ajax_nonce');
 
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Activating standard autoconversion on upload' . PHP_EOL);
-        fclose($logger);
+        $this->write_log('Activating standard autoconversion on upload');
 
         $quality = sanitize_text_field($_POST['quality'] ?? 'balanced');
         $size = intval($_POST['size'] ?? 2560);
@@ -2013,13 +1926,11 @@ class LwsOptimizeImageOptimizationPro
         // Update the autoconversion options in the database
         update_option('lws_optimize_image_autoconversion_options', $autoconversion_options);
 
-        $logger = fopen($this->log_file, 'a');
         if ($state) {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Autoconversion has been activated using Imagick' . PHP_EOL);
+            $this->write_log('Autoconversion has been activated using Imagick');
         } else {
-            fwrite($logger, '[' . date('Y-m-d H:i:s') . '] Autoconversion has been deactivated' . PHP_EOL);
+            $this->write_log('Autoconversion has been deactivated');
         }
-        fclose($logger);
 
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $autoconversion_options, JSON_PRETTY_PRINT)));
     }
