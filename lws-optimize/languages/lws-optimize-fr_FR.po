@@ -2517,3 +2517,9 @@ msgstr "Les fichiers journaux ont une taille maximale de 5 Mo. Une fois cette ta
 
 msgid "Logs have been synchronized"
 msgstr "Les journaux ont été synchronisés"
+
+msgid "The LWSCache plugin is currently active. We recommend deactivating it, as LWS Optimize provides equivalent functionality. Running both plugins simultaneously may result in conflicts."
+msgstr "Le plugin LWSCache est actuellement actif. Nous recommandons de le désactiver, car LWS Optimize offre une fonctionnalité équivalente. L'exécution simultanée des deux plugins peut entraîner des conflits."
+
+msgid "You can also access any page without cache by adding '?do_not_cache_lwsoptimize=1' to the URL (e.g., https://example.com/page/?do_not_cache_lwsoptimize=1)."
+msgstr "Vous pouvez également accéder à n'importe quelle page sans cache en ajoutant '?do_not_cache_lwsoptimize=1' à l'URL (par exemple, https://example.com/page/?do_not_cache_lwsoptimize=1)."

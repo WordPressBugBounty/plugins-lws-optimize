@@ -1,9 +1,9 @@
 === LWS Optimize - All-in-One Speed Booster & Cache Tools ===
 Contributors: aurelienlws
-Tags: cache plugin, performance optimization, speed booster, webp converter, lazy loading
+Tags: cache, optimize, performance, avif, lazy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 3.3.19
+Stable tag: 3.3.20
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,12 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 3.3.20 =
+* Changed way external URLs are managed by the minification/combinaison to fix issues where CSS would get deleted
+* Added warning if LWSCache is activated
+* Added a new URL parameter, "?do_not_cache_lwsoptimize=1", that bypass Optimize cache
+* Fix security issue where it was possible to use the generated cache for arbitrary file-read
 
 = 3.3.19 =
 * Fixed issue where DataTable would not be loaded for the "Image" tab and cause JS errors 

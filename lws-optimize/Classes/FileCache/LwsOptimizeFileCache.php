@@ -704,6 +704,10 @@ class LwsOptimizeFileCache
             $uri = esc_url($uri);
         }
 
+        // If URL has parameter do_not_cache_lwsoptimize, do not cache the page.
+        if (isset($_GET['do_not_cache_lwsoptimize'])) {
+            return false;
+        }
 
         // var_dump($this->base->lwsop_check_option('cache_logged_user')['state']);
 
@@ -782,7 +786,7 @@ class LwsOptimizeFileCache
             foreach ($_COOKIE as $key => $cookie) {
                 // We could use WP functions to check if a comment has been sent, but it is faster to check the cookie
                 // + it can be done with the next check
-                if (preg_match("/comment_author_/i", $cookie)) {
+                if (is_string($cookie) && preg_match("/comment_author_/i", $cookie)) {
                     return false;
                 }
                 // If WPTouch Pro is active and current mode is "desktop", does not cache if the user is on mobile #WPFC

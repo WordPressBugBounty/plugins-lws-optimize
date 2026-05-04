@@ -217,6 +217,15 @@ class LwsOptimizeJSManager
                             continue;
                         }
                     } else {
+                        // Guard against path traversal / arbitrary file read
+                        $real_file_path = realpath($file_path);
+                        if ($real_file_path === false || strpos($real_file_path, realpath(ABSPATH)) !== 0 || strtolower(pathinfo($real_file_path, PATHINFO_EXTENSION)) !== 'js') {
+                            $problematic_files[] = $script;
+                            $retry_needed = true;
+                            continue;
+                        }
+                        $file_path = $real_file_path;
+
                         if (file_exists($file_path)) {
                             $content = file_get_contents($file_path);
 
@@ -412,6 +421,15 @@ class LwsOptimizeJSManager
                     // Add http: or https: based on site settings
                     $file_path = (is_ssl() ? 'https:' : 'http:') . '//' . $file_path;
                     $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                }
+
+                // Guard against path traversal / arbitrary file read (local files only)
+                if (strpos($file_path, 'http') !== 0) {
+                    $real_file_path = realpath($file_path);
+                    if ($real_file_path === false || strpos($real_file_path, realpath(ABSPATH)) !== 0 || strtolower(pathinfo($real_file_path, PATHINFO_EXTENSION)) !== 'js') {
+                        continue;
+                    }
+                    $file_path = $real_file_path;
                 }
 
                 // Handle remote URLs

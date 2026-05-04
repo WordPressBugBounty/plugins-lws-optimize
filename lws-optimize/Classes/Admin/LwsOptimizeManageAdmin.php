@@ -34,6 +34,34 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     $this->lws_optimize_warning_incompatibiliy();
                 }
             }
+
+            if (is_plugin_active('lwscache/lwscache.php')) {
+                add_action('admin_notices', function() {
+                    ?>
+                    <div class="notice notice-warning is-dismissible" style="padding-bottom: 10px;">
+                        <p><?php _e('The LWSCache plugin is currently active. We recommend deactivating it, as LWS Optimize provides equivalent functionality. Running both plugins simultaneously may result in conflicts.', 'lws-optimize'); ?></p>
+                        <div style="display: flex; align-items: center; gap: 8px; line-height: 35px;">
+                            <a class="wp-core-ui button" id="lwsop_deactivate_button_lwscache" style="display: flex; align-items: center; width: fit-content;">
+                                <?php _e('Deactivate', 'lws-optimize'); ?>
+                            </a>
+                        </div>
+                    </div>
+                    <script>
+                        document.getElementById('lwsop_deactivate_button_lwscache')?.addEventListener('click', function(event) {
+                            this.parentNode.parentNode.style.pointerEvents = "none";
+                            this.innerHTML = `<img src="<?php echo LWS_OP_URL; ?>/images/loading_black.svg" width="20px">`;
+                            var data = {
+                                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('deactivate_lwscache_plugin_nonce')); ?>',
+                                action: "lws_optimize_deactivate_lwscache_plugin",
+                            };
+                            jQuery.post(ajaxurl, data, function(response) {
+                                location.reload();
+                            });
+                        });
+                    </script>
+                    <?php
+                });
+            }
         }, 0);
 
         if (is_admin()) {
@@ -91,6 +119,8 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             add_action("wp_ajax_lwsop_regenerate_logs", [$this, "lwsop_regenerate_logs"]);
 
             add_action("wp_ajax_lwsOp_sendFeedbackUser", [$this, "lwsOp_sendFeedbackUser"]);
+
+            add_action("wp_ajax_lws_optimize_deactivate_lwscache_plugin", [$this, "lws_optimize_deactivate_lwscache_plugin"]);
         }
 
         add_action("wp_ajax_lwsop_deactivate_temporarily", [$this, "lwsop_deactivate_temporarily"]);
@@ -422,6 +452,14 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 default:
                     break;
             }
+        }
+    }
+
+    public function lws_optimize_deactivate_lwscache_plugin()
+    {
+        check_ajax_referer('deactivate_lwscache_plugin_nonce', '_ajax_nonce');
+        if (is_plugin_active('lwscache/lwscache.php')) {
+            deactivate_plugins('lwscache/lwscache.php');
         }
     }
 

@@ -1112,6 +1112,9 @@ class LwsOptimize
         // No redirections for special query strings
         $hta .= "RewriteCond %{QUERY_STRING} !^((gclid|fbclid|y(ad|s)?clid|utm_(source|medium|campaign|content|term)=[^&]+)+)$ [NC]\n";
 
+        // Do not cache pages with do_not_cache_lwsoptimize parameter
+        $hta .= "RewriteCond %{QUERY_STRING} !do_not_cache_lwsoptimize [NC]\n";
+
         // Only if on the right domain
         $hta .= "RewriteCond %{HTTP_HOST} ^$http_host\n";
 

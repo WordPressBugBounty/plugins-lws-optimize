@@ -261,6 +261,8 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         </h2>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Purge manually every cache to eliminate obsolete cache immediately.', 'lws-optimize'); ?>
+            <br><br>
+            <?php esc_html_e("You can also access any page without cache by adding '?do_not_cache_lwsoptimize=1' to the URL (e.g., https://example.com/page/?do_not_cache_lwsoptimize=1).", 'lws-optimize'); ?>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">

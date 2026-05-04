@@ -218,19 +218,44 @@ class LwsOptimizeCSSManager
                     }
 
                     $file_path = $link;
-                    $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
-                    $file_path = explode("?ver", $file_path)[0];
-                    // If path starts with "//", remove them
-                    if (substr($file_path, 0, 2) === "//") {
-                        $file_path = substr($file_path, 2);
-                        // Add http: or https: based on site settings
-                        $file_path = (is_ssl() ? 'https:' : 'http:') . '//' . $file_path;
-                        $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+
+                    // Check if this is an external URL first (before any path conversions)
+                    $is_external = (strpos($link, 'http://') === 0 || strpos($link, 'https://') === 0 || strpos($link, '//') === 0);
+
+                    // Handle protocol-relative URLs
+                    if (strpos($link, '//') === 0) {
+                        $file_path = (is_ssl() ? 'https:' : 'http:') . $link;
+                        $is_external = true;
                     }
-                    // Handle remote URLs (like CDN content)
-                    if (strpos($file_path, 'http') === 0) {
-                        $content = @file_get_contents($file_path);
-                        if ($content !== false) {
+
+                    // Only check if it's external and not from our own site
+                    if ($is_external && strpos($link, get_site_url()) === false) {
+                        // This is an external CDN or remote CSS file
+                        $remote_url = $file_path;
+
+                        // Try to fetch the remote content using WordPress HTTP API as fallback
+                        $content = false;
+
+                        // First try file_get_contents
+                        if (ini_get('allow_url_fopen')) {
+                            $content = @file_get_contents($remote_url);
+                        }
+
+                        // Fallback to WordPress HTTP API if file_get_contents failed or is disabled
+                        if ($content === false || empty($content)) {
+                            $response = wp_remote_get($remote_url, array(
+                                'timeout' => 10,
+                                'sslverify' => false
+                            ));
+
+                            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                                $content = wp_remote_retrieve_body($response);
+                            }
+                        }
+
+                        // Validate we got actual CSS content, not just the URL echoed back
+                        if ($content !== false && !empty($content) && strlen($content) > strlen($remote_url) && strpos($content, '{') !== false) {
+                            // Successfully fetched content - verify it looks like CSS
                             $name = base_convert(crc32($name . $link), 20, 36);
                             if ($this->minify) {
                                 $minify->add($content);
@@ -241,10 +266,22 @@ class LwsOptimizeCSSManager
                             // If we can't fetch the remote file, add it to problematic files
                             $problematic_files[] = $link;
                             $retry_needed = true;
-                            error_log('LwsOptimize: Could not fetch remote CSS file: ' . $file_path);
+                            $debug_info = $content !== false ? ' (got ' . strlen($content) . ' bytes)' : ' (failed to fetch)';
+                            error_log('LwsOptimize: Could not fetch valid remote CSS file: ' . $remote_url . $debug_info);
                             continue;
                         }
                     } else {
+                        // Local file - convert URL to file path
+                        $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                        $file_path = explode("?ver", $file_path)[0];
+
+                        // Guard against path traversal / arbitrary file read
+                        $real_file_path = realpath($file_path);
+                        if ($real_file_path === false || strpos($real_file_path, realpath(ABSPATH)) !== 0 || strtolower(pathinfo($real_file_path, PATHINFO_EXTENSION)) !== 'css') {
+                            continue;
+                        }
+                        $file_path = $real_file_path;
+
                         if (file_exists($file_path)) {
                             if ($this->minify) {
                                 $minify->add($file_path);
@@ -415,19 +452,64 @@ class LwsOptimizeCSSManager
                 }
 
                 $file_path = $href;
-                $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
-                $file_path = explode("?ver", $file_path)[0];
-                // If path starts with "//", remove them
-                if (substr($file_path, 0, 2) === "//") {
-                    $file_path = substr($file_path, 2);
-                    // Add http: or https: based on site settings
-                    $file_path = (is_ssl() ? 'https:' : 'http:') . '//' . $file_path;
-                    $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+
+                // Check if this is an external URL first (before any path conversions)
+                $is_external = (strpos($href, 'http://') === 0 || strpos($href, 'https://') === 0 || strpos($href, '//') === 0);
+
+                // Handle protocol-relative URLs
+                if (strpos($href, '//') === 0) {
+                    $file_path = (is_ssl() ? 'https:' : 'http:') . $href;
+                    $is_external = true;
                 }
-                // Handle remote URLs (like CDN content)
-                if (strpos($file_path, 'http') === 0) {
-                    $content = @file_get_contents($file_path);
-                    if ($content === false) {
+
+                $css_content = null;
+
+                // Only check if it's external and not from our own site
+                if ($is_external && strpos($href, get_site_url()) === false) {
+                    // This is an external CDN or remote CSS file
+                    $remote_url = $file_path;
+
+                    // Try to fetch the remote content using WordPress HTTP API as fallback
+                    $content = false;
+
+                    // First try file_get_contents
+                    if (ini_get('allow_url_fopen')) {
+                        $content = @file_get_contents($remote_url);
+                    }
+
+                    // Fallback to WordPress HTTP API if file_get_contents failed or is disabled
+                    if ($content === false || empty($content)) {
+                        $response = wp_remote_get($remote_url, array(
+                            'timeout' => 10,
+                            'sslverify' => false
+                        ));
+
+                        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                            $content = wp_remote_retrieve_body($response);
+                        }
+                    }
+
+                    // Validate we got actual CSS content
+                    if ($content === false || empty($content) || strlen($content) <= strlen($remote_url) || strpos($content, '{') === false) {
+                        $debug_info = $content !== false ? ' (got ' . strlen($content) . ' bytes)' : ' (failed to fetch)';
+                        error_log('LwsOptimize: Could not fetch valid remote CSS file for minification: ' . $remote_url . $debug_info);
+                        continue;
+                    }
+
+                    $css_content = $content;
+                } else {
+                    // Local file - convert URL to file path
+                    $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
+                    $file_path = explode("?ver", $file_path)[0];
+
+                    // Guard against path traversal / arbitrary file read
+                    $real_file_path = realpath($file_path);
+                    if ($real_file_path === false || strpos($real_file_path, realpath(ABSPATH)) !== 0 || strtolower(pathinfo($real_file_path, PATHINFO_EXTENSION)) !== 'css') {
+                        continue;
+                    }
+                    $file_path = $real_file_path;
+
+                    if (!file_exists($file_path)) {
                         continue;
                     }
                 }
@@ -450,7 +532,15 @@ class LwsOptimizeCSSManager
                 }
 
                 if ($add_cache) {
-                    $minify = new Minify\CSS($file_path);
+                    // Create minifier with content or file path
+                    if ($css_content !== null) {
+                        // External CSS - use content
+                        $minify = new Minify\CSS();
+                        $minify->add($css_content);
+                    } else {
+                        // Local file - use file path
+                        $minify = new Minify\CSS($file_path);
+                    }
 
                     if ($minify->minify($path)) {
                         $file_contents = file_get_contents($path);
