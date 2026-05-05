@@ -2485,8 +2485,8 @@ msgstr "Un cache serveur stocke des copies statiques de pages web pour réduire 
 msgid "All caches have been deleted"
 msgstr "Tous les caches ont été supprimés"
 
-msgid "<b>-15%</b> on our <a href=\"https://www.lws.fr/support/\" target=\"_blank\" class=\"link_to_support\">WordPress hostings</a> with the code"
-msgstr "<b>-15%</b> sur nos <a href=\"https://www.lws.fr/support/\" target=\"_blank\" class=\"link_to_support\">hébergements WordPress</a> avec le code"
+msgid "<b>-15%</b> on our <a href=\"https://www.lws.fr/hebergement_wordpress.php\" target=\"_blank\" class=\"link_to_support\">WordPress hostings</a> with the code"
+msgstr "<b>-15%</b> sur nos <a href=\"https://www.lws.fr/hebergement_wordpress.php\" target=\"_blank\" class=\"link_to_support\">hébergements WordPress</a> avec le code"
 
 msgid "Memcached has been found but a connexion could not be made: Memcached server is not responding and cannot be activated."
 msgstr "Memcached a été trouvé mais une connexion n'a pas pu être établie : le serveur Memcached ne répond pas et ne peut pas être activé."

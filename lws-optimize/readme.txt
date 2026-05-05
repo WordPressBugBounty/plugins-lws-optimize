@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 3.3.20
+Stable tag: 3.3.21
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,9 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 3.3.21 =
+* Fixed broken link in plugin topbar
 
 = 3.3.20 =
 * Changed way external URLs are managed by the minification/combinaison to fix issues where CSS would get deleted

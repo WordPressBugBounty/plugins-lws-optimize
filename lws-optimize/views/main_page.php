@@ -359,7 +359,7 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                         <div class="lwsop_bottom_rateus">
                             <img src="<?php echo esc_url(plugins_url('images/flamme.svg', __DIR__)) ?>" alt="Flamme Logo" width="16px" height="20px" style="margin-right: 5px;">
-                            <?php echo wp_kses(__('<b>-15%</b> on our <a href="https://www.lws.fr/support/" target="_blank" class="link_to_support">WordPress hostings</a> with the code', 'lws-optimize'), ['b' => [], 'a' => ['class' => [], 'href' => [], 'target' => []]]); ?>
+                            <?php echo wp_kses(__('<b>-15%</b> on our <a href="https://www.lws.fr/hebergement_wordpress.php" target="_blank" class="link_to_support">WordPress hostings</a> with the code', 'lws-optimize'), ['b' => [], 'a' => ['class' => [], 'href' => [], 'target' => []]]); ?>
                             <div class="lwsop_top_code">
                                 WPEXT15
                                 <img src="<?php echo esc_url(plugins_url('images/copier_new.svg', __DIR__)) ?>" alt="Logo Copy Element" width="15px" height="18px" onclick="lwsoptimize_copy_clipboard(this)" readonly text="WPEXT15">
