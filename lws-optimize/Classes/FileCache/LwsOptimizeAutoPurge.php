@@ -124,9 +124,25 @@ class LwsOptimizeAutoPurge
     // BeTheme support
     public function lwsop_remove_cache_post_change_betheme()
     {
-        $post_id = $_POST['pageid'];
-        $action = current_filter();
+        // BeTheme's own nonce — verify it instead of trusting $_POST['pageid'] blindly.
+        // Fall back to current_user_can() so the handler is never callable by anonymous users.
+        if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'mfn-vb')) {
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error(['code' => 'FORBIDDEN'], 403);
+            }
+        }
 
+        $post_id = isset($_POST['pageid']) ? absint(wp_unslash($_POST['pageid'])) : 0;
+        if (!$post_id || get_post_status($post_id) === false) {
+            wp_send_json_error(['code' => 'INVALID_PAGEID'], 400);
+        }
+
+        // Capability check on the specific post being edited
+        if (!current_user_can('edit_post', $post_id)) {
+            wp_send_json_error(['code' => 'FORBIDDEN'], 403);
+        }
+
+        $action = current_filter();
         $uri = get_permalink($post_id);
         $this->purge_specified_url();
 

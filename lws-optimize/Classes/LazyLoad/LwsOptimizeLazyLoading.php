@@ -4,9 +4,29 @@ namespace Lws\Classes\LazyLoad;
 
 class LwsOptimizeLazyLoading
 {
+    /**
+     * Tracks whether the first <img> in the document has already been processed,
+     * so subsequent images get loading="lazy" while the first one (LCP candidate)
+     * receives fetchpriority="high" + loading="eager".
+     */
+    private static $first_image_processed = false;
+
+    /**
+     * Returns true if the modern native HTML5 lazy-loading path is enabled.
+     * Default: true (recommended in 2026 — 95%+ browser support, zero JS cost).
+     * Can be forced off via filter `lwsop_use_native_lazyload` for backward compat.
+     */
+    public static function use_native_lazyload()
+    {
+        return (bool) apply_filters('lwsop_use_native_lazyload', true);
+    }
+
     public static function startActionsImage()
     {
-        add_action('wp_enqueue_scripts', [__CLASS__, 'lws_optimize_manage_media_image_lazyload_js'], 0);
+        // The legacy JS lazy-load is only enqueued when native mode is disabled.
+        if (!self::use_native_lazyload()) {
+            add_action('wp_enqueue_scripts', [__CLASS__, 'lws_optimize_manage_media_image_lazyload_js'], 0);
+        }
         add_filter('the_content', [__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);
         add_filter('wp_filter_content_tags', [__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);
         add_filter('post_thumbnail_html', [__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);
@@ -47,17 +67,23 @@ class LwsOptimizeLazyLoading
             $exclude_classes[] = 'rev-slidebg';
         }
 
+        $native = self::use_native_lazyload();
+
         // Regular expression to find all <img> tags in the content
         $content = preg_replace_callback(
             '/<img(?![^>]*data-src)([^>]+?)src=([\'"])([^\'"]+)\2([^>]*?)>/i',
 
-            function ($matches) use ($exclude_classes, $exclude_filenames) {
+            function ($matches) use ($exclude_classes, $exclude_filenames, $native) {
                 $img_tag = $matches[0];
                 $attributes = $matches[1] . $matches[4];
                 $src = $matches[3];
 
                 // Skip if data-src is already present
                 if (strpos($img_tag, 'data-src') !== false) {
+                    return $img_tag;
+                }
+                // Skip if already has loading attribute (preserve theme/plugin intent)
+                if (preg_match('/\bloading=["\'][^"\']*["\']/', $attributes)) {
                     return $img_tag;
                 }
 
@@ -98,6 +124,22 @@ class LwsOptimizeLazyLoading
                     }
                 }
 
+                // ===== Native HTML5 lazy-load path (2026 default) =====
+                // - First image of the document: fetchpriority="high" + loading="eager"
+                //   (LCP candidate, must NOT be lazy-loaded)
+                // - Subsequent images: loading="lazy" + decoding="async"
+                //   (zero JS cost, native browser scheduling)
+                if ($native) {
+                    if (!self::$first_image_processed) {
+                        self::$first_image_processed = true;
+                        $attributes .= ' loading="eager" fetchpriority="high" decoding="async"';
+                    } else {
+                        $attributes .= ' loading="lazy" decoding="async"';
+                    }
+                    return '<img' . $attributes . ' src=' . $matches[2] . $src . $matches[2] . '>';
+                }
+
+                // ===== Legacy JS path (kept for backward compat via filter) =====
                 // Append lazy load class
                 $attributes = preg_match('/class=["\']([^"\']*)["\']/', $attributes)
                     ? preg_replace('/class=["\']([^"\']*)["\']/', 'class="$1 lws-optimize-lazyload"', $attributes)

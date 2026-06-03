@@ -1804,34 +1804,47 @@ class LwsOptimizeImageOptimizationPro
                 $img->resizeImage($max_size, $newHeight, \Imagick::FILTER_LANCZOS, 1);
             }
 
-            // Strip metadata to reduce file size
-            $img->stripImage();
+            // Strip metadata only if explicitly requested via filter (default: keep EXIF/XMP)
+            if (apply_filters('lwsop_strip_image_metadata', false, $image)) {
+                $img->stripImage();
+            }
 
-            // Set compression quality
+            // Set compression quality (2026 defaults: balanced = 80, was 64)
             switch ($quality) {
                 case 'low':
-                    $quality = 30;
+                    $quality = 60;
                     break;
                 case 'balanced':
-                    $quality = 64;
+                    $quality = 80;
                     break;
                 case 'high':
-                    $quality = 90;
+                    $quality = 92;
                     break;
                 default:
-                    $quality = 64;
+                    $quality = 80;
             }
-            $img->setImageCompressionQuality($quality);
+
+            // Auto-detect lossless for PNG/GIF logos/icons/small images
+            $lossless = \Lws\Classes\Images\LwsOptimizeImageOptimization::lwsop_should_use_lossless(
+                'image/' . $starting_type, $width, $height, 0
+            );
+            $lower = strtolower($ending_type);
+            if ($lossless && ($lower === 'webp' || $lower === 'avif')) {
+                $img->setOption($lower . ':lossless', 'true');
+                if ($lower === 'webp') {
+                    $img->setOption('webp:method', '6');
+                }
+            } else {
+                $img->setImageCompressionQuality($quality);
+                if ($lower === 'webp') {
+                    $img->setOption('webp:method', '6'); // Better compression
+                }
+            }
 
             // Handle format conversion
             if (!$img->setImageFormat($ending_type)) {
                 $this->write_log("Failed to convert [{$image}] to {$ending_type}");
                 return json_encode(['code' => 'CONVERSION_FAIL', 'message' => 'Format conversion failed', 'time' => microtime(true) - $timer]);
-            }
-
-            // Optimize for specific formats
-            if ($ending_type === 'webp') {
-                $img->setOption('webp:method', '6'); // Better compression
             }
 
             // Write output image

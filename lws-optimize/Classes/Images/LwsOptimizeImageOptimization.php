@@ -57,16 +57,16 @@ class LwsOptimizeImageOptimization
 
         switch ($quality) {
             case 'balanced':
-                $quality = 64;
+                $quality = 80;
                 break;
             case 'low':
-                $quality = 30;
+                $quality = 60;
                 break;
             case 'high':
-                $quality = 90;
+                $quality = 92;
                 break;
             default:
-                $quality = 64;
+                $quality = 80;
                 break;
         }
 
@@ -125,6 +125,44 @@ class LwsOptimizeImageOptimization
     }
 
     /**
+     * Decide whether lossless encoding is appropriate for the given source image.
+     * Logos, icons, screenshots and low-color PNG/GIF benefit from lossless: same
+     * or better visual quality AND often a smaller file than lossy at q=80.
+     * Photos (JPEG, high-color PNG) get lossy as usual.
+     *
+     * @param string $origin_mime e.g. "image/png"
+     * @param int    $width
+     * @param int    $height
+     * @param int    $colors_count Number of distinct colors (0 if unknown)
+     * @return bool
+     */
+    public static function lwsop_should_use_lossless($origin_mime, $width, $height, $colors_count = 0)
+    {
+        $origin = strtolower((string) $origin_mime);
+        // Filter via WP so site owners can override the heuristic
+        $forced = apply_filters('lwsop_force_lossless', null, $origin_mime, $width, $height, $colors_count);
+        if (is_bool($forced)) {
+            return $forced;
+        }
+        // GIF and SVG-like → always lossless
+        if (strpos($origin, 'gif') !== false || strpos($origin, 'svg') !== false) {
+            return true;
+        }
+        // Small PNG (likely logo/icon) → lossless
+        if (strpos($origin, 'png') !== false) {
+            $pixels = $width * $height;
+            if ($pixels > 0 && $pixels < 200 * 200) {
+                return true;
+            }
+            // PNG with few colors (e.g. flat illustration, screenshot) → lossless
+            if ($colors_count > 0 && $colors_count <= 256) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Create a copy of the given $image, convert it to the $end type from the current $origin.
      * The image will then be saved to $output. $output and $image can be the same to replace the image.
      *
@@ -132,10 +170,13 @@ class LwsOptimizeImageOptimization
      * @param string $origin The mime-type in which the image currently is. Format : image/png
      * @param string $end The mime-type in which the image needs to be converted. Format : image/webp
      * @param string $output The PATH where to save the newly converted image
+     * @param int    $quality Lossy compression quality (0-100). Recommended 80 in 2026.
+     * @param int    $max_size Max image width in pixels
+     * @param bool|null $lossless null = auto-detect ; true/false = forced
      *
      * @return bool Either true on success or false on error
      */
-    public function lws_optimize_convert_image(string $image, string $output, int $quality = 64, string $origin = "jpeg", string $end = "webp", $max_size = 2560)
+    public function lws_optimize_convert_image(string $image, string $output, int $quality = 80, string $origin = "jpeg", string $end = "webp", $max_size = 2560, $lossless = null)
     {
         try {
             $timer = microtime(true);
@@ -191,6 +232,20 @@ class LwsOptimizeImageOptimization
             $width = $img->getImageWidth();
             $height = $img->getImageHeight();
 
+            // Auto-detect lossless mode if not explicitly forced
+            if ($lossless === null) {
+                $colors = 0;
+                try {
+                    // getImageColors() can be expensive on huge images, only call on small ones
+                    if ($width * $height < 400 * 400) {
+                        $colors = $img->getImageColors();
+                    }
+                } catch (\Exception $e) {
+                    $colors = 0;
+                }
+                $lossless = self::lwsop_should_use_lossless($origin, $width, $height, $colors);
+            }
+
             // Check if the image width exceeds the maximum width
             if ($width > $max_size) {
                 // Calculate the new dimensions while maintaining the aspect ratio
@@ -200,9 +255,27 @@ class LwsOptimizeImageOptimization
                 $img->resizeImage($max_size, $newHeight, \Imagick::FILTER_LANCZOS, 1);
             }
 
-            // Change the compression quality of the new image. Between 0-100, 100 is better
-            // By default set to 64/100
-            $img->setImageCompressionQuality($quality);
+            // WebP / AVIF specific options.
+            // Lossless gives better quality on logos/icons/flat illustrations and is
+            // often smaller than lossy q=80 on those. Photos stay lossy.
+            $lower = strtolower($ending_type);
+            if ($lossless && ($lower === 'webp' || $lower === 'avif')) {
+                $img->setOption($lower . ':lossless', 'true');
+                // method:6 = best compression for WebP lossless (slower encode, smaller file)
+                if ($lower === 'webp') {
+                    $img->setOption('webp:method', '6');
+                }
+            } else {
+                // Lossy path: recommended quality in 2026 is 80 (was 64 in older versions)
+                $img->setImageCompressionQuality($quality);
+                if ($lower === 'webp') {
+                    $img->setOption('webp:method', '6');
+                }
+            }
+            // Strip metadata (EXIF/XMP/IPTC) is now opt-in via filter ; keep by default
+            if (apply_filters('lwsop_strip_image_metadata', false, $image)) {
+                $img->stripImage();
+            }
             if (!$img->setImageFormat($ending_type)) {
                 error_log(json_encode(['code' => 'CONVERTION_FAIL', 'message' => 'Could not convert the image into the given type.', 'data' => ['image' => $image, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
                 return false;
@@ -254,16 +327,16 @@ class LwsOptimizeImageOptimization
         // Also always between 1 and 100
         switch ($quality) {
             case 'balanced':
-                $quality = 64;
+                $quality = 80;
                 break;
             case 'low':
-                $quality = 30;
+                $quality = 60;
                 break;
             case 'high':
-                $quality = 90;
+                $quality = 92;
                 break;
             default:
-                $quality = 64;
+                $quality = 80;
                 break;
         }
 

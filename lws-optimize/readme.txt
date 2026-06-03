@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazy
 Requires at least: 6.0
 Tested up to: 6.9
-Stable tag: 3.3.21
+Stable tag: 4.0
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,12 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 3.4 =
+* Stricter admin access for Optimize functions
+* Fix issue with CriticalCSS that could result in E500
+* Improved stability of optimization, reducing errors
+* Improved Lazy-loading, fixing issue with above-the-fold images not loading correctly
 
 = 3.3.21 =
 * Fixed broken link in plugin topbar

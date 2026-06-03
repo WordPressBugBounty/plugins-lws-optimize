@@ -68,9 +68,11 @@ class LwsOptimize
             // If the plugin was updated...
             add_action('plugins_loaded', [$this, 'lws_optimize_after_update_actions']);
 
-            // If Memcached is activated but there is no object-cache.php, add it back
+            // Object cache drop-in lifecycle.
+            // CRITICAL: never delete or overwrite the drop-in if it belongs to a third party
+            // (Redis Object Cache, W3TC, wp-redis, etc.) — always go through the safe helpers.
             if ($this->lwsop_check_option('memcached')['state'] === "true") {
-                // Deactivate Memcached if Redis is activated
+                // Yield to Redis Object Cache if it is active — it manages its own drop-in.
                 if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
                     $optimize_options['memcached']['state'] = "false";
                 } else {
@@ -81,27 +83,26 @@ class LwsOptimize
                         }
 
                         if ($memcached->getVersion() === false) {
+                            // Memcached server unreachable → fall back to no object cache.
                             $optimize_options['memcached']['state'] = "false";
-                            if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                                wp_delete_file(LWSOP_OBJECTCACHE_PATH);
-                            }
+                            $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
                         } else {
+                            // Install OUR drop-in only if no third-party one is in place.
                             if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                                file_put_contents(LWSOP_OBJECTCACHE_PATH, file_get_contents(LWS_OP_DIR . '/views/object-cache.php'));
+                                $this->lwsop_safe_write_dropin(
+                                    LWSOP_OBJECTCACHE_PATH,
+                                    LWS_OP_DIR . '/views/object-cache.php'
+                                );
                             }
                         }
                     } else {
                         $optimize_options['memcached']['state'] = "false";
-                        if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                            var_dump("no_class");
-                            wp_delete_file(LWSOP_OBJECTCACHE_PATH);
-                        }
+                        $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
                     }
                 }
             } else {
-                if (file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                    wp_delete_file(LWSOP_OBJECTCACHE_PATH);
-                }
+                // Memcached disabled → remove OUR drop-in, but never touch a third-party one.
+                $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
             }
 
             if ($this->lwsop_check_option('image_add_sizes')['state'] === "true") {
@@ -607,11 +608,91 @@ class LwsOptimize
 
         // Otherwise fetch fresh URLs from sitemap
         $urls = $this->fetch_url_sitemap($sitemap, []);
+
+        // If sitemap yielded nothing, fall back to querying WordPress directly
+        if (empty($urls)) {
+            $logger = fopen($this->log_file, 'a');
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] No URLs from sitemap, falling back to WordPress query" . PHP_EOL);
+            fclose($logger);
+            $urls = $this->get_urls_from_wp();
+        }
+
         if (!empty($urls)) {
             update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
         }
 
         return $urls;
+    }
+
+    /**
+     * Fallback URL source: query WordPress directly for all published, publicly
+     * accessible content when no usable sitemap is available.
+     *
+     * Collects:
+     *  - The home / front page
+     *  - All published posts and pages
+     *  - All published items of every other public custom post type
+     *
+     * @return array Flat array of permalink strings
+     */
+    public function get_urls_from_wp()
+    {
+        $urls = [];
+
+        // Always include the home URL
+        $urls[] = trailingslashit(home_url('/'));
+
+        // Collect all public, queryable post types (built-in + custom)
+        $post_types = get_post_types(['public' => true, 'publicly_queryable' => true], 'names');
+        // Ensure core types are included even if publicly_queryable differs
+        foreach (['post', 'page'] as $core_type) {
+            if (!in_array($core_type, $post_types, true)) {
+                $post_types[] = $core_type;
+            }
+        }
+
+        // Remove attachments — their "pages" are rarely useful to preload
+        unset($post_types['attachment']);
+        $post_types = array_values($post_types);
+
+        if (empty($post_types)) {
+            return $urls;
+        }
+
+        // Query in batches of 500 to avoid memory issues on large sites
+        $batch_size = 500;
+        $paged      = 1;
+
+        do {
+            $query = new \WP_Query([
+                'post_type'              => $post_types,
+                'post_status'            => 'publish',
+                'posts_per_page'         => $batch_size,
+                'paged'                  => $paged,
+                'no_found_rows'          => false,
+                'update_post_term_cache' => false,
+                'update_post_meta_cache' => false,
+                'ignore_sticky_posts'    => true,
+                'fields'                 => 'ids',
+            ]);
+
+            if (empty($query->posts)) {
+                break;
+            }
+
+            foreach ($query->posts as $post_id) {
+                $permalink = get_permalink($post_id);
+                if ($permalink && !in_array($permalink, $urls, true)) {
+                    $urls[] = $permalink;
+                }
+            }
+
+            $max_pages = (int) $query->max_num_pages;
+            $paged++;
+            wp_reset_postdata();
+        } while ($paged <= $max_pages);
+
+        return array_values(array_unique($urls));
     }
 
     /**
@@ -859,7 +940,7 @@ class LwsOptimize
 
             // Skip if temporarily deactivated
             if (get_option('lws_optimize_deactivate_temporarily')) {
-                if (file_put_contents($htaccess, $htaccess_content) === false) {
+                if (!$this->lwsop_atomic_write($htaccess, $htaccess_content)) {
                     fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
                 }
                 fclose($logger);
@@ -898,7 +979,7 @@ class LwsOptimize
             $new_content = $hta . $htaccess_content;
 
             // Write new content
-            if (file_put_contents($htaccess, $new_content) === false) {
+            if (!$this->lwsop_atomic_write($htaccess, $new_content)) {
                 fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
             } else {
                 fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully updated GZIP rules in .htaccess' . PHP_EOL);
@@ -1019,7 +1100,7 @@ class LwsOptimize
                 $htaccess_content = preg_replace($pattern, '', $htaccess_content);
 
                 // Write back to file
-                file_put_contents($htaccess, $htaccess_content);
+                $this->lwsop_atomic_write($htaccess, $htaccess_content);
             } else {
                 // Log error if htaccess can't be modified
                 $logger = fopen($this->log_file, 'a');
@@ -1172,7 +1253,7 @@ class LwsOptimize
         $htaccess_content = preg_replace($pattern, '', $htaccess_content);
 
         // Write back to file
-        if (file_put_contents($htaccess, $htaccess_content) === false) {
+        if (!$this->lwsop_atomic_write($htaccess, $htaccess_content)) {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
         } else {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully removed GZIP rules from .htaccess' . PHP_EOL);
@@ -1200,7 +1281,7 @@ class LwsOptimize
         $htaccess_content = preg_replace($pattern, '', $htaccess_content);
 
         // Write back to file
-        if (file_put_contents($htaccess, $htaccess_content) === false) {
+        if (!$this->lwsop_atomic_write($htaccess, $htaccess_content)) {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
         } else {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully removed caching rules from .htaccess' . PHP_EOL);
@@ -1305,7 +1386,7 @@ class LwsOptimize
 
             // Skip if temporarily deactivated
             if (get_option('lws_optimize_deactivate_temporarily')) {
-                if (file_put_contents($htaccess, $htaccess_content) === false) {
+                if (!$this->lwsop_atomic_write($htaccess, $htaccess_content)) {
                     fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Could not update .htaccess content' . PHP_EOL);
                 }
                 fclose($logger);
@@ -1349,7 +1430,7 @@ class LwsOptimize
             $new_content = $hta . $htaccess_content;
 
             // Write new content
-            if (file_put_contents($htaccess, $new_content) === false) {
+            if (!$this->lwsop_atomic_write($htaccess, $new_content)) {
                 fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to write new .htaccess content' . PHP_EOL);
             } else {
                 fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully updated Header rules in .htaccess' . PHP_EOL);
@@ -1381,7 +1462,7 @@ class LwsOptimize
         $htaccess_content = preg_replace($pattern, '', $htaccess_content);
 
         // Write back to file
-        if (file_put_contents($htaccess, $htaccess_content) === false) {
+        if (!$this->lwsop_atomic_write($htaccess, $htaccess_content)) {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Failed to update .htaccess file' . PHP_EOL);
         } else {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully removed expire headers from .htaccess' . PHP_EOL);
@@ -2322,6 +2403,173 @@ class LwsOptimize
             $header = '[' . gmdate('Y-m-d H:i:s') . '] Log file created' . PHP_EOL;
             file_put_contents($this->log_file, $header);
         }
+    }
+
+    /**
+     * Signature marker present in our own drop-in (views/object-cache.php).
+     * Used to distinguish our drop-in from a third-party one (Redis Object Cache,
+     * W3 Total Cache, WP Redis...) before any destructive operation.
+     */
+    const LWSOP_DROPIN_SIGNATURE = 'LWS_OPTIMIZE_OBJECT_CACHE_v1';
+
+    /**
+     * Markers known to be present in popular third-party object-cache.php drop-ins.
+     * If we detect any of these, we MUST refuse to overwrite or delete.
+     */
+    const LWSOP_THIRD_PARTY_MARKERS = [
+        'redis-cache',          // Redis Object Cache (rhubarbgroup)
+        'WP_Object_Cache_Redis',
+        'w3-total-cache',       // W3TC
+        'w3tc',
+        'wp-redis',             // wp-redis (humanmade)
+        'memcachier',
+        'object-cache.php (a)', // Pantheon
+    ];
+
+    /**
+     * Returns true if the file at $path is OUR drop-in (contains our signature).
+     * Returns false if the file does not exist OR is owned by a third party.
+     *
+     * @param string $path Path to a candidate object-cache.php
+     * @return bool
+     */
+    public function lwsop_is_owned_dropin($path)
+    {
+        if (!file_exists($path) || !is_readable($path)) {
+            return false;
+        }
+        $content = @file_get_contents($path, false, null, 0, 8192);
+        if ($content === false) {
+            return false;
+        }
+        return strpos($content, self::LWSOP_DROPIN_SIGNATURE) !== false;
+    }
+
+    /**
+     * Returns the third-party marker detected in $path, or null if none / file absent.
+     *
+     * @param string $path
+     * @return string|null
+     */
+    public function lwsop_detect_third_party_dropin($path)
+    {
+        if (!file_exists($path) || !is_readable($path)) {
+            return null;
+        }
+        $content = @file_get_contents($path, false, null, 0, 8192);
+        if ($content === false) {
+            return null;
+        }
+        // Our own drop-in wins
+        if (strpos($content, self::LWSOP_DROPIN_SIGNATURE) !== false) {
+            return null;
+        }
+        foreach (self::LWSOP_THIRD_PARTY_MARKERS as $marker) {
+            if (stripos($content, $marker) !== false) {
+                return $marker;
+            }
+        }
+        // Unknown drop-in (no LWS signature and no known marker) → still treat as third-party to be safe
+        return 'unknown';
+    }
+
+    /**
+     * Safely delete the object-cache.php drop-in ONLY if we own it.
+     * Returns true on success (deleted or already absent), false if refused (third-party detected).
+     *
+     * @param string $path
+     * @return bool
+     */
+    public function lwsop_safe_delete_dropin($path)
+    {
+        if (!file_exists($path)) {
+            return true;
+        }
+        $third_party = $this->lwsop_detect_third_party_dropin($path);
+        if ($third_party !== null) {
+            $msg = sprintf(
+                '[%s] LWS Optimize refused to delete %s — third-party drop-in detected: %s',
+                gmdate('Y-m-d H:i:s'),
+                $path,
+                $third_party
+            );
+            if (!empty($this->log_file)) {
+                @file_put_contents($this->log_file, $msg . PHP_EOL, FILE_APPEND);
+            }
+            error_log($msg);
+            return false;
+        }
+        return @wp_delete_file($path) !== false;
+    }
+
+    /**
+     * Atomically write content to a critical file (.htaccess, drop-in, config) via
+     * write-to-tmp + rename. Avoids leaving a truncated file on I/O error, which
+     * would otherwise cause a 500 (notably for .htaccess).
+     *
+     * @param string $path Target file path
+     * @param string $content Content to write
+     * @return bool true on success
+     */
+    public function lwsop_atomic_write($path, $content)
+    {
+        $tmp = $path . '.tmp.' . wp_generate_password(6, false);
+        $written = @file_put_contents($tmp, $content);
+        if ($written === false || $written !== strlen($content)) {
+            @wp_delete_file($tmp);
+            return false;
+        }
+        // Preserve permissions of the existing file if any
+        if (file_exists($path)) {
+            $perms = @fileperms($path);
+            if ($perms !== false) {
+                @chmod($tmp, $perms & 0777);
+            }
+        }
+        if (!@rename($tmp, $path)) {
+            @wp_delete_file($tmp);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Safely write the LWS Optimize drop-in ONLY if no third-party drop-in is in place.
+     * Uses atomic rename to avoid leaving a truncated file on I/O error.
+     *
+     * @param string $path Target path
+     * @param string $source_path Source path (views/object-cache.php)
+     * @return bool true on success, false if refused or write failed
+     */
+    public function lwsop_safe_write_dropin($path, $source_path)
+    {
+        $third_party = $this->lwsop_detect_third_party_dropin($path);
+        if ($third_party !== null) {
+            $msg = sprintf(
+                '[%s] LWS Optimize refused to overwrite %s — third-party drop-in detected: %s',
+                gmdate('Y-m-d H:i:s'),
+                $path,
+                $third_party
+            );
+            if (!empty($this->log_file)) {
+                @file_put_contents($this->log_file, $msg . PHP_EOL, FILE_APPEND);
+            }
+            error_log($msg);
+            return false;
+        }
+        $content = @file_get_contents($source_path);
+        if ($content === false) {
+            return false;
+        }
+        $tmp = $path . '.tmp.' . wp_generate_password(6, false);
+        if (@file_put_contents($tmp, $content) === false) {
+            return false;
+        }
+        if (!@rename($tmp, $path)) {
+            @wp_delete_file($tmp);
+            return false;
+        }
+        return true;
     }
 }
 

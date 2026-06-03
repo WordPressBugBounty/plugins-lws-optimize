@@ -708,10 +708,20 @@ class LwsOptimizeWpCli {
 
                 $options['memcached']['state'] = "true";
                 if (update_option('lws_optimize_config_array', $options)) {
-                    // If the option is activated, we need to create the object-cache.php file
-                    @wp_delete_file(LWSOP_OBJECTCACHE_PATH);
-                    if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                        file_put_contents(LWSOP_OBJECTCACHE_PATH, file_get_contents(LWS_OP_DIR . '/views/object-cache.php'));
+                    // Refuse if a third-party object-cache drop-in is in place (Redis, W3TC, ...)
+                    if (isset($GLOBALS['lws_optimize'])) {
+                        $third_party = $GLOBALS['lws_optimize']->lwsop_detect_third_party_dropin(LWSOP_OBJECTCACHE_PATH);
+                        if ($third_party !== null) {
+                            // Revert flag and error out
+                            $options['memcached']['state'] = "false";
+                            update_option('lws_optimize_config_array', $options);
+                            \WP_CLI::error("Cannot activate Memcached: third-party object-cache drop-in detected ($third_party). Disable it first.");
+                            return -1;
+                        }
+                        $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
+                            LWSOP_OBJECTCACHE_PATH,
+                            LWS_OP_DIR . '/views/object-cache.php'
+                        );
                     }
 
                     \WP_CLI::success('Memcached activated.');
@@ -729,8 +739,10 @@ class LwsOptimizeWpCli {
 
                 $options['memcached']['state'] = "false";
                 if (update_option('lws_optimize_config_array', $options)) {
-                    // If the option is deactivated, we need to remove the object-cache.php file
-                    @wp_delete_file(LWSOP_OBJECTCACHE_PATH);
+                    // Only delete the drop-in if we own it
+                    if (isset($GLOBALS['lws_optimize'])) {
+                        $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                    }
 
                     \WP_CLI::success('Memcached deactivated.');
                     return 0;

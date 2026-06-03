@@ -45,7 +45,7 @@ class LwsOptimizeCriticalCSS
                         $css_domain = wp_parse_url($url, PHP_URL_HOST);
                         if ($css_domain && $css_domain === $site_domain) {
                             $response = wp_remote_get($url);
-                            if (!is_wp_error($response) && $response['response']['code'] === 200) {
+                            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
                                 $this->all_css .= wp_remote_retrieve_body($response) . "\n";
                             }
                         }
@@ -63,13 +63,20 @@ class LwsOptimizeCriticalCSS
         $url = isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI']) ?
         (is_ssl() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] : site_url();
 
+
+        $body = json_encode([
+            'url' => $url,
+            'css' => $this->all_css,
+        ], JSON_INVALID_UTF8_SUBSTITUTE);
+
+        if ($body === false) {
+            return false;
+        }
+
         $response = wp_remote_post(
             $this->apiUrl,
             [
-                'body' => json_encode([
-                    'url' => $url,
-                    'css' => $this->all_css,
-                ]),
+                'body' => $body,
                 'headers' => [
                     'Content-Type' => 'application/json',
                 ],

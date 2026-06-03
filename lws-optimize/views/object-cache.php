@@ -2,6 +2,8 @@
 /**
  * Memcached Object Cache Drop-In
  * Place in wp-content/object-cache.php
+ *
+ * @lwsop-signature LWS_OPTIMIZE_OBJECT_CACHE_v1
  */
 
 if (!class_exists('Memcached')) {

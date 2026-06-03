@@ -14,13 +14,19 @@ class LwsOptimizeUnusedCSS
 
     public function removeUnusedCSS($css)
     {
+        $body = json_encode([
+            'html' => $this->content,
+            'css' => $css,
+        ], JSON_INVALID_UTF8_SUBSTITUTE);
+
+        if ($body === false) {
+            return false;
+        }
+
         $response = wp_remote_post(
             $this->apiUrl,
             [
-                'body' => json_encode([
-                    'html' => $this->content,
-                    'css' => $css,
-                ]),
+                'body' => $body,
                 'headers' => [
                     'Content-Type' => 'application/json',
                 ],
