@@ -45,7 +45,7 @@ class LwsOptimizeCriticalCSS
                         $css_domain = wp_parse_url($url, PHP_URL_HOST);
                         if ($css_domain && $css_domain === $site_domain) {
                             $response = wp_remote_get($url);
-                            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                            if (!is_wp_error($response) && isset($response['response']['code']) && $response['response']['code'] === 200) {
                                 $this->all_css .= wp_remote_retrieve_body($response) . "\n";
                             }
                         }
@@ -102,7 +102,7 @@ class LwsOptimizeCriticalCSS
                 if (filter_var($result['criticalCss'], FILTER_VALIDATE_URL)) {
                     // If criticalCss is a URL, fetch content from it
                     $critical_content = wp_remote_get($result['criticalCss']);
-                    if (!is_wp_error($critical_content) && $critical_content['response']['code'] === 200) {
+                    if (!is_wp_error($critical_content) && isset($critical_content['response']['code']) && $critical_content['response']['code'] === 200) {
                         file_put_contents($critical_file, wp_remote_retrieve_body($critical_content));
                         $path_to_critical = $critical_file;
                     }

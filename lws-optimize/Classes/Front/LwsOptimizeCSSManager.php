@@ -312,6 +312,9 @@ class LwsOptimizeCSSManager
                     if (!file_exists($path)) {
                         touch($path);
                     }
+                } else {
+                    // File already exists with identical content (CRC32 hash name) — skip regeneration to preserve Last-Modified
+                    return ['final_url' => $path_url, 'problematic' => $problematic_files];
                 }
 
                 // Minify and combine all files into one, saved in $path

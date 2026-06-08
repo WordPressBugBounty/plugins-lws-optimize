@@ -544,6 +544,34 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
 
     /**
+     * 4.5.13 — Mappe les `reason` codes de lwsop_validate_memcached_environment()
+     * vers les codes d'erreur que le JS (views/tabs.php processError switch) sait
+     * traiter via callPopup(). Permet de réutiliser les messages i18n existants
+     * (MEMCACHE_NOT_WORK, MEMCACHE_NOT_FOUND) + nouveaux cas pour le conflit
+     * sessions et le drop-in tiers.
+     *
+     * @param string $reason Reason code from validate_memcached_environment
+     * @return string JS-side error code consumed by processError() switch
+     */
+    private function lwsop_map_memcached_reason_to_error_code($reason)
+    {
+        switch ($reason) {
+            case 'php_memcached_extension_missing':
+                return 'MEMCACHE_NOT_FOUND';
+            case 'memcached_unreachable_or_broken':
+                return 'MEMCACHE_NOT_WORK';
+            case 'memcached_shared_with_php_sessions':
+                return 'MEMCACHE_SESSIONS_CONFLICT';
+            case 'third_party_dropin_exists':
+                return 'MEMCACHE_THIRD_PARTY_DROPIN';
+            case 'memcached_near_capacity':
+                return 'MEMCACHE_WARNING';
+            default:
+                return 'MEMCACHE_NOT_WORK';
+        }
+    }
+
+    /**
      * Set the 'state' of each action defined by the ID "lws_optimize_*_check" as such :
      * [name]['state'] = "true"/"false"
      */
@@ -623,40 +651,51 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 wp_schedule_event(time() + 604800, 'weekly', 'lws_optimize_maintenance_db_weekly');
             }
         } elseif ($element == "memcached") {
-            if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
+            // 4.5.13 — Validation environnement + réponse compatible JS existant.
+            // Le JS lit `code:SUCCESS` + `errors:[...]` → switch sur les codes connus
+            // (MEMCACHE_NOT_WORK / NOT_FOUND / REDIS_ALREADY_HERE) + 3 NOUVEAUX
+            // (MEMCACHE_SESSIONS_CONFLICT / THIRD_PARTY_DROPIN / WARNING) →
+            // callPopup('error', ...) avec message détaillé via `lws_memcached_detail`.
+            if ($state == "true" && isset($GLOBALS['lws_optimize'])) {
+                $env = $GLOBALS['lws_optimize']->lwsop_validate_memcached_environment();
+                if (!$env['ok'] && $env['severity'] === 'fatal') {
                 $optimize_options[$element]['state'] = "false";
-                wp_die(json_encode(array('code' => "REDIS_ALREADY_HERE", 'data' => "FAILURE", 'state' => "unknown")));
-            }
-            // Refuse activation if any other third-party object-cache drop-in is in place
-            $third_party = isset($GLOBALS['lws_optimize']) ? $GLOBALS['lws_optimize']->lwsop_detect_third_party_dropin(LWSOP_OBJECTCACHE_PATH) : null;
-            if ($third_party !== null) {
-                $optimize_options[$element]['state'] = "false";
-                wp_die(json_encode(array('code' => "DROPIN_CONFLICT", 'data' => $third_party, 'state' => "unknown")));
-            }
-            if (class_exists('Memcached')) {
-                $memcached = new \Memcached();
-                if (empty($memcached->getServerList())) {
-                    $memcached->addServer('localhost', 11211);
+                    update_option('lws_optimize_config_array', $optimize_options);
+                    error_log('LWS Optimize: blocked Memcached activation (AJAX) — ' . $env['reason'] . ' : ' . substr($env['message'], 0, 200));
+                    $js_code = $this->lwsop_map_memcached_reason_to_error_code($env['reason']);
+                    wp_die(json_encode([
+                        'code'                 => 'SUCCESS',
+                        'data'                 => 'false',
+                        'type'                 => 'memcached',
+                        'errors'               => [$js_code],
+                        'lws_memcached_detail' => $env['message'],
+                        'lws_memcached_reason' => $env['reason'],
+                        'lws_memcached_fix_url' => $env['fix_url'] ?? null,
+                    ]));
                 }
-
-                if ($memcached->getVersion() === false) {
-                    if (isset($GLOBALS['lws_optimize'])) {
-                        $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
-                    }
-                    wp_die(json_encode(array('code' => "MEMCACHE_NOT_WORK", 'data' => "FAILURE", 'state' => "unknown")));
-                }
-
-                if (isset($GLOBALS['lws_optimize'])) {
+                if ($env['severity'] === 'warning') {
+                    // Activation OK mais avec avertissement (ex: saturation cache).
+                    // On laisse passer mais on enrichit la réponse pour popup orange.
                     $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
                         LWSOP_OBJECTCACHE_PATH,
                         LWS_OP_DIR . '/views/object-cache.php'
                     );
+                    wp_die(json_encode([
+                        'code'                  => 'SUCCESS',
+                        'data'                  => 'true',
+                        'type'                  => 'memcached',
+                        'errors'                => ['MEMCACHE_WARNING'],
+                        'lws_memcached_warning' => $env['message'],
+                    ]));
                 }
-            } else {
-                if (isset($GLOBALS['lws_optimize'])) {
+            }
+            if (isset($GLOBALS['lws_optimize']) && $state == "true") {
+                    $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
+                        LWSOP_OBJECTCACHE_PATH,
+                        LWS_OP_DIR . '/views/object-cache.php'
+                    );
+            } elseif (isset($GLOBALS['lws_optimize']) && $state == "false") {
                     $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
-                }
-                wp_die(json_encode(array('code' => "MEMCACHE_NOT_FOUND", 'data' => "FAILURE", 'state' => "unknown")));
             }
         } elseif ($element == "gzip_compression") {
             if ($state == "true") {
@@ -779,59 +818,36 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 }
 
             } elseif ($id == "memcached") {
-                if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
+                // 4.5.13 — Validation + codes JS-compat + champ détail pour popup actionnable.
+                if ($state == "true" && isset($GLOBALS['lws_optimize'])) {
+                    $env = $GLOBALS['lws_optimize']->lwsop_validate_memcached_environment();
+                    if (!$env['ok'] && $env['severity'] === 'fatal') {
                     $optimize_options[$id]['state'] = "false";
-                    $errors[$id] = 'REDIS_ALREADY_HERE';
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Redis cache plugin is already active' . PHP_EOL);
-                    fclose($logger);
-                    continue;
-                }
-
-                // Refuse activation if any third-party object-cache drop-in is in place
-                $third_party = isset($GLOBALS['lws_optimize']) ? $GLOBALS['lws_optimize']->lwsop_detect_third_party_dropin(LWSOP_OBJECTCACHE_PATH) : null;
-                if ($third_party !== null) {
-                    $optimize_options[$id]['state'] = "false";
-                    $errors[$id] = 'DROPIN_CONFLICT:' . $third_party;
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Refused to overwrite third-party drop-in: ' . $third_party . PHP_EOL);
-                    fclose($logger);
-                    continue;
-                }
-
-                if (class_exists('Memcached')) {
-                    $memcached = new \Memcached();
-                    if (empty($memcached->getServerList())) {
-                        $memcached->addServer('localhost', 11211);
-                    }
-
-                    if ($memcached->getVersion() === false) {
-                        if (isset($GLOBALS['lws_optimize'])) {
-                            $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                        $errors[$id] = $this->lwsop_map_memcached_reason_to_error_code($env['reason']);
+                        // Champ détail consommé par le JS dans le switch (fallback i18n si absent)
+                        if (!isset($memcached_detail)) {
+                            $memcached_detail = $env['message'];
+                            $memcached_reason = $env['reason'];
+                            $memcached_fix_url = $env['fix_url'] ?? null;
                         }
-                        $errors[$id] = 'MEMCACHE_NOT_WORK';
-                        $logger = fopen($this->log_file, 'a');
-                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Memcached server not responding' . PHP_EOL);
-                        fclose($logger);
-                        continue;
+                        error_log('LWS Optimize: blocked Memcached activation (AJAX delayed) — ' . $env['reason']);
+                    $logger = fopen($this->log_file, 'a');
+                        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Blocked Memcached activation: ' . $env['reason'] . ' — ' . substr($env['message'], 0, 200) . PHP_EOL);
+                    fclose($logger);
+                    continue;
+                }
+                    if ($env['severity'] === 'warning') {
+                        $errors[$id] = 'MEMCACHE_WARNING';
+                        $memcached_warning = $env['message'];
                     }
-
-                    if (isset($GLOBALS['lws_optimize'])) {
+                }
+                if (isset($GLOBALS['lws_optimize']) && $state == "true") {
                         $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
                             LWSOP_OBJECTCACHE_PATH,
                             LWS_OP_DIR . '/views/object-cache.php'
                         );
-                    }
-
-                } else {
-                    if (isset($GLOBALS['lws_optimize'])) {
+                } elseif (isset($GLOBALS['lws_optimize']) && $state == "false") {
                         $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
-                    }
-                    $errors[$id] = 'MEMCACHE_NOT_FOUND';
-                    $logger = fopen($this->log_file, 'a');
-                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Memcached extension not found' . PHP_EOL);
-                    fclose($logger);
-                    continue;
                 }
 
             } elseif ($id == "gzip_compression") {
@@ -896,7 +912,13 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         update_option('lws_optimize_config_array', $optimize_options);
 
         // If correctly added and updated
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => $optimize_options, 'errors' => $errors), JSON_PRETTY_PRINT));
+        // 4.5.13 — Inject extra fields for Memcached error popup (detail + warning)
+        $response = ['code' => "SUCCESS", "data" => $optimize_options, 'errors' => $errors];
+        if (isset($memcached_detail))  { $response['lws_memcached_detail']  = $memcached_detail; }
+        if (isset($memcached_reason))  { $response['lws_memcached_reason']  = $memcached_reason; }
+        if (isset($memcached_fix_url) && $memcached_fix_url) { $response['lws_memcached_fix_url'] = $memcached_fix_url; }
+        if (isset($memcached_warning)) { $response['lws_memcached_warning'] = $memcached_warning; }
+        wp_die(json_encode($response, JSON_PRETTY_PRINT));
     }
 
 
@@ -1136,12 +1158,16 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         if (isset($_POST['action'])) {
             $optimize_options = get_option('lws_optimize_config_array', []);
 
-            $amount = $_POST['amount'] ? sanitize_text_field($_POST['amount']) : 3;
-            $optimize_options['filebased_cache']['preload_amount'] =  $amount;
+            // 4.5.11 — Cast int + borne [1, 50]. sanitize_text_field n'empêche pas "abc"
+            // d'être enregistré, ce qui faisait intval()=0 chez tous les consommateurs
+            // (LwsOptimize.php:785, caching.php:17, LwsOptimizeWpCli.php:453) et
+            // désactivait silencieusement le preload jusqu'au prochain set valide.
+            $amount = isset($_POST['amount']) ? max(1, min(50, intval($_POST['amount']))) : 3;
+            $optimize_options['filebased_cache']['preload_amount'] = $amount;
 
             update_option('lws_optimize_config_array', $optimize_options);
 
-            wp_die(json_encode(array('code' => "SUCCESS", 'data' => "DONE")));
+            wp_die(json_encode(array('code' => "SUCCESS", 'data' => "DONE", 'amount' => $amount)));
         }
         wp_die(json_encode(array('code' => "FAILED_ACTIVATE", 'data' => "FAIL")));
     }

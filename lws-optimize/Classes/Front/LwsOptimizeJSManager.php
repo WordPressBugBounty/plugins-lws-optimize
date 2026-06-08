@@ -270,6 +270,9 @@ class LwsOptimizeJSManager
                     if (!file_exists($path)) {
                         touch($path);
                     }
+                } else {
+                    // File already exists with identical content (CRC32 hash name) — skip regeneration to preserve Last-Modified
+                    return ['final_url' => $path_url, 'problematic' => $problematic_files];
                 }
 
                 // Minify and combine all files into one, saved in $path
@@ -463,6 +466,15 @@ class LwsOptimizeJSManager
                     if (!file_exists($path)) {
                         touch($path);
                     }
+                } else {
+                    // File already exists with identical content (CRC32 hash name) — skip regeneration to preserve Last-Modified
+                    if (isset($temp_file) && file_exists($temp_file)) {
+                        wp_delete_file($temp_file);
+                    }
+                    $newLink = preg_replace("/src\=[\'\"]([^\'\"]+)[\'\"]/", "src='$path_url'", $element);
+                    $newLink = "<!-- Source: $href -->\n" . $newLink;
+                    $this->content = str_replace($element, $newLink, $this->content);
+                    continue;
                 }
 
                 try {
@@ -647,8 +659,16 @@ class LwsOptimizeJSManager
                 }
 
                 if (!empty($src) && !$this->check_for_exclusion($src, "delay")) {
-                    // Handle external scripts with src attribute
-                    $new_element = str_replace('src=', 'data-lwsdelay-src=', $element);
+                    // Skip if already processed (would double-transform src=)
+                    if (strpos($element, 'data-lwsdelay-src=') !== false) {
+                        continue;
+                    }
+
+                    // Handle external scripts with src attribute.
+                    // Use a word-boundary regex instead of str_replace('src=', ...) which
+                    // would also match `src=` inside `data-lwsdelay-src=` on a second pass
+                    // and produce `data-lwsdelay-data-lwsdelay-src=`.
+                    $new_element = preg_replace('/(?<![\w-])src=/', 'data-lwsdelay-src=', $element, 1);
 
                     // Add class for script identification
                     $new_element = preg_match('/class=["\']([^"\']*)["\']/', $new_element)
@@ -1060,6 +1080,13 @@ class LwsOptimizeJSManager
             }
 
             foreach ($defer_js_exclusions as $exclusion) {
+                // 4.3.0 — match en SUBSTRING (strpos) en plus du regex strict ^...$
+                // Avant : "wp-includes/js/dist/i18n" devait être écrit "*wp-includes/js/dist/i18n*"
+                // sinon ne matchait jamais l'URL https://site.com/wp-includes/js/dist/i18n.min.js?ver=…
+                // Maintenant : les 2 formats fonctionnent (avec ou sans wildcards).
+                if ($exclusion !== '' && strpos($url, $exclusion) !== false) {
+                    return true;
+                }
                 $pattern = preg_replace('/(?<!\\\)\*/', '.*', $exclusion);
                 $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
 
@@ -1076,6 +1103,10 @@ class LwsOptimizeJSManager
             }
 
             foreach ($delay_js_exclusions as $exclusion) {
+                // 4.3.0 — même fix substring pour delay_js (cf commentaire dans defer ci-dessus).
+                if ($exclusion !== '' && strpos($url, $exclusion) !== false) {
+                    return true;
+                }
                 $pattern = preg_replace('/(?<!\\\)\*/', '.*', $exclusion);
                 $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
 

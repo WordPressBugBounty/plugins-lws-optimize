@@ -72,32 +72,30 @@ class LwsOptimize
             // CRITICAL: never delete or overwrite the drop-in if it belongs to a third party
             // (Redis Object Cache, W3TC, wp-redis, etc.) — always go through the safe helpers.
             if ($this->lwsop_check_option('memcached')['state'] === "true") {
-                // Yield to Redis Object Cache if it is active — it manages its own drop-in.
-                if ($this->lwsop_plugin_active('redis-cache/redis-cache.php')) {
+                // 4.5.12 — Validation environnement complète (extension + serveur + sessions + drop-in tiers).
+                // Bloque l'installation du drop-in dans tous les cas connus pour casser wp-admin,
+                // notamment le conflit PHP sessions + Memcached sur même instance sans PREFIX
+                $env = $this->lwsop_validate_memcached_environment();
+                if (!$env['ok'] && $env['severity'] === 'fatal') {
+                    // Auto-disable pour éviter l'écran blanc à la prochaine requête authentifiée.
                     $optimize_options['memcached']['state'] = "false";
+                    update_option('lws_optimize_config_array', $optimize_options);
+                    $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                    if (!empty($this->log_file)) {
+                        @file_put_contents(
+                            $this->log_file,
+                            sprintf('[%s] Auto-disabled Memcached at boot — %s : %s' . PHP_EOL,
+                                gmdate('Y-m-d H:i:s'), $env['reason'], substr($env['message'], 0, 200)),
+                            FILE_APPEND
+                        );
+                    }
                 } else {
-                    if (class_exists('Memcached')) {
-                        $memcached = new \Memcached();
-                        if (empty($memcached->getServerList())) {
-                            $memcached->addServer('localhost', 11211);
-                        }
-
-                        if ($memcached->getVersion() === false) {
-                            // Memcached server unreachable → fall back to no object cache.
-                            $optimize_options['memcached']['state'] = "false";
-                            $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
-                        } else {
-                            // Install OUR drop-in only if no third-party one is in place.
-                            if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                                $this->lwsop_safe_write_dropin(
-                                    LWSOP_OBJECTCACHE_PATH,
-                                    LWS_OP_DIR . '/views/object-cache.php'
-                                );
-                            }
-                        }
-                    } else {
-                        $optimize_options['memcached']['state'] = "false";
-                        $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                    // Environnement OK (ou warning non-fatal) — installer le drop-in si absent.
+                    if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
+                        $this->lwsop_safe_write_dropin(
+                            LWSOP_OBJECTCACHE_PATH,
+                            LWS_OP_DIR . '/views/object-cache.php'
+                        );
                     }
                 }
             } else {
@@ -2220,7 +2218,8 @@ class LwsOptimize
                 $options['delay_js']['state'] = "false";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                $options['memcached']['state'] = "false";
+                // 4.5.11 — Activation conditionnelle (cf. preset 'basic')
+                $options['memcached']['state'] = $this->lwsop_can_recommend_memcached()['recommend'] ? "true" : "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
                 $options['iframe_video_lazyload']['state'] = "true";
@@ -2265,7 +2264,8 @@ class LwsOptimize
                 $options['delay_js']['state'] = "true";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                $options['memcached']['state'] = "false";
+                // 4.5.11 — Activation conditionnelle (cf. preset 'basic')
+                $options['memcached']['state'] = $this->lwsop_can_recommend_memcached()['recommend'] ? "true" : "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
                 $options['iframe_video_lazyload']['state'] = "true";
@@ -2451,6 +2451,230 @@ class LwsOptimize
      * @param string $path
      * @return string|null
      */
+    /**
+     * 4.5.11 — Détermine si on peut/doit recommander Memcached à l'utilisateur dans
+     * les presets auto-setup (essential / optimized / max). Wrapper léger autour
+     * de lwsop_validate_memcached_environment() : on ne recommande que si la
+     * validation complète passe sans severity fatal.
+     *
+     * @return array{recommend:bool, reason:string, details:array}
+     */
+    public function lwsop_can_recommend_memcached()
+    {
+        $check = $this->lwsop_validate_memcached_environment();
+        return [
+            'recommend' => $check['ok'] && $check['severity'] !== 'fatal',
+            'reason'    => $check['reason'],
+            'details'   => $check['details'] ?? [],
+        ];
+    }
+
+    /**
+     * 4.5.12 — Valide complètement l'environnement avant activation du drop-in
+     * Memcached. Bloque les configurations connues pour casser wp-admin :
+     *
+     *  - Check A : extension PHP `Memcached` disponible (fatal si absent)
+     *  - Check B : connexion + read/write probe sur le serveur (fatal si KO)
+     *  - Check C : conflit avec PHP sessions sur la MÊME instance Memcached
+     *              sans PREFIX (fatal — c'est le bug qui a planté wp-admin sur
+     *              top10hebergeursweb.com en 4.5.9 : session_start() + drop-in
+     *              concurrent sur même backend sans locking ni isolation =
+     *              race condition → fatal PHP non rattrapé)
+     *  - Check D : drop-in object-cache.php tiers (Redis/W3TC/etc.) déjà en place
+     *  - Check E : Memcached proche saturation (>90% used) — warning, pas fatal
+     *  - Check F : tout est OK
+     *
+     * Hooks pour environnements custom :
+     *  - lwsop_memcached_host : surcharger 127.0.0.1
+     *  - lwsop_memcached_port : surcharger 11211
+     *
+     * @return array{ok:bool, severity:'fatal'|'warning'|'info', reason:string, message:string, fix_url?:string, details?:array}
+     */
+    public function lwsop_validate_memcached_environment()
+    {
+        // -- Check A : extension PHP --------------------------------------
+        if (!class_exists('Memcached')) {
+            return [
+                'ok'       => false,
+                'severity' => 'fatal',
+                'reason'   => 'php_memcached_extension_missing',
+                'message'  => __("L'extension PHP « memcached » n'est pas installée sur ce serveur. Contactez votre hébergeur pour l'activer.", 'lws-optimize'),
+                'details'  => [],
+            ];
+        }
+
+        $host = apply_filters('lwsop_memcached_host', '127.0.0.1');
+        $port = (int) apply_filters('lwsop_memcached_port', 11211);
+
+        // -- Check B : serveur joignable + R/W probe ----------------------
+        $mc = new \Memcached();
+        $mc->addServer($host, $port);
+        $mc->setOption(\Memcached::OPT_CONNECT_TIMEOUT, 200);
+        $mc->setOption(\Memcached::OPT_POLL_TIMEOUT,    200);
+        $mc->setOption(\Memcached::OPT_SEND_TIMEOUT,    200);
+        $mc->setOption(\Memcached::OPT_RECV_TIMEOUT,    200);
+
+        // 4.5.12 — uniqid + mt_rand au lieu de wp_generate_password : pluggable.php
+        // n'est pas toujours chargé quand le constructeur de LwsOptimize tourne
+        // (boot gate au load des plugins, AVANT plugins_loaded).
+        $probe_key   = 'lwsop_probe_' . uniqid('', true) . mt_rand(1000, 9999);
+        $probe_value = (string) microtime(true);
+        @$mc->set($probe_key, $probe_value, 30);
+        $retrieved = @$mc->get($probe_key);
+        $rc        = $mc->getResultCode();
+        @$mc->delete($probe_key);
+
+        if ($retrieved !== $probe_value) {
+            return [
+                'ok'       => false,
+                'severity' => 'fatal',
+                'reason'   => 'memcached_unreachable_or_broken',
+                'message'  => sprintf(
+                    __("Impossible de lire/écrire sur le serveur Memcached (%s:%d). Code Memcached : %s (%d). Service inactif ou réseau bloqué ?", 'lws-optimize'),
+                    $host, $port, $mc->getResultMessage(), $rc
+                ),
+                'details'  => ['host' => $host, 'port' => $port, 'result_code' => $rc],
+            ];
+        }
+
+        // -- Check C : conflit PHP sessions ⚠ ROOT CAUSE 4.5.9 ------------
+        $session_handler = (string) ini_get('session.save_handler');
+        $session_path    = (string) ini_get('session.save_path');
+
+        if (in_array($session_handler, ['memcached', 'memcache'], true)) {
+            $session_targets_same_memcached =
+                (strpos($session_path, $host . ':' . $port) !== false) ||
+                (strpos($session_path, 'localhost:' . $port) !== false) ||
+                (strpos($session_path, '127.0.0.1:' . $port) !== false);
+
+            if ($session_targets_same_memcached) {
+                // Si PREFIX= présent, les namespaces sont isolés → pas de conflit
+                $has_prefix = (bool) preg_match('/PREFIX=[^,]+/', $session_path);
+
+                if (!$has_prefix) {
+                    return [
+                        'ok'       => false,
+                        'severity' => 'fatal',
+                        'reason'   => 'memcached_shared_with_php_sessions',
+                        'message'  => __(
+                            "Conflit serveur détecté : PHP utilise Memcached comme backend de sessions sur la même instance que LWS Optimize " .
+                            "(session.save_handler = memcached, session.save_path partage la même adresse). " .
+                            "Activer le cache d'objets créerait une race condition entre les sessions PHP et le cache WP, " .
+                            "ce qui peut provoquer des erreurs HTTP 500 en wp-admin pour les utilisateurs authentifiés.\n\n" .
+                            "Solutions (à demander à votre hébergeur) :\n" .
+                            "  1. Basculer les sessions PHP sur fichiers : session.save_handler = files\n" .
+                            "  2. Préfixer le namespace sessions : session.save_path = \"PREFIX=php_sess.,127.0.0.1:11211\"\n" .
+                            "  3. Activer le locking : memcached.sess_locking = On (atténuation, pas idéal)",
+                            'lws-optimize'
+                        ),
+                        'fix_url'  => 'https://aide.lws.fr/base/Creation-de-site--Wordpress/Plugins-WordPress-LWS-Optimize',
+                        'details'  => [
+                            'session_handler' => $session_handler,
+                            'session_path'    => $session_path,
+                            'sess_locking'    => ini_get('memcached.sess_locking'),
+                            'lazy_write'      => ini_get('session.lazy_write'),
+                        ],
+                    ];
+                }
+            }
+        }
+
+        // -- Check D : drop-in tiers --------------------------------------
+        $third_party = $this->lwsop_detect_third_party_dropin(LWSOP_OBJECTCACHE_PATH);
+        if ($third_party !== null) {
+            return [
+                'ok'       => false,
+                'severity' => 'fatal',
+                'reason'   => 'third_party_dropin_exists',
+                'message'  => sprintf(
+                    __("Un drop-in object-cache.php d'un autre plugin (%s) est déjà installé. Désinstallez-le ou désactivez Memcached dans LWS Optimize avant d'en installer un nouveau pour éviter d'écraser sa configuration.", 'lws-optimize'),
+                    $third_party
+                ),
+                'details'  => ['detected' => $third_party, 'path' => LWSOP_OBJECTCACHE_PATH],
+            ];
+        }
+
+        // -- Check E : saturation (warning seulement) ---------------------
+        $stats        = @$mc->getStats();
+        $server_stats = is_array($stats) ? reset($stats) : [];
+        if (!empty($server_stats)) {
+            $limit    = (int) ($server_stats['limit_maxbytes'] ?? 0);
+            $used     = (int) ($server_stats['bytes'] ?? 0);
+            $evicted  = (int) ($server_stats['evictions'] ?? 0);
+            $pct_used = $limit > 0 ? round($used * 100 / $limit, 1) : 0;
+
+            if ($pct_used > 90) {
+                return [
+                    'ok'       => true,
+                    'severity' => 'warning',
+                    'reason'   => 'memcached_near_capacity',
+                    'message'  => sprintf(
+                        __("Memcached utilise %.1f%% de sa mémoire (%s sur %s). %d évictions ont déjà eu lieu. Le cache va être fréquemment invalidé, le bénéfice perf sera limité. Demandez à votre hébergeur d'augmenter limit_maxbytes (typique : 256-512 MB).", 'lws-optimize'),
+                        $pct_used, size_format($used), size_format($limit), $evicted
+                    ),
+                    'details'  => ['pct_used' => $pct_used, 'used' => $used, 'limit' => $limit, 'evictions' => $evicted],
+                ];
+            }
+        }
+
+        // -- Check F : tout OK --------------------------------------------
+        return [
+            'ok'       => true,
+            'severity' => 'info',
+            'reason'   => 'all_checks_passed',
+            'message'  => __('Environnement Memcached validé.', 'lws-optimize'),
+            'details'  => ['host' => $host, 'port' => $port],
+        ];
+    }
+
+    /**
+     * 4.5.12 — Cron daily : si Memcached est activé mais l'environnement est
+     * devenu invalide (ex: hébergeur a modifié php.ini pour basculer les sessions
+     * sur Memcached), on auto-désactive + retire le drop-in + email à l'admin
+     * AVANT que la prochaine requête wp-admin authentifiée ne crashe.
+     */
+    public function lwsop_periodic_memcached_validation()
+    {
+        $opts = get_option('lws_optimize_config_array', []);
+        if (($opts['memcached']['state'] ?? 'false') !== 'true') {
+            return; // Memcached pas activé, rien à surveiller
+        }
+
+        $check = $this->lwsop_validate_memcached_environment();
+        if ($check['ok'] || $check['severity'] !== 'fatal') {
+            return; // env toujours OK (ou seulement warning)
+        }
+
+        // Auto-disable
+        $opts['memcached']['state'] = 'false';
+        update_option('lws_optimize_config_array', $opts);
+        $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+
+        // Log
+        if (!empty($this->log_file)) {
+            @file_put_contents(
+                $this->log_file,
+                sprintf('[%s] Daily health-check auto-disabled Memcached — %s : %s' . PHP_EOL,
+                    gmdate('Y-m-d H:i:s'), $check['reason'], substr($check['message'], 0, 300)),
+                FILE_APPEND
+            );
+        }
+        error_log('LWS Optimize daily health-check: auto-disabled Memcached — ' . $check['reason']);
+
+        // Notification admin
+        $admin_email = get_option('admin_email');
+        if (!empty($admin_email) && is_email($admin_email)) {
+            $subject = sprintf(__('[%s] LWS Optimize a désactivé Memcached automatiquement', 'lws-optimize'), get_bloginfo('name'));
+            $body = sprintf(
+                __("L'environnement Memcached est devenu invalide :\n\n%s\n\nLWS Optimize a désactivé Memcached et retiré le drop-in object-cache.php pour éviter un crash de wp-admin pour vos utilisateurs authentifiés. Vous pouvez le réactiver manuellement depuis l'interface du plugin une fois l'environnement corrigé.\n\nRaison technique : %s\nSite : %s", 'lws-optimize'),
+                $check['message'],
+                $check['reason'],
+                home_url()
+            );
+            @wp_mail($admin_email, $subject, $body);
+        }
+    }
+
     public function lwsop_detect_third_party_dropin($path)
     {
         if (!file_exists($path) || !is_readable($path)) {
@@ -2462,6 +2686,17 @@ class LwsOptimize
         }
         // Our own drop-in wins
         if (strpos($content, self::LWSOP_DROPIN_SIGNATURE) !== false) {
+            return null;
+        }
+        // 4.5.11 — Legacy LWS drop-in (pre-signature) : reconnaissance par la
+        // combinaison unique du header de commentaire + du global $memcached_instance
+        // utilisé uniquement par notre implémentation historique. Cette combo n'est
+        // pas portée par les autres drop-ins (W3TC, wp-redis, etc.) — pas de faux
+        // positifs côté tiers. Une fois reconnu, on le traite comme nôtre →
+        // lwsop_safe_write_dropin pourra le remplacer par la version signée.
+        if (strpos($content, 'Memcached Object Cache Drop-In') !== false
+            && strpos($content, 'Place in wp-content/object-cache.php') !== false
+            && strpos($content, 'global $memcached_instance') !== false) {
             return null;
         }
         foreach (self::LWSOP_THIRD_PARTY_MARKERS as $marker) {
@@ -2503,6 +2738,52 @@ class LwsOptimize
     }
 
     /**
+     * Targeted Varnish / LiteSpeed / LWSCache purge for a single URL.
+     * Used by integrations (Cloudflare APO, autopurge hooks) to keep the
+     * edge / server caches in sync after a content change. Falls through
+     * silently if no compatible edge cache is detected on this hosting.
+     *
+     * Detection mirrors lwsop_dump_all_dynamic_caches() — HTTP_X_CACHE_ENABLED
+     * + HTTP_EDGE_CACHE_ENGINE for LWS, lwscache env for LWSCache.
+     *
+     * @param string $url Absolute URL to purge.
+     * @return string|null Name of the purger that handled it ("Varnish",
+     *                    "LiteSpeed", "LWSCache") or null if none matched.
+     */
+    public function lwsop_purge_varnish_url($url)
+    {
+        if (empty($url) || !is_string($url)) {
+            return null;
+        }
+        $url = esc_url_raw($url);
+        if (!$url) {
+            return null;
+        }
+        // Varnish (LWS managed VPS, ISPConfig)
+        if (isset($_SERVER['HTTP_X_CACHE_ENABLED'], $_SERVER['HTTP_EDGE_CACHE_ENGINE'])
+            && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1'
+            && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] === 'varnish'
+        ) {
+            wp_remote_request($url, ['method' => 'PURGE', 'timeout' => 5]);
+            return 'Varnish';
+        }
+        // LiteSpeed
+        if (isset($_SERVER['HTTP_X_CACHE_ENABLED'], $_SERVER['HTTP_EDGE_CACHE_ENGINE'])
+            && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1'
+            && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] === 'litespeed'
+        ) {
+            wp_remote_request($url, ['method' => 'PURGE', 'timeout' => 5]);
+            return 'LiteSpeed';
+        }
+        // LWSCache (mutualised hosting)
+        if (isset($_ENV['lwscache']) && strtolower($_ENV['lwscache']) === 'on') {
+            wp_remote_request($url, ['method' => 'PURGE', 'timeout' => 5]);
+            return 'LWSCache';
+        }
+        return null;
+    }
+
+    /**
      * Atomically write content to a critical file (.htaccess, drop-in, config) via
      * write-to-tmp + rename. Avoids leaving a truncated file on I/O error, which
      * would otherwise cause a 500 (notably for .htaccess).
@@ -2513,7 +2794,9 @@ class LwsOptimize
      */
     public function lwsop_atomic_write($path, $content)
     {
-        $tmp = $path . '.tmp.' . wp_generate_password(6, false);
+        // 4.5.12 — uniqid au lieu de wp_generate_password (peut être appelé depuis
+        // le constructeur du plugin, avant que pluggable.php ne soit chargé).
+        $tmp = $path . '.tmp.' . uniqid('', true);
         $written = @file_put_contents($tmp, $content);
         if ($written === false || $written !== strlen($content)) {
             @wp_delete_file($tmp);
@@ -2561,7 +2844,9 @@ class LwsOptimize
         if ($content === false) {
             return false;
         }
-        $tmp = $path . '.tmp.' . wp_generate_password(6, false);
+        // 4.5.12 — uniqid au lieu de wp_generate_password (peut être appelé depuis
+        // le constructeur du plugin, avant que pluggable.php ne soit chargé).
+        $tmp = $path . '.tmp.' . uniqid('', true);
         if (@file_put_contents($tmp, $content) === false) {
             return false;
         }

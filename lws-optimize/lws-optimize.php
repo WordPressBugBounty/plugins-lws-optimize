@@ -8,10 +8,10 @@ use Lws\Classes\LwsOptimizeWpCli;
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           3.4
+ * Version:           3.4.1
  * Author:            LWS
  * Author URI:        https://www.lws.fr
- * Tested up to:      6.9
+ * Tested up to:      7.0
  * Domain Path:       /languages
  * License:           GPL-2.0-or-later
  *
