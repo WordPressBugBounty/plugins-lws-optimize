@@ -52,6 +52,128 @@ $list_time = array(
     </div>
 </div>
 
+<?php
+// ─── 4.4.0 — Cloudflare APO (edge HTML cache) ──────────────────────────────
+// Sous-section ajoutée dans l'onglet CDN existant (au lieu du panneau Advanced
+// integrations dans frontend.php — évite le doublon visuel).
+// APO ne fait sens que si l'intégration CF de base est active (zone_id + token
+// déjà stockés via lws_optimize_complete_cloudflare_integration).
+$apo_state   = ($config_array['cloudflare_apo']['state'] ?? 'false') === 'true';
+$apo_zone_id = $config_array['cloudflare_apo']['zone_id'] ?? ($config_array['cloudflare']['zone_id'] ?? '');
+$apo_token   = $config_array['cloudflare_apo']['api_token'] ?? '';
+$is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
+?>
+<div class="lwsop_contentblock">
+    <div class="lwsop_contentblock_leftside">
+        <h2 class="lwsop_contentblock_title">
+            <img src="<?php echo esc_url(plugins_url('images/cloudflare.svg', __DIR__)) ?>" alt="cloudflare icon" width="30px" height="30px">
+            <?php echo $is_fr_apo ? 'Cloudflare APO — cache HTML edge' : 'Cloudflare APO — edge HTML cache'; ?>
+            <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
+            <a href="https://aide.lws.fr/a/" rel="noopener" target="_blank" title="<?php echo $is_fr_apo ? 'Met en cache le HTML directement sur les serveurs Cloudflare dans le monde entier. Avantage : TTFB ~50ms partout. Pré-requis : un compte Cloudflare et un token API avec les scopes Zone.Cache Purge + Zone.Cache Rules.' : 'Cache the HTML at Cloudflare edge nodes worldwide. Benefit: TTFB ~50ms everywhere. Requires: Cloudflare account + API token with scopes Zone.Cache Purge + Zone.Cache Rules.'; ?>">
+                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="<?php esc_attr_e('Learn more', 'lws-optimize'); ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top">
+            </a>
+        </h2>
+        <div class="lwsop_contentblock_description">
+            <?php echo esc_html($is_fr_apo
+                ? 'Met en cache le HTML directement sur le réseau Cloudflare (edge) pour servir vos pages depuis le serveur CF le plus proche du visiteur. Résultat : TTFB ~50 ms partout dans le monde et charge serveur origine divisée par 10. La purge se synchronise automatiquement à chaque modification de contenu (save_post).'
+                : 'Caches HTML at the Cloudflare edge so pages are served from the nearest CF node. Result: TTFB ~50ms worldwide and origin server load divided by 10. Purge syncs automatically on every content change (save_post).'); ?>
+        </div>
+        <?php if (!$state) : ?>
+            <div style="margin-top:10px;padding:8px 12px;background:#fef3c7;border-radius:4px;font-size:12px;color:#92400e">
+                <?php echo esc_html($is_fr_apo ? '⚠ Activez d\'abord l\'intégration Cloudflare ci-dessus pour pouvoir utiliser l\'APO.' : '⚠ Enable Cloudflare integration above first to use APO.'); ?>
+            </div>
+        <?php else : ?>
+            <div class="lwsop_phase2_inputs" style="margin-top:12px">
+                <label style="display:block;margin-bottom:6px">
+                    <span style="display:inline-block;width:140px;font-size:13px"><?php echo esc_html($is_fr_apo ? 'Zone ID Cloudflare :' : 'Cloudflare Zone ID:'); ?></span>
+                    <input type="text" id="lwsop_cf_apo_zone_id" placeholder="abc123def456..." style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_zone_id); ?>">
+                </label>
+                <label style="display:block;margin-bottom:6px">
+                    <span style="display:inline-block;width:140px;font-size:13px"><?php echo esc_html($is_fr_apo ? 'Token API :' : 'API Token:'); ?></span>
+                    <input type="password" id="lwsop_cf_apo_token" placeholder="••••••••" style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_token); ?>">
+                </label>
+                <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                    <button type="button" class="lwsop_darkblue_button" id="lwsop_cf_apo_install_rule">
+                        <span><?php echo esc_html($is_fr_apo ? 'Installer la Cache Rule sur Cloudflare' : 'Install Cache Rule on Cloudflare'); ?></span>
+                    </button>
+                    <span id="lwsop_cf_apo_status" style="font-size:12px;color:#64748b"></span>
+                </div>
+            </div>
+        <?php endif; ?>
+    </div>
+    <div class="lwsop_contentblock_rightside">
+        <label class="lwsop_checkbox" for="lws_optimize_cloudflare_apo_check">
+            <input type="checkbox" id="lws_optimize_cloudflare_apo_check" <?php echo $apo_state ? 'checked' : ''; ?> <?php echo $state ? '' : 'disabled'; ?>>
+            <span class="slider round"></span>
+        </label>
+    </div>
+</div>
+
+<script>
+(function(){
+    // 4.4.3 — Cloudflare APO branché sur le mécanisme natif (compteur sticky-bar).
+    // Le toggle suit le pattern lws_optimize_*_check, donc handler natif le pickup.
+    // Les credentials (zone_id, api_token) sont stockés en "extra" du localStorage,
+    // appliqués par le handler PHP étendu côté backend.
+    var TOGGLE_ID  = 'lws_optimize_cloudflare_apo_check';
+    var STORE_KEY  = 'lws_optimize_current_configuration_changes';
+    var apoToggle  = document.getElementById(TOGGLE_ID);
+    var apoZone    = document.getElementById('lwsop_cf_apo_zone_id');
+    var apoToken   = document.getElementById('lwsop_cf_apo_token');
+    var apoInst    = document.getElementById('lwsop_cf_apo_install_rule');
+    var apoStat    = document.getElementById('lwsop_cf_apo_status');
+    if (!apoToggle) return;
+
+    function pushToCounter() {
+        try {
+            var cfg = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+            var extra = {
+                zone_id:   apoZone  ? apoZone.value  : '',
+                api_token: apoToken ? apoToken.value : '',
+            };
+            var idx = cfg.findIndex(function(it){ return it.type === TOGGLE_ID; });
+            var entry = { type: TOGGLE_ID, state: apoToggle.checked, extra: extra };
+            if (idx === -1) cfg.push(entry); else cfg[idx] = entry;
+            localStorage.setItem(STORE_KEY, JSON.stringify(cfg));
+            var counter = document.getElementById('lws_optimize_amount_configuration_elements');
+            if (counter) counter.innerHTML = cfg.length;
+            var btn = document.getElementById('lws_optimize_validate_changes');
+            if (btn) btn.disabled = cfg.length === 0;
+        } catch (e) {}
+    }
+    // Quand l'utilisateur édite zone_id ou api_token, on met à jour le compteur natif
+    if (apoZone)  apoZone.addEventListener('input',  pushToCounter);
+    if (apoToken) apoToken.addEventListener('input', pushToCounter);
+
+    // Bouton "Installer la Cache Rule" : action ponctuelle, reste séparé. Sauve
+    // d'abord les credentials via mécanisme natif puis push la rule.
+    if (apoInst) apoInst.addEventListener('click', function(){
+        if (!apoStat) return;
+        apoStat.textContent = '<?php echo $is_fr_apo ? "Installation en cours…" : "Installing…"; ?>';
+        apoStat.style.color = '#64748b';
+        var fd = new FormData();
+        fd.append('action', 'lwsop_cloudflare_install_cache_rule');
+        fd.append('_ajax_nonce', '<?php echo wp_create_nonce('lwsop_cf_install'); ?>');
+        fd.append('zone_id',   apoZone  ? apoZone.value  : '');
+        fd.append('api_token', apoToken ? apoToken.value : '');
+        fetch(ajaxurl, {method:'POST', body:fd, credentials:'same-origin'})
+            .then(function(r){return r.json();})
+            .then(function(j){
+                if (j.success) {
+                    apoStat.textContent='✓ <?php echo $is_fr_apo ? "Cache Rule installée" : "Cache Rule installed"; ?>';
+                    apoStat.style.color='#16a34a';
+                    if (typeof callPopup === 'function') callPopup('success', '<?php echo $is_fr_apo ? "Cache Rule Cloudflare installée" : "Cloudflare Cache Rule installed"; ?>');
+                } else {
+                    var code = (j.data && j.data.code) ? j.data.code : 'error';
+                    apoStat.textContent='✗ '+code;
+                    apoStat.style.color='#dc2626';
+                    if (typeof callPopup === 'function') callPopup('error', '<?php echo $is_fr_apo ? "Échec install Cache Rule : " : "Cache Rule install failed: "; ?>' + code);
+                }
+            });
+    });
+})();
+</script>
+
 <div class="modal fade" id="lws_optimize_cloudflare_manage" tabindex='-1'>
     <div class="modal-dialog lws_optimize_image_conversion_modal_dialog">
         <div id="lws_optimize_cdn_contentmodal" class="modal-content lws_optimize_image_conversion_modal_content" style="padding: 30px;"></div>

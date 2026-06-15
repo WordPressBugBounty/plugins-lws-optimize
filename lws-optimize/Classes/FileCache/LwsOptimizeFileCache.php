@@ -120,6 +120,11 @@ class LwsOptimizeFileCache
             $content = @file_get_contents($this->cache_directory . "index_$user_id.$extension");
             if ($content) {
                 header('Edge-Cache-Platform: lwsoptimize');
+                // 4.5.0 — Track hit + header debug + bytes saved
+                header('X-LWSOP-Cache: HIT');
+                if (class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
+                    \Lws\Classes\FileCache\LwsOptimizeUsageStats::track('hits', strlen($content));
+                }
                 echo $content;
                 exit;
             }
@@ -401,6 +406,9 @@ class LwsOptimizeFileCache
             $this->lwsop_add_to_cache($buffer, $cached_elements, false);
         }
 
+        if (!headers_sent() && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
+            header('X-LWSOP-Cache: BYPASS');
+        }
         header ('Edge-Cache-Platform: lwsoptimize');
         return $modified;
     }
@@ -437,6 +445,18 @@ class LwsOptimizeFileCache
 
                     $GLOBALS['lws_optimize']->lwsop_recalculate_stats("plus", $cached, $mobile);
 
+                    // 4.5.0 — Track miss (skip if request comes from the preload crawler).
+                    // Validate against the per-site secret so any client can't spoof the header.
+                    $preload_secret = get_option('lwsop_preload_secret', '');
+                    $is_preload = $preload_secret !== ''
+                        && isset($_SERVER['HTTP_X_LWS_PRELOAD'])
+                        && hash_equals($preload_secret, $_SERVER['HTTP_X_LWS_PRELOAD']);
+                    if (!$is_preload && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats') && !headers_sent()) {
+                        header('X-LWSOP-Cache: MISS');
+                    }
+                    if (!$is_preload && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
+                        \Lws\Classes\FileCache\LwsOptimizeUsageStats::track('misses');
+                    }
                 }
             }
         }

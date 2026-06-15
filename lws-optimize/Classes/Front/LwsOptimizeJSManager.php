@@ -612,15 +612,43 @@ class LwsOptimizeJSManager
         $elements = $matches[0];
         $has_delayed_scripts = false;
 
-        // Array of scripts that should never be delayed
+        // Script IDs/patterns that should never be delayed
         $wp_core_scripts = [
             'jquery',
             'bootstrap',
+            'elementor',
+            'divi',
+            'fl-builder',
+            'beaver-builder',
+            'avada',
+            'fusion',
+            'wpbakery',
+            'js_composer',
+            'visual-composer',
+            'themify',
+            'king-composer',
+            'modernizr',
+            'wp-emoji',
+            'wp-polyfill',
+            'lws-optimize',
+            'lws_op_',
+            'recaptcha',
+            'turnstile',
         ];
 
         // Now process all scripts
         foreach ($elements as $element) {
             if (substr($element, 0, 7) == "<script") {
+                // Skip async/defer scripts — they are already non-blocking and must not be delayed further
+                if (preg_match('/\b(async|defer)\b/i', $element)) {
+                    continue;
+                }
+
+                // Skip type=module scripts — they have their own deferred execution model
+                if (preg_match('/\btype\s*=\s*["\']module["\']/i', $element)) {
+                    continue;
+                }
+
                 // Check if it's an external script
                 preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $href);
                 $src = $href[1] ?? "";
@@ -633,23 +661,17 @@ class LwsOptimizeJSManager
                     $script_id = trim($id_match[1]);
                 }
 
-                // Skip scripts with IDs containing bootstrap or jquery
-                if (!empty($script_id) && (stripos($script_id, 'bootstrap') !== false || stripos($script_id, 'jquery') !== false)) {
-                    continue;
-                }
-
                 // Get any inline code
                 preg_match("/<script[^>]*>(.*?)<\/script>/s", $element, $inline_code);
                 $code = !empty($inline_code[1]) ? trim($inline_code[1]) : '';
 
-                // Check if this script is a core script by ID or path that should not be delayed
+                // Skip core/critical scripts by ID or src pattern
                 $is_core_script = false;
-                if (!empty($script_id)) {
-                    foreach ($wp_core_scripts as $core_script) {
-                        if (strpos($script_id, $core_script) !== false) {
-                            $is_core_script = true;
-                            break;
-                        }
+                $haystack = $script_id . ' ' . $src;
+                foreach ($wp_core_scripts as $core_script) {
+                    if ($core_script !== '' && stripos($haystack, $core_script) !== false) {
+                        $is_core_script = true;
+                        break;
                     }
                 }
 
@@ -680,13 +702,30 @@ class LwsOptimizeJSManager
                 }
                 // Handle inline scripts without src attribute
                 else if (!empty($code) && empty($src)) {
-                    // Skip very small scripts or those likely to be configuration
+                    // Skip configuration/localization scripts (wp_localize_script output, ajax vars, etc.)
                     if (strlen($code) < 50 && (strpos($code, 'var') === 0 || strpos($code, 'let') === 0 || strpos($code, 'const') === 0)) {
                         continue;
                     }
 
                     // Skip scripts that define ajax_var variables
                     if (strpos($code, 'ajax_var') !== false) {
+                        continue;
+                    }
+
+                    // Skip scripts that manipulate CSS classes on <html> or <body> —
+                    // these are the primary cause of "whole CSS broken" symptoms when delayed
+                    if (
+                        preg_match('/document\.(documentElement|body)\.className/i', $code) ||
+                        preg_match('/document\.(documentElement|body)\.classList/i', $code) ||
+                        preg_match('/\.classList\.(add|remove|toggle|replace)\s*\(/i', $code)
+                    ) {
+                        continue;
+                    }
+
+                    // Skip configuration objects (wp_localize_script, theme settings, etc.)
+                    // Pattern: var/const/let identifier = { ... }; or window.X = { ... };
+                    if (preg_match('/^(?:var|const|let)\s+\w+\s*=\s*[{\[]/i', $code) ||
+                        preg_match('/^window\.\w+\s*=/i', $code)) {
                         continue;
                     }
 

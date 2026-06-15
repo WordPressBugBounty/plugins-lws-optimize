@@ -20,6 +20,8 @@ if ( ! defined( 'WP_CACHE_KEY_SALT' ) ) {
     if (defined('DB_NAME') && defined('DB_USER')) {
         global $wpdb;
         define('WP_CACHE_KEY_SALT', DB_NAME . DB_USER . $wpdb->prefix);
+    } else {
+        define('WP_CACHE_KEY_SALT', '');
     }
 }
 

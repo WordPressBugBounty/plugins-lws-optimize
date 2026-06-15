@@ -1,6 +1,6 @@
 <?php
 $t = [
-    'buttonText' => '💬 Feedback',
+    'buttonText' => 'Feedback',
     'modalTitle' => 'Partagez votre avis',
     'typeLabel' => 'Type de retour :',
     'nameLabel' => 'Nom (optionnel) :',
@@ -27,7 +27,7 @@ $t = [
 
 <!-- Floating Feedback Button -->
 <button class="feedbackButton" onclick="openFeedbackModal()" aria-label="<?php echo htmlspecialchars($t['buttonText']) ?>">
-    <?php echo htmlspecialchars($t['buttonText']) ?>
+    <span class="feedbackButton__text"><?php echo htmlspecialchars($t['buttonText']) ?></span>
 </button>
 
 <!-- Modal -->

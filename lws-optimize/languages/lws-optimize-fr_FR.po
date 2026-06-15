@@ -2523,3 +2523,343 @@ msgstr "Le plugin LWSCache est actuellement actif. Nous recommandons de le désa
 
 msgid "You can also access any page without cache by adding '?do_not_cache_lwsoptimize=1' to the URL (e.g., https://example.com/page/?do_not_cache_lwsoptimize=1)."
 msgstr "Vous pouvez également accéder à n'importe quelle page sans cache en ajoutant '?do_not_cache_lwsoptimize=1' à l'URL (par exemple, https://example.com/page/?do_not_cache_lwsoptimize=1)."
+
+msgid " public URLs (Desktop + Mobile) covered"
+msgstr " URLs publiques (Ordinateur + Mobile) couvertes"
+
+msgid "preheated"
+msgstr "préchargés"
+
+msgid "total files"
+msgstr "fichiers totaux"
+
+msgid "minified files"
+msgstr "fichiers minifiés"
+
+msgid "All public pages (Computer + Mobile) are cached."
+msgstr "Toutes les pages publiques (Ordinateur + Mobile) sont en cache."
+
+msgid "Preload runs in the background..."
+msgstr "Le préchargement tourne en arrière-plan..."
+
+msgid "Estimated time left"
+msgstr "Temps restant estimé"
+
+msgid "Almost done…"
+msgstr "Bientôt fini…"
+
+msgid "Real cache usage"
+msgstr "Utilisation réelle du cache"
+
+msgid "Measures hits/misses served to your visitors"
+msgstr "Mesure les hits/misses servis à vos visiteurs"
+
+msgid "No data yet"
+msgstr "Pas encore de données"
+
+msgid "Statistics are collected on each visit. Wait for a few visitors to browse the site, then come back here (or refresh the page)."
+msgstr "Les statistiques sont collectées à chaque visite. Attendez que des visiteurs aient navigué sur le site, puis revenez ici (ou rafraîchissez la page)."
+
+msgid "Last 24 hours"
+msgstr "24 dernières heures"
+
+msgid "Hit rate"
+msgstr "Taux de succès"
+
+msgid "Hits"
+msgstr "Hits"
+
+msgid "Misses"
+msgstr "Misses"
+
+msgid "Data"
+msgstr "Données"
+
+msgid "Last 7 days"
+msgstr "7 derniers jours"
+
+msgid "Last 30 days"
+msgstr "30 derniers jours"
+
+msgid "Hits trend over 30 days"
+msgstr "Évolution des hits sur 30 jours"
+
+msgid "Memcached (object cache)"
+msgstr "Memcached (cache objet)"
+
+msgid "In-memory cache state (WordPress queries)"
+msgstr "État du cache mémoire (requêtes WordPress)"
+
+msgid "Memory used"
+msgstr "Mémoire utilisée"
+
+msgid "Items in memory"
+msgstr "Items en mémoire"
+
+msgid "cached objects"
+msgstr "objets cachés"
+
+msgid "Memcached hit rate"
+msgstr "Hit rate Memcached"
+
+msgid "queries served from memory"
+msgstr "requêtes servies depuis la mémoire"
+
+msgid "Memcached not enabled"
+msgstr "Memcached non activé"
+
+msgid "Enable Memcached in advanced mode to speed up WordPress queries (TTFB gain -30 to -80ms)"
+msgstr "Activez Memcached dans le mode avancé pour accélérer les requêtes WordPress (gain TTFB -30 à -80 ms)"
+
+# #LWS RUM Dashboard##
+msgid "Real Visitor Performance (RUM)"
+msgstr "Performances réelles des visiteurs (RUM)"
+
+msgid "Measure your website's real speed as experienced by actual visitors — anonymously, without any cookie."
+msgstr "Mesurez la vitesse réelle de votre site, telle qu'elle est vécue par vos vrais visiteurs — anonymement, sans cookie."
+
+msgid "RUM is currently disabled. To start collecting real visitor performance data, enable it in the \"Advanced integrations\" panel (available in Advanced mode)."
+msgstr "Le suivi RUM est actuellement désactivé. Pour commencer à collecter des données de performances réelles, activez-le dans le panneau « Intégrations avancées » (disponible en mode Avancé)."
+
+msgid "These scores come from real visitors browsing your site — not from a lab test. They show exactly what your visitors experience, and what Google measures to rank your pages."
+msgstr "Ces scores proviennent de vrais visiteurs naviguant sur votre site — pas d'un test en laboratoire. Ils montrent exactement ce que vivent vos visiteurs, et ce que Google mesure pour référencer vos pages."
+
+msgid "visits recorded"
+msgstr "visites enregistrées"
+
+msgid "Last update:"
+msgstr "Dernière mise à jour :"
+
+msgid "%s ago"
+msgstr "il y a %s"
+
+msgid "never"
+msgstr "jamais"
+
+msgid "Refresh data now"
+msgstr "Actualiser les données maintenant"
+
+msgid "Delete old data (> 30 days)"
+msgstr "Supprimer les anciennes données (> 30 jours)"
+
+msgid "All devices"
+msgstr "Tous les appareils"
+
+msgid "What do these scores measure?"
+msgstr "Que mesurent ces scores ?"
+
+msgid "Google uses these 4 metrics (called Core Web Vitals) to measure the quality of your visitors' experience. They directly influence your Google search ranking."
+msgstr "Google utilise ces 4 métriques (appelées Core Web Vitals) pour mesurer la qualité de l'expérience de vos visiteurs. Elles influencent directement votre référencement sur Google."
+
+msgid "Page Load Speed"
+msgstr "Vitesse de chargement"
+
+msgid "Largest Contentful Paint"
+msgstr "Plus grand contenu visible"
+
+msgid "Time until the biggest visible element (image or text block) appears on screen. This is what visitors notice first when they land on your page."
+msgstr "Temps avant que le plus grand élément visible (image ou bloc de texte) apparaisse à l'écran. C'est ce que les visiteurs remarquent en premier en arrivant sur votre page."
+
+msgid "Layout Stability"
+msgstr "Stabilité de la mise en page"
+
+msgid "Cumulative Layout Shift"
+msgstr "Décalage cumulatif de mise en page"
+
+msgid "How much the page layout shifts while loading. A high score means text and buttons jump around unexpectedly, which frustrates visitors."
+msgstr "Amplitude des décalages de mise en page pendant le chargement. Un score élevé signifie que les textes et boutons bougent de façon inattendue, ce qui frustre les visiteurs."
+
+msgid "Responsiveness"
+msgstr "Réactivité"
+
+msgid "Interaction to Next Paint"
+msgstr "Interaction vers le prochain affichage"
+
+msgid "How fast the page responds when a visitor clicks, taps or types. A slow score makes the site feel unresponsive and laggy."
+msgstr "À quelle vitesse la page répond lorsqu'un visiteur clique, appuie ou tape. Un mauvais score donne l'impression que le site est lent et peu réactif."
+
+msgid "Server Speed"
+msgstr "Vitesse du serveur"
+
+msgid "Time to First Byte"
+msgstr "Temps jusqu'au premier octet"
+
+msgid "How fast your server starts sending data back to the visitor. A slow server slows down every single page — fix this first."
+msgstr "À quelle vitesse votre serveur commence à envoyer des données au visiteur. Un serveur lent ralentit toutes les pages — corrigez cela en priorité."
+
+msgid "Good:"
+msgstr "Bon :"
+
+msgid "under %s"
+msgstr "moins de %s"
+
+msgid "Needs work:"
+msgstr "À améliorer :"
+
+msgid "%1$s – %2$s"
+msgstr "%1$s – %2$s"
+
+msgid "Poor:"
+msgstr "Mauvais :"
+
+msgid "over %s"
+msgstr "plus de %s"
+
+msgid "Your 20 slowest pages"
+msgstr "Vos 20 pages les plus lentes"
+
+msgid "Sorted by page load speed — the slowest pages appear first. Focus on red and orange values first."
+msgstr "Triées par vitesse de chargement — les pages les plus lentes apparaissent en premier. Concentrez-vous en priorité sur les valeurs rouges et oranges."
+
+msgid "Device"
+msgstr "Appareil"
+
+msgid "Visits"
+msgstr "Visites"
+
+msgid "Good"
+msgstr "Bon"
+
+msgid "Needs work"
+msgstr "À améliorer"
+
+msgid "Poor"
+msgstr "Mauvais"
+
+msgid "No data collected yet. RUM starts recording as soon as visitors browse your site. Data is refreshed every 12 hours — you can also click \"Refresh data now\" above."
+msgstr "Aucune donnée collectée pour le moment. Le RUM commence à enregistrer dès que des visiteurs naviguent sur votre site. Les données sont actualisées toutes les 12 heures — vous pouvez aussi cliquer sur « Actualiser les données maintenant » ci-dessus."
+
+msgid "How to read these scores:"
+msgstr "Comment lire ces scores :"
+
+msgid "\"p75\" means 75% of your visitors got this score or better — it's a realistic measure, not a best-case scenario."
+msgstr "« p75 » signifie que 75 % de vos visiteurs ont obtenu ce score ou mieux — c'est une mesure réaliste, pas le meilleur cas possible."
+
+msgid "Green = Good"
+msgstr "Vert = Bon"
+
+msgid "Orange = Needs improvement"
+msgstr "Orange = À améliorer"
+
+msgid "Red = Poor"
+msgstr "Rouge = Mauvais"
+
+msgid "Note: to avoid overloading the server, a maximum of 1,000 visits are stored at a time. On very busy sites, only 1 in 10 visits is recorded."
+msgstr "Note : pour éviter de surcharger le serveur, un maximum de 1 000 visites sont stockées à la fois. Sur les sites très fréquentés, seulement 1 visite sur 10 est enregistrée."
+
+msgid "Data refreshed — reloading…"
+msgstr "Données actualisées — rechargement…"
+
+msgid "Refresh failed"
+msgstr "Actualisation échouée"
+
+msgid "Delete all visit data older than 30 days?"
+msgstr "Supprimer toutes les données de visite de plus de 30 jours ?"
+
+msgid "Old data deleted — reloading…"
+msgstr "Anciennes données supprimées — rechargement…"
+
+msgid "Deletion failed"
+msgstr "Suppression échouée"
+
+msgid "Webfont preloading (manual)"
+msgstr "Préchargement de polices web (manuel)"
+
+msgid "Manually preload font files (.woff/.woff2) you upload below to improve rendering speed."
+msgstr "Préchargez manuellement les fichiers de polices (.woff/.woff2) que vous téléversez ci-dessous pour améliorer la vitesse de rendu."
+
+msgid "Google Fonts auto-detect (preconnect)"
+msgstr "Détection automatique Google Fonts (preconnect)"
+
+msgid "Detects Google Fonts loaded via wp_enqueue_style and adds preconnect hints to fonts.googleapis.com / fonts.gstatic.com. Different from the manual option above — this one is automatic and only fires if Google Fonts are detected."
+msgstr "Détecte les Google Fonts chargées via wp_enqueue_style et ajoute des indices preconnect vers fonts.googleapis.com / fonts.gstatic.com. Différente de l'option manuelle ci-dessus — celle-ci est automatique et ne s'active que si des Google Fonts sont détectées."
+
+msgid "Real User Monitoring (RUM)"
+msgstr "Surveillance des utilisateurs réels (RUM)"
+
+msgid "Anonymously collect real visitor load times to identify slow pages. No IP, no cookie, GDPR-compliant. View the dashboard in \"LWS Optimize → RUM\" once enabled."
+msgstr "Collectez anonymement les temps de chargement des visiteurs réels pour identifier les pages lentes. Aucune IP, aucun cookie, conforme RGPD. Consultez le tableau de bord dans « LWS Optimize → RUM » une fois activé."
+
+msgid "No URLs were indexed from the sitemap. Click below to fetch them and start caching."
+msgstr "Aucune URL n'a été indexée depuis le sitemap. Cliquez ci-dessous pour les récupérer et démarrer la mise en cache."
+
+msgid "Fetch URLs to cache"
+msgstr "Récupérer les URLs à mettre en cache"
+
+msgid "Cache preloading is disabled. Activate it to warm up your cache automatically before visitor requests."
+msgstr "Le préchargement du cache est désactivé. Activez-le pour précharger votre cache automatiquement avant les visites."
+
+msgid "Activate preloading"
+msgstr "Activer le préchargement"
+
+msgid "Fetching..."
+msgstr "Récupération en cours..."
+
+msgid "Preloading activated successfully."
+msgstr "Préchargement activé avec succès."
+
+msgid "URLs fetched successfully. Caching will start shortly."
+msgstr "URLs récupérées avec succès. La mise en cache démarrera sous peu."
+
+msgid "Action failed. Please retry or use advanced settings."
+msgstr "L'action a échoué. Veuillez réessayer ou utiliser les paramètres avancés."
+
+msgid "Request failed. Please try again."
+msgstr "La requête a échoué. Veuillez réessayer."
+
+msgid "PHP stats intermediary"
+msgstr "Intermédiaire PHP pour les statistiques"
+
+msgid "Cache hit statistics will not be recorded while .htaccess caching is active without the PHP stats intermediary option enabled below."
+msgstr "Les statistiques de cache ne seront pas enregistrées tant que la mise en cache .htaccess est active sans l'option intermédiaire PHP activée ci-dessous."
+
+msgid "When .htaccess caching is active, Apache serves cached pages directly without invoking PHP, which means cache hit statistics cannot be recorded. Enabling this option replaces the direct file serve with a lightweight PHP script that records the hit in statistics before delivering the cached page."
+msgstr "Lorsque la mise en cache .htaccess est active, Apache sert les pages en cache directement sans invoquer PHP, ce qui signifie que les statistiques de hits de cache ne peuvent pas être enregistrées. Activer cette option remplace la livraison directe du fichier par un script PHP léger qui enregistre le hit dans les statistiques avant de délivrer la page mise en cache."
+
+msgid "<strong>Statistics are incomplete.</strong> .htaccess caching is active but the PHP stats intermediary is disabled. Cache hits served directly by Apache are not counted. Enable the <em>PHP stats intermediary</em> option in the Caching tab to restore full hit tracking."
+msgstr "<strong>Les statistiques sont incomplètes.</strong> La mise en cache .htaccess est active mais l'intermédiaire PHP pour les statistiques est désactivé. Les hits de cache servis directement par Apache ne sont pas comptés. Activez l'option <em>intermédiaire PHP pour les statistiques</em> dans l'onglet Mise en Cache pour restaurer le suivi complet des hits."
+
+msgid "This option adds a small PHP overhead (~5–15 ms) to every cached page request. Leave this disabled if statistics are not critical to you."
+msgstr "Cette option ajoute un léger surcoût PHP (~5–15 ms) à chaque requête de page mise en cache. Laissez cette option désactivée si les statistiques ne sont pas essentielles pour vous."
+
+msgid "Performance notice:"
+msgstr "Avertissement :"
+
+msgid "Dashboard"
+msgstr "Tableau de bord"
+
+msgid "RUM Dashboard"
+msgstr "Tableau de bord RUM"
+
+msgid "Memcached is available on this server — activate it to speed up WordPress"
+msgstr "Memcached est disponible sur ce serveur — activez-le pour accélérer WordPress"
+
+msgid "Stores WordPress database queries and API calls in RAM — drastically reduces page generation time"
+msgstr "Stocke les requêtes de base de données WordPress et les appels API en RAM — réduit drastiquement le temps de génération des pages"
+
+msgid "Reduces database load: repeated queries are served from memory instead of hitting MySQL"
+msgstr "Réduit la charge de la base de données : les requêtes répétées sont servies depuis la mémoire au lieu de solliciter MySQL"
+
+msgid "Speeds up the WordPress admin dashboard and authenticated pages that are not served by the file cache"
+msgstr "Accélère le tableau de bord WordPress et les pages authentifiées qui ne sont pas servies par le cache de fichiers"
+
+msgid "Activate Memcached"
+msgstr "Activer Memcached"
+
+msgid "Memcached activated successfully."
+msgstr "Memcached activé avec succès."
+
+msgid "Memcached could not be activated."
+msgstr "Memcached n'a pas pu être activé."
+
+msgid "Unexpected error. Please try again or use the advanced mode."
+msgstr "Erreur inattendue. Veuillez réessayer ou utiliser le mode avancé."
+
+msgid "Memcached is not available on this server"
+msgstr "Memcached n'est pas disponible sur ce serveur"
+
+msgid "The PHP « Memcached » extension is not installed on this server. Contact your hosting provider to enable it."
+msgstr "L'extension PHP « Memcached » n'est pas installée sur ce serveur. Contactez votre hébergeur pour l'activer."
+
+msgid "The Memcached server is not reachable (localhost:11211). The service may be stopped or blocked by the firewall. Contact your hosting provider."
+msgstr "Le serveur Memcached n'est pas joignable (localhost:11211). Le service est peut-être arrêté ou bloqué par le pare-feu. Contactez votre hébergeur."

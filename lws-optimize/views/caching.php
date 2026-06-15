@@ -20,6 +20,7 @@ $local_timestamp = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_preload), 'Y-m-
 
 $autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
 $htaccess_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_rules");
+$htaccess_php_intermediary_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_php_intermediary");
 $memcached_force_off = false;
 ?>
 
@@ -54,7 +55,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 
 <div class="lwop_alert lwop_alert_warning">
     <i class="dashicons dashicons-warning"></i>
-    <div>
+    <div style="font-size: 14px;">
         <span><?php esc_html_e('You are currently using WP-Cron, which means the preloading will only be executed when there is activity on your website and will use your website resources, slowing it down.', 'lws-optimize'); ?></span>
         <span><?php esc_html_e('We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website.', 'lws-optimize'); ?></span>
         <span>
@@ -284,6 +285,12 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Using .htaccess rules to manage the caching of your website will result in a decreased memory usage by PHP, improving performances, as well as faster loading times than with the default method.', 'lws-optimize'); ?>
         </div>
+        <div id="lwsop_htaccess_no_intermediary_warning" class="lwop_alert lwop_alert_warning" style="margin-top: 10px; margin-left: 0; font-size: 13px; max-width: 900px; <?php echo ($htaccess_options['state'] !== "true" || $htaccess_php_intermediary_options['state'] === "true") ? 'display:none;' : ''; ?>">
+            <i class="dashicons dashicons-warning"></i>
+            <div>
+                <?php esc_html_e('Cache hit statistics will not be recorded while .htaccess caching is active without the PHP stats intermediary option enabled below.', 'lws-optimize'); ?>
+            </div>
+        </div>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_htaccess_rules_check">
@@ -293,6 +300,61 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
 </div>
 
+<div class="lwsop_contentblock" id="lwsop_php_intermediary_block" <?php echo $htaccess_options['state'] !== "true" ? 'style="display:none"' : ''; ?>>
+    <div class="lwsop_contentblock_leftside">
+        <h2 class="lwsop_contentblock_title">
+            <?php esc_html_e('PHP stats intermediary', 'lws-optimize'); ?>
+        </h2>
+        <div class="lwsop_contentblock_description">
+            <?php esc_html_e('When .htaccess caching is active, Apache serves cached pages directly without invoking PHP, which means cache hit statistics cannot be recorded. Enabling this option replaces the direct file serve with a lightweight PHP script that records the hit in statistics before delivering the cached page.', 'lws-optimize'); ?>
+        </div>
+        <div class="lwop_alert lwop_alert_warning" style="margin-top: 10px; margin-left: 0; font-size: 13px; max-width: 900px;">
+            <i class="dashicons dashicons-warning"></i>
+            <div>
+                <strong><?php esc_html_e('Performance notice:', 'lws-optimize'); ?></strong>
+                <?php esc_html_e('This option adds a small PHP overhead (~5–15 ms) to every cached page request. Leave this disabled if statistics are not critical to you.', 'lws-optimize'); ?>
+            </div>
+        </div>
+    </div>
+    <div class="lwsop_contentblock_rightside">
+        <label class="lwsop_checkbox" for="lws_optimize_htaccess_php_intermediary_check">
+            <input type="checkbox" name="lws_optimize_htaccess_php_intermediary_check" id="lws_optimize_htaccess_php_intermediary_check" <?php echo $htaccess_php_intermediary_options['state'] === "true" ? esc_html("checked") : ""; ?>>
+            <span class="slider round"></span>
+        </label>
+    </div>
+</div>
+
+<script>
+(function () {
+    var htaccessToggle     = document.getElementById('lws_optimize_htaccess_rules_check');
+    var intermediaryBlock  = document.getElementById('lwsop_php_intermediary_block');
+    var intermediaryToggle = document.getElementById('lws_optimize_htaccess_php_intermediary_check');
+    var noStatsWarning     = document.getElementById('lwsop_htaccess_no_intermediary_warning');
+
+    function syncIntermediaryVisibility() {
+        var htaOn = htaccessToggle.checked;
+        intermediaryBlock.style.display = htaOn ? '' : 'none';
+
+        if (!htaOn && intermediaryToggle.checked) {
+            intermediaryToggle.checked = false;
+            intermediaryToggle.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        syncWarning();
+    }
+
+    function syncWarning() {
+        if (noStatsWarning) {
+            noStatsWarning.style.display = (htaccessToggle.checked && !intermediaryToggle.checked) ? '' : 'none';
+        }
+    }
+
+    if (htaccessToggle && intermediaryBlock && intermediaryToggle) {
+        htaccessToggle.addEventListener('change', syncIntermediaryVisibility);
+        intermediaryToggle.addEventListener('change', syncWarning);
+    }
+}());
+</script>
+
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
@@ -301,8 +363,6 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         </h2>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while. Please be aware that the total amount of page may include dynamic pages that will not be cached, such as excluded URLs or WooCommerce checkout page.', 'lws-optimize'); ?>
-            <br><br>
-            <?php esc_html_e( 'This option uses WordPress sitemap to work. If you encounter issues such as the preloading not starting, make sure the sitemap is activated.', 'lws-optimize' );  ?>
         </div>
         <div class="lwsop_contentblock_fbcache_input_preload_block">
             <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="1" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">

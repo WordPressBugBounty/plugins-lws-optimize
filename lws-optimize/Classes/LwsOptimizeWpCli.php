@@ -22,6 +22,12 @@ class LwsOptimizeWpCli {
         \WP_CLI::add_command('lwsoptimize servercache', [self::class, 'servercache']);
         \WP_CLI::add_command('lwsoptimize configuration', [self::class, 'configuration']);
         \WP_CLI::add_command('lwsoptimize pagespeed', [self::class, 'pagespeed']);
+
+        // 4.5.11 — Nouvelles commandes pour les features ajoutées en 4.4.x / 4.5.x
+        \WP_CLI::add_command('lwsoptimize status',     [self::class, 'status']);
+        \WP_CLI::add_command('lwsoptimize rum',        [self::class, 'rum']);
+        \WP_CLI::add_command('lwsoptimize cloudflare', [self::class, 'cloudflare']);
+        \WP_CLI::add_command('lwsoptimize phase2',     [self::class, 'phase2']);
     }
 
     /**
@@ -601,7 +607,7 @@ class LwsOptimizeWpCli {
      * ## OPTIONS
      *
      * <action>
-     * : The action to perform on memcached (status|activate|deactivate)
+     * : The action to perform on memcached (status|activate|deactivate|recommend|validate)
      *
      * [--format=<format>]
      * : Output format (table|json)
@@ -616,6 +622,14 @@ class LwsOptimizeWpCli {
      *     # Check memcached status
      *     $ wp lwsoptimize memcached status
      *
+     *     # Should we recommend activating Memcached on this host?
+     *     # (exit 0 = yes, 1 = no — pipe-friendly for ops scripts)
+     *     $ wp lwsoptimize memcached recommend
+     *
+     *     # Full env validation dry-run (extension + server + PHP sessions conflict + dropin)
+     *     # exit 0 = OK, 1 = warning, 2 = fatal
+     *     $ wp lwsoptimize memcached validate --format=json
+     *
      *     # Activate memcached
      *     $ wp lwsoptimize memcached activate
      *
@@ -629,7 +643,7 @@ class LwsOptimizeWpCli {
      */
     public static function memcached($args, $assoc_args) {
         if (empty($args[0])) {
-            \WP_CLI::error('Please specify an action: status, activate, or deactivate');
+            \WP_CLI::error('Please specify an action: status, activate, deactivate, recommend, or validate');
             return;
         }
 
@@ -691,40 +705,30 @@ class LwsOptimizeWpCli {
                     return 0;
                 }
             case 'activate':
-                if ($redis) {
-                    \WP_CLI::error('RedisCache plugin is activated, Memcached cannot be used at the same time.');
+                // 4.5.12 — Validation environnement complète (extension + serveur + sessions + drop-in tiers)
+                $env = $optimize->lwsop_validate_memcached_environment();
+                if (!$env['ok'] && $env['severity'] === 'fatal') {
+                    \WP_CLI::error("Cannot activate Memcached — {$env['reason']} : " . substr($env['message'], 0, 300));
                     return -1;
                 }
-
                 if ($state && $memcached_state) {
                     \WP_CLI::success('Memcached is already activated.');
                     return 0;
                 }
 
-                if (!$memcached_state) {
-                    \WP_CLI::error('Memcached module is not available/activated on this server.');
-                    return -1;
-                }
-
                 $options['memcached']['state'] = "true";
                 if (update_option('lws_optimize_config_array', $options)) {
-                    // Refuse if a third-party object-cache drop-in is in place (Redis, W3TC, ...)
                     if (isset($GLOBALS['lws_optimize'])) {
-                        $third_party = $GLOBALS['lws_optimize']->lwsop_detect_third_party_dropin(LWSOP_OBJECTCACHE_PATH);
-                        if ($third_party !== null) {
-                            // Revert flag and error out
-                            $options['memcached']['state'] = "false";
-                            update_option('lws_optimize_config_array', $options);
-                            \WP_CLI::error("Cannot activate Memcached: third-party object-cache drop-in detected ($third_party). Disable it first.");
-                            return -1;
-                        }
                         $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
                             LWSOP_OBJECTCACHE_PATH,
                             LWS_OP_DIR . '/views/object-cache.php'
                         );
                     }
-
+                    if ($env['severity'] === 'warning') {
+                        \WP_CLI::warning('Memcached activated WITH warning: ' . $env['message']);
+                    } else {
                     \WP_CLI::success('Memcached activated.');
+                    }
                     return 0;
                 } else {
                     \WP_CLI::error('Failed to activate Memcached.');
@@ -750,6 +754,51 @@ class LwsOptimizeWpCli {
                     \WP_CLI::error('Failed to deactivate Memcached.');
                     return -1;
                 }
+            case 'recommend':
+                // 4.5.11 — Renvoie la décision du helper lwsop_can_recommend_memcached()
+                // pour permettre aux ops scripts / UI de décider s'il faut proposer
+                // l'activation. Toutes les conditions sont vérifiées (extension,
+                // connexion localhost:11211, Redis plugin, drop-in tiers).
+                $reco = $optimize->lwsop_can_recommend_memcached();
+                if ($json_output) {
+                    \WP_CLI::line(json_encode($reco, JSON_PRETTY_PRINT));
+                    return 0;
+                }
+                if ($reco['recommend']) {
+                    \WP_CLI::success('Memcached can be safely recommended.');
+                    \WP_CLI::line('  Run: wp lwsoptimize memcached activate');
+                } else {
+                    \WP_CLI::warning('Memcached is not recommended. Reason: ' . $reco['reason']);
+                    foreach ($reco['details'] as $k => $v) {
+                        \WP_CLI::line(sprintf('  %-22s %s', $k . ':', is_scalar($v) ? var_export($v, true) : json_encode($v)));
+                    }
+                }
+                return $reco['recommend'] ? 0 : 1;
+            case 'validate':
+                // 4.5.12 — Dry-run de tous les checks (A à F) sans toucher l'état.
+                // Pipe-friendly : exit 0 = OK, 1 = warning, 2 = fatal.
+                $env = $optimize->lwsop_validate_memcached_environment();
+                if ($json_output) {
+                    \WP_CLI::line(json_encode($env, JSON_PRETTY_PRINT));
+                    return $env['severity'] === 'fatal' ? 2 : ($env['severity'] === 'warning' ? 1 : 0);
+                }
+                $label = strtoupper($env['severity']);
+                if ($env['severity'] === 'fatal') {
+                    \WP_CLI::error_multi_line(["[$label] {$env['reason']}", $env['message']]);
+                } elseif ($env['severity'] === 'warning') {
+                    \WP_CLI::warning("[$label] {$env['reason']} — " . $env['message']);
+                } else {
+                    \WP_CLI::success("[$label] {$env['reason']} — " . $env['message']);
+                }
+                if (!empty($env['details'])) {
+                    foreach ($env['details'] as $k => $v) {
+                        \WP_CLI::line(sprintf('  %-22s %s', $k . ':', is_scalar($v) ? var_export($v, true) : json_encode($v)));
+                    }
+                }
+                if (!empty($env['fix_url'])) {
+                    \WP_CLI::line('  fix_url: ' . $env['fix_url']);
+                }
+                return $env['severity'] === 'fatal' ? 2 : ($env['severity'] === 'warning' ? 1 : 0);
             default:
                 \WP_CLI::error("Action `$action` does not exists. See help for available actions.");
                 break;
@@ -993,6 +1042,391 @@ class LwsOptimizeWpCli {
         }
 
         return 0;
+    }
+
+    /**
+     * Global health status of LWS Optimize (Memcached, file-cache, RUM,
+     * Cloudflare APO, preload state). Useful for ops scripts / monitoring.
+     *
+     * ## OPTIONS
+     *
+     * [--format=<format>]
+     * : Output format (table|json)
+     * ---
+     * default: table
+     * options:
+     *   - table
+     *   - json
+     *
+     * ## EXAMPLES
+     *
+     *     $ wp lwsoptimize status
+     *     $ wp lwsoptimize status --format=json
+     *
+     * @when after_wp_load
+     */
+    public static function status($args, $assoc_args) {
+        $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
+        $options     = get_option('lws_optimize_config_array', []);
+
+        $fb_state        = $options['filebased_cache']['state']           ?? 'false';
+        $fb_preload      = $options['filebased_cache']['preload']         ?? 'false';
+        $fb_preload_done = (int)($options['filebased_cache']['preload_done']     ?? 0);
+        $fb_preload_qty  = (int)($options['filebased_cache']['preload_quantity'] ?? 0);
+        $fb_preload_amt  = (int)($options['filebased_cache']['preload_amount']   ?? 5);
+        $memcached       = $options['memcached']['state']                 ?? 'false';
+        $object_cache    = file_exists(WP_CONTENT_DIR . '/object-cache.php') ? 'yes' : 'no';
+        $cf_apo          = $options['cloudflare_apo']['state']            ?? 'false';
+        $rum_enabled     = $options['rum']['state']                       ?? 'false';
+        $rum_samples     = count((array) get_option('lwsop_rum_samples', []));
+        $rum_agg_ts      = (int) get_option('lwsop_rum_aggregate_ts', 0);
+        $maint_db        = $options['maintenance_db']['state']            ?? 'false';
+
+        $cache_dir = WP_CONTENT_DIR . '/cache/lwsoptimize/';
+        $cache_size = 0;
+        if (is_dir($cache_dir)) {
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($cache_dir, \FilesystemIterator::SKIP_DOTS));
+            foreach ($it as $f) { if ($f->isFile()) $cache_size += $f->getSize(); }
+        }
+
+        $data = [
+            'version'            => defined('LWS_OP_BASENAME') ? (get_file_data(WP_PLUGIN_DIR . '/' . LWS_OP_BASENAME, ['v' => 'Version'])['v'] ?? '?') : '?',
+            'filebased_cache'    => $fb_state,
+            'cache_size_bytes'   => $cache_size,
+            'preload'            => $fb_preload,
+            'preload_progress'   => "$fb_preload_done/$fb_preload_qty",
+            'preload_amount'     => $fb_preload_amt,
+            'memcached'          => $memcached,
+            'object_cache_drop'  => $object_cache,
+            'cloudflare_apo'     => $cf_apo,
+            'rum_enabled'        => $rum_enabled,
+            'rum_samples'        => $rum_samples,
+            'rum_last_aggregate' => $rum_agg_ts ? gmdate('Y-m-d H:i:s', $rum_agg_ts) . ' UTC' : 'never',
+            'maintenance_db'     => $maint_db,
+        ];
+
+        if ($json_output) {
+            \WP_CLI::line(json_encode($data, JSON_PRETTY_PRINT));
+            return 0;
+        }
+        \WP_CLI::success('LWS Optimize status:');
+        foreach ($data as $k => $v) {
+            \WP_CLI::line(sprintf('  %-22s %s', $k . ':', is_scalar($v) ? $v : json_encode($v)));
+        }
+        return 0;
+    }
+
+    /**
+     * Manage Real User Monitoring (RUM).
+     *
+     * ## OPTIONS
+     *
+     * <action>
+     * : list | aggregate | purge | export | stats
+     *
+     * [--days=<days>]
+     * : For 'purge' : age threshold in days (default 30).
+     *
+     * [--format=<format>]
+     * : Output format (table|json) — default table.
+     *
+     * ## EXAMPLES
+     *
+     *     # Show aggregated p50/p75/p95 per URL/device
+     *     $ wp lwsoptimize rum stats
+     *
+     *     # Force aggregation now (instead of waiting for the twice-daily cron)
+     *     $ wp lwsoptimize rum aggregate
+     *
+     *     # Purge raw samples older than 30 days
+     *     $ wp lwsoptimize rum purge --days=30
+     *
+     *     # Export all raw samples to stdout as JSON
+     *     $ wp lwsoptimize rum export --format=json
+     *
+     * @when after_wp_load
+     */
+    public static function rum($args, $assoc_args) {
+        if (empty($args[0])) {
+            \WP_CLI::error('Please specify an action: list, aggregate, purge, export, stats');
+            return -1;
+        }
+        if (!class_exists('\\Lws\\Classes\\RUM\\LwsOptimizeRUM')) {
+            \WP_CLI::error('RUM module not loaded.');
+            return -1;
+        }
+        $action      = $args[0];
+        $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
+
+        switch ($action) {
+            case 'list':
+            case 'export':
+                $samples = (array) get_option('lwsop_rum_samples', []);
+                if ($json_output || $action === 'export') {
+                    \WP_CLI::line(json_encode($samples));
+                    return 0;
+                }
+                \WP_CLI::success(count($samples) . ' RUM samples in buffer');
+                foreach (array_slice($samples, -20) as $s) {
+                    \WP_CLI::line(sprintf('  [%s] %-7s %s  %s %s', gmdate('Y-m-d H:i', $s['t'] ?? 0), $s['d'] ?? '?', $s['p'] ?? '?', $s['m'] ?? '?', $s['v'] ?? '?'));
+                }
+                return 0;
+
+            case 'aggregate':
+                \Lws\Classes\RUM\LwsOptimizeRUM::aggregate();
+                $ts = (int) get_option('lwsop_rum_aggregate_ts', 0);
+                \WP_CLI::success('RUM aggregated at ' . gmdate('Y-m-d H:i:s', $ts) . ' UTC');
+                return 0;
+
+            case 'purge':
+                $days    = isset($assoc_args['days']) ? max(1, intval($assoc_args['days'])) : 30;
+                $cutoff  = time() - ($days * DAY_IN_SECONDS);
+                $samples = (array) get_option('lwsop_rum_samples', []);
+                $kept    = array_values(array_filter($samples, function ($s) use ($cutoff) {
+                    return ($s['t'] ?? 0) >= $cutoff;
+                }));
+                update_option('lwsop_rum_samples', $kept, false);
+                \WP_CLI::success(sprintf('Purged samples older than %d days. Kept %d / removed %d.', $days, count($kept), count($samples) - count($kept)));
+                return 0;
+
+            case 'stats':
+                $agg = (array) get_option('lwsop_rum_aggregate', []);
+                if (empty($agg)) {
+                    \WP_CLI::warning('No aggregate yet. Run `wp lwsoptimize rum aggregate` first.');
+                    return 1;
+                }
+                if ($json_output) {
+                    \WP_CLI::line(json_encode($agg, JSON_PRETTY_PRINT));
+                    return 0;
+                }
+                \WP_CLI::success(count($agg) . ' aggregate entries');
+                foreach ($agg as $key => $stats) {
+                    \WP_CLI::line(sprintf('  %s  n=%d  p50=%s  p75=%s  p95=%s', $key, $stats['n'] ?? 0, $stats['p50'] ?? '-', $stats['p75'] ?? '-', $stats['p95'] ?? '-'));
+                }
+                return 0;
+
+            default:
+                \WP_CLI::error("Unknown action `$action`. Use: list, aggregate, purge, export, stats");
+                return -1;
+        }
+    }
+
+    /**
+     * Manage Cloudflare APO integration.
+     *
+     * ## OPTIONS
+     *
+     * <action>
+     * : status | install-rule | purge-all | set-config
+     *
+     * [--zone-id=<id>]
+     * : Required for 'set-config'.
+     *
+     * [--api-token=<token>]
+     * : Required for 'set-config' (Cloudflare API token with Cache Rules + Cache Purge scopes).
+     *
+     * [--state=<state>]
+     * : For 'set-config' : true|false (enable/disable APO). Default true.
+     *
+     * ## EXAMPLES
+     *
+     *     $ wp lwsoptimize cloudflare status
+     *     $ wp lwsoptimize cloudflare set-config --zone-id=abc123 --api-token=xxx
+     *     $ wp lwsoptimize cloudflare install-rule
+     *     $ wp lwsoptimize cloudflare purge-all
+     *
+     * @when after_wp_load
+     */
+    public static function cloudflare($args, $assoc_args) {
+        if (empty($args[0])) {
+            \WP_CLI::error('Please specify an action: status, install-rule, purge-all, set-config');
+            return -1;
+        }
+        $action  = $args[0];
+        $options = get_option('lws_optimize_config_array', []);
+        $cf      = $options['cloudflare_apo'] ?? [];
+
+        switch ($action) {
+            case 'status':
+                \WP_CLI::success('Cloudflare APO status:');
+                \WP_CLI::line('  state:     ' . ($cf['state']     ?? 'false'));
+                \WP_CLI::line('  zone_id:   ' . (!empty($cf['zone_id'])   ? substr($cf['zone_id'], 0, 8) . '…' : 'not set'));
+                \WP_CLI::line('  api_token: ' . (!empty($cf['api_token']) ? '****' . substr($cf['api_token'], -4) : 'not set'));
+                return 0;
+
+            case 'set-config':
+                if (empty($assoc_args['zone-id']) || empty($assoc_args['api-token'])) {
+                    \WP_CLI::error('--zone-id and --api-token are required.');
+                    return -1;
+                }
+                $options['cloudflare_apo'] = [
+                    'state'     => ($assoc_args['state'] ?? 'true') === 'false' ? 'false' : 'true',
+                    'zone_id'   => sanitize_text_field($assoc_args['zone-id']),
+                    'api_token' => sanitize_text_field($assoc_args['api-token']),
+                ];
+                update_option('lws_optimize_config_array', $options);
+                \WP_CLI::success('Cloudflare APO config saved (state=' . $options['cloudflare_apo']['state'] . ').');
+                return 0;
+
+            case 'install-rule':
+                if (!class_exists('\\Lws\\Classes\\Integrations\\LwsOptimizeCloudflareAPO')) {
+                    \WP_CLI::error('Cloudflare APO module not loaded.');
+                    return -1;
+                }
+                if (empty($cf['state']) || $cf['state'] !== 'true' || empty($cf['zone_id']) || empty($cf['api_token'])) {
+                    \WP_CLI::error('APO not configured. Run `wp lwsoptimize cloudflare set-config` first.');
+                    return -1;
+                }
+                // Reuse the AJAX handler logic by invoking it directly with a fake nonce
+                // (we have CLI auth equivalent to manage_options). For simplicity we
+                // re-implement the API call to avoid the nonce check.
+                $host = parse_url(home_url(), PHP_URL_HOST);
+                $expression = sprintf(
+                    '(http.host eq "%s" and not (http.request.uri.path matches "^/(wp-admin|wp-login)") and not (any(http.cookie[*] in {"wp-" "wordpress_logged_in_" "woocommerce_" "edd_" "comment_author_"})))',
+                    $host
+                );
+                $body = ['rules' => [[
+                    'expression' => $expression,
+                    'action' => 'set_cache_settings',
+                    'action_parameters' => [
+                        'cache' => true,
+                        'edge_ttl' => ['mode' => 'override_origin', 'default' => 28800],
+                        'browser_ttl' => ['mode' => 'respect_origin'],
+                    ],
+                    'description' => 'LWS Optimize APO — cache HTML for anonymous traffic',
+                    'enabled' => true,
+                ]]];
+                $resp = wp_remote_request(
+                    'https://api.cloudflare.com/client/v4/zones/' . rawurlencode($cf['zone_id']) . '/rulesets/phases/http_request_cache_settings/entrypoint',
+                    [
+                        'method'  => 'PUT',
+                        'timeout' => 15,
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $cf['api_token'],
+                            'Content-Type'  => 'application/json',
+                        ],
+                        'body' => wp_json_encode($body),
+                    ]
+                );
+                if (is_wp_error($resp)) {
+                    \WP_CLI::error('CF API error: ' . $resp->get_error_message());
+                    return -1;
+                }
+                $code = wp_remote_retrieve_response_code($resp);
+                if ($code !== 200) {
+                    \WP_CLI::error("CF API HTTP $code : " . wp_remote_retrieve_body($resp));
+                    return -1;
+                }
+                \WP_CLI::success('Cache Rule installed on zone ' . $cf['zone_id']);
+                return 0;
+
+            case 'purge-all':
+                if (!class_exists('\\Lws\\Classes\\Integrations\\LwsOptimizeCloudflareAPO')) {
+                    \WP_CLI::error('Cloudflare APO module not loaded.');
+                    return -1;
+                }
+                if (empty($cf['state']) || $cf['state'] !== 'true' || empty($cf['zone_id']) || empty($cf['api_token'])) {
+                    \WP_CLI::error('APO not configured.');
+                    return -1;
+                }
+                $resp = wp_remote_post(
+                    'https://api.cloudflare.com/client/v4/zones/' . rawurlencode($cf['zone_id']) . '/purge_cache',
+                    [
+                        'timeout' => 15,
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $cf['api_token'],
+                            'Content-Type'  => 'application/json',
+                        ],
+                        'body' => wp_json_encode(['purge_everything' => true]),
+                    ]
+                );
+                if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
+                    \WP_CLI::error('Purge failed: ' . (is_wp_error($resp) ? $resp->get_error_message() : wp_remote_retrieve_body($resp)));
+                    return -1;
+                }
+                \WP_CLI::success('All Cloudflare cache purged on zone ' . $cf['zone_id']);
+                return 0;
+
+            default:
+                \WP_CLI::error("Unknown action `$action`.");
+                return -1;
+        }
+    }
+
+    /**
+     * Manage Phase 2 configuration (advanced optimization toggles + coverage).
+     *
+     * ## OPTIONS
+     *
+     * <action>
+     * : get | coverage | reset
+     *
+     * [--format=<format>]
+     * : Output format (table|json) — default table.
+     *
+     * ## EXAMPLES
+     *
+     *     $ wp lwsoptimize phase2 get
+     *     $ wp lwsoptimize phase2 coverage
+     *     $ wp lwsoptimize phase2 reset
+     *
+     * @when after_wp_load
+     */
+    public static function phase2($args, $assoc_args) {
+        if (empty($args[0])) {
+            \WP_CLI::error('Please specify an action: get, coverage, reset');
+            return -1;
+        }
+        $action      = $args[0];
+        $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
+        $options     = get_option('lws_optimize_config_array', []);
+        $phase2      = $options['phase2'] ?? [];
+
+        switch ($action) {
+            case 'get':
+                if ($json_output) {
+                    \WP_CLI::line(json_encode($phase2, JSON_PRETTY_PRINT));
+                    return 0;
+                }
+                if (empty($phase2)) {
+                    \WP_CLI::warning('No phase 2 configuration set.');
+                    return 1;
+                }
+                \WP_CLI::success('Phase 2 configuration:');
+                foreach ($phase2 as $k => $v) {
+                    \WP_CLI::line(sprintf('  %-30s %s', $k . ':', is_scalar($v) ? $v : json_encode($v)));
+                }
+                return 0;
+
+            case 'coverage':
+                $coverage = (array) get_option('lwsop_phase2_coverage', []);
+                if ($json_output) {
+                    \WP_CLI::line(json_encode($coverage, JSON_PRETTY_PRINT));
+                    return 0;
+                }
+                if (empty($coverage)) {
+                    \WP_CLI::warning('No coverage data collected yet.');
+                    return 1;
+                }
+                \WP_CLI::success('Phase 2 coverage:');
+                foreach ($coverage as $k => $v) {
+                    \WP_CLI::line(sprintf('  %-30s %s', $k . ':', is_scalar($v) ? $v : json_encode($v)));
+                }
+                return 0;
+
+            case 'reset':
+                if (isset($options['phase2'])) {
+                    unset($options['phase2']);
+                    update_option('lws_optimize_config_array', $options);
+                }
+                delete_option('lwsop_phase2_coverage');
+                \WP_CLI::success('Phase 2 configuration and coverage reset.');
+                return 0;
+
+            default:
+                \WP_CLI::error("Unknown action `$action`.");
+                return -1;
+        }
     }
 
 }

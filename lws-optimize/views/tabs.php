@@ -510,6 +510,30 @@
                                     case 'HTACCESS_UPDATE_FAILED':
                                         callPopup('error', "<?php esc_html_e('The .htaccess file could not be updated. Please check the permissions of this file.', 'lws-optimize'); ?>");
                                         break;
+                                    // 4.5.13 — Nouveaux cas Memcached : conflit PHP sessions, drop-in tiers, saturation.
+                                    // Le serveur renvoie en parallèle `returnData.lws_memcached_detail` (message complet
+                                    // i18n) qu'on affiche si dispo, sinon fallback message générique localisé.
+                                    case 'MEMCACHE_SESSIONS_CONFLICT':
+                                        if (memcached) { memcached.checked = false; }
+                                        var sessMsg = (returnData.lws_memcached_detail)
+                                            ? returnData.lws_memcached_detail
+                                            : "<?php echo esc_js(__('PHP utilise déjà Memcached pour les sessions sur la même instance. Activer le cache d\'objets créerait un conflit (risque de crash wp-admin). Contactez votre hébergeur pour basculer les sessions sur fichiers ou préfixer le namespace.', 'lws-optimize')); ?>";
+                                        callPopup('error', sessMsg);
+                                        break;
+                                    case 'MEMCACHE_THIRD_PARTY_DROPIN':
+                                        if (memcached) { memcached.checked = false; }
+                                        var dropinMsg = (returnData.lws_memcached_detail)
+                                            ? returnData.lws_memcached_detail
+                                            : "<?php echo esc_js(__('Un drop-in object-cache.php d\'un autre plugin est déjà installé. Désinstallez-le avant d\'activer Memcached dans LWS Optimize.', 'lws-optimize')); ?>";
+                                        callPopup('error', dropinMsg);
+                                        break;
+                                    case 'MEMCACHE_WARNING':
+                                        // Non bloquant : activation OK mais cache proche saturation (>90% utilisé)
+                                        var warnMsg = (returnData.lws_memcached_warning)
+                                            ? returnData.lws_memcached_warning
+                                            : "<?php echo esc_js(__('Memcached activé mais le cache est proche de la saturation. Le bénéfice perf sera limité ; envisagez d\'augmenter limit_maxbytes côté serveur.', 'lws-optimize')); ?>";
+                                        callPopup('warning', warnMsg);
+                                        break;
                                     default:
                                         break;
                                 }

@@ -32,6 +32,55 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         // Manage the state of the plugin
         add_action("wp_ajax_lws_optimize_manage_state", [$this, "lws_optimize_manage_state"]);
 
+        // PHASE 2 (4.1.0) — Save handler for the "Advanced integrations" panel
+        // (Cloudflare APO zone_id+token, RUM toggle, Critical CSS mode+manual_css+service,
+        // Font Preload toggle). Capability gate runs upstream via admin_init prio 0.
+        // Kept for backward compat with previous saved configs; new UI in 4.4.3 uses
+        // the native config_array batch handler via "extra" payload.
+        add_action("wp_ajax_lwsop_save_phase2_config", [$this, "lwsop_save_phase2_config"]);
+
+        // 4.4.3 — Endpoint dédié coverage (URLs sitemap réellement en cache).
+        // Appelé par main_page.php après "Vider tous les caches" et "Rafraîchir"
+        // pour mettre à jour les progress bars sans recharger la page.
+        add_action("wp_ajax_lwsop_get_coverage", function () {
+            check_ajax_referer('lwsop_get_coverage_nonce', '_ajax_nonce');
+            if (!current_user_can('manage_options')) {
+                wp_die(json_encode(['code' => 'FORBIDDEN']));
+            }
+            // Invalider le transient pour forcer le recalcul live
+            delete_transient('lwsop_coverage_cache_v2');
+            $sitemap = get_option('lws_optimize_sitemap_urls', ['urls' => []]);
+            $urls    = is_array($sitemap['urls'] ?? null) ? array_values($sitemap['urls']) : [];
+            $cache_root_d = WP_CONTENT_DIR . '/cache/lwsoptimize/cache';
+            $cache_root_m = WP_CONTENT_DIR . '/cache/lwsoptimize/cache-mobile';
+            $total = count($urls);
+            $hit_d = 0; $hit_m = 0;
+            foreach ($urls as $u) {
+                $path = trim(parse_url($u, PHP_URL_PATH) ?: '/', '/');
+                $file_d = $path === '' ? $cache_root_d . '/index_0.html' : $cache_root_d . '/' . $path . '/index_0.html';
+                $file_m = $path === '' ? $cache_root_m . '/index_0.html' : $cache_root_m . '/' . $path . '/index_0.html';
+                if (@is_file($file_d)) $hit_d++;
+                if (@is_file($file_m)) $hit_m++;
+            }
+            // 4.4.7 — Inclure aussi l'ETA pour recalibrer le countdown JS
+            $cfg          = get_option('lws_optimize_config_array', []);
+            $preload_rate = max(1, (int) ($cfg['filebased_cache']['preload_amount'] ?? 3));
+            $missing      = max(0, ($total - $hit_d)) + max(0, ($total - $hit_m));
+            $eta_seconds  = ($missing > 0) ? (int) ceil(($missing / ($preload_rate * 2)) * 60) : 0;
+            $preload_on   = ($cfg['filebased_cache']['preload'] ?? 'false') === 'true';
+
+            wp_die(json_encode([
+                'code' => 'SUCCESS',
+                'data' => [
+                    'total'       => $total,
+                    'desktop'     => ['hit' => $hit_d],
+                    'mobile'      => ['hit' => $hit_m],
+                    'eta_seconds' => $eta_seconds,
+                    'preload_on'  => $preload_on,
+                ],
+            ]));
+        });
+
         // Remove all notices and popup while on the config page
         add_action('admin_notices', function () {
             if (substr(get_current_screen()->id, 0, 29) == "toplevel_page_lws-op-config") {
@@ -169,6 +218,19 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             LWS_OP_URL . 'images/plugin_lws_optimize.svg'
         );
 
+        // 4.5.2 — Sous-menu "Dashboard" en première position. Remplace le label
+        // auto "LWS Optimize" du premier sous-menu (qui dupliquait juste le top-level)
+        // par une entrée explicite. Même slug que le parent → callback identique.
+        add_submenu_page(
+            'lws-op-config',
+            __('Dashboard', 'lws-optimize'),
+            __('Dashboard', 'lws-optimize'),
+            'manage_options',
+            'lws-op-config',
+            [$this, 'lws_optimize_options_page'],
+            0
+        );
+
         add_submenu_page(
             '',
             __('Advanced Settings', 'lws-optimize'),
@@ -177,6 +239,29 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             'lws-op-config-advanced',
             [$this, 'lws_optimize_options_page']
         );
+
+        // 4.4.0 — Dashboard RUM (Real User Monitoring).
+        // Hidden submenu (parent='') accessible only via direct link from the
+        // "Advanced integrations" panel. Loads views/rum_dashboard.php.
+        add_submenu_page(
+            'lws-op-config',
+            __('RUM — Real User Monitoring', 'lws-optimize'),
+            __('RUM Dashboard', 'lws-optimize'),
+            'manage_options',
+            'lws-op-rum',
+            [$this, 'lws_optimize_rum_page']
+        );
+    }
+
+    /**
+     * 4.4.0 — Page admin du dashboard RUM. Lit lwsop_rum_aggregate (option
+     * recalculée 2×/jour par cron) et affiche un tableau + graphique des
+     * Core Web Vitals collectés sur les visiteurs réels.
+     */
+    public function lws_optimize_rum_page()
+    {
+        include_once LWS_OP_DIR . '/views/feedback_button.php';
+        include_once LWS_OP_DIR . '/views/rum_dashboard.php';
     }
 
     // Create the options page of LWSOptimize
@@ -191,12 +276,27 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     // Add every JS and CSS for the admin
     public function lws_optimize_add_styles()
     {
+        // 4.4.6 — Cache-bust auto basé sur filemtime() au lieu de ?ver=wp_version
+        // (qui ne change jamais). Sinon les modifs CSS ne sont pas servies aux users
+        // qui ont déjà chargé l'admin avant le déploiement.
+        $adminbar_css = LWS_OP_DIR . "css/lws_op_stylesheet_adminbar.css";
+        $options_css  = LWS_OP_DIR . "css/lws_op_stylesheet.css";
+
         // Everywhere on the WPAdmin
-        wp_enqueue_style('lws_optimize_adminbar', LWS_OP_URL . "css/lws_op_stylesheet_adminbar.css");
+        wp_enqueue_style('lws_optimize_adminbar', LWS_OP_URL . "css/lws_op_stylesheet_adminbar.css", [], file_exists($adminbar_css) ? filemtime($adminbar_css) : null);
 
         // On the LwsOptimize option page
-        if (get_current_screen()->base == ('toplevel_page_lws-op-config') || get_current_screen()->base == ('admin_page_lws-op-config-advanced')) {
-            wp_enqueue_style('lws_optimize_options_css', LWS_OP_URL . "css/lws_op_stylesheet.css");
+        // 4.5.4 — Inclure aussi la page RUM (admin_page_lws-op-rum) pour que les
+        // classes natives + bouton feedback s'affichent correctement.
+        $screen_base = get_current_screen()->base;
+        $lwsop_screens = [
+            'toplevel_page_lws-op-config',
+            'admin_page_lws-op-config-advanced',
+            'lws-optimize_page_lws-op-rum',
+            'admin_page_lws-op-rum',
+        ];
+        if (in_array($screen_base, $lwsop_screens, true) || strpos($screen_base, 'lws-op-') !== false) {
+            wp_enqueue_style('lws_optimize_options_css', LWS_OP_URL . "css/lws_op_stylesheet.css", [], file_exists($options_css) ? filemtime($options_css) : null);
             wp_enqueue_style('lws_optimize_Poppins_font', 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
             wp_enqueue_style("lws_optimize_bootstrap_css", LWS_OP_URL . 'css/bootstrap.min.css?v=' . $this->version);
             wp_enqueue_script("lws_optimize_bootstrap_js", LWS_OP_URL . 'js/bootstrap.min.js?v=' . $this->version, array('jquery'), null, true);
@@ -211,7 +311,8 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_add_styles_frontend()
     {
         if (current_user_can('editor') || current_user_can('administrator')) {
-            wp_enqueue_style('lws_optimize_adminbar', LWS_OP_URL . "css/lws_op_stylesheet_adminbar.css");
+            $adminbar_css = LWS_OP_DIR . "css/lws_op_stylesheet_adminbar.css";
+            wp_enqueue_style('lws_optimize_adminbar', LWS_OP_URL . "css/lws_op_stylesheet_adminbar.css", [], file_exists($adminbar_css) ? filemtime($adminbar_css) : null);
         }
     }
 
@@ -241,6 +342,14 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         if (!preg_match('/^(lws_optimize_|lwsop_|lws_op_|lws_clear_)/', $action)) {
             return;
         }
+        // 4.5.10 — Whitelist des actions PUBLIQUES (nopriv) qui doivent rester
+        // accessibles aux visiteurs anonymes. Sans ça, le gate intercepte les
+        // beacons RUM front (collectés via wp_ajax_nopriv_lwsop_rum_collect)
+        // et les rejette systématiquement avec "manage_options required"
+        $public_actions = ['lwsop_rum_collect'];
+        if (in_array($action, $public_actions, true)) {
+            return;
+        }
         if (!current_user_can('manage_options')) {
             wp_send_json_error(['code' => 'FORBIDDEN', 'message' => 'manage_options capability required'], 403);
         }
@@ -258,6 +367,17 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     'parent' => null,
                     'href' => esc_url(admin_url('admin.php?page=lws-op-config')),
                     'title' => '<span class="lws_optimize_admin_icon">' . __('LWS Optimize', 'lws-optimize') . '</span>',
+                ]
+            );
+            // 4.5.4 — Dashboard en première position dans l'admin bar du header.
+            // Avant : seulement "Clear all cache" / "Clear OPcache" — il manquait
+            // un accès direct au tableau de bord depuis n'importe quelle page WP.
+            $Wp_Admin_Bar->add_menu(
+                [
+                    'id' => "lws_optimize_dashboard",
+                    'parent' => "lws_optimize_managecache",
+                    'href' => esc_url(admin_url('admin.php?page=lws-op-config')),
+                    'title' => __('Dashboard', 'lws-optimize')
                 ]
             );
             $Wp_Admin_Bar->add_menu(
@@ -504,10 +624,10 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
     public function lws_optimize_deactivate_lwscache_plugin()
     {
-        check_ajax_referer('deactivate_lwscache_plugin_nonce', '_ajax_nonce');
         if (!current_user_can('manage_options')) {
             wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
         }
+        check_ajax_referer('deactivate_lwscache_plugin_nonce', '_ajax_nonce');
         if (is_plugin_active('lwscache/lwscache.php')) {
             deactivate_plugins('lwscache/lwscache.php');
         }
@@ -517,9 +637,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_manage_state()
     {
         check_ajax_referer('nonce_lws_optimize_activate_config', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $result = delete_option('lws_optimize_offline');
 
         // if (!isset($_POST['action']) || !isset($_POST['checked'])) {
@@ -572,15 +689,28 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     }
 
     /**
+     * Legacy AJAX endpoint kept for backward compatibility with any cached JS
+     * from versions < 4.4.3. The new UI uses lws_optimize_manage_config_delayed
+     * with an "extra" payload instead. Returns a DEPRECATED success so old JS
+     * does not error out.
+     */
+    public function lwsop_save_phase2_config()
+    {
+        check_ajax_referer('lwsop_save_phase2_config_nonce', '_ajax_nonce');
+        wp_send_json_success(['code' => 'DEPRECATED']);
+    }
+
+
+    /**
      * Set the 'state' of each action defined by the ID "lws_optimize_*_check" as such :
      * [name]['state'] = "true"/"false"
      */
     public function lws_optimize_manage_config()
     {
-        check_ajax_referer('nonce_lws_optimize_checkboxes_config', '_ajax_nonce');
         if (!current_user_can('manage_options')) {
             wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
         }
+        check_ajax_referer('nonce_lws_optimize_checkboxes_config', '_ajax_nonce');
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -676,10 +806,20 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 if ($env['severity'] === 'warning') {
                     // Activation OK mais avec avertissement (ex: saturation cache).
                     // On laisse passer mais on enrichit la réponse pour popup orange.
-                    $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
+                    $dropin_ok = $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
                         LWSOP_OBJECTCACHE_PATH,
                         LWS_OP_DIR . '/views/object-cache.php'
                     );
+                    if (!$dropin_ok) {
+                        $optimize_options[$element]['state'] = "false";
+                        update_option('lws_optimize_config_array', $optimize_options);
+                        wp_die(json_encode([
+                            'code'   => 'SUCCESS',
+                            'data'   => 'false',
+                            'type'   => 'memcached',
+                            'errors' => ['MEMCACHE_THIRD_PARTY_DROPIN'],
+                        ]));
+                    }
                     wp_die(json_encode([
                         'code'                  => 'SUCCESS',
                         'data'                  => 'true',
@@ -690,12 +830,22 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 }
             }
             if (isset($GLOBALS['lws_optimize']) && $state == "true") {
-                    $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
-                        LWSOP_OBJECTCACHE_PATH,
-                        LWS_OP_DIR . '/views/object-cache.php'
-                    );
+                $dropin_ok = $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
+                    LWSOP_OBJECTCACHE_PATH,
+                    LWS_OP_DIR . '/views/object-cache.php'
+                );
+                if (!$dropin_ok) {
+                    $optimize_options[$element]['state'] = "false";
+                    update_option('lws_optimize_config_array', $optimize_options);
+                    wp_die(json_encode([
+                        'code'   => 'SUCCESS',
+                        'data'   => 'false',
+                        'type'   => 'memcached',
+                        'errors' => ['MEMCACHE_THIRD_PARTY_DROPIN'],
+                    ]));
+                }
             } elseif (isset($GLOBALS['lws_optimize']) && $state == "false") {
-                    $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
             }
         } elseif ($element == "gzip_compression") {
             if ($state == "true") {
@@ -708,6 +858,12 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 $this->lws_optimize_set_cache_htaccess();
             } elseif ($state == "false") {
                 $this->unset_cache_htaccess();
+            }
+        } elseif ($element == "htaccess_php_intermediary") {
+            if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
+                // Persist first so lws_optimize_set_cache_htaccess reads the updated state via get_option().
+                update_option('lws_optimize_config_array', $optimize_options);
+                $this->lws_optimize_set_cache_htaccess();
             }
         }
 
@@ -734,9 +890,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
     public function lws_optimize_manage_config_delayed() {
         check_ajax_referer('nonce_lws_optimize_checkboxes_config', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['action']) || !isset($_POST['data']) || !is_array($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -748,6 +901,10 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         foreach ($_POST['data'] as $element) {
             $id = sanitize_text_field($element['type']);
             $state = sanitize_text_field($element['state']);
+            // 4.4.3 — Support payload "extra" pour les options Phase 2 (Critical CSS
+            // mode/manual_css, Cloudflare APO zone_id/api_token, etc.) sauvegardées
+            // par le mécanisme natif au lieu d'un AJAX séparé.
+            $extra = (isset($element['extra']) && is_array($element['extra'])) ? $element['extra'] : null;
 
             if (preg_match('/lws_optimize_(.*?)_check/', $id, $match) !== 1) {
                 $logger = fopen($this->log_file, 'a');
@@ -761,6 +918,43 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
             // Update the state of the option
             $optimize_options[$id]['state'] = $state;
+
+            // Critical CSS: persist mode + manual_css + service_url + api_key from extra payload
+            if ($id === 'critical_css') {
+                if ($state === 'false') {
+                    $optimize_options['critical_css']['mode'] = 'off';
+                } elseif ($extra !== null) {
+                    if (isset($extra['mode']) && in_array($extra['mode'], ['off', 'manual', 'auto', 'external'], true)) {
+                        $optimize_options['critical_css']['mode'] = $extra['mode'];
+                    } elseif (empty($optimize_options['critical_css']['mode']) || $optimize_options['critical_css']['mode'] === 'off') {
+                        $optimize_options['critical_css']['mode'] = 'auto';
+                    }
+                    if (isset($extra['manual_css'])) {
+                        $optimize_options['critical_css']['manual_css'] = wp_strip_all_tags((string) $extra['manual_css']);
+                    }
+                    if (isset($extra['service_url'])) {
+                        $optimize_options['critical_css']['service_url'] = esc_url_raw((string) $extra['service_url']);
+                    }
+                    if (isset($extra['api_key'])) {
+                        $optimize_options['critical_css']['api_key'] = sanitize_text_field((string) $extra['api_key']);
+                    }
+                } else {
+                    // Activated without extra: default to auto (local) mode
+                    if (empty($optimize_options['critical_css']['mode']) || $optimize_options['critical_css']['mode'] === 'off') {
+                        $optimize_options['critical_css']['mode'] = 'auto';
+                    }
+                }
+            }
+
+            // 4.4.3 — Cloudflare APO : applique zone_id + api_token depuis extra
+            if ($id === 'cloudflare_apo' && $extra !== null) {
+                if (isset($extra['zone_id'])) {
+                    $optimize_options['cloudflare_apo']['zone_id'] = sanitize_text_field((string) $extra['zone_id']);
+                }
+                if (isset($extra['api_token'])) {
+                    $optimize_options['cloudflare_apo']['api_token'] = sanitize_text_field((string) $extra['api_token']);
+                }
+            }
 
             // In case it is the dynamic cache, check compatibility
             if ($id == "dynamic_cache") {
@@ -842,12 +1036,17 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     }
                 }
                 if (isset($GLOBALS['lws_optimize']) && $state == "true") {
-                        $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
-                            LWSOP_OBJECTCACHE_PATH,
-                            LWS_OP_DIR . '/views/object-cache.php'
-                        );
+                    $dropin_ok = $GLOBALS['lws_optimize']->lwsop_safe_write_dropin(
+                        LWSOP_OBJECTCACHE_PATH,
+                        LWS_OP_DIR . '/views/object-cache.php'
+                    );
+                    if (!$dropin_ok) {
+                        $optimize_options[$id]['state'] = "false";
+                        update_option('lws_optimize_config_array', $optimize_options);
+                        $errors[$id] = 'MEMCACHE_THIRD_PARTY_DROPIN';
+                    }
                 } elseif (isset($GLOBALS['lws_optimize']) && $state == "false") {
-                        $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                    $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
                 }
 
             } elseif ($id == "gzip_compression") {
@@ -903,13 +1102,13 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             opcache_reset();
         }
 
+        // Persist before regenerating htaccess so lwsop_check_option reads the updated state.
+        $optimize_options['personnalized'] = "true";
+        update_option('lws_optimize_config_array', $optimize_options);
+
         if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
             $this->lws_optimize_set_cache_htaccess();
         }
-
-        $optimize_options['personnalized'] = "true";
-
-        update_option('lws_optimize_config_array', $optimize_options);
 
         // If correctly added and updated
         // 4.5.13 — Inject extra fields for Memcached error popup (detail + warning)
@@ -929,9 +1128,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_manage_exclusions()
     {
         check_ajax_referer('nonce_lws_optimize_exclusions_config', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -985,9 +1181,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_manage_exclusions_media()
     {
         check_ajax_referer('nonce_lws_optimize_exclusions_media_config', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -1070,9 +1263,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_fetch_exclusions()
     {
         check_ajax_referer('nonce_lws_optimize_fetch_exclusions', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (!isset($_POST['action']) || !isset($_POST['data'])) {
@@ -1100,9 +1290,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_preload_fb()
     {
         check_ajax_referer('update_fb_preload', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         if (!isset($_POST['action']) || !isset($_POST['state'])) {
             wp_die(json_encode(['code' => "FAILED_ACTIVATE", 'data' => "Missing required parameters"]), JSON_PRETTY_PRINT);
@@ -1151,9 +1338,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_change_preload_amount()
     {
         check_ajax_referer('update_fb_preload_amount', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         if (isset($_POST['action'])) {
             $optimize_options = get_option('lws_optimize_config_array', []);
@@ -1178,9 +1362,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     // Useful if stats are broken for some reasons
     public function lwsop_regenerate_cache() {
         check_ajax_referer('lws_regenerate_nonce_cache_fb', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $stats = $this->lwsop_recalculate_stats('regenerate');
 
         $stats['desktop']['size'] = $this->lwsOpSizeConvert($stats['desktop']['size'] ?? 0);
@@ -1195,9 +1376,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     // Regenrate cache stats
     public function lwsop_regenerate_cache_general() {
         check_ajax_referer('lws_regenerate_nonce_cache_fb', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $cache_stats = $this->lwsop_recalculate_stats('regenerate');
 
         // Get the specifics values
@@ -1270,9 +1448,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_specified_urls_fb()
     {
         check_ajax_referer('lwsop_get_specified_url_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['specified'])) {
@@ -1287,9 +1462,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         // Add all URLs to an array, but ignore empty URLs
         // If all fields are empty, remove the option from DB
         check_ajax_referer('lwsop_save_specified_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (isset($_POST['data'])) {
             $urls = array();
 
@@ -1315,9 +1487,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_exclude_urls_fb()
     {
         check_ajax_referer('lwsop_get_excluded_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['exclusions'])) {
@@ -1330,9 +1499,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_exclude_cookies_fb()
     {
         check_ajax_referer('lwsop_get_excluded_cookies_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($optimize_options['filebased_cache']) && isset($optimize_options['filebased_cache']['exclusions_cookies'])) {
@@ -1347,9 +1513,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         // Add all URLs to an array, but ignore empty URLs
         // If all fields are empty, remove the option from DB
         check_ajax_referer('lwsop_save_excluded_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         if (isset($_POST['data'])) {
             $urls = array();
@@ -1377,9 +1540,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         // Add all Cookies to an array, but ignore empty cookies
         // If all fields are empty, remove the option from DB
         check_ajax_referer('lwsop_save_excluded_cookies_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         if (isset($_POST['data'])) {
             $urls = array();
@@ -1408,9 +1568,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_get_url_preload()
     {
         check_ajax_referer('nonce_lws_optimize_preloading_url_files', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['action'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -1426,9 +1583,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_set_url_preload()
     {
         check_ajax_referer('nonce_lws_optimize_preloading_url_files_set', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         if (isset($_POST['data'])) {
@@ -1452,9 +1606,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_get_url_preload_font()
     {
         check_ajax_referer('nonce_lws_optimize_preloading_url_fonts', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['action'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -1470,9 +1621,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_set_url_preload_font()
     {
         check_ajax_referer('nonce_lws_optimize_preloading_url_fonts_set', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (isset($_POST['data'])) {
             $urls = array();
 
@@ -1500,9 +1648,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_check_preload_update()
     {
         check_ajax_referer('lwsop_check_for_update_preload_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         $optimize_options = get_option('lws_optimize_config_array', []);
 
@@ -1540,21 +1685,26 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
         $optimize_options['filebased_cache']['preload_quantity'] = count($urls);
         $optimize_options['filebased_cache']['preload_done'] = $done;
-        $optimize_options['filebased_cache']['preload_ongoing'] = $optimize_options['filebased_cache']['preload_quantity'] - $done == 0 ? "false" : "true";
 
-        $next = wp_next_scheduled('lws_optimize_start_filebased_preload') ?? null;
-        if ($next != null) {
-            $next = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
+        $all_done = ($optimize_options['filebased_cache']['preload_quantity'] - $done === 0);
+        if ($all_done) {
+            // Preload finished — mark stopped and unschedule the cron
+            $optimize_options['filebased_cache']['preload_ongoing'] = "false";
+            $optimize_options['filebased_cache']['preload']         = "false";
+            $ts = wp_next_scheduled('lws_optimize_start_filebased_preload');
+            if ($ts) {
+                wp_unschedule_event($ts, 'lws_optimize_start_filebased_preload');
+            }
         } else {
+            $optimize_options['filebased_cache']['preload_ongoing'] = "true";
+            // Reschedule only if preload is still running but cron somehow got lost
             if (!wp_next_scheduled('lws_optimize_start_filebased_preload')) {
                 wp_schedule_event(time(), "lws_minute", "lws_optimize_start_filebased_preload");
             }
         }
 
-        $next = wp_next_scheduled('lws_optimize_start_filebased_preload') ?? null;
-        if ($next != null) {
-            $next = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next), 'Y-m-d H:i:s');
-        }
+        $next_ts = wp_next_scheduled('lws_optimize_start_filebased_preload');
+        $next = $next_ts ? get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_ts), 'Y-m-d H:i:s') : null;
 
         $data = [
             'quantity' => $optimize_options['filebased_cache']['preload_quantity'] ?? null,
@@ -1577,11 +1727,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
     public function lwsop_reload_stats()
     {
-        check_ajax_referer('lwsop_reloading_stats_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
-
         $stats = $this->lwsop_recalculate_stats("get");
 
         $stats['desktop']['size'] = $this->lwsOpSizeConvert($stats['desktop']['size'] ?? 0);
@@ -1597,9 +1742,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_get_database_cleaning_time()
     {
         check_ajax_referer('lws_optimize_get_database_cleaning_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $next = wp_next_scheduled('lws_optimize_maintenance_db_weekly') ?? false;
         if (!$next) {
             $next = "-";
@@ -1617,9 +1759,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     */
     public function lws_op_clear_all_caches() {
         check_ajax_referer('lws_op_clear_all_caches_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $this);
         $logger = fopen($this->log_file, 'a');
@@ -1641,9 +1780,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_clear_cache()
     {
         check_ajax_referer('clear_fb_caching', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS, $GLOBALS['lws_optimize']);
         $logger = fopen($this->log_file, 'a');
@@ -1659,9 +1795,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_clear_opcache()
     {
         check_ajax_referer('clear_opcache_caching', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $this->lwsop_remove_opcache();
         wp_die(json_encode(array('code' => 'SUCCESS', 'data' => "/"), JSON_PRETTY_PRINT));
     }
@@ -1669,9 +1802,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_clear_stylecache()
     {
         check_ajax_referer('clear_style_fb_caching', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS . "/cache-css", $this);
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS . "/cache-js", $this);
 
@@ -1685,9 +1815,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_clear_htmlcache()
     {
         check_ajax_referer('clear_html_fb_caching', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS . "/cache", $this);
         $this->lws_optimize_delete_directory(LWS_OP_UPLOADS . "/cache-mobile", $this);
@@ -1704,9 +1831,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_clear_currentcache()
     {
         check_ajax_referer('clear_currentpage_fb_caching', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         // Get the request_uri of the current URL to remove
         // If not found, do not delete anything
@@ -1730,9 +1854,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_set_fb_status()
     {
         check_ajax_referer('change_filebased_cache_status_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         // Validate required parameters
         if (!isset($_POST['timer']) || !isset($_POST['state'])) {
@@ -1787,9 +1908,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_set_fb_timer()
     {
         check_ajax_referer('change_filebased_cache_timer_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['timer'])) {
             wp_die(json_encode(array('code' => "NO_DATA", 'data' => $_POST, 'domain' => site_url())));
         }
@@ -1888,9 +2006,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
     public function lwsop_deactivate_temporarily() {
         check_ajax_referer('lwsop_deactivate_temporarily_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['duration'])) {
             wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
         }
@@ -1946,9 +2061,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_do_pagespeed_test()
     {
         check_ajax_referer('lwsop_doing_pagespeed_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         $url = $_POST['url'] ?? null;
         $type = $_POST['type'] ?? null;
         $date = time();
@@ -2006,18 +2118,12 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_dump_dynamic_cache()
     {
         check_ajax_referer('lwsop_empty_d_cache_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         wp_die($this->lwsop_dump_all_dynamic_caches());
     }
 
     public function lws_optimize_activate_cleaner()
     {
         check_ajax_referer('lwsop_activate_cleaner_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['state'])) {
             wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
         }
@@ -2039,9 +2145,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lws_optimize_manage_maintenance_get()
     {
         check_ajax_referer('lwsop_get_maintenance_db_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         $optimize_options = get_option('lws_optimize_config_array', []);
 
@@ -2067,9 +2170,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         // Add all URLs to an array, but ignore empty URLs
         // If all fields are empty, remove the option from DB
         check_ajax_referer('lwsop_set_maintenance_db_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['formdata'])) {
             $_POST['formdata'] = [];
         }
@@ -2152,9 +2252,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_get_setup_optimize()
     {
         check_ajax_referer('lwsop_change_optimize_configuration_nonce', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
         if (!isset($_POST['action']) || !isset($_POST['value'])) {
             wp_die(json_encode(array('code' => "DATA_MISSING", "data" => $_POST)), JSON_PRETTY_PRINT);
         }
@@ -2191,9 +2288,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     public function lwsop_regenerate_logs()
     {
         check_ajax_referer('lws_regenerate_nonce_logs', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         $dir = wp_upload_dir();
         $file = $dir['basedir'] . '/lwsoptimize/debug.log';
@@ -2208,9 +2302,6 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
     public function lwsOp_sendFeedbackUser() {
         check_ajax_referer('lwsOP_sendFeedbackUser', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_die(json_encode(['code' => 'PERMISSION_DENIED', 'data' => 'Admin access required']), JSON_PRETTY_PRINT);
-        }
 
         if (!isset($_POST['form']) || empty($_POST['form'])) {
             echo json_encode(['code' => 'ERROR_FORM', 'data' => 'No feedback data provided']);
