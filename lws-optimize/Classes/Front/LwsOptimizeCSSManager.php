@@ -10,6 +10,7 @@ use MatthiasMullie\Minify;
  */
 class LwsOptimizeCSSManager
 {
+    // phpcs:disable WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPress.WP.AlternativeFunctions.file_system_operations_touch -- this entire class rewrites <link> tags already present in the rendered HTML output buffer (combining/minifying/deferring them); that's output post-processing, not asset registration, so it cannot go through wp_enqueue_style(). It also writes the combined CSS files to the cache directory on the front-end request hot path, so WP_Filesystem is not appropriate.
     private $content;
     private $content_directory;
     private $preloadable_urls;
@@ -32,6 +33,10 @@ class LwsOptimizeCSSManager
 
         if (!is_dir($this->content_directory)) {
             mkdir($this->content_directory, 0755, true);
+            // Without this, combined/minified CSS only inherits the site-wide
+            // mod_expires rule (no "public"/CDN-Cache-Control), so the LWS CDN
+            // treats every request as a MISS. See lwsop_write_static_assets_cdn_htaccess().
+            $GLOBALS['lws_optimize']->lwsop_write_static_assets_cdn_htaccess($GLOBALS['lws_optimize']->lwsop_get_cache_cdn_date());
         }
     }
 
@@ -49,6 +54,7 @@ class LwsOptimizeCSSManager
 
         $current_links = [];
         $current_media = false;
+        $last_removed_href = null; // href of the last link whose placeholder comment was inserted
 
         $elements = $matches[0];
         // Loop through each tag
@@ -104,6 +110,7 @@ class LwsOptimizeCSSManager
                 if ($media == $current_media) {
                     $current_links[] = $href;
                     $this->content = str_replace($element, "<!-- Removed $href-->", $this->content);
+                    $last_removed_href = $href;
                 } else {
                     // Combine the links stored
                     if (!empty($current_links)) {
@@ -123,7 +130,9 @@ class LwsOptimizeCSSManager
                         }
                     }
 
-                    // Empty the array and add in the current <link> being observed
+                    // Empty the array and add in the current <link> being observed.
+                    // Note: $element was already consumed above by the (2) replacement;
+                    // $last_removed_href is not updated here since no plain placeholder was inserted.
                     $current_links = [];
                     $current_links[] = $href;
                     $current_media = $media;
@@ -166,8 +175,12 @@ class LwsOptimizeCSSManager
                             $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
                         }
 
-                        if (isset($href)) {
-                            $this->content = str_replace("$href-->", "$href -->\n$old_links\n$newLink", $this->content);
+                        if ($last_removed_href !== null) {
+                            $this->content = str_replace(
+                                "<!-- Removed $last_removed_href-->",
+                                "<!-- Removed $last_removed_href -->\n$old_links\n$newLink",
+                                $this->content
+                            );
                         }
                     }
                 }
@@ -189,9 +202,7 @@ class LwsOptimizeCSSManager
         }
 
         if (!is_dir($this->content_directory)) {
-            if (!is_dir($this->content_directory)) {
-                mkdir($this->content_directory, 0755, true);
-            }
+            mkdir($this->content_directory, 0755, true);
         }
 
         if (is_dir($this->content_directory)) {
@@ -207,7 +218,6 @@ class LwsOptimizeCSSManager
                 $retry_needed = false;
                 $minify = new Minify\CSS();
                 $name = "";
-                $full_content = "";
 
                 // Add each CSS file to the minifier
                 foreach ($links as $link) {
@@ -245,7 +255,7 @@ class LwsOptimizeCSSManager
                         if ($content === false || empty($content)) {
                             $response = wp_remote_get($remote_url, array(
                                 'timeout' => 10,
-                                'sslverify' => false
+                                'sslverify' => true
                             ));
 
                             if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
@@ -255,25 +265,23 @@ class LwsOptimizeCSSManager
 
                         // Validate we got actual CSS content, not just the URL echoed back
                         if ($content !== false && !empty($content) && strlen($content) > strlen($remote_url) && strpos($content, '{') !== false) {
-                            // Successfully fetched content - verify it looks like CSS
+                            // Successfully fetched content - verify it looks like CSS.
+                            // Always add via the minifier so it handles @import / url() path resolution
+                            // even in the combine-only (non-minify) path.
                             $name = base_convert(crc32($name . $link), 20, 36);
-                            if ($this->minify) {
-                                $minify->add($content);
-                            } else {
-                                $full_content .= "\n/* Source: $link */\n" . $content;
-                            }
+                            $minify->add($content);
                         } else {
                             // If we can't fetch the remote file, add it to problematic files
                             $problematic_files[] = $link;
                             $retry_needed = true;
                             $debug_info = $content !== false ? ' (got ' . strlen($content) . ' bytes)' : ' (failed to fetch)';
-                            error_log('LwsOptimize: Could not fetch valid remote CSS file: ' . $remote_url . $debug_info);
+                            $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not fetch valid remote CSS file: ' . $remote_url . $debug_info);
                             continue;
                         }
                     } else {
                         // Local file - convert URL to file path
                         $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
-                        $file_path = explode("?ver", $file_path)[0];
+                        $file_path = explode("?", $file_path)[0];
 
                         // Guard against path traversal / arbitrary file read
                         $real_file_path = realpath($file_path);
@@ -283,11 +291,9 @@ class LwsOptimizeCSSManager
                         $file_path = $real_file_path;
 
                         if (file_exists($file_path)) {
-                            if ($this->minify) {
-                                $minify->add($file_path);
-                            } else {
-                                $full_content .= "\n/* Source: $link */\n" . file_get_contents($file_path);
-                            }
+                            // Always add via MatthiasMullie so relative url() / @import paths are
+                            // rewritten correctly regardless of whether minification is active.
+                            $minify->add($file_path);
                             $name = base_convert(crc32($name . $link), 20, 36);
                         }
                     }
@@ -317,10 +323,11 @@ class LwsOptimizeCSSManager
                     return ['final_url' => $path_url, 'problematic' => $problematic_files];
                 }
 
-                // Minify and combine all files into one, saved in $path
-                // If it worked, we can prepare the new <link> tag
+                // Combine (and optionally minify) all files into one, saved in $path.
+                // Always run through MatthiasMullie so url() / @import paths are resolved
+                // correctly regardless of whether the minify flag is set.
                 try {
-                    if ($this->minify && $minify->minify($path) && file_exists($path)) {
+                    if ($minify->minify($path) && file_exists($path)) {
                         $file_contents = file_get_contents($path);
                         foreach ($this->media_convertion as $media_element) {
                             $file_contents = str_replace($media_element['original'], $media_element['new'], $file_contents);
@@ -334,22 +341,11 @@ class LwsOptimizeCSSManager
 
                         return ['final_url' => $path_url, 'problematic' => $problematic_files];
                     } else {
-                        // Save the combined content without minification
-                        file_put_contents($path, $full_content);
-                        if (file_exists($path)) {
-                            if ($add_cache) {
-                                $this->files['file'] += 1;
-                                $this->files['size'] += filesize($path) ?? 0;
-                            }
-
-                            return ['final_url' => $path_url, 'problematic' => $problematic_files];
-                        }
-                        // If we couldn't save the file, return false
                         return ['final_url' => false, 'problematic' => $problematic_files];
                     }
                 } catch (\MatthiasMullie\Minify\Exceptions\FileImportException $e) {
                     // Log the error
-                    error_log('LwsOptimize CSS Circular Reference: ' . $e->getMessage());
+                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize CSS Circular Reference: ' . $e->getMessage());
 
                     // Extract the problematic file name from the error message
                     if (preg_match('/Failed to import file "([^"]+)"/', $e->getMessage(), $matches)) {
@@ -358,12 +354,12 @@ class LwsOptimizeCSSManager
                         // Find which link corresponds to this file
                         foreach ($links as $link) {
                             $file_path = str_replace(get_site_url() . "/", ABSPATH, $link);
-                            $file_path = explode("?ver", $file_path)[0];
+                            $file_path = explode("?", $file_path)[0];
 
                             if (strpos($problem_file, $file_path) !== false || strpos($file_path, $problem_file) !== false) {
                                 $problematic_files[] = $link;
                                 $retry_needed = true;
-                                error_log('LwsOptimize: Removed problematic CSS file from combination: ' . $link);
+                                $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Removed problematic CSS file from combination: ' . $link);
                                 break;
                             }
                         }
@@ -375,7 +371,7 @@ class LwsOptimizeCSSManager
                                 if (strpos($link, $css_file) !== false) {
                                     $problematic_files[] = $link;
                                     $retry_needed = true;
-                                    error_log('LwsOptimize: Removed problematic CSS file from combination (pattern match): ' . $link);
+                                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Removed problematic CSS file from combination (pattern match): ' . $link);
                                     break;
                                 }
                             }
@@ -384,17 +380,17 @@ class LwsOptimizeCSSManager
 
                     // If we've already excluded all files, stop retrying
                     if (count($problematic_files) >= count($links)) {
-                        error_log('LwsOptimize: All CSS files caused circular references, aborting combination.');
+                        $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: All CSS files caused circular references, aborting combination.');
                         return ['final_url' => '', 'problematic' => $problematic_files];
                     }
 
                     // If no files were identified as problematic in this iteration, exit the loop
                     if (!$retry_needed) {
-                        error_log('LwsOptimize: Could not identify problematic CSS file, aborting combination.');
+                        $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not identify problematic CSS file, aborting combination.');
                         return ['final_url' => '', 'problematic' => $problematic_files];
                     }
                 } catch (\Exception $e) {
-                    error_log('LwsOptimize CSS Error: ' . $e->getMessage());
+                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize CSS Error: ' . $e->getMessage());
                     return ['final_url' => '', 'problematic' => $problematic_files];
 
                 }
@@ -484,7 +480,7 @@ class LwsOptimizeCSSManager
                     if ($content === false || empty($content)) {
                         $response = wp_remote_get($remote_url, array(
                             'timeout' => 10,
-                            'sslverify' => false
+                            'sslverify' => true
                         ));
 
                         if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
@@ -495,7 +491,7 @@ class LwsOptimizeCSSManager
                     // Validate we got actual CSS content
                     if ($content === false || empty($content) || strlen($content) <= strlen($remote_url) || strpos($content, '{') === false) {
                         $debug_info = $content !== false ? ' (got ' . strlen($content) . ' bytes)' : ' (failed to fetch)';
-                        error_log('LwsOptimize: Could not fetch valid remote CSS file for minification: ' . $remote_url . $debug_info);
+                        $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not fetch valid remote CSS file for minification: ' . $remote_url . $debug_info);
                         continue;
                     }
 
@@ -503,7 +499,7 @@ class LwsOptimizeCSSManager
                 } else {
                     // Local file - convert URL to file path
                     $file_path = str_replace(get_site_url() . "/", ABSPATH, $file_path);
-                    $file_path = explode("?ver", $file_path)[0];
+                    $file_path = explode("?", $file_path)[0];
 
                     // Guard against path traversal / arbitrary file read
                     $real_file_path = realpath($file_path);
@@ -532,6 +528,11 @@ class LwsOptimizeCSSManager
                     if (!file_exists($path)) {
                         touch($path);
                     }
+                } else {
+                    // File already exists — skip regeneration but still swap the link to the cached URL
+                    $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
+                    $this->content = str_replace($element, $newLink, $this->content);
+                    continue;
                 }
 
                 if ($add_cache) {
@@ -657,7 +658,7 @@ class LwsOptimizeCSSManager
                 return ['state' => $state, 'data' => $data];
             }
         } catch (\Exception $e) {
-            error_log("LwsOptimize.php::lwsop_check_option | " . $e);
+            $GLOBALS['lws_optimize']->lwsop_debug_log("LwsOptimize.php::lwsop_check_option | " . $e);
         }
 
         return ['state' => "false", 'data' => []];
@@ -724,8 +725,9 @@ class LwsOptimizeCSSManager
             // If the URL is found in a comment, ignore it as there is no point in processing unused files
             preg_match_all("/(<!--\s*.*?-->)/xs", $this->content, $matches);
             $comments = $matches[0] ? $matches[0] : [];
+            $quoted_url = preg_quote($url, '~');
             foreach ($comments as $comment) {
-                if (preg_match("~$url~xs", $comment)) {
+                if (preg_match("~$quoted_url~xs", $comment)) {
                     return true;
                 }
             }
@@ -734,7 +736,7 @@ class LwsOptimizeCSSManager
             preg_match_all("/(<script\s*.*?<\/script>)/xs", $this->content, $matches);
             $scripts = $matches[0] ? $matches[0] : [];
             foreach ($scripts as $comment) {
-                if (preg_match("~$url~xs", $comment)) {
+                if (preg_match("~$quoted_url~xs", $comment)) {
                     return true;
                 }
             }
@@ -755,4 +757,5 @@ class LwsOptimizeCSSManager
 
         return false;
     }
+    // phpcs:enable WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPress.WP.AlternativeFunctions.file_system_operations_touch
 }

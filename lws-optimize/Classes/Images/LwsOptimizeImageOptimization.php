@@ -77,7 +77,7 @@ class LwsOptimizeImageOptimization
             $tmp = explode("/", $file['type']);
             $starting_type = $tmp[0] == "image" ? $tmp[1] : null;
             if ($starting_type === null) {
-                error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $file, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $file, 'time' => microtime(true) - $timer]));
                 return $file;
             }
 
@@ -89,7 +89,7 @@ class LwsOptimizeImageOptimization
             // Create a new version of the image in the new image type and overwrite the original file
             // On error, give up on the convertion
             if (!$this->lws_optimize_convert_image($file['tmp_name'], $file['tmp_name'], $quality, $file['type'], $type, $size)) {
-                error_log(json_encode(['code' => 'CONVERT_FAIL', 'message' => 'File optimisation has failed.', 'data' => $file, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'CONVERT_FAIL', 'message' => 'File optimisation has failed.', 'data' => $file, 'time' => microtime(true) - $timer]));
                 return $file;
             }
 
@@ -183,13 +183,13 @@ class LwsOptimizeImageOptimization
 
             // Abort if any parameters are null
             if ($image === null || $origin === null || $end === null || $output === null) {
-                error_log(json_encode(['code' => 'NO_PARAMETERS', 'message' => 'No/missing parameters. Cannot proceed.', 'data' => null, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'NO_PARAMETERS', 'message' => 'No/missing parameters. Cannot proceed.', 'data' => null, 'time' => microtime(true) - $timer]));
                 return false;
             }
 
             // Abort if the Imagick class is not installed
             if (!class_exists("Imagick")) {
-                error_log(json_encode(['code' => 'IMAGICK_NOT_FOUND', 'message' => 'Imagick was not found on this server. This plugin relies on Imagick to optimize images and cannot work without.', 'data' => null, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'IMAGICK_NOT_FOUND', 'message' => 'Imagick was not found on this server. This plugin relies on Imagick to optimize images and cannot work without.', 'data' => null, 'time' => microtime(true) - $timer]));
                 return false;
             }
 
@@ -203,7 +203,7 @@ class LwsOptimizeImageOptimization
             $tmp = explode("/", $origin);
             $starting_type = $tmp[0] == "image" ? $tmp[1] : $tmp[0];
             if ($starting_type === null) {
-                error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $origin, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid.', 'data' => $origin, 'time' => microtime(true) - $timer]));
                 return false;
             }
 
@@ -212,19 +212,19 @@ class LwsOptimizeImageOptimization
             $ending_type = $tmp[0] == "image" ? $tmp[1] : $tmp[0];
 
             if ($ending_type === null) {
-                error_log(json_encode(['code' => 'INVALID_DESTINATION', 'message' => 'Destination type is not an image or mime-type is invalid.', 'data' => $end, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'INVALID_DESTINATION', 'message' => 'Destination type is not an image or mime-type is invalid.', 'data' => $end, 'time' => microtime(true) - $timer]));
                 return false;
             }
 
             // If the current image type or the wanted image type are not supported by this version of Imagick, then abort
             if (!in_array(strtoupper($starting_type), $supported_formats) || !in_array(strtoupper($ending_type), $supported_formats)) {
-                error_log(json_encode(['code' => 'UNSUPPORTED_FORMAT', 'message' => 'Selected image type is not usable with this version of Imagick. Either choose another type or update to a newer Imagick version.', 'data' => ['origin' => in_array(strtoupper($starting_type), $supported_formats), 'destination' => in_array(strtoupper($ending_type), $supported_formats)], 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'UNSUPPORTED_FORMAT', 'message' => 'Selected image type is not usable with this version of Imagick. Either choose another type or update to a newer Imagick version.', 'data' => ['origin' => in_array(strtoupper($starting_type), $supported_formats), 'destination' => in_array(strtoupper($ending_type), $supported_formats)], 'time' => microtime(true) - $timer]));
                 return false;
             }
 
             // Try to read the given image ; If it fails, the image may be corrupted
             if (!$img->readImage($image)) {
-                error_log(json_encode(['code' => 'IMAGE_UNREADABLE', 'message' => 'Could not read given image. Make sure the image exists and is readable.', 'data' => $image, 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'IMAGE_UNREADABLE', 'message' => 'Could not read given image. Make sure the image exists and is readable.', 'data' => $image, 'time' => microtime(true) - $timer]));
                 return false;
             }
 
@@ -277,7 +277,7 @@ class LwsOptimizeImageOptimization
                 $img->stripImage();
             }
             if (!$img->setImageFormat($ending_type)) {
-                error_log(json_encode(['code' => 'CONVERTION_FAIL', 'message' => 'Could not convert the image into the given type.', 'data' => ['image' => $image, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'CONVERTION_FAIL', 'message' => 'Could not convert the image into the given type.', 'data' => ['image' => $image, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
                 return false;
             }
 
@@ -285,14 +285,14 @@ class LwsOptimizeImageOptimization
             // If the first time fail, try again using another function. If if fails again, abort
             try {
                 if (!$img->writeImage($output)) {
-                    error_log(json_encode(['code' => 'WRITE_FAIL', 'message' => 'Failed to write the new image using writeImage', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                    $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'WRITE_FAIL', 'message' => 'Failed to write the new image using writeImage', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
                     if (!$img->writeImageFile(fopen($output, "wb"))) {
-                        error_log(json_encode(['code' => 'WRITE_IMAGE_FAIL', 'message' => 'Failed to write the new image using writeImageFile. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                        $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'WRITE_IMAGE_FAIL', 'message' => 'Failed to write the new image using writeImageFile. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
                         return false;
                     }
                 }
             } catch (\Exception $e) {
-                error_log(json_encode(['code' => 'UNKNOWN_FUNCTION', 'message' => 'Imagick::writeImage or Imagick::writeImageFile not found. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'UNKNOWN_FUNCTION', 'message' => 'Imagick::writeImage or Imagick::writeImageFile not found. Abort.', 'data' => ['path' => $output, 'type' => $ending_type], 'time' => microtime(true) - $timer]));
                 return false;
             }
 
@@ -302,7 +302,7 @@ class LwsOptimizeImageOptimization
 
             return true;
         } catch (\Exception $e) {
-            error_log(json_encode(['code' => 'UNKNOWN', 'message' => $e->getMessage(), 'data' => func_get_args(), 'time' => microtime(true) - $timer]));
+            $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'UNKNOWN', 'message' => $e->getMessage(), 'data' => func_get_args(), 'time' => microtime(true) - $timer]));
             return false;
         }
     }

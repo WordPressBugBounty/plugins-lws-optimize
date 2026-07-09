@@ -32,6 +32,7 @@ class LwsOptimizeUsageStats
     /**
      * Track a hit/miss/bypass event. Optionally with byte count (HTML size served).
      */
+    // phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_fopen,WordPress.WP.AlternativeFunctions.file_system_operations_fclose,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- per its own docblock, this method runs on every cache hit/miss; a single fopen+flock+fwrite is negligible next to generating a WP page, WP_Filesystem would not be
     public static function track($type, $bytes = 0)
     {
         if (!in_array($type, ['hits', 'misses', 'bypass'], true)) {
@@ -83,6 +84,7 @@ class LwsOptimizeUsageStats
         @flock($fp, LOCK_UN);
         @fclose($fp);
     }
+    // phpcs:enable WordPress.WP.AlternativeFunctions.file_system_operations_fopen,WordPress.WP.AlternativeFunctions.file_system_operations_fclose,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir
 
     /**
      * Lit le fichier stats.json et retourne le tableau de stats (max 30 jours).

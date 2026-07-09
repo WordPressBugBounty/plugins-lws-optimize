@@ -11,6 +11,7 @@ use MatthiasMullie\Minify;
  */
 class LwsOptimizeJSManager
 {
+    // phpcs:disable WordPress.WP.EnqueuedResources.NonEnqueuedScript,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPress.WP.AlternativeFunctions.file_system_operations_touch -- this entire class rewrites <script> tags already present in the rendered HTML output buffer (combining/minifying/deferring them); that's output post-processing, not asset registration, so it cannot go through wp_enqueue_script(). It also writes the combined JS files to the cache directory on the front-end request hot path, so WP_Filesystem is not appropriate.
     private $content;
     private $content_directory;
     private $excluded_scripts;
@@ -29,6 +30,10 @@ class LwsOptimizeJSManager
 
         if (!is_dir($this->content_directory)) {
             mkdir($this->content_directory, 0755, true);
+            // Without this, combined/minified JS only inherits the site-wide
+            // mod_expires rule (no "public"/CDN-Cache-Control), so the LWS CDN
+            // treats every request as a MISS. See lwsop_write_static_assets_cdn_htaccess().
+            $GLOBALS['lws_optimize']->lwsop_write_static_assets_cdn_htaccess($GLOBALS['lws_optimize']->lwsop_get_cache_cdn_date());
         }
     }
 
@@ -46,6 +51,7 @@ class LwsOptimizeJSManager
 
         $current_scripts = [];
         $ids = "";
+        $last_removed_src = null; // src of the last script whose placeholder comment was inserted
 
         $elements = $matches[0];
 
@@ -118,6 +124,7 @@ class LwsOptimizeJSManager
                 $current_scripts[] = $src;
                 $ids .= " " . $id;
                 $this->content = str_replace($element, "<!-- Removed $src-->", $this->content);
+                $last_removed_src = $src;
             }
 
             // If we reached the last script, add what is currently in the array to the DOM
@@ -132,8 +139,12 @@ class LwsOptimizeJSManager
                         $old_scripts .= "<script type='text/javascript' src='$problem_file'></script>\n";
                     }
 
-                    if (isset($src)) {
-                        $this->content = str_replace("$src-->", "$src -->$old_scripts$newLink", $this->content);
+                    if ($last_removed_src !== null) {
+                        $this->content = str_replace(
+                            "<!-- Removed $last_removed_src-->",
+                            "<!-- Removed $last_removed_src -->\n$old_scripts$newLink",
+                            $this->content
+                        );
                     }
                 }
             }
@@ -213,7 +224,7 @@ class LwsOptimizeJSManager
                             // If we can't fetch the remote file, add it to problematic files
                             $problematic_files[] = $script;
                             $retry_needed = true;
-                            error_log('LwsOptimize: Could not fetch remote JS file: ' . $file_path);
+                            $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not fetch remote JS file: ' . $file_path);
                             continue;
                         }
                     } else {
@@ -245,7 +256,7 @@ class LwsOptimizeJSManager
                         } else {
                             $problematic_files[] = $script;
                             $retry_needed = true;
-                            error_log('LwsOptimize: Could not find JS file: ' . $file_path);
+                            $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not find JS file: ' . $file_path);
                             continue;
                         }
                     }
@@ -307,7 +318,7 @@ class LwsOptimizeJSManager
                     }
                 } catch (\Exception $e) {
                     // Log the error
-                    error_log('LwsOptimize JS Error: ' . $e->getMessage());
+                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize JS Error: ' . $e->getMessage());
 
                     // Try to identify problematic file if possible
                     if (preg_match('/Failed to (import|parse) file "([^"]+)"/', $e->getMessage(), $matches)) {
@@ -321,7 +332,7 @@ class LwsOptimizeJSManager
                             if (strpos($problem_file, $file_path) !== false || strpos($file_path, $problem_file) !== false) {
                                 $problematic_files[] = $script;
                                 $retry_needed = true;
-                                error_log('LwsOptimize: Removed problematic JS file from combination: ' . $script);
+                                $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Removed problematic JS file from combination: ' . $script);
                                 break;
                             }
                         }
@@ -333,7 +344,7 @@ class LwsOptimizeJSManager
                                 if (strpos($script, $js_file) !== false) {
                                     $problematic_files[] = $script;
                                     $retry_needed = true;
-                                    error_log('LwsOptimize: Removed problematic JS file from combination (pattern match): ' . $script);
+                                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Removed problematic JS file from combination (pattern match): ' . $script);
                                     break;
                                 }
                             }
@@ -342,13 +353,13 @@ class LwsOptimizeJSManager
 
                     // If we've already excluded all files, stop retrying
                     if (count($problematic_files) >= count($scripts)) {
-                        error_log('LwsOptimize: All JS files caused errors, aborting combination.');
+                        $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: All JS files caused errors, aborting combination.');
                         return ['final_url' => false, 'problematic' => $problematic_files];
                     }
 
                     // If no files were identified as problematic in this iteration, exit the loop
                     if (!$retry_needed) {
-                        error_log('LwsOptimize: Could not identify problematic JS file, aborting combination.');
+                        $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not identify problematic JS file, aborting combination.');
                         return ['final_url' => false, 'problematic' => $problematic_files];
                     }
                 }
@@ -374,6 +385,7 @@ class LwsOptimizeJSManager
         // Loop through the <script>, get their attributes and verify if we have to minify them
         // Then we minify it and replace the old URL by the minified one
         foreach ($elements as $element) {
+            unset($temp_file); // prevent stale remote temp path from leaking into local-file iterations
             if (substr($element, 0, 7) == "<script") {
                 preg_match("/src\=[\'\"]([^\'\"]+)[\'\"]/", $element, $href);
                 $href = $href[1] ?? "";
@@ -439,7 +451,7 @@ class LwsOptimizeJSManager
                 if (strpos($file_path, 'http') === 0) {
                     $content = @file_get_contents($file_path);
                     if ($content === false) {
-                        error_log('LwsOptimize: Could not fetch remote JS file for minification: ' . $file_path);
+                        $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: Could not fetch remote JS file for minification: ' . $file_path);
                         continue;
                     }
 
@@ -447,7 +459,7 @@ class LwsOptimizeJSManager
                     file_put_contents($temp_file, $content);
                     $file_path = $temp_file;
                 } else if (!file_exists($file_path)) {
-                    error_log('LwsOptimize: JS file does not exist for minification: ' . $file_path);
+                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize: JS file does not exist for minification: ' . $file_path);
                     continue;
                 }
 
@@ -528,7 +540,7 @@ class LwsOptimizeJSManager
                         wp_delete_file($temp_file);
                     }
                 } catch (\Exception $e) {
-                    error_log('LwsOptimize JS Minification Error: ' . $e->getMessage() . ' for file: ' . $href);
+                    $GLOBALS['lws_optimize']->lwsop_debug_log('LwsOptimize JS Minification Error: ' . $e->getMessage() . ' for file: ' . $href);
 
                     // Clean up temporary files on error
                     $temp_processed_file = $path . '.tmp';
@@ -785,10 +797,18 @@ class LwsOptimizeJSManager
                     }
                 }
 
-                // Set content or src
+                // Swap the placeholder for the real script in its original spot so the
+                // DOM reverts to what it would have looked like without delaying, instead
+                // of leaving the inert lws-delay-script marker behind forever.
+                var originalNode = nextScript.node;
+                var appendTarget = document.body || document.head;
                 if (nextScript.isInline) {
                     newScript.textContent = nextScript.content;
-                    document.head.appendChild(newScript);
+                    if (originalNode && originalNode.parentNode) {
+                        originalNode.parentNode.replaceChild(newScript, originalNode);
+                    } else {
+                        appendTarget.appendChild(newScript);
+                    }
                     loadingInProgress = false;
                     setTimeout(processQueue, 0); // Process next immediately
                 } else {
@@ -797,7 +817,11 @@ class LwsOptimizeJSManager
                         setTimeout(processQueue, 0); // Process next after load
                     };
                     newScript.src = nextScript.src;
-                    document.head.appendChild(newScript);
+                    if (originalNode && originalNode.parentNode) {
+                        originalNode.parentNode.replaceChild(newScript, originalNode);
+                    } else {
+                        appendTarget.appendChild(newScript);
+                    }
                 }
             }
 
@@ -813,7 +837,8 @@ class LwsOptimizeJSManager
                         loadingQueue.push({
                             isInline: false,
                             src: script.getAttribute('data-lwsdelay-src'),
-                            attrs: script.attributes
+                            attrs: script.attributes,
+                            node: script
                         });
                     } else if (script.hasAttribute('data-lwsdelay-inline')) {
                         // Inline script
@@ -832,7 +857,8 @@ class LwsOptimizeJSManager
                         loadingQueue.push({
                             isInline: true,
                             content: content,
-                            attrs: script.attributes
+                            attrs: script.attributes,
+                            node: script
                         });
                     }
                 });
@@ -842,13 +868,11 @@ class LwsOptimizeJSManager
             };
 
             // Add event listeners with passive option for better performance
-            setTimeout(function() {
-                ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(function(e) {
-                    document.addEventListener(e, activateScripts, {passive: true, once: true});
-                });
-                // Fallback: Load scripts after 5 seconds even without user interaction
-                setTimeout(activateScripts, 5000);
-            }, 100);
+            ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'].forEach(function(e) {
+                document.addEventListener(e, activateScripts, {passive: true, once: true});
+            });
+            // Fallback: Load scripts after 5 seconds even without user interaction
+            setTimeout(activateScripts, 5000);
         });
         </script>";
 
@@ -861,33 +885,11 @@ class LwsOptimizeJSManager
 
     private function _set_excluded()
     {
-        $tag_start = "";
-        $tag_end = "";
-        $tags = [];
-
-        // Looping through each character of the $content...
-        for ($i = 0; $i < strlen($this->content); $i++) {
-            // If we find at the character $i the beginning of a <link> tag, we keep note of the current position
-            if (substr($this->content, $i, 15) == "document.write(") {
-                $tag_start = $i;
-            }
-
-            // If we found a <link> tag and have started to read it...
-            if (!empty($tag_start) && is_numeric($tag_start) && $i > $tag_start && substr($this->content, $i, 1) == ")") {
-                // If we are at the very end of the <link> tag, we keep note of its position
-                // then we fetch the content of the tag and add it to the listing
-                $tag_end = $i;
-                $text = substr($this->content, $tag_start, ($tag_end - $tag_start) + 1);
-                array_push($tags, array("start" => $tag_start, "end" => $tag_end, "text" => $text));
-
-                // Reinitialize the tracking of the tags
-                $tag_start = "";
-                $tag_end = "";
-            }
-        }
-
-        foreach (array_reverse($tags) as $excluded) {
-            $this->excluded_scripts .= $excluded['text'];
+        // Collect all document.write(...) call sites so they can be excluded from combination.
+        preg_match_all('/(document\.write\s*\([^)]*\))/xs', $this->content, $matches);
+        $tags = $matches[0] ?? [];
+        foreach (array_reverse($tags) as $text) {
+            $this->excluded_scripts .= $text;
         }
     }
 
@@ -910,7 +912,7 @@ class LwsOptimizeJSManager
             }
             return ['state' => "false", 'data' => []];
         } catch (\Exception $e) {
-            error_log("LwsOptimize.php::lwsop_check_option | " . $e);
+            $GLOBALS['lws_optimize']->lwsop_debug_log("LwsOptimize.php::lwsop_check_option | " . $e);
             return ['state' => "false", 'data' => []];
         }
     }
@@ -1001,7 +1003,7 @@ class LwsOptimizeJSManager
             }
         }
 
-        $httpHost = str_replace("www.", "", $_SERVER["HTTP_HOST"]);
+        $httpHost = str_replace("www.", "", isset($_SERVER["HTTP_HOST"]) ? sanitize_text_field(wp_unslash($_SERVER["HTTP_HOST"])) : '');
 
         //<script src="https://server1.opentracker.net/?site=www.site.com"></script>
         if (preg_match("/" . preg_quote($httpHost, "/") . "/i", $url)) {
@@ -1012,15 +1014,16 @@ class LwsOptimizeJSManager
             return true;
         }
 
-        if (preg_match("/document\s*\).ready\s*\(/xs", (@file_get_contents($url) ?? ''), $matches)) {
-            return true;
-        }
+        // jQuery is already excluded by name pattern above; reading the file over HTTP on every
+        // uncached page load (up to N requests per page) is too costly and unreliable.
+        // Removed the synchronous file_get_contents($url) check.
 
         // If the URL is found in document.write(), ignore it
         preg_match_all("/(document.write\(\s*[^\)]*+\))/xs", $this->content, $matches);
         $writes = $matches[0] ? $matches[0] : [];
+        $quoted_url = preg_quote($url, '~');
         foreach ($writes as $write) {
-            if (preg_match("~$url~xs", $write)) {
+            if (preg_match("~$quoted_url~xs", $write)) {
                 return true;
             }
         }
@@ -1029,7 +1032,7 @@ class LwsOptimizeJSManager
         preg_match_all("/<!--(?:\[if[^\]]*\]>)?.*?(?:<!\[endif\])?-->/s", $this->content, $matches);
         $comments = $matches[0] ? $matches[0] : [];
         foreach ($comments as $comment) {
-            if (preg_match("~" . preg_quote($url, "~") . "~is", $comment)) {
+            if (preg_match("~$quoted_url~is", $comment)) {
                 return true;
             }
         }
@@ -1106,7 +1109,7 @@ class LwsOptimizeJSManager
             preg_match_all("/(<!--\s*.*?-->)/xs", $this->content, $matches);
             $comments = $matches[0] ? $matches[0] : [];
             foreach ($comments as $comment) {
-                if (preg_match("~$url~xs", $comment)) {
+                if (preg_match("~" . preg_quote($url, '~') . "~xs", $comment)) {
                     return true;
                 }
             }
@@ -1119,10 +1122,6 @@ class LwsOptimizeJSManager
             }
 
             foreach ($defer_js_exclusions as $exclusion) {
-                // 4.3.0 — match en SUBSTRING (strpos) en plus du regex strict ^...$
-                // Avant : "wp-includes/js/dist/i18n" devait être écrit "*wp-includes/js/dist/i18n*"
-                // sinon ne matchait jamais l'URL https://site.com/wp-includes/js/dist/i18n.min.js?ver=…
-                // Maintenant : les 2 formats fonctionnent (avec ou sans wildcards).
                 if ($exclusion !== '' && strpos($url, $exclusion) !== false) {
                     return true;
                 }
@@ -1142,7 +1141,6 @@ class LwsOptimizeJSManager
             }
 
             foreach ($delay_js_exclusions as $exclusion) {
-                // 4.3.0 — même fix substring pour delay_js (cf commentaire dans defer ci-dessus).
                 if ($exclusion !== '' && strpos($url, $exclusion) !== false) {
                     return true;
                 }
@@ -1170,4 +1168,5 @@ class LwsOptimizeJSManager
 
         return false;
     }
+    // phpcs:enable WordPress.WP.EnqueuedResources.NonEnqueuedScript,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPress.WP.AlternativeFunctions.file_system_operations_touch
 }

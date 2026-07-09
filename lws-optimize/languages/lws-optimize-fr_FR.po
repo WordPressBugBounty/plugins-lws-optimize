@@ -2200,8 +2200,8 @@ msgstr "Premier"
 msgid "Last"
 msgstr "Dernier"
 
-msgid "Setting a high preload value may cause performance issues on your website. For most sites, a value of 1-2 pages per minute is recommended."
-msgstr "Définir une valeur de préchargement élevée peut causer des problèmes de performance sur votre site. Pour la plupart des sites, une valeur de 1 à 2 pages par minute est recommandée."
+msgid "Setting this value too high may cause rate-limit issues due to a large amount of requests being sent per minute, which risk breaking the preloading. For most sites, a value of 1-2 pages per minute is recommended."
+msgstr "Définir une valeur trop élevée peut entraîner des problèmes de limitation de débit en raison du grand nombre de requêtes envoyées par minute, ce qui risque de compromettre le préchargement. Pour la plupart des sites, une valeur de 1 à 2 pages par minute est recommandée."
 
 msgid "Back to simple mode"
 msgstr "Retour au mode simplifié"
@@ -2420,7 +2420,7 @@ msgid "No zone were found for this token. Make sure the domain has been linked t
 msgstr "Aucune zone n'a été trouvée pour ce jeton. Assurez-vous que le domaine a été lié à votre compte"
 
 msgid "Unknown data returned."
-msgstr "Inconnue données retournée."
+msgstr "Données inconnues reçues."
 
 msgid "CloudFlare Zone found"
 msgstr "Zone CloudFlare trouvée"
@@ -2863,3 +2863,268 @@ msgstr "L'extension PHP « Memcached » n'est pas installée sur ce serveur. Con
 
 msgid "The Memcached server is not reachable (localhost:11211). The service may be stopped or blocked by the firewall. Contact your hosting provider."
 msgstr "Le serveur Memcached n'est pas joignable (localhost:11211). Le service est peut-être arrêté ou bloqué par le pare-feu. Contactez votre hébergeur."
+
+msgid "Older than 1 day"
+msgstr "Plus d'1 jour"
+
+msgid "Older than 2 days"
+msgstr "Plus de 2 jours"
+
+msgid "Older than 7 days"
+msgstr "Plus de 7 jours"
+
+msgid "Older than 30 days"
+msgstr "Plus de 30 jours"
+
+msgid "Older than 90 days"
+msgstr "Plus de 90 jours"
+
+msgid "All data"
+msgstr "Toutes les données"
+
+msgid "Delete selected data"
+msgstr "Supprimer les données sélectionnées"
+
+msgid "Performance by page"
+msgstr "Performance par page"
+
+msgid "Sorted by page load speed — the slowest pages appear first. Use the column filters to narrow down. Focus on red and orange values first."
+msgstr "Trié par vitesse de chargement — les pages les plus lentes apparaissent en premier. Utilisez les filtres de colonnes pour affiner. Concentrez-vous d'abord sur les valeurs rouges et oranges."
+
+msgid "Loading data…"
+msgstr "Chargement des données…"
+
+# #LWS RUM Dashboard — missing strings##
+msgid "RUM — Real User Monitoring"
+msgstr "RUM — Surveillance des utilisateurs réels"
+
+msgid "Page"
+msgstr "Page"
+
+msgid "All"
+msgstr "Tous"
+
+msgid "Filter path…"
+msgstr "Filtrer par chemin…"
+
+msgid "No data collected yet. RUM starts recording as soon as visitors browse your site."
+msgstr "Aucune donnée collectée pour le moment. Le RUM commence à enregistrer dès que des visiteurs naviguent sur votre site."
+
+msgid "Failed to load data."
+msgstr "Échec du chargement des données."
+
+msgid "Delete ALL visit data?"
+msgstr "Supprimer TOUTES les données de visite ?"
+
+msgid "Delete visit data older than {d} days?"
+msgstr "Supprimer les données de visite de plus de {d} jours ?"
+
+msgid "Data deleted — reloading…"
+msgstr "Données supprimées — rechargement…"
+
+msgid "Show _MENU_ pages"
+msgstr "Afficher _MENU_ pages"
+
+msgid "Showing _START_ to _END_ of _TOTAL_ pages"
+msgstr "Affichage de _START_ à _END_ sur _TOTAL_ pages"
+
+msgid "No pages found"
+msgstr "Aucune page trouvée"
+
+msgid "No matching pages found"
+msgstr "Aucune page correspondante trouvée"
+
+msgid "Details"
+msgstr "Détails"
+
+msgid "No visit detail available for this page."
+msgstr "Aucun détail de visite disponible pour cette page."
+
+msgid "Cloudflare APO"
+msgstr "Cloudflare APO"
+
+msgid "Delivers your pages from the Cloudflare location closest to each visitor, so your site loads quickly wherever they are. Requires a Cloudflare account and an API token with cache permissions."
+msgstr "Diffuse vos pages depuis le serveur Cloudflare le plus proche de chaque visiteur, pour que votre site s'affiche rapidement où qu'il se trouve. Nécessite un compte Cloudflare et un jeton API avec les droits sur le cache."
+
+msgid "Keeps a copy of your pages on Cloudflare's network so they load faster for visitors anywhere in the world. This copy updates automatically every time you publish or edit content."
+msgstr "Conserve une copie de vos pages sur le réseau Cloudflare afin qu'elles s'affichent plus vite pour les visiteurs, où qu'ils soient dans le monde. Cette copie se met à jour automatiquement à chaque publication ou modification de contenu."
+
+msgid "⚠ Turn on the Cloudflare integration above first to use this feature."
+msgstr "⚠ Activez d'abord l'intégration Cloudflare ci-dessus pour utiliser cette fonctionnalité."
+
+msgid "Cloudflare Zone ID:"
+msgstr "ID de zone Cloudflare :"
+
+msgid "API Token:"
+msgstr "Jeton API :"
+
+msgid "Turn on for this site"
+msgstr "Activer pour ce site"
+
+msgid "✓ Turned on since"
+msgstr "✓ Activé depuis le"
+
+msgid "Not turned on yet: click the button above to enable it before using the switch on the right."
+msgstr "Pas encore activé : cliquez sur le bouton ci-dessus pour l'activer avant d'utiliser l'interrupteur à droite."
+
+msgid "Use the button on the left first"
+msgstr "Utilisez d'abord le bouton à gauche"
+
+msgid "Turning on…"
+msgstr "Activation en cours…"
+
+msgid "Turned on"
+msgstr "Activé"
+
+msgid "Faster loading with Cloudflare is now on"
+msgstr "Le chargement plus rapide avec Cloudflare est maintenant activé"
+
+msgid "Could not turn it on: "
+msgstr "Impossible de l'activer : "
+
+msgid "Feedback"
+msgstr "Feedback"
+
+msgid "Share your feedback"
+msgstr "Partagez votre avis"
+
+msgid "Feedback type:"
+msgstr "Type de retour :"
+
+msgid "Name (optional):"
+msgstr "Nom (optionnel) :"
+
+msgid "Email (optional):"
+msgstr "Email (optionnel) :"
+
+msgid "Your message:"
+msgstr "Votre message :"
+
+msgid "Your name"
+msgstr "Votre nom"
+
+msgid "Describe your idea, suggestion or issue..."
+msgstr "Décrivez votre idée, suggestion ou problème..."
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Send"
+msgstr "Envoyer"
+
+msgid "Sending..."
+msgstr "Envoi..."
+
+msgid "Your feedback has been received. Thank you for helping us improve our service."
+msgstr "Votre retour a bien été pris en compte. Merci de participer à l'amélioration de notre service."
+
+msgid "Error while sending. Please try again."
+msgstr "Erreur lors de l'envoi. Veuillez réessayer."
+
+msgid "The form is incomplete or invalid. Please check your information."
+msgstr "Le formulaire est incomplet ou invalide. Veuillez vérifier vos informations."
+
+msgid "An unexpected error occurred. Please try again later."
+msgstr "Une erreur inattendue est survenue. Veuillez réessayer plus tard."
+
+msgid "Suggestion"
+msgstr "Suggestion"
+
+msgid "Bug / Issue"
+msgstr "Bug / Problème"
+
+msgid "Improvement"
+msgstr "Amélioration"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "The options have been updated"
+msgstr "Les options ont bien été mises à jour"
+
+msgid "An error occurred"
+msgstr "Une erreur est survenue"
+
+msgid "An unknown error occurred"
+msgstr "Une erreur inconnue est survenue"
+
+msgid "The URLs have been saved"
+msgstr "Les URLs ont bien été sauvegardées"
+
+msgid "The URLs could not be saved"
+msgstr "Les URLs n'ont pas pu être sauvegardées"
+
+msgid "The URLs could not be saved because no data was found"
+msgstr "Les URLs n'ont pas pu être sauvegardées car aucune donnée n'a été trouvée"
+
+msgid "The URLs could not be saved because an error occurred"
+msgstr "Les URLs n'ont pas pu être sauvegardées car une erreur est survenue"
+
+msgid "The cookies have been saved"
+msgstr "Les cookies ont bien été sauvegardés"
+
+msgid "The cookies could not be saved"
+msgstr "Les cookies n'ont pas pu être sauvegardés"
+
+msgid "The cookies could not be saved because no data was found"
+msgstr "Les cookies n'ont pas pu être sauvegardés car aucune donnée n'a été trouvée"
+
+msgid "The cookies could not be saved because an error occurred"
+msgstr "Les cookies n'ont pas pu être sauvegardés car une erreur est survenue"
+
+msgid "The URLs to exclude have been saved"
+msgstr "Les URLs à exclure ont bien été sauvegardés"
+
+msgid "The URLs to exclude could not be saved"
+msgstr "Les URLs à exclure n'ont pas pu être sauvegardés"
+
+msgid "The URLs to exclude could not be saved because no data was found"
+msgstr "Les URLs à exclure n'ont pas pu être sauvegardés car aucune donnée n'a été trouvée"
+
+msgid "The URLs to exclude could not be saved because an error occurred"
+msgstr "Les URLs à exclure n'ont pas pu être sauvegardés car une erreur est survenue"
+
+msgid "The dynamic cache has been cleared."
+msgstr "Le cache dynamique a bien été vidé."
+
+msgid "An error occurred, the dynamic cache was not cleared"
+msgstr "Une erreur est survenue, le cache dynamique n'a pas été vidé"
+
+msgid "An unknown error occurred. Unable to activate this option."
+msgstr "Une erreur inconnue est survenue. Impossible d'activer cette option."
+
+msgid "Could not read/write to the Memcached server (%1$s:%2$d). Memcached code: %3$s (%4$d). Service down or network blocked?"
+msgstr "Impossible de lire/écrire sur le serveur Memcached (%1$s:%2$d). Code Memcached : %3$s (%4$d). Service inactif ou réseau bloqué ?"
+
+msgid ""
+"Server conflict detected: PHP uses Memcached as the session backend on the same instance as LWS Optimize (session.save_handler = memcached, session.save_path shares the same address). Enabling the object cache would create a race condition between PHP sessions and the WP cache, which can cause HTTP 500 errors in wp-admin for logged-in users.\n"
+"\n"
+"Solutions (ask your host):\n"
+"  1. Switch PHP sessions to files: session.save_handler = files\n"
+"  2. Prefix the sessions namespace: session.save_path = \"PREFIX=php_sess.,127.0.0.1:11211\"\n"
+"  3. Enable locking: memcached.sess_locking = On (mitigation, not ideal)"
+msgstr ""
+"Conflit serveur détecté : PHP utilise Memcached comme backend de sessions sur la même instance que LWS Optimize (session.save_handler = memcached, session.save_path partage la même adresse). Activer le cache d'objets créerait une race condition entre les sessions PHP et le cache WP, ce qui peut provoquer des erreurs HTTP 500 en wp-admin pour les utilisateurs authentifiés.\n"
+"\n"
+"Solutions (à demander à votre hébergeur) :\n"
+"  1. Basculer les sessions PHP sur fichiers : session.save_handler = files\n"
+"  2. Préfixer le namespace sessions : session.save_path = \"PREFIX=php_sess.,127.0.0.1:11211\"\n"
+"  3. Activer le locking : memcached.sess_locking = On (atténuation, pas idéal)"
+
+msgid "An object-cache.php drop-in from another plugin (%s) is already installed. Uninstall it or deactivate Memcached in LWS Optimize before installing a new one, to avoid overwriting its configuration."
+msgstr "Un drop-in object-cache.php d'un autre plugin (%s) est déjà installé. Désinstallez-le ou désactivez Memcached dans LWS Optimize avant d'en installer un nouveau pour éviter d'écraser sa configuration."
+
+msgid "Memcached is using %1$.1f%% of its memory (%2$s of %3$s). %4$d evictions have already occurred. The cache will be frequently invalidated, limiting the performance benefit. Ask your host to increase limit_maxbytes (typically 256-512 MB)."
+msgstr "Memcached utilise %1$.1f%% de sa mémoire (%2$s sur %3$s). %4$d évictions ont déjà eu lieu. Le cache va être fréquemment invalidé, le bénéfice perf sera limité. Demandez à votre hébergeur d'augmenter limit_maxbytes (typique : 256-512 MB)."
+
+msgid "Memcached environment validated."
+msgstr "Environnement Memcached validé."
+
+msgid "Auto — local generation (built-in PHP, recommended)"
+msgstr "Auto - génération locale (PHP)"
+
+msgid "Auto — generation via LWS service"
+msgstr "Auto - génération via service LWS"
+
+msgid "Manual — paste CSS below"
+msgstr "Manuel - collez le CSS ci-dessous"

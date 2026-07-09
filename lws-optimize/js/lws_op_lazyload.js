@@ -12,7 +12,7 @@
                             el.removeAttribute("data-src");
                         } else if (el.dataset.datasrc) {
                             el.src = el.dataset.datasrc;
-                            el.removeAttribute("data-data-src");
+                            el.removeAttribute("data-datasrc");
                         }
 
                         if (el.tagName === "VIDEO") {
@@ -23,7 +23,7 @@
                                     source.removeAttribute("data-src");
                                 } else if (source.dataset.datasrc) {
                                     source.src = source.dataset.datasrc;
-                                    source.removeAttribute("data-data-src");
+                                    source.removeAttribute("data-datasrc");
                                 }
                             });
                             el.load();
@@ -46,7 +46,7 @@
                     el.removeAttribute("data-src");
                 } else if (el.dataset.datasrc) {
                     el.src = el.dataset.datasrc;
-                    el.removeAttribute("data-data-src");
+                    el.removeAttribute("data-datasrc");
                 }
             });
         }

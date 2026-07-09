@@ -63,7 +63,7 @@ class LwsOptimizeDashboardWidget
         $cache_root_d = WP_CONTENT_DIR . '/cache/lwsoptimize/cache';
         $cache_root_m = WP_CONTENT_DIR . '/cache/lwsoptimize/cache-mobile';
         foreach ($urls as $u) {
-            $path = trim(parse_url($u, PHP_URL_PATH) ?: '/', '/');
+            $path = trim(wp_parse_url($u, PHP_URL_PATH) ?: '/', '/');
             $fd = $path === '' ? $cache_root_d . '/index_0.html' : $cache_root_d . '/' . $path . '/index_0.html';
             $fm = $path === '' ? $cache_root_m . '/index_0.html' : $cache_root_m . '/' . $path . '/index_0.html';
             if (@is_file($fd)) $cov_d++;
@@ -177,7 +177,7 @@ class LwsOptimizeDashboardWidget
         <!-- Sparkline 30j -->
         <div class="lwsop_dw_card" style="margin-bottom:6px">
             <h4>📈 <?php esc_html_e('Hits sur 30 jours', 'lws-optimize'); ?> · <?php echo esc_html(number_format_i18n($stats['totals_30d']['hits'])); ?></h4>
-            <div class="lwsop_dw_sparkline"><?php echo self::sparkline_svg($stats['sparkline']); ?></div>
+            <div class="lwsop_dw_sparkline"><?php echo wp_kses(self::sparkline_svg($stats['sparkline']), self::sparkline_allowed_html()); ?></div>
         </div>
 
         <div class="lwsop_dw_footer">
@@ -251,6 +251,19 @@ class LwsOptimizeDashboardWidget
             . '<polygon points="' . esc_attr($area) . '" fill="rgba(59,130,246,0.15)" />'
             . '<polyline points="' . esc_attr($line) . '" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />'
             . '</svg>';
+    }
+
+    /**
+     * Allowed tags/attributes for wp_kses() when outputting sparkline_svg().
+     */
+    public static function sparkline_allowed_html()
+    {
+        return [
+            'div' => ['style' => true],
+            'svg' => ['viewbox' => true, 'xmlns' => true, 'preserveaspectratio' => true],
+            'polygon' => ['points' => true, 'fill' => true],
+            'polyline' => ['points' => true, 'fill' => true, 'stroke' => true, 'stroke-width' => true, 'stroke-linejoin' => true, 'stroke-linecap' => true],
+        ];
     }
 
     public static function format_bytes($bytes)

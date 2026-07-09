@@ -1,3 +1,4 @@
+<?php if (!defined('ABSPATH')) exit; ?>
 <div class="lwsop_bluebanner_logs">
     <div>
         <h2 class="lwsop_bluebanner_title">
@@ -18,15 +19,16 @@
 <?php
 $dir = wp_upload_dir();
 $file = $dir['basedir'] . '/lwsoptimize/debug.log';
-if (empty($file)) {
+if (!file_exists($file)) {
     $content = __('No log file found.', 'lws-optimize');
 } else {
-    $content = esc_html(implode("\n", array_reverse(file($file, FILE_IGNORE_NEW_LINES))));
+    $lines = file($file, FILE_IGNORE_NEW_LINES);
+    $content = $lines === false ? __('No log file found.', 'lws-optimize') : implode("\n", array_reverse($lines));
 }
 ?>
 
 <div class="lwsop_contentblock">
-    <pre id="log_dir" style="max-height: 450px;"><?php echo $content; ?></pre>
+    <pre id="log_dir" style="max-height: 450px;"><?php echo esc_html($content); ?></pre>
 </div>
 
 <script>
@@ -52,21 +54,13 @@ if (empty($file)) {
                     action: "lwsop_regenerate_logs",
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_logs')); ?>'
                 },
-                success: function(data) {
+                success: function(returnData) {
                     button.disabled = false;
                     button.innerHTML = old_text;
 
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        console.log(e);
-                        return 0;
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {

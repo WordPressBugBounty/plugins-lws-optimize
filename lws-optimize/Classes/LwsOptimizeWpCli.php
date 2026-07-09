@@ -23,7 +23,6 @@ class LwsOptimizeWpCli {
         \WP_CLI::add_command('lwsoptimize configuration', [self::class, 'configuration']);
         \WP_CLI::add_command('lwsoptimize pagespeed', [self::class, 'pagespeed']);
 
-        // 4.5.11 — Nouvelles commandes pour les features ajoutées en 4.4.x / 4.5.x
         \WP_CLI::add_command('lwsoptimize status',     [self::class, 'status']);
         \WP_CLI::add_command('lwsoptimize rum',        [self::class, 'rum']);
         \WP_CLI::add_command('lwsoptimize cloudflare', [self::class, 'cloudflare']);
@@ -75,10 +74,8 @@ class LwsOptimizeWpCli {
             return -1;
         }
 
-        // Check if json output is requested
         $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
 
-        // Continue with the rest of your existing code
         switch ($action) {
             case 'clear':
                 $result = $optimize->lws_optimize_clean_filebased_cache(false, "WPCLI");
@@ -115,7 +112,6 @@ class LwsOptimizeWpCli {
                         return -1;
                 }
             case 'status':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Get the filecache state
@@ -143,7 +139,6 @@ class LwsOptimizeWpCli {
                 }
                 return 0;
             case 'activate':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Cache is already activated, no need to do anything
@@ -152,7 +147,6 @@ class LwsOptimizeWpCli {
                     return 0;
                 }
 
-                // Update cache state
                 $options['filebased_cache']['state'] = "true";
                 if (update_option('lws_optimize_config_array', $options)) {
                     \WP_CLI::success('Filecache activated.');
@@ -162,7 +156,6 @@ class LwsOptimizeWpCli {
                     return -1;
                 }
             case 'deactivate':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Cache is already deactivated, no need to do anything
@@ -171,7 +164,6 @@ class LwsOptimizeWpCli {
                     return 0;
                 }
 
-                // Update cache state
                 $options['filebased_cache']['state'] = "false";
                 if (update_option('lws_optimize_config_array', $options)) {
                     \WP_CLI::success('Filecache deactivated.');
@@ -228,13 +220,10 @@ class LwsOptimizeWpCli {
             return -1;
         }
 
-        // Check if json output is requested
         $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
 
-        // Continue with the rest of your existing code
         switch ($action) {
             case 'status':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Get the autopurge state
@@ -251,7 +240,6 @@ class LwsOptimizeWpCli {
                 }
                 return 0;
             case 'activate':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Cache is already activated, no need to do anything
@@ -260,7 +248,6 @@ class LwsOptimizeWpCli {
                     return 0;
                 }
 
-                // Update cache state
                 $options['autopurge']['state'] = "true";
 
                 if (update_option('lws_optimize_config_array', $options)) {
@@ -272,7 +259,6 @@ class LwsOptimizeWpCli {
                 }
                 break;
             case 'deactivate':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Cache is already deactivated, no need to do anything
@@ -281,7 +267,6 @@ class LwsOptimizeWpCli {
                     return 0;
                 }
 
-                // Update cache state
                 $options['autopurge']['state'] = "false";
 
                 if (update_option('lws_optimize_config_array', $options)) {
@@ -311,7 +296,6 @@ class LwsOptimizeWpCli {
             return -1;
         }
 
-        // Check if json output is requested
         $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
 
         switch ($action) {
@@ -431,12 +415,10 @@ class LwsOptimizeWpCli {
             return -1;
         }
 
-        // Check if json output is requested
         $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
 
         switch ($action) {
             case 'status':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Get the filecache and its preload state
@@ -476,7 +458,6 @@ class LwsOptimizeWpCli {
                 }
                 return 0;
             case 'activate':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 if ($options['filebased_cache']['preload'] == "true" && wp_next_scheduled("lws_optimize_start_filebased_preload")) {
@@ -504,7 +485,6 @@ class LwsOptimizeWpCli {
                 }
                 wp_schedule_event(time() + 5, "lws_minute", "lws_optimize_start_filebased_preload");
 
-                // Update options in database
                 if (update_option('lws_optimize_config_array', $options)) {
                     \WP_CLI::success('Preload activated.');
                     return 0;
@@ -514,7 +494,6 @@ class LwsOptimizeWpCli {
                 }
                 break;
             case 'deactivate':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 if ($options['filebased_cache']['preload'] == "false" && !wp_next_scheduled("lws_optimize_start_filebased_preload")) {
@@ -531,7 +510,6 @@ class LwsOptimizeWpCli {
                     wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
                 }
 
-                // Update options in database
                 if (update_option('lws_optimize_config_array', $options)) {
                     \WP_CLI::success('Preload deactivated.');
                     return 0;
@@ -540,7 +518,6 @@ class LwsOptimizeWpCli {
                     return -1;
                 }
             case 'change_amount':
-                // Get plugin options from the database
                 $options = get_option('lws_optimize_config_array', []);
 
                 // Get the amount parameter (optional)
@@ -560,7 +537,6 @@ class LwsOptimizeWpCli {
                 // Update preload configuration
                 $options['filebased_cache']['preload_amount'] = $amount;
 
-                // Update options in database
                 if (update_option('lws_optimize_config_array', $options)) {
                     if ($json_output) {
                         \WP_CLI::line(json_encode(['amount' => $amount]));
@@ -573,7 +549,6 @@ class LwsOptimizeWpCli {
                     return -1;
                 }
             case 'next':
-                // Get plugin options from the database
                 $next = wp_next_scheduled("lws_optimize_start_filebased_preload");
                 if ($next) {
                     if ($json_output) {
@@ -654,7 +629,6 @@ class LwsOptimizeWpCli {
             return;
         }
 
-        // Check if json output is requested
         $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
 
         $options = get_option('lws_optimize_config_array', []);
@@ -705,7 +679,6 @@ class LwsOptimizeWpCli {
                     return 0;
                 }
             case 'activate':
-                // 4.5.12 — Validation environnement complète (extension + serveur + sessions + drop-in tiers)
                 $env = $optimize->lwsop_validate_memcached_environment();
                 if (!$env['ok'] && $env['severity'] === 'fatal') {
                     \WP_CLI::error("Cannot activate Memcached — {$env['reason']} : " . substr($env['message'], 0, 300));
@@ -755,10 +728,6 @@ class LwsOptimizeWpCli {
                     return -1;
                 }
             case 'recommend':
-                // 4.5.11 — Renvoie la décision du helper lwsop_can_recommend_memcached()
-                // pour permettre aux ops scripts / UI de décider s'il faut proposer
-                // l'activation. Toutes les conditions sont vérifiées (extension,
-                // connexion localhost:11211, Redis plugin, drop-in tiers).
                 $reco = $optimize->lwsop_can_recommend_memcached();
                 if ($json_output) {
                     \WP_CLI::line(json_encode($reco, JSON_PRETTY_PRINT));
@@ -775,8 +744,6 @@ class LwsOptimizeWpCli {
                 }
                 return $reco['recommend'] ? 0 : 1;
             case 'validate':
-                // 4.5.12 — Dry-run de tous les checks (A à F) sans toucher l'état.
-                // Pipe-friendly : exit 0 = OK, 1 = warning, 2 = fatal.
                 $env = $optimize->lwsop_validate_memcached_environment();
                 if ($json_output) {
                     \WP_CLI::line(json_encode($env, JSON_PRETTY_PRINT));
@@ -846,7 +813,6 @@ class LwsOptimizeWpCli {
 
         $options = get_option('lws_optimize_config_array', []);
 
-        // Check if json output is requested
         $json_output = isset($assoc_args['format']) && $assoc_args['format'] === 'json';
 
         // Get the duration parameter that may be passed
@@ -881,6 +847,7 @@ class LwsOptimizeWpCli {
 
                 if ($deactivated) {
                     // Get htaccess content
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable, PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected -- direct filesystem access mirrors the .htaccess engine in LwsOptimize.php; WP_Filesystem credential prompts are not usable from WP-CLI
                     $htaccess = ABSPATH . '/.htaccess';
                     if (file_exists($htaccess) && is_writable($htaccess)) {
                         // Read htaccess content
@@ -891,7 +858,7 @@ class LwsOptimizeWpCli {
                         $htaccess_content = preg_replace($pattern, '', $htaccess_content);
 
                         // Write back to file
-                        if (file_put_contents($htaccess, $htaccess_content) !== false) {
+                        if (isset($GLOBALS['lws_optimize']) && $GLOBALS['lws_optimize']->lwsop_atomic_write($htaccess, $htaccess_content)) {
                             $htaccess_cleaned = true;
                         }
                     }
@@ -981,14 +948,22 @@ class LwsOptimizeWpCli {
 
         $url = site_url();
 
+        // SECURITY: no hardcoded Google API key (world-readable, shared across installs).
+        // Keyless works for occasional tests; owners can set their own via option/filter.
+        $api_key = apply_filters('lwsop_pagespeed_api_key', (string) get_option('lws_optimize_pagespeed_api_key', ''));
+
         // Define strategies to test
         $strategies = ['mobile', 'desktop'];
         $results = [];
 
         // Run tests for each strategy
         foreach ($strategies as $strategy) {
-            $apiUrl = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=$url&key=AIzaSyD8yyUZIGg3pGYgFOzJR1NsVztAf8dQUFQ&strategy=$strategy";
-            $response = wp_remote_get($apiUrl, ['timeout' => 60, 'sslverify' => false]);
+            $query = ['url' => $url, 'strategy' => $strategy];
+            if ($api_key !== '') {
+                $query['key'] = $api_key;
+            }
+            $apiUrl = add_query_arg(array_map('rawurlencode', $query), 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed');
+            $response = wp_remote_get($apiUrl, ['timeout' => 60, 'sslverify' => true]);
 
             if (is_wp_error($response)) {
                 if ($json_output) {
@@ -1119,21 +1094,42 @@ class LwsOptimizeWpCli {
     /**
      * Manage Real User Monitoring (RUM).
      *
+     * ## SYNOPSIS
+     *
+     *     wp lwsoptimize rum (list|aggregate|purge|export|stats) [--days=<days>] [--format=<format>]
+     *
      * ## OPTIONS
      *
      * <action>
-     * : list | aggregate | purge | export | stats
+     * : Action to perform.
+     * ---
+     * options:
+     *   - list
+     *   - aggregate
+     *   - purge
+     *   - export
+     *   - stats
+     * ---
      *
      * [--days=<days>]
-     * : For 'purge' : age threshold in days (default 30).
+     * : For 'purge': delete raw samples older than this many days (default: 30).
      *
      * [--format=<format>]
-     * : Output format (table|json) — default table.
+     * : Output format for 'list', 'export', and 'stats'.
+     * ---
+     * default: table
+     * options:
+     *   - table
+     *   - json
+     * ---
      *
      * ## EXAMPLES
      *
-     *     # Show aggregated p50/p75/p95 per URL/device
+     *     # Show aggregated p50/p75/p95 metrics per URL/device
      *     $ wp lwsoptimize rum stats
+     *
+     *     # List all raw samples (table view)
+     *     $ wp lwsoptimize rum list
      *
      *     # Force aggregation now (instead of waiting for the twice-daily cron)
      *     $ wp lwsoptimize rum aggregate
@@ -1280,7 +1276,7 @@ class LwsOptimizeWpCli {
                 // Reuse the AJAX handler logic by invoking it directly with a fake nonce
                 // (we have CLI auth equivalent to manage_options). For simplicity we
                 // re-implement the API call to avoid the nonce check.
-                $host = parse_url(home_url(), PHP_URL_HOST);
+                $host = wp_parse_url(home_url(), PHP_URL_HOST);
                 $expression = sprintf(
                     '(http.host eq "%s" and not (http.request.uri.path matches "^/(wp-admin|wp-login)") and not (any(http.cookie[*] in {"wp-" "wordpress_logged_in_" "woocommerce_" "edd_" "comment_author_"})))',
                     $host

@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 
 $media_array = array(
     // 'media_optimize' => array(
@@ -154,7 +155,7 @@ foreach ($media_array as $key => $array) {
             <h2 class="lwsop_exclude_title" id="lws_optimize_exclusion_lazyload_title"><?php esc_html_e('Exclude from Lazy Loading', 'lws-optimize'); ?></h2>
             <form method="POST" id="lws_optimize_exclusion_lazyload_form"></form>
             <div class="lwsop_modal_buttons" id="lws_optimize_exclusion_lazyload_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -181,7 +182,7 @@ foreach ($media_array as $key => $array) {
         `;
 
         document.getElementById('lws_optimize_exclusion_lazyload_buttons').innerHTML = `
-            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
         `;
 
         title.innerHTML = "<?php esc_html_e('Exclude from Lazy Loading ', 'lws-optimize'); ?>";
@@ -196,19 +197,10 @@ foreach ($media_array as $key => $array) {
                 data: data
             },
 
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    returnData = {
-                        'code': "NOT_JSON",
-                        'data': "FAIL"
-                    };
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {
@@ -217,10 +209,10 @@ foreach ($media_array as $key => $array) {
                         let site_url = returnData['domain'];
 
                         document.getElementById('lws_optimize_exclusion_lazyload_buttons').innerHTML = `
-                            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                             <button type="button" id="lws_optimize_exclusion_form_media" class="lwsop_validatebutton">
                                 <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                <?php esc_html_e('Save', 'lws-optimize'); ?>
                             </button>
                         `;
 
@@ -341,20 +333,12 @@ foreach ($media_array as $key => $array) {
                     _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_lws_optimize_exclusions_media_config")); ?>",
                     action: "lws_optimize_exclusions_media_changes_action",
                 },
-                success: function(data) {
+                success: function(returnData) {
                     document.body.style.pointerEvents = "all";
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
 
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        returnData = {
-                            'code': "NOT_JSON",
-                            'data': "FAIL"
-                        };
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     jQuery(document.getElementById('lws_optimize_exclusion_lazyload_modale')).modal('hide');

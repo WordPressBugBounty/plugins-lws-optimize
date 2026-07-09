@@ -1,75 +1,76 @@
 <?php
+if (!defined('ABSPATH')) exit;
 $t = [
-    'buttonText' => 'Feedback',
-    'modalTitle' => 'Partagez votre avis',
-    'typeLabel' => 'Type de retour :',
-    'nameLabel' => 'Nom (optionnel) :',
-    'emailLabel' => 'Email (optionnel) :',
-    'feedbackLabel' => 'Votre message :',
-    'namePlaceholder' => 'Votre nom',
-    'emailPlaceholder' => 'votre@email.com',
-    'feedbackPlaceholder' => 'Décrivez votre idée, suggestion ou problème...',
-    'cancelButton' => 'Annuler',
-    'submitButton' => 'Envoyer',
-    'submittingButton' => 'Envoi...',
-    'successMessage' => 'Votre retour a bien été pris en compte. Merci de participer à l\'amélioration de notre service.',
-    'errorMessage' => 'Erreur lors de l\'envoi. Veuillez réessayer.',
-    'errorFormMessage' => 'Le formulaire est incomplet ou invalide. Veuillez vérifier vos informations.',
-    'defaultErrorMessage' => 'Une erreur inattendue est survenue. Veuillez réessayer plus tard.',
+    'buttonText' => __('Feedback', 'lws-optimize'),
+    'modalTitle' => __('Share your feedback', 'lws-optimize'),
+    'typeLabel' => __('Feedback type:', 'lws-optimize'),
+    'nameLabel' => __('Name (optional):', 'lws-optimize'),
+    'emailLabel' => __('Email (optional):', 'lws-optimize'),
+    'feedbackLabel' => __('Your message:', 'lws-optimize'),
+    'namePlaceholder' => __('Your name', 'lws-optimize'),
+    'emailPlaceholder' => 'your@email.com',
+    'feedbackPlaceholder' => __('Describe your idea, suggestion or issue...', 'lws-optimize'),
+    'cancelButton' => __('Cancel', 'lws-optimize'),
+    'submitButton' => __('Send', 'lws-optimize'),
+    'submittingButton' => __('Sending...', 'lws-optimize'),
+    'successMessage' => __('Your feedback has been received. Thank you for helping us improve our service.', 'lws-optimize'),
+    'errorMessage' => __('Error while sending. Please try again.', 'lws-optimize'),
+    'errorFormMessage' => __('The form is incomplete or invalid. Please check your information.', 'lws-optimize'),
+    'defaultErrorMessage' => __('An unexpected error occurred. Please try again later.', 'lws-optimize'),
     'types' => [
-        'suggestion' => 'Suggestion',
-        'bug' => 'Bug / Problème',
-        'improvement' => 'Amélioration',
-        'other' => 'Autre'
+        'suggestion' => __('Suggestion', 'lws-optimize'),
+        'bug' => __('Bug / Issue', 'lws-optimize'),
+        'improvement' => __('Improvement', 'lws-optimize'),
+        'other' => __('Other', 'lws-optimize')
     ]
 ];
 ?>
 
 <!-- Floating Feedback Button -->
-<button class="feedbackButton" onclick="openFeedbackModal()" aria-label="<?php echo htmlspecialchars($t['buttonText']) ?>">
-    <span class="feedbackButton__text"><?php echo htmlspecialchars($t['buttonText']) ?></span>
+<button class="feedbackButton" onclick="openFeedbackModal()" aria-label="<?php echo esc_attr($t['buttonText']) ?>">
+    <span class="feedbackButton__text"><?php echo esc_html($t['buttonText']) ?></span>
 </button>
 
 <!-- Modal -->
 <div class="modalOverlay" id="feedbackModal" style="display: none;">
     <div class="modalContent">
         <div class="modalHeader">
-            <h3><?php echo htmlspecialchars($t['modalTitle']) ?></h3>
-            <button class="closeButton" onclick="closeFeedbackModal()" aria-label="Close">×</button>
+            <h3><?php echo esc_html($t['modalTitle']) ?></h3>
+            <button class="closeButton" onclick="closeFeedbackModal()" aria-label="<?php echo esc_attr__('Close', 'lws-optimize'); ?>">×</button>
         </div>
 
         <div id="feedbackForm" class="form">
             <form onsubmit="handleSubmit(event)">
                 <div class="formGroup">
-                    <label for="feedbackType"><?php echo htmlspecialchars($t['typeLabel']) ?></label>
+                    <label for="feedbackType"><?php echo esc_html($t['typeLabel']) ?></label>
                     <select id="feedbackType" name="type" required>
                         <?php foreach ($t['types'] as $key => $value): ?>
-                            <option value="<?php echo htmlspecialchars($key) ?>"><?php echo htmlspecialchars($value) ?></option>
+                            <option value="<?php echo esc_attr($key) ?>"><?php echo esc_html($value) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="formGroup">
-                    <label for="feedbackName"><?php echo htmlspecialchars($t['nameLabel']) ?></label>
-                    <input type="text" id="feedbackName" name="name" placeholder="<?php echo htmlspecialchars($t['namePlaceholder']) ?>">
+                    <label for="feedbackName"><?php echo esc_html($t['nameLabel']) ?></label>
+                    <input type="text" id="feedbackName" name="name" placeholder="<?php echo esc_attr($t['namePlaceholder']) ?>">
                 </div>
 
                 <div class="formGroup">
-                    <label for="feedbackEmail"><?php echo htmlspecialchars($t['emailLabel']) ?></label>
-                    <input type="email" id="feedbackEmail" name="email" placeholder="<?php echo htmlspecialchars($t['emailPlaceholder']) ?>">
+                    <label for="feedbackEmail"><?php echo esc_html($t['emailLabel']) ?></label>
+                    <input type="email" id="feedbackEmail" name="email" placeholder="<?php echo esc_attr($t['emailPlaceholder']) ?>">
                 </div>
 
                 <div class="formGroup">
-                    <label for="feedbackMessage"><?php echo htmlspecialchars($t['feedbackLabel']) ?></label>
-                    <textarea id="feedbackMessage" name="feedback" placeholder="<?php echo htmlspecialchars($t['feedbackPlaceholder']) ?>" rows="4" required></textarea>
+                    <label for="feedbackMessage"><?php echo esc_html($t['feedbackLabel']) ?></label>
+                    <textarea id="feedbackMessage" name="feedback" placeholder="<?php echo esc_attr($t['feedbackPlaceholder']) ?>" rows="4" required></textarea>
                 </div>
 
                 <div class="formActions">
                     <button type="button" onclick="closeFeedbackModal()" class="cancelButton">
-                        <?php echo htmlspecialchars($t['cancelButton']) ?>
+                        <?php echo esc_html($t['cancelButton']) ?>
                     </button>
                     <button type="submit" class="submitButton" id="submitBtn">
-                        <?php echo htmlspecialchars($t['submitButton']) ?>
+                        <?php echo esc_html($t['submitButton']) ?>
                     </button>
                 </div>
             </form>
@@ -80,7 +81,7 @@ $t = [
 </div>
 
 <script>
-const translations = <?php echo json_encode($t) ?>;
+const translations = <?php echo wp_json_encode($t) ?>;
 let isSubmitting = false;
 
 function openFeedbackModal() {
@@ -134,18 +135,13 @@ function handleSubmit(event) {
                 action: "lwsOp_sendFeedbackUser",
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsOP_sendFeedbackUser')); ?>'
             },
-            success: function(data) {
+            success: function(returnData) {
                 submitBtn.innerHTML = translations.submitButton;
                 submitBtn.disabled = false;
 
-                if (data === null || typeof data != 'string'){
-                    return 0;
-                }
-
-                try{
-                    var returnData = JSON.parse(data);
-                } catch (e){
-                    return 0;
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']){

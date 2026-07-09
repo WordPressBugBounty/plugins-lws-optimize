@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 
 // Prepare all data for the "Front-End" tab
 $first_bloc_array = array(
@@ -173,9 +174,6 @@ $third_bloc_array = array(
         'has_tooltip' => true,
         'tooltip_link' => "https://aide.lws.fr/a/1883"
     ),
-    // 4.4.3 — Auto-détection Google Fonts, complémentaire au manuel ci-dessus.
-    // Détecte fonts.googleapis.com / gstatic.com dans les wp_styles enqueued et
-    // injecte preconnect en haut de <head> → -100 à -300ms LCP sur pages text-heavy.
     'font_preload' => array(
         'title' => __('Google Fonts auto-detect (preconnect)', 'lws-optimize'),
         'desc' => __('Detects Google Fonts loaded via wp_enqueue_style and adds preconnect hints to fonts.googleapis.com / fonts.gstatic.com. Different from the manual option above — this one is automatic and only fires if Google Fonts are detected.', 'lws-optimize'),
@@ -187,8 +185,6 @@ $third_bloc_array = array(
         'checkbox_id' => "lws_optimize_font_preload_check",
         'has_tooltip' => false,
     ),
-    // 4.4.3 — RUM monitoring (Core Web Vitals anonymes). Conforme RGPD, 0 PII,
-    // 0 cookie, rate-limited 60r/min/IP. Dashboard sous lws-op-rum.
     'rum' => array(
         'title' => __('Real User Monitoring (RUM)', 'lws-optimize'),
         'desc' => __('Anonymously collect real visitor load times to identify slow pages. No IP, no cookie, GDPR-compliant. View the dashboard in "LWS Optimize → RUM" once enabled.', 'lws-optimize'),
@@ -223,7 +219,6 @@ $third_bloc_array = array(
         'checkbox_id' => "lws_optimize_eliminate_requests_check",
     ),
 );
-//
 
 // Dynamic data added
 $deactivated_filebased = false;
@@ -277,7 +272,6 @@ foreach ($third_bloc_array as $key => $array) {
         $third_bloc_array[$key]['exclusion'] = isset($config_array[$key]['links']) && count($config_array[$key]['links']) > 0 ? $config_array[$key]['links'] : "X";
     }
 }
-//
 ?>
 <?php if ($deactivated_filebased) : ?>
     <div class="lwsop_frontend_cache_block"></div>
@@ -350,16 +344,16 @@ foreach ($third_bloc_array as $key => $array) {
 
     <?php
     if ($name === 'critical_css') :
-        $is_fr_ccss  = substr(get_locale(), 0, 2) === 'fr';
         $ccss_mode   = $config_array['critical_css']['mode'] ?? 'off';
         $ccss_manual = $config_array['critical_css']['manual_css'] ?? '';
         $ccss_state  = ($config_array['critical_css']['state'] ?? 'false') === 'true';
         $ccss_badges = [
-            'off'      => ['lbl' => $is_fr_ccss ? 'Désactivé' : 'Disabled', 'bg' => '#FFE5E5', 'fg' => '#DB3D3D'],
-            'manual'   => ['lbl' => $is_fr_ccss ? 'Manuel'    : 'Manual',   'bg' => '#FFEDE1', 'fg' => '#FF6600'],
-            'auto'     => ['lbl' => $is_fr_ccss ? 'Auto'      : 'Auto',     'bg' => '#DDF9EA', 'fg' => '#008A56'],
-            'external' => ['lbl' => $is_fr_ccss ? 'Externe'   : 'External', 'bg' => '#DDF9EA', 'fg' => '#008A56'],
+            'off'      => ['lbl' => __('Disabled', 'lws-optimize'), 'bg' => '#FFE5E5', 'fg' => '#DB3D3D'],
+            'manual'   => ['lbl' => __('Manual', 'lws-optimize'),   'bg' => '#FFEDE1', 'fg' => '#FF6600'],
+            'auto'     => ['lbl' => __('Auto', 'lws-optimize'),     'bg' => '#DDF9EA', 'fg' => '#008A56'],
+            'external' => ['lbl' => __('External', 'lws-optimize'), 'bg' => '#DDF9EA', 'fg' => '#008A56'],
         ];
+
         $badge = $ccss_badges[$ccss_mode] ?? ['lbl' => $ccss_mode, 'bg' => '#ECF5FE', 'fg' => '#1C469D'];
     ?>
     <style>
@@ -431,19 +425,19 @@ foreach ($third_bloc_array as $key => $array) {
     </style>
     <div id="lwsop_ccss_config_inline"<?php echo $ccss_state ? ' class="open"' : ''; ?>>
         <p class="lwsop_ccss_title">
-            <?php echo esc_html($is_fr_ccss ? 'Configuration du CSS critique' : 'Critical CSS configuration'); ?>
+            <?php esc_html_e('Critical CSS configuration', 'lws-optimize'); ?>
             <span class="lwsop_ccss_badge" id="lwsop_ccss_mode_badge" style="background:<?php echo esc_attr($badge['bg']); ?>;color:<?php echo esc_attr($badge['fg']); ?>"><?php echo esc_html($badge['lbl']); ?></span>
         </p>
         <div class="lwsop_ccss_mode_row">
-            <label for="lwsop_ccss_mode"><?php echo esc_html($is_fr_ccss ? 'Mode :' : 'Mode:'); ?></label>
+            <label for="lwsop_ccss_mode"><?php esc_html_e('Mode:', 'lws-optimize'); ?></label>
             <select id="lwsop_ccss_mode">
-                <option value="auto"     <?php selected($ccss_mode, 'auto'); ?>><?php echo esc_html($is_fr_ccss ? 'Auto — génération locale (PHP intégré, recommandé)' : 'Auto — local generation (built-in PHP, recommended)'); ?></option>
-                <option value="external" <?php selected($ccss_mode, 'external'); ?>><?php echo esc_html($is_fr_ccss ? 'Auto — génération via service LWS' : 'Auto — generation via LWS service'); ?></option>
-                <option value="manual"   <?php selected($ccss_mode, 'manual'); ?>><?php echo esc_html($is_fr_ccss ? 'Manuel — coller le CSS ci-dessous' : 'Manual — paste CSS below'); ?></option>
+                <option value="auto"     <?php selected($ccss_mode, 'auto'); ?>><?php esc_html_e('Auto — local generation (built-in PHP, recommended)', 'lws-optimize'); ?></option>
+                <option value="external" <?php selected($ccss_mode, 'external'); ?>><?php esc_html_e('Auto — generation via LWS service', 'lws-optimize'); ?></option>
+                <option value="manual"   <?php selected($ccss_mode, 'manual'); ?>><?php esc_html_e('Manual — paste CSS below', 'lws-optimize'); ?></option>
             </select>
         </div>
         <div id="lwsop_ccss_manual_wrap"<?php echo $ccss_mode !== 'manual' ? ' style="display:none"' : ''; ?>>
-            <textarea id="lwsop_ccss_manual" placeholder="<?php echo esc_attr($is_fr_ccss ? '/* CSS critique above-the-fold ici */' : '/* Critical CSS above-the-fold here */'); ?>"><?php echo esc_textarea($ccss_manual); ?></textarea>
+            <textarea id="lwsop_ccss_manual" placeholder="<?php echo esc_attr(__('/* Critical CSS above-the-fold here */', 'lws-optimize')); ?>"><?php echo esc_textarea($ccss_manual); ?></textarea>
         </div>
     </div>
     <?php endif; ?>
@@ -522,7 +516,7 @@ foreach ($third_bloc_array as $key => $array) {
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
                 <?php if (isset($data['has_tooltip'])) : ?>
-                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                    <a href="<?php echo esc_url($data['tooltip_link'] ?? ''); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
@@ -569,22 +563,18 @@ foreach ($third_bloc_array as $key => $array) {
     </div>
 <?php endforeach; ?>
 
-<?php
-$_ccss_fr = substr(get_locale(), 0, 2) === 'fr';
-$_ccss_badges_json = wp_json_encode([
-    'auto'     => ['Auto',                                    '#DDF9EA', '#008A56'],
-    'external' => [$_ccss_fr ? 'Externe'    : 'External',    '#DDF9EA', '#008A56'],
-    'manual'   => [$_ccss_fr ? 'Manuel'     : 'Manual',      '#FFEDE1', '#FF6600'],
-    'off'      => [$_ccss_fr ? 'Désactivé'  : 'Disabled',    '#FFE5E5', '#DB3D3D'],
-]);
-?>
 <script>
 (function(){
     var TOGGLE_ID = 'lws_optimize_critical_css_check';
     var STORE_KEY = 'lws_optimize_current_configuration_changes';
     // Separate key: currently-saved (DB) extra values. Format: [{type, value:{mode,manual_css}}]
     var EXTRA_KEY = 'lws_optimize_current_extra_config';
-    var badges    = <?php echo $_ccss_badges_json; ?>;
+    var badges    = <?php echo wp_json_encode([
+        'auto'     => [__('Auto', 'lws-optimize'),        '#DDF9EA', '#008A56'],
+        'external' => [__('External', 'lws-optimize'),    '#DDF9EA', '#008A56'],
+        'manual'   => [__('Manual', 'lws-optimize'),      '#FFEDE1', '#FF6600'],
+        'off'      => [__('Disabled', 'lws-optimize'),    '#FFE5E5', '#DB3D3D'],
+    ]); ?>;
 
     var modeSelect = document.getElementById('lwsop_ccss_mode');
     var manualWrap = document.getElementById('lwsop_ccss_manual_wrap');
@@ -746,11 +736,10 @@ $_ccss_badges_json = wp_json_encode([
     }
 
     // ── Post-save baseline update ─────────────────────────────────────────────
-    // Intercept every write to STORE_KEY. When our entry is absent in the result
-    // (tabs.php cleared on save, or deleteEntry removed the last entry), update the
-    // saved baseline to reflect the current UI.
-    // savedToggle is updated only when NEITHER inToggleHnd NOR inDeleteEntry is set,
-    // meaning the write came from the save handler (not from our own housekeeping).
+    // Intercepts writes to STORE_KEY: when our entry is gone (tabs.php cleared it
+    // on save, or deleteEntry removed it), refresh the saved baseline. savedToggle
+    // is only updated when neither inToggleHnd nor inDeleteEntry is set, i.e. the
+    // write came from the save handler and not our own housekeeping.
     var _lsSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function(key, value) {
         _lsSetItem(key, value);

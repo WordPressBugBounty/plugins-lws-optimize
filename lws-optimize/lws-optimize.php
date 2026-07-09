@@ -3,15 +3,17 @@ require_once __DIR__ . "/vendor/autoload.php";
 
 use Lws\Classes\LwsOptimize;
 use Lws\Classes\LwsOptimizeWpCli;
+use Lws\Classes\RUM\LwsOptimizeRUM;
 
 /**
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           4.0
+ * Version:           4.1
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      7.0
+ * Text Domain:       lws-optimize
  * Domain Path:       /languages
  * License:           GPL-2.0-or-later
  *
@@ -76,6 +78,7 @@ if (!defined('LWSOP_OBJECTCACHE_PATH')) {
 // Function declarations for hook callbacks
 function lws_optimize_activation_callback() {
     delete_option('lws_optimize_preload_is_ongoing');
+    LwsOptimizeRUM::create_table();
 
     $optimize_options = get_option('lws_optimize_config_array', []);
 
@@ -115,10 +118,16 @@ function lws_optimize_deactivation_callback() {
     wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
     wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
 
+    // Remove the deployed cache-serve script (placed outside /plugins/ to avoid 403s)
+    $deployed_serve = WP_CONTENT_DIR . '/cache/lwsoptimize/lwsop_cache_serve.php';
+    if (file_exists($deployed_serve)) {
+        wp_delete_file($deployed_serve);
+    }
+
     // Remove .htaccess content
     $htaccess_file = ABSPATH . '/.htaccess';
 
-    if (file_exists($htaccess_file) && is_writable($htaccess_file)) {
+    if (file_exists($htaccess_file) && is_writable($htaccess_file)) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- runs on (de)activation, before WP_Filesystem credentials would be available
         $htaccess_content = file_get_contents($htaccess_file);
 
         // Remove LWS OPTIMIZE - CACHING section
@@ -131,7 +140,12 @@ function lws_optimize_deactivation_callback() {
         $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - GZIP COMPRESSION.*?#END LWS OPTIMIZE - GZIP COMPRESSION\s*/s', "\n", $htaccess_content);
 
         // Write the modified content back to the file
-        file_put_contents($htaccess_file, $htaccess_content);
+        // phpcs:ignore PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected -- rewriting the site root .htaccess (which must live at ABSPATH) to remove this plugin's own rules; wp_upload_dir() does not apply here
+        if (isset($GLOBALS['lws_optimize'])) {
+            $GLOBALS['lws_optimize']->lwsop_atomic_write($htaccess_file, $htaccess_content);
+        } else {
+            file_put_contents($htaccess_file, $htaccess_content);
+        }
     }
 }
 
@@ -160,7 +174,7 @@ function lws_optimize_uninstall_callback() {
     // Remove .htaccess content
     $htaccess_file = ABSPATH . '/.htaccess';
 
-    if (file_exists($htaccess_file) && is_writable($htaccess_file)) {
+    if (file_exists($htaccess_file) && is_writable($htaccess_file)) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable -- runs on (de)activation, before WP_Filesystem credentials would be available
         $htaccess_content = file_get_contents($htaccess_file);
 
         // Remove LWS OPTIMIZE - CACHING section
@@ -173,7 +187,12 @@ function lws_optimize_uninstall_callback() {
         $htaccess_content = preg_replace('/\s*#LWS OPTIMIZE - GZIP COMPRESSION.*?#END LWS OPTIMIZE - GZIP COMPRESSION\s*/s', "\n", $htaccess_content);
 
         // Write the modified content back to the file
-        file_put_contents($htaccess_file, $htaccess_content);
+        // phpcs:ignore PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected -- rewriting the site root .htaccess (which must live at ABSPATH) to remove this plugin's own rules; wp_upload_dir() does not apply here
+        if (isset($GLOBALS['lws_optimize'])) {
+            $GLOBALS['lws_optimize']->lwsop_atomic_write($htaccess_file, $htaccess_content);
+        } else {
+            file_put_contents($htaccess_file, $htaccess_content);
+        }
     }
 
     // Remove all options on delete
@@ -196,6 +215,7 @@ add_action('plugins_loaded', function() {
 
     if ($ancienne_version !== $nouvelle_version) {
         add_option( 'wp_lwsoptimize_post_update', 1);
+        LwsOptimizeRUM::create_table();
 
         // Mettre à jour la version en base.
         update_option('lwsop_plugin_version', $nouvelle_version);
@@ -207,8 +227,11 @@ add_action("wp_ajax_lws_op_downloadPlugin", "wp_ajax_install_plugin");
 add_action("wp_ajax_lws_op_activatePlugin", function()
 {
     check_ajax_referer('activate_plugin', '_ajax_nonce');
+    if (!current_user_can('activate_plugins')) {
+        wp_send_json_error(['code' => 'FORBIDDEN'], 403);
+    }
     if (isset($_POST['ajax_slug'])) {
-        switch (sanitize_textarea_field($_POST['ajax_slug'])) {
+        switch (sanitize_textarea_field(wp_unslash($_POST['ajax_slug']))) {
             case 'lws-hide-login':
                 activate_plugin('lws-hide-login/lws-hide-login.php');
                 break;
@@ -232,6 +255,29 @@ if ($deactivated) {
     if (time() > $deactivated) {
         delete_option('lws_optimize_deactivate_temporarily');
     }
+}
+
+// PHP-level compression fallback for shared-hosting vhosts where mod_deflate/
+// mod_brotli aren't loaded, so the "GZIP/Brotli" toggle isn't a no-op there (see
+// LwsOptimize::lwsop_check_apache_compression_support()). This must be opened here,
+// before LwsOptimize's constructor starts the file-cache output buffer below, so it
+// wraps AROUND that buffer: it only affects the bytes sent to the browser, never
+// what gets written to the HTML cache.
+if (
+    function_exists('ob_gzhandler')
+    && !is_admin()
+    && !(defined('DOING_CRON') && DOING_CRON)
+    && !(defined('DOING_AJAX') && DOING_AJAX)
+    && !(defined('REST_REQUEST') && REST_REQUEST)
+    && !(defined('WP_CLI') && WP_CLI)
+) {
+    $lwsop_bootstrap_options = get_option('lws_optimize_config_array', []);
+    $lwsop_gzip_enabled = ($lwsop_bootstrap_options['gzip_compression']['state'] ?? 'false') === 'true';
+    $lwsop_apache_compression_missing = get_option('lwsop_apache_compression_detected', 'true') === 'false';
+    if ($lwsop_gzip_enabled && $lwsop_apache_compression_missing) {
+        ob_start('ob_gzhandler');
+    }
+    unset($lwsop_bootstrap_options, $lwsop_gzip_enabled, $lwsop_apache_compression_missing);
 }
 
 $GLOBALS['lws_optimize'] = new LwsOptimize();

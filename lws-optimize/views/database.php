@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 
 $first_bloc_array = array(
     'maintenance_db' => array(
@@ -91,7 +92,7 @@ if ($next_scheduled_maintenance) {
             <?php if ($data['has_button']) : ?>
                 <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['button_id']); ?>" name="<?php echo esc_html($data['button_id']); ?>" <?php if ($key == "maintenance_db") : ?> data-toggle="modal" data-target="#lws_optimize_manage_maintenance_modal" <?php endif ?>>
                     <span>
-                        <?php esc_html_e($data['button_title'], 'lws-optimize'); ?>
+                        <?php echo esc_html($data['button_title']); ?>
                     </span>
                 </button>
             <?php endif ?>
@@ -108,10 +109,10 @@ if ($next_scheduled_maintenance) {
 <div class="modal fade" id="lws_optimize_manage_maintenance_modal" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Database Maintenance Options', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Database Maintenance Options', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_maintenance_db"></form>
             <div class="lwsop_modal_buttons" id="lwsop_maintenance_db_modal_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -135,16 +136,10 @@ if ($next_scheduled_maintenance) {
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_maintenance_db_nonce')); ?>',
                 action: "lws_optimize_get_maintenance_db_options"
             },
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {
@@ -153,10 +148,10 @@ if ($next_scheduled_maintenance) {
                         let domain = returnData['domain'];
 
                         document.getElementById('lwsop_maintenance_db_modal_buttons').innerHTML = `
-                            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
+                            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
                             <button type="button" id="lwsop_submit_maintenance_db_form" class="lwsop_validatebutton">
                                 <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                <?php esc_html_e('Save', 'lws-optimize'); ?>
                             </button>
                         `;
                         form.innerHTML = `
@@ -183,10 +178,10 @@ if ($next_scheduled_maintenance) {
                         break;
                     default:
                         document.getElementById('lwsop_maintenance_db_modal_buttons').innerHTML = `
-                            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                            <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                             <button type="button" id="lwsop_submit_specified_form" class="lwsop_validatebutton">
                                 <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                <?php esc_html_e('Save', 'lws-optimize'); ?>
                             </button>
                         `;
                         form.innerHTML = `
@@ -239,17 +234,11 @@ if ($next_scheduled_maintenance) {
                 action: "lws_optimize_set_maintenance_db_options",
                 formdata: data
             },
-            success: function(data) {
+            success: function(returnData) {
                 document.body.style.pointerEvents = "all";
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {
@@ -257,7 +246,7 @@ if ($next_scheduled_maintenance) {
                         form.innerHTML = old_form;
                         buttons.innerHTML = old_buttons;
                         document.getElementById('lwsop_maintenance_db_modal_buttons').children[0].click();
-                        callPopup('success', "Les options ont bien été mises à jour");
+                        callPopup('success', `<?php esc_html_e('The options have been updated', 'lws-optimize'); ?>`);
                         break;
                     case 'FAILURE':
                         jQuery("#lws_optimize_manage_maintenance_modal").modal('hide')
@@ -269,7 +258,7 @@ if ($next_scheduled_maintenance) {
                         break;
                     default:
                         console.log(returnData['code']);
-                        callPopup('error', "Une erreur est survenue");
+                        callPopup('error', `<?php esc_html_e('An error occurred', 'lws-optimize'); ?>`);
                         form.innerHTML = old_form.innerHTML;
                         buttons.innerHTML = old_buttons.innerHTML;
                         break;
@@ -278,7 +267,7 @@ if ($next_scheduled_maintenance) {
             error: function(error) {
                 document.getElementById('lwsop_maintenance_db_modal_buttons').children[0].click();
                 document.body.style.pointerEvents = "all";
-                callPopup('error', "Une erreur inconnue est survenue");
+                callPopup('error', `<?php esc_html_e('An unknown error occurred', 'lws-optimize'); ?>`);
                 console.log(error);
             }
         });
@@ -314,16 +303,10 @@ if ($next_scheduled_maintenance) {
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_optimize_get_database_cleaning_nonce')); ?>',
                 action: "lws_optimize_get_database_cleaning_time",
             },
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {
@@ -356,17 +339,11 @@ if ($next_scheduled_maintenance) {
                     action: "lws_optimize_activate_cleaner",
                     state
                 },
-                success: function(data) {
+                success: function(returnData) {
                     document.getElementById('wpcontent').style.pointerEvents = "all";
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {

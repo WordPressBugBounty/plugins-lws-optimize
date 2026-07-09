@@ -167,7 +167,7 @@ class LwsOptimizeImageOptimizationPro
         $is_deconversion_ongoing = !empty($conversion_options['deconversion_status']);
 
         if ($is_conversion_ongoing || $is_deconversion_ongoing) {
-            wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $conversion_options), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => 'SUCCESS', 'data' => $conversion_options));
         } else {
             // Call refresh to get the latest data
             $this->lws_optimize_refresh_conversion_data();
@@ -181,6 +181,7 @@ class LwsOptimizeImageOptimizationPro
      * and check the status of the conversion processes
      */
     public function lws_optimize_refresh_conversion_data() {
+        check_ajax_referer('nonce_for_lws_optimize_image_conversion_data_fetch', '_ajax_nonce');
         // Format allowed to be converted
         $format = $this->format;
 
@@ -493,7 +494,7 @@ class LwsOptimizeImageOptimizationPro
 
         // Check for JSON decoding errors
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
+            $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
         }
 
         // Check for API errors
@@ -505,7 +506,7 @@ class LwsOptimizeImageOptimizationPro
         // Save the updated options regardless of API response
         update_option('lws_optimize_image_conversion_options', $conversion_options);
 
-        wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $conversion_options), JSON_PRETTY_PRINT));
+        wp_send_json(array('code' => 'SUCCESS', 'data' => $conversion_options));
 
     }
 
@@ -540,11 +541,11 @@ class LwsOptimizeImageOptimizationPro
         if ($scheduled) {
             $this->write_log('Pro conversion activated. Next run: ' . $scheduled);
 
-            wp_die(json_encode(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT)));
+            wp_send_json(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT));
         } else {
             $this->write_log('Failed to start pro conversion cron');
 
-            wp_die(json_encode(array('code' => 'FAILURE', JSON_PRETTY_PRINT)));
+            wp_send_json(array('code' => 'FAILURE', JSON_PRETTY_PRINT));
         }
     }
 
@@ -556,9 +557,9 @@ class LwsOptimizeImageOptimizationPro
 
         $this->write_log('Starting standard conversion...');
 
-        $quality = sanitize_text_field($_POST['quality'] ?? 'balanced');
-        $size = intval($_POST['size'] ?? 2560);
-        $images_per_run = intval($_POST['images_per_run']) ?? 30;
+        $quality = isset($_POST['quality']) ? sanitize_text_field(wp_unslash($_POST['quality'])) : 'balanced';
+        $size = isset($_POST['size']) ? intval($_POST['size']) : 2560;
+        $images_per_run = isset($_POST['images_per_run']) ? intval($_POST['images_per_run']) : 30;
 
         // Get the conversion options from the DB (if any) and update the values for the standard convertion
         $conversion_options = get_option('lws_optimize_image_conversion_options', []);
@@ -590,11 +591,11 @@ class LwsOptimizeImageOptimizationPro
         if ($scheduled) {
             $this->write_log('Standard conversion activated. Next run: ' . $scheduled);
 
-            wp_die(json_encode(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT)));
+            wp_send_json(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT));
         } else {
             $this->write_log('Failed to start standard conversion cron');
 
-            wp_die(json_encode(array('code' => 'FAILURE', JSON_PRETTY_PRINT)));
+            wp_send_json(array('code' => 'FAILURE', JSON_PRETTY_PRINT));
         }
     }
 
@@ -629,11 +630,11 @@ class LwsOptimizeImageOptimizationPro
         if ($scheduled) {
             $this->write_log('Image deconversion activated. Next run: ' . $scheduled);
 
-            wp_die(json_encode(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT)));
+            wp_send_json(array('code' => 'SUCCESS', 'scheduled' => $scheduled, 'data' => $conversion_options, JSON_PRETTY_PRINT));
         } else {
             $this->write_log('Failed to start Image deconversion cron');
 
-            wp_die(json_encode(array('code' => 'FAILURE', JSON_PRETTY_PRINT)));
+            wp_send_json(array('code' => 'FAILURE', JSON_PRETTY_PRINT));
         }
     }
 
@@ -662,7 +663,7 @@ class LwsOptimizeImageOptimizationPro
 
         $this->write_log('Conversion lock removed when stopping all conversions');
 
-        wp_die(json_encode(array('code' => 'SUCCESS', JSON_PRETTY_PRINT)));
+        wp_send_json(array('code' => 'SUCCESS', JSON_PRETTY_PRINT));
     }
 
 
@@ -788,7 +789,7 @@ class LwsOptimizeImageOptimizationPro
 
                 $current_errors++;
                 $images_to_process[$key]['unavailable'] = true;
-                error_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
                 continue;
             }
 
@@ -799,7 +800,7 @@ class LwsOptimizeImageOptimizationPro
                 $this->write_log("Failed to decode JSON after converting [{$image['path']}]. Error: [" . json_last_error_msg() ."]");
 
                 $images_to_process[$key]['unavailable'] = true;
-                error_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
                 continue;
             }
 
@@ -807,7 +808,7 @@ class LwsOptimizeImageOptimizationPro
             if (!isset($result['code']) || $result['code'] !== 'SUCCESS') {
                 $images_to_process[$key]['unavailable'] = true;
 
-                error_log($response);
+                $GLOBALS['lws_optimize']->lwsop_debug_log($response);
 
                 // Add a HTTP failure to the count. If the API returns HTTP_ERRORs, generally it will NEVER return SUCCESS
                 if ($result['code'] == 'HTTP_ERROR') {
@@ -819,11 +820,23 @@ class LwsOptimizeImageOptimizationPro
                 $this->write_log("Error data: " . json_encode($result['data']));
 
                 if ($result["code"] == "NO_CREDITS") {
-                    // If there are no credits left, stop the conversion process
-                    $conversion_records['status'] = false;
+                    // Out of credits is not this image's fault: don't blacklist it,
+                    // it should be retried once credits are available again.
+                    unset($images_to_process[$key]['unavailable']);
 
                     // Delete lock
                     delete_transient('lws_optimize_conversion_lock');
+
+                    // Stop the recurring cron entirely instead of just releasing the
+                    // lock: without this, the cron keeps firing every minute while
+                    // credits are exhausted, marking one more image "unavailable"
+                    // each time it hit this branch before this fix.
+                    $next_conversion = wp_next_scheduled("lws_optimize_pro_image_conversion_cron");
+                    if ($next_conversion) {
+                        wp_unschedule_event($next_conversion, "lws_optimize_pro_image_conversion_cron");
+                    }
+                    $conversion_options['conversion_status'] = false;
+                    $conversion_options['next_conversion'] = 0;
 
                     $this->write_log("Removing cron lock");
 
@@ -850,7 +863,7 @@ class LwsOptimizeImageOptimizationPro
             if (empty($converted_format)) {
                 $this->write_log("Image [{$converted_path}] has no format returned. Conversion has failed and will not be attempted again");
 
-                error_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format returned', 'data' => $result]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format returned', 'data' => $result]));
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
             }
@@ -1087,7 +1100,7 @@ class LwsOptimizeImageOptimizationPro
                 $this->write_log("Failed to convert image [{$image['path']}]. Error: {$e->getMessage()}");
 
                 $images_to_process[$key]['unavailable'] = true;
-                error_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'CONVERSION_ERROR', 'message' => 'Error during image conversion: ' . $e->getMessage(), 'data' => $image]));
                 continue;
             }
 
@@ -1098,7 +1111,7 @@ class LwsOptimizeImageOptimizationPro
                 $this->write_log("Failed to decode JSON after converting [{$image['path']}]. Error: [" . json_last_error_msg() ."]");
 
                 $images_to_process[$key]['unavailable'] = true;
-                error_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
                 continue;
             }
 
@@ -1109,7 +1122,7 @@ class LwsOptimizeImageOptimizationPro
                 $this->write_log("Error data: " . json_encode($result['data']));
 
                 $images_to_process[$key]['unavailable'] = true;
-                error_log($response);
+                $GLOBALS['lws_optimize']->lwsop_debug_log($response);
                 continue;
             }
 
@@ -1119,7 +1132,7 @@ class LwsOptimizeImageOptimizationPro
             if (empty($converted_format)) {
                 $this->write_log("Image [{$converted_path}] has no format returned. Conversion has failed and will not be attempted again");
 
-                error_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format returned', 'data' => $result]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format returned', 'data' => $result]));
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
             }
@@ -1298,7 +1311,7 @@ class LwsOptimizeImageOptimizationPro
             if (empty($format)) {
                 $this->write_log("Original image at [{$image['path']}] has no format. No deconversion can be done");
 
-                error_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format found for the original image']));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'MISSING_FORMAT', 'message' => 'No format found for the original image']));
                 $images_to_process[$key]['unavailable'] = true;
                 continue;
             }
@@ -1428,7 +1441,7 @@ class LwsOptimizeImageOptimizationPro
 
             // If the file has no mime-type or the type is not supported, return the original file
             if (empty($mime_type) || !in_array($mime_type, $format)) {
-                error_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid/not supported.', 'data' => $file]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'INVALID_ORIGIN', 'message' => 'Given file is not an image or mime-type is invalid/not supported.', 'data' => $file]));
                 return $file;
             }
 
@@ -1447,13 +1460,13 @@ class LwsOptimizeImageOptimizationPro
 
             // Check for JSON decoding errors
             if (json_last_error() !== JSON_ERROR_NONE) {
-                error_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'JSON_ERROR', 'message' => 'Failed to decode JSON response: ' . json_last_error_msg(), 'data' => $response]));
                 return $file;
             }
 
             // Check for API errors
             if (!isset($result['code']) || $result['code'] !== 'SUCCESS') {
-                error_log($response);
+                $GLOBALS['lws_optimize']->lwsop_debug_log($response);
                 return $file;
             }
 
@@ -1463,7 +1476,7 @@ class LwsOptimizeImageOptimizationPro
 
             // Check if an optimized path was returned
             if (empty($optimized_path) || !file_exists($optimized_path)) {
-                error_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
+                $GLOBALS['lws_optimize']->lwsop_debug_log(json_encode(['code' => 'MISSING_PATH', 'message' => 'No optimized path returned or file does not exist', 'data' => $result]));
                 return $file;
             }
 
@@ -1727,7 +1740,7 @@ class LwsOptimizeImageOptimizationPro
             'Origin: ' . rtrim($origin, '/'),
             $api_key ? "X-Api-Key: $api_key" : null
         ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 120);
 
         $response = curl_exec($ch);
@@ -1765,13 +1778,38 @@ class LwsOptimizeImageOptimizationPro
             return json_encode(['code' => 'FAIL_OPTIMIZE', 'message' => 'The given image could not be optimized', 'data' => $response]);
         }
 
+        // SECURITY: the API response is only trusted to return an image. Never let it
+        // dictate an arbitrary file extension (e.g. "php") that would be written into the
+        // web-accessible uploads tree. Allow-list the format and force a safe extension.
+        $allowed_formats = ['webp', 'avif', 'jpg', 'jpeg', 'png', 'gif'];
+        $format = strtolower((string) $format);
+        if (!in_array($format, $allowed_formats, true)) {
+            return json_encode(['code' => 'BAD_FORMAT', 'message' => 'Unexpected image format returned by the optimization API', 'data' => $format]);
+        }
+
+        // Decode and verify the payload really is an image before writing anything.
+        $decoded = base64_decode($image, true);
+        if ($decoded === false || $decoded === '' || @getimagesizefromstring($decoded) === false) {
+            return json_encode(['code' => 'BAD_PAYLOAD', 'message' => 'Optimization API did not return a valid image']);
+        }
+
         // Save the image in the same directory as the original, replacing the original extension with the new one
         // If the $endpath is provided, save the image there instead
         $pathInfo = pathinfo($path);
         $outputPath = !empty($endpath) ? $endpath : $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_lwsoptimized.' . $format;
 
+        // SECURITY: force the on-disk extension to the validated image format regardless
+        // of what $endpath carries, and confirm the resolved target stays inside the
+        // WordPress content directory (no traversal outside wp-content).
+        $outputPath = preg_replace('/\.[^.\/]+$/', '.' . $format, $outputPath);
+        $target_real = realpath(dirname($outputPath));
+        $content_real = realpath(WP_CONTENT_DIR);
+        if ($target_real === false || $content_real === false || strpos($target_real, $content_real) !== 0) {
+            return json_encode(['code' => 'BAD_PATH', 'message' => 'Refusing to write outside the content directory', 'data' => $outputPath]);
+        }
+
         // Save the optimized image
-        if (file_put_contents($outputPath, base64_decode($image)) === false) {
+        if (file_put_contents($outputPath, $decoded) === false) {
             return json_encode(['code' => 'SAVE_ERROR', 'message' => 'Failed to save optimized image', 'data' => $outputPath]);
         }
 
@@ -1805,7 +1843,7 @@ class LwsOptimizeImageOptimizationPro
         try {
             // Validate parameters
             if (empty($image) || empty($output) || empty($origin) || empty($end)) {
-                $this->write_log("Missing parameters [" . $image ?? 'NO IMAGE' . "] [" . $output ?? 'NO OUTPUT' . "] [" . $origin ?? 'NO ORIGIN' . "][" . $end ?? 'NO END' . "]");
+                $this->write_log("Missing parameters [" . (empty($image) ? 'NO IMAGE' : $image) . "] [" . (empty($output) ? 'NO OUTPUT' : $output) . "] [" . (empty($origin) ? 'NO ORIGIN' : $origin) . "][" . (empty($end) ? 'NO END' : $end) . "]");
                 return json_encode(['code' => 'NO_PARAMETERS', 'message' => 'Missing required parameters', 'time' => microtime(true) - $timer]);
             }
 
@@ -1957,7 +1995,7 @@ class LwsOptimizeImageOptimizationPro
             $this->write_log('Autoconversion has been deactivated');
         }
 
-        wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $autoconversion_options, JSON_PRETTY_PRINT)));
+        wp_send_json(array('code' => 'SUCCESS', 'data' => $autoconversion_options, JSON_PRETTY_PRINT));
     }
 
     /**
@@ -1968,9 +2006,9 @@ class LwsOptimizeImageOptimizationPro
 
         $this->write_log('Activating standard autoconversion on upload');
 
-        $quality = sanitize_text_field($_POST['quality'] ?? 'balanced');
-        $size = intval($_POST['size'] ?? 2560);
-        $state = sanitize_text_field($_POST['state'] ?? "false");
+        $quality = isset($_POST['quality']) ? sanitize_text_field(wp_unslash($_POST['quality'])) : 'balanced';
+        $size = isset($_POST['size']) ? intval($_POST['size']) : 2560;
+        $state = isset($_POST['state']) ? sanitize_text_field(wp_unslash($_POST['state'])) : 'false';
 
         // Get the autoconversion options from the DB (if any)
         $autoconversion_options = get_option('lws_optimize_image_autoconversion_options', []);
@@ -1991,7 +2029,7 @@ class LwsOptimizeImageOptimizationPro
             $this->write_log('Autoconversion has been deactivated');
         }
 
-        wp_die(json_encode(array('code' => 'SUCCESS', 'data' => $autoconversion_options, JSON_PRETTY_PRINT)));
+        wp_send_json(array('code' => 'SUCCESS', 'data' => $autoconversion_options, JSON_PRETTY_PRINT));
     }
 
     /**
@@ -2002,18 +2040,23 @@ class LwsOptimizeImageOptimizationPro
         // Get the API Key saved in database ; If there is none, we cannot check credits
         $api_key = get_option('lws_optimize_image_api_key', false);
 
-        $ch = curl_init('https://compress.lwspanel.com/credits');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Origin: ' . site_url() ?: '',
-            $api_key ? "X-Api-Key: $api_key" : null
+        $headers = ['Origin' => site_url() ?: ''];
+        if ($api_key) {
+            $headers['X-Api-Key'] = $api_key;
+        }
+
+        $http_response = wp_remote_get('https://compress.lwspanel.com/credits', [
+            'headers' => $headers,
+            'timeout' => 30,
+            'sslverify' => true,
         ]);
 
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        if (is_wp_error($http_response)) {
+            return json_encode(['code' => 'HTTP_ERROR', 'message' => $http_response->get_error_message(), 'data' => null]);
+        }
 
-        $response = curl_exec($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $code = wp_remote_retrieve_response_code($http_response);
+        $response = wp_remote_retrieve_body($http_response);
 
         if ($code !== 200) {
             return json_encode(['code' => 'HTTP_ERROR', 'message' => "$code", 'data' => $response]);

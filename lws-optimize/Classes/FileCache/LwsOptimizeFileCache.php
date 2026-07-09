@@ -68,6 +68,7 @@ class LwsOptimizeFileCache
                     }
                 }
 
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir -- cache-directory cleanup; WP_Filesystem is unnecessary overhead here
                 rmdir($dir);
                 return !file_exists($dir);
             }
@@ -91,18 +92,14 @@ class LwsOptimizeFileCache
             return false;
         }
 
-        // If there is already a cache file for this URL, then get it and echo it
-        if (!empty(glob($this->cache_directory))) {
-            $user_id = get_current_user_id();
-            $user = wp_get_current_user();
-            if ( array_intersect( ['administrator'], $user->roles ) ) {
-                $user_id = 1;
-            } else {
-                if ($user_id != 0) {
-                    $user_id = 2;
-                }
-            }
-
+        // SECURITY (CACHE-1): never serve a shared cached page to an authenticated user.
+        // The previous logic bucketed every logged-in user into a single index_2.html, so
+        // the first visitor's fully-rendered page (nonces, "Hello <name>", cart) leaked to
+        // all other logged-in users. Only anonymous visitors are served from the page cache;
+        // the optimization pipeline (ob_start below) still runs for logged-in users, but
+        // lwsop_add_to_cache() refuses to persist their responses.
+        if (!is_user_logged_in() && !empty(glob($this->cache_directory))) {
+            $user_id = 0;
 
             $extension = "html";
             if (file_exists($this->cache_directory . "index_$user_id.html")) {
@@ -120,11 +117,11 @@ class LwsOptimizeFileCache
             $content = @file_get_contents($this->cache_directory . "index_$user_id.$extension");
             if ($content) {
                 header('Edge-Cache-Platform: lwsoptimize');
-                // 4.5.0 — Track hit + header debug + bytes saved
                 header('X-LWSOP-Cache: HIT');
                 if (class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
                     \Lws\Classes\FileCache\LwsOptimizeUsageStats::track('hits', strlen($content));
                 }
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $content is the full pre-rendered cached HTML/JSON page read back from disk; it IS the response body, escaping it would corrupt the page
                 echo $content;
                 exit;
             }
@@ -356,18 +353,19 @@ class LwsOptimizeFileCache
                     $htmlMin = new \voku\helper\HtmlMin();
                     // Configure advanced minification options
                     $htmlMin->doOptimizeViaHtmlDomParser(true);   // Enable HTML DOM optimization
+                    $htmlMin->doRemoveComments(true);             // Remove HTML comments
                     $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
                     $htmlMin->doRemoveOmittedQuotes(false);       // Don't remove quotes to preserve attribute values
                     $htmlMin->doRemoveOmittedHtmlTags(false);     // Don't remove optional HTML tags
                     $htmlMin->doSumUpWhitespace(true);            // Combine multiple whitespace
-                    $htmlMin->doRemoveWhitespaceAroundTags(true); // Remove whitespace around tags
                     $htmlMin->doRemoveHttpPrefixFromAttributes(true); // Remove http: when possible
 
                     $modified = $htmlMin->minify($modified);
                 } else {
                     $no_minify = false;
+                    $request_uri = isset($_SERVER["REQUEST_URI"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"])) : '';
                     foreach ($exclusions as $exclusion) {
-                        if (preg_match("~$exclusion~", $_SERVER["REQUEST_URI"])) {
+                        if (preg_match("~$exclusion~", $request_uri)) {
                             $no_minify = true;
                         }
                     }
@@ -398,7 +396,7 @@ class LwsOptimizeFileCache
 
             $this->lwsop_add_to_cache($modified, $cached_elements, $is_mobile);
         } elseif ($this->content_type === "xml") {
-            if (preg_match("/<link><\/link>/", $buffer) && preg_match("/\/feed$/", $_SERVER["REQUEST_URI"])) {
+            if (preg_match("/<link><\/link>/", $buffer) && preg_match("/\/feed$/", isset($_SERVER["REQUEST_URI"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"])) : '')) {
                 return $buffer . time();
             }
             $this->lwsop_add_to_cache($buffer, $cached_elements, false);
@@ -417,16 +415,15 @@ class LwsOptimizeFileCache
     {
         $this->lwsop_set_cachedir();
 
+        // SECURITY (CACHE-1): only persist responses for anonymous visitors. Caching an
+        // authenticated response under a shared key leaked personalized content between
+        // users; authenticated pages are never written to the file cache.
+        if (is_user_logged_in()) {
+            return;
+        }
+
         if (!empty($content) && $this->cache_directory !== false) {
-            $user_id = get_current_user_id();
-            $user = wp_get_current_user();
-            if ( array_intersect( ['administrator'], $user->roles ) ) {
-                $user_id = 1;
-            } else {
-                if ($user_id != 0) {
-                    $user_id = 2;
-                }
-            }
+            $user_id = 0;
 
             $name = "index_$user_id.";
 
@@ -434,23 +431,32 @@ class LwsOptimizeFileCache
             if ($content !== false && preg_match("/html|xml|json/i", $this->content_type)) {
 
                 if (!is_dir($this->cache_directory)) {
+                    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- per-page-view cache write hot path; WP_Filesystem overhead/credential prompts are unacceptable here
                     mkdir($this->cache_directory, 0755, true);
                 }
 
                 if (is_dir($this->cache_directory) && !file_exists($this->cache_directory . $name . $this->content_type)) {
-                    file_put_contents($this->cache_directory . $name . $this->content_type, $content);
+                    // CACHE-3: write atomically (tmp file + rename) so a concurrent request
+                    // — or the Apache static-serve path — can never read a half-written file.
+                    $this->base->lwsop_atomic_write($this->cache_directory . $name . $this->content_type, $content);
+
+                    // Pre-generate compressed siblings so lwsop_cache_serve.php (used when
+                    // the PHP intermediary option is on) can send Content-Encoding without
+                    // depending on Apache's mod_deflate/mod_brotli being loaded.
+                    if ($this->content_type === 'html') {
+                        $this->lwsop_write_compressed_variants($this->cache_directory . $name . $this->content_type, $content);
+                    }
 
                     $cached['html']['file'] = 1;
                     $cached['html']['size'] = filesize($this->cache_directory . $name . $this->content_type);
 
                     $GLOBALS['lws_optimize']->lwsop_recalculate_stats("plus", $cached, $mobile);
 
-                    // 4.5.0 — Track miss (skip if request comes from the preload crawler).
                     // Validate against the per-site secret so any client can't spoof the header.
                     $preload_secret = get_option('lwsop_preload_secret', '');
                     $is_preload = $preload_secret !== ''
                         && isset($_SERVER['HTTP_X_LWS_PRELOAD'])
-                        && hash_equals($preload_secret, $_SERVER['HTTP_X_LWS_PRELOAD']);
+                        && hash_equals($preload_secret, sanitize_text_field(wp_unslash($_SERVER['HTTP_X_LWS_PRELOAD'])));
                     if (!$is_preload && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats') && !headers_sent()) {
                         header('X-LWSOP-Cache: MISS');
                     }
@@ -458,6 +464,28 @@ class LwsOptimizeFileCache
                         \Lws\Classes\FileCache\LwsOptimizeUsageStats::track('misses');
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Writes .gz/.br siblings next to a cached HTML file so the request never pays
+     * compression cost — the shared-hosting Apache modules this used to depend on
+     * (mod_deflate/mod_brotli) aren't guaranteed to be loaded on every vhost.
+     */
+    private function lwsop_write_compressed_variants($path, $content)
+    {
+        if (function_exists('gzencode')) {
+            $gzipped = @gzencode($content, 9);
+            if ($gzipped !== false) {
+                $this->base->lwsop_atomic_write($path . '.gz', $gzipped);
+            }
+        }
+
+        if (function_exists('brotli_compress')) {
+            $br = @brotli_compress($content);
+            if ($br !== false && $br !== null) {
+                $this->base->lwsop_atomic_write($path . '.br', $br);
             }
         }
     }
@@ -550,7 +578,8 @@ class LwsOptimizeFileCache
 
     public function lwsop_detect_page_type()
     {
-        if (preg_match("/\?/", $_SERVER["REQUEST_URI"]) || preg_match("/^\/wp-json/", $_SERVER["REQUEST_URI"])) {
+        $request_uri = isset($_SERVER["REQUEST_URI"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"])) : '';
+        if (preg_match("/\?/", $request_uri) || preg_match("/^\/wp-json/", $request_uri)) {
             return true;
         }
 
@@ -629,10 +658,10 @@ class LwsOptimizeFileCache
      */
     public function lwsop_page_has_been_excluded($buffer = null)
     {
-        $url = urldecode($_SERVER["REQUEST_URI"]);
+        $url = isset($_SERVER["REQUEST_URI"]) ? urldecode(sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"]))) : '';
 
         // Get WordPress installation directory
-        $home_path = parse_url(home_url(), PHP_URL_PATH);
+        $home_path = wp_parse_url(home_url(), PHP_URL_PATH);
 
         if (!empty($home_path) && $home_path !== '/') {
             // Remove the installation directory from the URL
@@ -664,8 +693,56 @@ class LwsOptimizeFileCache
         return false;
     }
 
-    public function lwsop_page_to_ignore()
+    /**
+     * Front-end form plugins known to bake a WordPress REST nonce (wp_rest,
+     * ~12-24h lifetime) into the cached HTML for form submission, via
+     * wp.apiFetch. Once a cached page outlives that nonce, every visitor's
+     * submission fails with "rest_cookie_invalid_nonce" until the cache is
+     * regenerated. These forms aren't tied to a fixed URL like a WooCommerce
+     * checkout page (they can be placed on any page), so detection has to be
+     * content-based rather than a URL pattern.
+     *
+     * Each entry maps a plugin's main file to a list of needle strings that
+     * only appear in the rendered buffer when that plugin actually outputs a
+     * form on the page - not merely when the plugin is active - so unrelated
+     * pages stay cached.
+     */
+    private function lwsop_form_plugins_with_cache_nonce_issue()
     {
+        return array(
+            // SureForms forms are submitted via the REST API using WordPress's
+            // standard wp_rest nonce, localized into this JS object.
+            'sureforms/sureforms.php' => array('srfm_submit'),
+        );
+    }
+
+    private function lwsop_page_has_uncacheable_form($buffer)
+    {
+        if (empty($buffer)) {
+            return false;
+        }
+
+        foreach ($this->lwsop_form_plugins_with_cache_nonce_issue() as $plugin_file => $needles) {
+            if (!$GLOBALS['lws_optimize']->lwsop_plugin_active($plugin_file)) {
+                continue;
+            }
+
+            foreach ($needles as $needle) {
+                if (strpos($buffer, $needle) !== false) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function lwsop_page_to_ignore($buffer = null)
+    {
+        if ($this->lwsop_page_has_uncacheable_form($buffer)) {
+            return true;
+        }
+
         $ignored = array(
             "\/wp\-comments\-post\.php",
             "\/wp\-login\.php",
@@ -704,7 +781,7 @@ class LwsOptimizeFileCache
             array_push($ignored, "\/cart", "\/checkout");
         }
 
-        if (preg_match("/" . implode("|", $ignored) . "/i", $_SERVER["REQUEST_URI"])) {
+        if (preg_match("/" . implode("|", $ignored) . "/i", isset($_SERVER["REQUEST_URI"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"])) : '')) {
             return true;
         }
 
@@ -719,7 +796,7 @@ class LwsOptimizeFileCache
     public function lwsop_check_need_cache($uri = false)
     {
         if (!$uri) {
-            $uri = $_SERVER['REQUEST_URI'];
+            $uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
         } else {
             $uri = esc_url($uri);
         }
@@ -747,17 +824,17 @@ class LwsOptimizeFileCache
         }
 
         // To prevent issues with requests and their data, no cache when sending POST requests
-        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== "GET") {
+        if (isset($_SERVER['REQUEST_METHOD']) && sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) !== "GET") {
             return false;
         }
 
         // To prevent issues with requests and their data, no cache when sending POST requests
-        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == "POST") {
+        if (isset($_SERVER['REQUEST_METHOD']) && sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) == "POST") {
             return false;
         }
 
         // If the request is HEAD, then do not cache
-        if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'HEAD') {
+        if (isset($_SERVER['REQUEST_METHOD']) && sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) === 'HEAD') {
             return false;
         }
 
@@ -771,15 +848,17 @@ class LwsOptimizeFileCache
             return false;
         }
 
+        $http_user_agent = sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT']));
+
         // Do not cache the page if the UserAgent is not from a real user (non exhaustive list)
         if (
-            preg_match("/(googlebot|bingbot|yandexbot|slurp|spider|robot|bot.html|bot.htm|facebookbot|facebookexternalhit|twitterbot|storebot|microsoftpreview|ahrefsbot|semrushbot|siteauditbot|splitsignalbot)/", $_SERVER['HTTP_USER_AGENT'])
+            preg_match("/(googlebot|bingbot|yandexbot|slurp|spider|robot|bot.html|bot.htm|facebookbot|facebookexternalhit|twitterbot|storebot|microsoftpreview|ahrefsbot|semrushbot|siteauditbot|splitsignalbot)/", $http_user_agent)
         ) {
             return false;
         }
 
         // Do not cache pages if it comes from PentHouse
-        if (strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'penthouse') !== false) {
+        if (strpos(strtolower($http_user_agent), 'penthouse') !== false) {
             return false;
         }
 
@@ -827,11 +906,12 @@ class LwsOptimizeFileCache
         }
 
         // No cache if the www. is inconsistent #WPFC
+        $http_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
         if (
-            isset($_SERVER['HTTP_HOST']) &&
+            $http_host !== '' &&
             (
-                (preg_match("/www\./i", get_option("home")) && !preg_match("/www\./i", $_SERVER['HTTP_HOST'])) ||
-                (!preg_match("/www\./i", get_option("home")) && preg_match("/www\./i", $_SERVER['HTTP_HOST']))
+                (preg_match("/www\./i", get_option("home")) && !preg_match("/www\./i", $http_host)) ||
+                (!preg_match("/www\./i", get_option("home")) && preg_match("/www\./i", $http_host))
             )
         ) {
             return false;
@@ -874,13 +954,13 @@ class LwsOptimizeFileCache
         }
 
         if (!$uri) {
-            $uri = $_SERVER['REQUEST_URI'];
+            $uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
         } else {
             $uri = esc_url($uri);
         }
 
-        $parsed = parse_url($uri);
-        $parsed_full = parse_url($uri, PHP_URL_PATH);
+        $parsed = wp_parse_url($uri);
+        $parsed_full = wp_parse_url($uri, PHP_URL_PATH);
         $query = $parsed['query'] ?? '';
 
         parse_str($query, $params);
@@ -902,8 +982,8 @@ class LwsOptimizeFileCache
             $uri = $parsed_full;
         }
 
-        $parsed = parse_url($uri);
-        $parsed_full = parse_url($uri, PHP_URL_PATH);
+        $parsed = wp_parse_url($uri);
+        $parsed_full = wp_parse_url($uri, PHP_URL_PATH);
         $query = $parsed['query'] ?? '';
 
 
@@ -917,8 +997,11 @@ class LwsOptimizeFileCache
         }
 
         if ($GLOBALS['lws_optimize']->lwsop_plugin_active('gtranslate/gtranslate.php')) {
-            if (isset($_SERVER["HTTP_X_GT_LANG"])) {
-                $this->cache_directory = $GLOBALS['lws_optimize']->lwsop_get_content_directory("$dir/{$_SERVER['HTTP_X_GT_LANG']}/");
+            // SECURITY: the language comes from an untrusted request header; sanitize it to
+            // a bare filename token so it can never influence the cache directory path.
+            $gt_lang = isset($_SERVER["HTTP_X_GT_LANG"]) ? sanitize_file_name(wp_unslash($_SERVER["HTTP_X_GT_LANG"])) : '';
+            if ($gt_lang !== '') {
+                $this->cache_directory = $GLOBALS['lws_optimize']->lwsop_get_content_directory("$dir/{$gt_lang}/");
             } else {
                 $this->cache_directory = $GLOBALS['lws_optimize']->lwsop_get_content_directory("$dir/");
             }
@@ -948,7 +1031,7 @@ class LwsOptimizeFileCache
             if (!preg_match("/\.(html|xml)/i", $uri)) {
                 if ($this->base->lwsop_plugin_active("custom-permalinks/custom-permalinks.php") || preg_match("/\/$/", get_option('permalink_structure', ""))) {
                     if (!preg_match("/\/$/", $uri)) {
-                        if (isset($_SERVER["QUERY_STRING"]) && $_SERVER["QUERY_STRING"]) {
+                        if (!empty($_SERVER["QUERY_STRING"])) {
                         } elseif (preg_match("/y(ad|s)?clid\=/i", $this->cache_directory)) {
                         } elseif (preg_match("/gclid\=/i", $this->cache_directory)) {
                         } elseif (preg_match("/fbclid\=/i", $this->cache_directory)) {
@@ -981,17 +1064,19 @@ class LwsOptimizeFileCache
         if (isset($_SERVER['HTTP_SEC_CH_UA_MOBILE'])) {
             // This is the `Sec-CH-UA-Mobile` user agent client hint HTTP request header.
             // See <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Sec-CH-UA-Mobile>.
-            return '?1' === $_SERVER['HTTP_SEC_CH_UA_MOBILE'];
+            return '?1' === sanitize_text_field(wp_unslash($_SERVER['HTTP_SEC_CH_UA_MOBILE']));
         } elseif (empty($_SERVER['HTTP_USER_AGENT'])) {
             return false;
-        } elseif (
-            str_contains($_SERVER['HTTP_USER_AGENT'], 'Mobile') // Many mobile devices (all iPhone, iPad, etc.)
-            || str_contains($_SERVER['HTTP_USER_AGENT'], 'Android')
-            || str_contains($_SERVER['HTTP_USER_AGENT'], 'Silk/')
-            || str_contains($_SERVER['HTTP_USER_AGENT'], 'Kindle')
-            || str_contains($_SERVER['HTTP_USER_AGENT'], 'BlackBerry')
-            || str_contains($_SERVER['HTTP_USER_AGENT'], 'Opera Mini')
-            || str_contains($_SERVER['HTTP_USER_AGENT'], 'Opera Mobi')
+        }
+        $mobile_user_agent = sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT']));
+        if (
+            str_contains($mobile_user_agent, 'Mobile') // Many mobile devices (all iPhone, iPad, etc.)
+            || str_contains($mobile_user_agent, 'Android')
+            || str_contains($mobile_user_agent, 'Silk/')
+            || str_contains($mobile_user_agent, 'Kindle')
+            || str_contains($mobile_user_agent, 'BlackBerry')
+            || str_contains($mobile_user_agent, 'Opera Mini')
+            || str_contains($mobile_user_agent, 'Opera Mobi')
         ) {
             return true;
         } else {

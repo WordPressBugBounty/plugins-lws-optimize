@@ -1,3 +1,4 @@
+<?php if (!defined('ABSPATH')) exit; ?>
 <div class="lwsoptimize_main_content">
     <?php if ($is_deactivated) : ?>
         <div class="lwsoptimize_main_content_fogged"></div>
@@ -25,7 +26,7 @@
 
     <?php foreach ($tabs_list as $tab) : ?>
         <div class="tab-pane main-tab-pane" id="<?php echo esc_attr($tab[0]) ?>" role="tabpanel" aria-labelledby="nav-<?php echo esc_attr($tab[0]) ?>" <?php echo $tab[0] == 'frontend' ? esc_attr('tabindex="0"') : esc_attr('tabindex="-1" hidden') ?>>
-            <div id="post-body-<?php echo $tab[0]; ?>" class="<?php echo $tab[0] == 'plugins' ? esc_attr('lws_op_configpage_plugin') : esc_attr('lws_op_configpage'); ?> ">
+            <div id="post-body-<?php echo esc_attr($tab[0]); ?>" class="<?php echo $tab[0] == 'plugins' ? esc_attr('lws_op_configpage_plugin') : esc_attr('lws_op_configpage'); ?> ">
                 <?php if ($is_deactivated) : ?>
                     <?php echo ($tab[0] == 'plugins' || $tab[0] == 'pagespeed') ? '' : '<div class="deactivated_plugin_state"></div>'; ?>
                 <?php endif ?>
@@ -41,10 +42,10 @@
             <h2 class="lwsop_exclude_title" id="lws_optimize_exclusion_modale_title"></h2>
             <form method="POST" id="lws_optimize_exclusion_modale_form"></form>
             <div class="lwsop_modal_buttons" id="lws_optimize_exclusion_modale_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                 <button type="button" id="lws_optimize_exclusion_form_fe" class="lwsop_validatebutton">
                     <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                    <?php esc_html_e('Save', 'lws-optimize'); ?>
                 </button>
             </div>
         </div>
@@ -297,105 +298,6 @@
                         button.disabled = true;
                     }
                 }
-
-
-                // document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
-                //     checks.disabled = true;
-                // });
-
-                // let ajaxRequest = jQuery.ajax({
-                //     url: ajaxurl,
-                //     type: "POST",
-                //     timeout: 120000,
-                //     context: document.body,
-                //     data: {
-                //         _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_lws_optimize_checkboxes_config")); ?>",
-                //         action: "lws_optimize_checkboxes_action",
-                //         data: data
-                //     },
-
-                //     success: function(data) {
-                //         element.disabled = false;
-                //         document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
-                //             checks.disabled = false;
-                //         });
-
-                //         if (data === null || typeof data != 'string') {
-                //             return 0;
-                //         }
-
-                //         try {
-                //             var returnData = JSON.parse(data);
-                //         } catch (e) {
-                //             console.log(e);
-                //             returnData = {
-                //                 'code': "NOT_JSON",
-                //                 'data': "FAIL"
-                //             };
-                //         }
-
-                //         switch (returnData['code']) {
-                //             case 'SUCCESS':
-                //                 let status = returnData['data'] == "true" ? "<?php esc_html_e('activated', 'lws-optimize'); ?>" : "<?php esc_html_e('deactivated', 'lws-optimize'); ?>";
-                //                 if (returnData['type'] == "maintenance_db") {
-                //                     // Update the "Next conversion" value
-                //                     lws_op_update_database_cleaner();
-                //                 }
-                //                 callPopup('success', "<?php esc_html_e('Option ', 'lws-optimize'); ?> " + status);
-                //                 break;
-                //             case 'MEMCACHE_NOT_WORK':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e("Memcached could not be activated. Make sure it is activated on your server.", "lws-optimize"); ?>");
-                //                 break;
-                //             case 'MEMCACHE_NOT_FOUND':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e("Memcached could not be found. Maybe your website is not compatible with it.", "lws-optimize"); ?>");
-                //                 break;
-                //             case 'REDIS_ALREADY_HERE':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e("Redis Cache is already active on this website and may cause incompatibilities with Memcached. Please deactivate Redis Cache to use Memcached.", "lws-optimize"); ?>");
-                //                 break;
-                //             case 'PANEL_CACHE_OFF':
-                //                 element.checked = !state;
-                //                 callPopup('warning', "<?php esc_html_e('LWSCache is not activated on this hosting. Please go to your LWSPanel and activate it.', 'lws-optimize'); ?>");
-                //                 break;
-                //             case 'CPANEL_CACHE_OFF':
-                //                 element.checked = !state;
-                //                 callPopup('warning', "<?php esc_html_e('FastestCache is not activated on this cPanel. Please go to your cPanel and activate it.', 'lws-optimize'); ?>");
-                //                 break;
-                //             case 'INCOMPATIBLE':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e('LWSCache is not available on this hosting. Please migrate to a LWS hosting to use this action.', 'lws-optimize'); ?>");
-                //                 break;
-                //             case 'NOT_JSON':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e('Bad server response. Could not change action state.', 'lws-optimize'); ?>");
-                //                 break;
-                //             case 'DATA_MISSING':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e('Not enough informations were sent to the server, please refresh and try again. Could not change action state.', 'lws-optimize'); ?>");
-                //             case 'UNKNOWN_ID':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e('No matching action bearing this ID, please refresh and retry. Could not change action state.', 'lws-optimize'); ?>");
-                //             case 'FAILURE':
-                //                 element.checked = !state;
-                //                 callPopup('error', "<?php esc_html_e('Could not save change to action state in the database.', 'lws-optimize'); ?>");
-                //             default:
-                //                 break;
-                //         }
-                //     },
-                //     error: function(error) {
-                //         element.disabled = false;
-                //         document.querySelectorAll('input[id^="lws_optimize_"]').forEach(function(checks) {
-                //             checks.disabled = false;
-                //         });
-
-                //         element.checked = !state;
-                //         callPopup("error", "Une erreur inconnue est survenue. Impossible d'activer cette option.");
-                //         console.log(error);
-                //         return 1;
-                //     }
-                // });
             });
         });
 
@@ -422,22 +324,13 @@
                     data: JSON.parse(localStorage.getItem('lws_optimize_current_configuration_changes'))
                 },
 
-                success: function(data) {
+                success: function(returnData) {
                     button.disabled = true;
                     button.innerHTML = originalText;
 
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        returnData = {
-                            'code': "NOT_JSON",
-                            'data': "FAIL"
-                        };
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {
@@ -445,6 +338,17 @@
                             let status = returnData['data'] == "true" ? "<?php esc_html_e('activated', 'lws-optimize'); ?>" : "<?php esc_html_e('deactivated', 'lws-optimize'); ?>";
                             callPopup('success', "<?php esc_html_e('Plugin configuration updated', 'lws-optimize'); ?>");
 
+                            // Cloudflare APO: the server recomputes the "✓ Turned on since …" label
+                            // whenever a cloudflare_apo entry was part of this save (see
+                            // LwsOptimizeManageAdmin::lws_optimize_manage_config_delayed()) — this
+                            // screen doesn't reload, so update it here instead of leaving it stale.
+                            if (typeof returnData.lws_cf_apo_status_label !== 'undefined') {
+                                let apoStat = document.getElementById('lwsop_cf_apo_status');
+                                if (apoStat) {
+                                    apoStat.textContent = returnData.lws_cf_apo_status_label;
+                                    apoStat.style.color = returnData.lws_cf_apo_status_installed ? '#16a34a' : '#64748b';
+                                }
+                            }
 
                             let current_configuration = JSON.parse(localStorage.getItem('lws_optimize_current_configuration_changes'));
                             localStorage.setItem('lws_optimize_current_configuration_changes', JSON.stringify([]));
@@ -510,9 +414,6 @@
                                     case 'HTACCESS_UPDATE_FAILED':
                                         callPopup('error', "<?php esc_html_e('The .htaccess file could not be updated. Please check the permissions of this file.', 'lws-optimize'); ?>");
                                         break;
-                                    // 4.5.13 — Nouveaux cas Memcached : conflit PHP sessions, drop-in tiers, saturation.
-                                    // Le serveur renvoie en parallèle `returnData.lws_memcached_detail` (message complet
-                                    // i18n) qu'on affiche si dispo, sinon fallback message générique localisé.
                                     case 'MEMCACHE_SESSIONS_CONFLICT':
                                         if (memcached) { memcached.checked = false; }
                                         var sessMsg = (returnData.lws_memcached_detail)
@@ -528,11 +429,33 @@
                                         callPopup('error', dropinMsg);
                                         break;
                                     case 'MEMCACHE_WARNING':
-                                        // Non bloquant : activation OK mais cache proche saturation (>90% utilisé)
                                         var warnMsg = (returnData.lws_memcached_warning)
                                             ? returnData.lws_memcached_warning
                                             : "<?php echo esc_js(__('Memcached activé mais le cache est proche de la saturation. Le bénéfice perf sera limité ; envisagez d\'augmenter limit_maxbytes côté serveur.', 'lws-optimize')); ?>";
                                         callPopup('warning', warnMsg);
+                                        break;
+                                    case 'GZIP_APACHE_MODULE_MISSING':
+                                        var gzipMsg = (returnData.lws_gzip_compression_warning)
+                                            ? returnData.lws_gzip_compression_warning
+                                            : "<?php echo esc_js(__('Aucun module de compression Apache détecté sur ce serveur ; LWS Optimize bascule sur une compression PHP de repli.', 'lws-optimize')); ?>";
+                                        callPopup('warning', gzipMsg);
+                                        break;
+                                    // Cloudflare APO: the requested Cache Rule install/removal failed server-side
+                                    // (see LwsOptimizeCloudflareAPO::install_cache_rule()/uninstall_cache_rule()).
+                                    // Revert the toggle to the opposite of what was requested (the pending entry's
+                                    // "state" tells us which direction was attempted).
+                                    case 'NO_CONFIG':
+                                    case 'CF_API_FAIL':
+                                    case 'WP_ERROR':
+                                        var apoToggleEl = document.getElementById('lws_optimize_cloudflare_apo_check');
+                                        var apoConfig = current_configuration.find(item => item.type === 'lws_optimize_cloudflare_apo_check');
+                                        if (apoToggleEl && apoConfig) {
+                                            apoToggleEl.checked = !apoConfig.state;
+                                        }
+                                        var apoMsg = (error === 'NO_CONFIG')
+                                            ? "<?php esc_html_e('Could not turn on Cloudflare APO: missing Zone ID or API token.', 'lws-optimize'); ?>"
+                                            : "<?php esc_html_e('Could not update Cloudflare APO: the Cloudflare API request failed. Please check your Zone ID and API token.', 'lws-optimize'); ?>";
+                                        callPopup('error', apoMsg);
                                         break;
                                     default:
                                         break;
@@ -638,7 +561,7 @@
                     button.disabled = false;
                     button.innerHTML = originalText;
 
-                    callPopup("error", "Une erreur inconnue est survenue. Impossible d'activer cette option.");
+                    callPopup("error", `<?php esc_html_e('An unknown error occurred. Unable to activate this option.', 'lws-optimize'); ?>`);
                     console.log(error);
                     return 1;
                 }
@@ -668,7 +591,7 @@
                 </div>
             `;
                 buttons.innerHTML = `
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             `;
 
                 title.innerHTML = "<?php esc_html_e('Exclude from: ', 'lws-optimize'); ?>" + name;
@@ -683,29 +606,19 @@
                         data: data
                     },
 
-                    success: function(data) {
-                        if (data === null || typeof data != 'string') {
-                            return 0;
+                    success: function(returnData) {
+                        if (!isValidResponse(returnData)) {
+                            console.error('Invalid AJAX response', returnData);
+                            return;
                         }
-
-                        try {
-                            var returnData = JSON.parse(data);
-                        } catch (e) {
-                            console.log(e);
-                            returnData = {
-                                'code': "NOT_JSON",
-                                'data': "FAIL"
-                            };
-                        }
-
 
                         switch (returnData['code']) {
                             case 'SUCCESS':
                                 buttons.innerHTML = `
-                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
+                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
                                 <button type="button" id="lws_optimize_exclusion_form_fe" class="lwsop_validatebutton">
                                     <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                    <?php esc_html_e('Save', 'lws-optimize'); ?>
                                 </button>
                             `;
 
@@ -793,7 +706,7 @@
                 </div>
             `;
                 buttons.innerHTML = `
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             `;
 
                 title.innerHTML = "<?php esc_html_e('Add files to preload', 'lws-optimize'); ?>";
@@ -807,29 +720,19 @@
                         action: "lws_optimize_add_url_to_preload",
                     },
 
-                    success: function(data) {
-                        if (data === null || typeof data != 'string') {
-                            return 0;
+                    success: function(returnData) {
+                        if (!isValidResponse(returnData)) {
+                            console.error('Invalid AJAX response', returnData);
+                            return;
                         }
-
-                        try {
-                            var returnData = JSON.parse(data);
-                        } catch (e) {
-                            console.log(e);
-                            returnData = {
-                                'code': "NOT_JSON",
-                                'data': "FAIL"
-                            };
-                        }
-
 
                         switch (returnData['code']) {
                             case 'SUCCESS':
                                 buttons.innerHTML = `
-                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
+                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
                                 <button type="button" id="lws_optimize_exclusion_form_fe" class="lwsop_validatebutton">
                                     <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                    <?php esc_html_e('Save', 'lws-optimize'); ?>
                                 </button>
                             `;
 
@@ -924,20 +827,11 @@
                                 _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_lws_optimize_preloading_url_files_set")); ?>",
                                 action: "lws_optimize_set_url_to_preload",
                             },
-                            success: function(data) {
+                            success: function(returnData) {
                                 document.body.style.pointerEvents = "all";
-                                if (data === null || typeof data != 'string') {
-                                    return 0;
-                                }
-
-                                try {
-                                    var returnData = JSON.parse(data);
-                                } catch (e) {
-                                    console.log(e);
-                                    returnData = {
-                                        'code': "NOT_JSON",
-                                        'data': "FAIL"
-                                    };
+                                if (!isValidResponse(returnData)) {
+                                    console.error('Invalid AJAX response', returnData);
+                                    return;
                                 }
 
                                 jQuery(document.getElementById('lws_optimize_exclusion_modale')).modal('hide');
@@ -1001,20 +895,12 @@
                                 _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_lws_optimize_preloading_url_fonts_set")); ?>",
                                 action: "lws_optimize_set_url_to_preload_font",
                             },
-                            success: function(data) {
+                            success: function(returnData) {
                                 document.body.style.pointerEvents = "all";
-                                if (data === null || typeof data != 'string') {
-                                    return 0;
-                                }
 
-                                try {
-                                    var returnData = JSON.parse(data);
-                                } catch (e) {
-                                    console.log(e);
-                                    returnData = {
-                                        'code': "NOT_JSON",
-                                        'data': "FAIL"
-                                    };
+                                if (!isValidResponse(returnData)) {
+                                    console.error('Invalid AJAX response', returnData);
+                                    return;
                                 }
 
                                 jQuery(document.getElementById('lws_optimize_exclusion_modale')).modal('hide');
@@ -1078,20 +964,12 @@
                                 _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_lws_optimize_exclusions_config")); ?>",
                                 action: "lws_optimize_exclusions_changes_action",
                             },
-                            success: function(data) {
+                            success: function(returnData) {
                                 document.body.style.pointerEvents = "all";
-                                if (data === null || typeof data != 'string') {
-                                    return 0;
-                                }
 
-                                try {
-                                    var returnData = JSON.parse(data);
-                                } catch (e) {
-                                    console.log(e);
-                                    returnData = {
-                                        'code': "NOT_JSON",
-                                        'data': "FAIL"
-                                    };
+                                if (!isValidResponse(returnData)) {
+                                    console.error('Invalid AJAX response', returnData);
+                                    return;
                                 }
 
                                 jQuery(document.getElementById('lws_optimize_exclusion_modale')).modal('hide');
@@ -1164,7 +1042,7 @@
                     </div>
                 `;
                     buttons.innerHTML = `
-                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                 `;
 
                 title.innerHTML = "<?php esc_html_e('Add fonts to preload', 'lws-optimize'); ?>";
@@ -1178,29 +1056,19 @@
                         action: "lws_optimize_add_font_to_preload",
                     },
 
-                    success: function(data) {
-                        if (data === null || typeof data != 'string') {
-                            return 0;
+                    success: function(returnData) {
+                        if (!isValidResponse(returnData)) {
+                            console.error('Invalid AJAX response', returnData);
+                            return;
                         }
-
-                        try {
-                            var returnData = JSON.parse(data);
-                        } catch (e) {
-                            console.log(e);
-                            returnData = {
-                                'code': "NOT_JSON",
-                                'data': "FAIL"
-                            };
-                        }
-
 
                         switch (returnData['code']) {
                             case 'SUCCESS':
                                 buttons.innerHTML = `
-                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
+                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
                                 <button type="button" id="lws_optimize_exclusion_form_fe" class="lwsop_validatebutton">
                                     <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                    <?php esc_html_e('Save', 'lws-optimize'); ?>
                                 </button>
                             `;
 

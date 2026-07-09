@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 // X-Cdn-Info => cloudflare
 // Cf-Connecting-Ip
 
@@ -37,11 +38,11 @@ $list_time = array(
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
             <img src="<?php echo esc_url(plugins_url('images/cloudflare.svg', __DIR__)) ?>" alt="pc icon" width="30px" height="30px">
-            <?php echo esc_html_e('Cloudflare integration with LWS Optimize', 'lws-optimize'); ?>
+            <?php esc_html_e('Cloudflare integration with LWS Optimize', 'lws-optimize'); ?>
             <a href="https://aide.lws.fr/a/1890" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
         </h2>
         <div class="lwsop_contentblock_description">
-            <?php echo esc_html_e('LWS Optimize is fully compatible with Cloudflare CDN. This integration prevent incompatibilities by modifying Cloudflare settings. Furthermore, it purges Cloudflare cache at the same time as LWS Optimize.', 'lws-optimize'); ?>
+            <?php esc_html_e('LWS Optimize is fully compatible with Cloudflare CDN. This integration prevent incompatibilities by modifying Cloudflare settings. Furthermore, it purges Cloudflare cache at the same time as LWS Optimize.', 'lws-optimize'); ?>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
@@ -58,52 +59,54 @@ $list_time = array(
 // integrations dans frontend.php — évite le doublon visuel).
 // APO ne fait sens que si l'intégration CF de base est active (zone_id + token
 // déjà stockés via lws_optimize_complete_cloudflare_integration).
-$apo_state   = ($config_array['cloudflare_apo']['state'] ?? 'false') === 'true';
-$apo_zone_id = $config_array['cloudflare_apo']['zone_id'] ?? ($config_array['cloudflare']['zone_id'] ?? '');
-$apo_token   = $config_array['cloudflare_apo']['api_token'] ?? '';
-$is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
+$apo_state       = ($config_array['cloudflare_apo']['state'] ?? 'false') === 'true';
+$apo_zone_id     = $config_array['cloudflare_apo']['zone_id'] ?? ($config_array['cloudflare']['zone_id'] ?? '');
+$apo_token       = $config_array['cloudflare_apo']['api_token'] ?? '';
+$apo_installed_at = $config_array['cloudflare_apo']['rule_installed_at'] ?? null;
+// Whether a Cache Rule has actually been pushed to Cloudflare — kept separate from
+// $apo_state so the checkbox can be gated on it (see checkbox markup below).
+$apo_installed   = !empty($apo_installed_at);
 ?>
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
             <img src="<?php echo esc_url(plugins_url('images/cloudflare.svg', __DIR__)) ?>" alt="cloudflare icon" width="30px" height="30px">
-            <?php echo $is_fr_apo ? 'Cloudflare APO — cache HTML edge' : 'Cloudflare APO — edge HTML cache'; ?>
+            <?php esc_html_e('Cloudflare APO', 'lws-optimize'); ?>
             <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
-            <a href="https://aide.lws.fr/a/" rel="noopener" target="_blank" title="<?php echo $is_fr_apo ? 'Met en cache le HTML directement sur les serveurs Cloudflare dans le monde entier. Avantage : TTFB ~50ms partout. Pré-requis : un compte Cloudflare et un token API avec les scopes Zone.Cache Purge + Zone.Cache Rules.' : 'Cache the HTML at Cloudflare edge nodes worldwide. Benefit: TTFB ~50ms everywhere. Requires: Cloudflare account + API token with scopes Zone.Cache Purge + Zone.Cache Rules.'; ?>">
+            <a href="https://aide.lws.fr/a/" rel="noopener" target="_blank" title="<?php esc_attr_e('Delivers your pages from the Cloudflare location closest to each visitor, so your site loads quickly wherever they are. Requires a Cloudflare account and an API token with cache permissions.', 'lws-optimize'); ?>">
                 <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="<?php esc_attr_e('Learn more', 'lws-optimize'); ?>" width="16px" height="16px" data-toggle="tooltip" data-placement="top">
             </a>
         </h2>
         <div class="lwsop_contentblock_description">
-            <?php echo esc_html($is_fr_apo
-                ? 'Met en cache le HTML directement sur le réseau Cloudflare (edge) pour servir vos pages depuis le serveur CF le plus proche du visiteur. Résultat : TTFB ~50 ms partout dans le monde et charge serveur origine divisée par 10. La purge se synchronise automatiquement à chaque modification de contenu (save_post).'
-                : 'Caches HTML at the Cloudflare edge so pages are served from the nearest CF node. Result: TTFB ~50ms worldwide and origin server load divided by 10. Purge syncs automatically on every content change (save_post).'); ?>
+            <?php esc_html_e('Keeps a copy of your pages on Cloudflare\'s network so they load faster for visitors anywhere in the world. This copy updates automatically every time you publish or edit content.', 'lws-optimize'); ?>
         </div>
-        <?php if (!$state) : ?>
-            <div style="margin-top:10px;padding:8px 12px;background:#fef3c7;border-radius:4px;font-size:12px;color:#92400e">
-                <?php echo esc_html($is_fr_apo ? '⚠ Activez d\'abord l\'intégration Cloudflare ci-dessus pour pouvoir utiliser l\'APO.' : '⚠ Enable Cloudflare integration above first to use APO.'); ?>
+        <div id="lwsop_cf_apo_locked_notice" style="margin-top:10px;padding:8px 12px;background:#fef3c7;border-radius:4px;font-size:12px;color:#92400e<?php echo $state ? ';display:none' : ''; ?>">
+            <?php esc_html_e('⚠ Turn on the Cloudflare integration above first to use this feature.', 'lws-optimize'); ?>
+        </div>
+        <div class="lwsop_phase2_inputs" id="lwsop_cf_apo_fields" style="margin-top:12px<?php echo $state ? '' : ';display:none'; ?>">
+            <label style="display:block;margin-bottom:6px">
+                <span style="display:inline-block;width:140px;font-size:13px"><?php esc_html_e('Cloudflare Zone ID:', 'lws-optimize'); ?></span>
+                <input type="text" id="lwsop_cf_apo_zone_id" placeholder="abc123def456..." style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_zone_id); ?>">
+            </label>
+            <label style="display:block;margin-bottom:6px">
+                <span style="display:inline-block;width:140px;font-size:13px"><?php esc_html_e('API Token:', 'lws-optimize'); ?></span>
+                <input type="password" id="lwsop_cf_apo_token" placeholder="••••••••" style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_token); ?>">
+            </label>
+            <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                <span id="lwsop_cf_apo_status" style="font-size:12px;color:#16a34a"><?php
+                    if ($apo_installed) {
+                        $installed_label = __('✓ Turned on since', 'lws-optimize') . ' '
+                            . date_i18n(get_option('date_format') . ' ' . get_option('time_format'), (int) $apo_installed_at);
+                        echo esc_html($installed_label);
+                    }
+                    // Off: no message.
+                ?></span>
             </div>
-        <?php else : ?>
-            <div class="lwsop_phase2_inputs" style="margin-top:12px">
-                <label style="display:block;margin-bottom:6px">
-                    <span style="display:inline-block;width:140px;font-size:13px"><?php echo esc_html($is_fr_apo ? 'Zone ID Cloudflare :' : 'Cloudflare Zone ID:'); ?></span>
-                    <input type="text" id="lwsop_cf_apo_zone_id" placeholder="abc123def456..." style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_zone_id); ?>">
-                </label>
-                <label style="display:block;margin-bottom:6px">
-                    <span style="display:inline-block;width:140px;font-size:13px"><?php echo esc_html($is_fr_apo ? 'Token API :' : 'API Token:'); ?></span>
-                    <input type="password" id="lwsop_cf_apo_token" placeholder="••••••••" style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_token); ?>">
-                </label>
-                <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-                    <button type="button" class="lwsop_darkblue_button" id="lwsop_cf_apo_install_rule">
-                        <span><?php echo esc_html($is_fr_apo ? 'Installer la Cache Rule sur Cloudflare' : 'Install Cache Rule on Cloudflare'); ?></span>
-                    </button>
-                    <span id="lwsop_cf_apo_status" style="font-size:12px;color:#64748b"></span>
-                </div>
-            </div>
-        <?php endif; ?>
+        </div>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_cloudflare_apo_check">
-            <input type="checkbox" id="lws_optimize_cloudflare_apo_check" <?php echo $apo_state ? 'checked' : ''; ?> <?php echo $state ? '' : 'disabled'; ?>>
+            <input type="checkbox" id="lws_optimize_cloudflare_apo_check" <?php echo $apo_state ? 'checked' : ''; ?> <?php echo (!$state) ? 'disabled' : ''; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -111,66 +114,129 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
 
 <script>
 (function(){
-    // 4.4.3 — Cloudflare APO branché sur le mécanisme natif (compteur sticky-bar).
-    // Le toggle suit le pattern lws_optimize_*_check, donc handler natif le pickup.
-    // Les credentials (zone_id, api_token) sont stockés en "extra" du localStorage,
-    // appliqués par le handler PHP étendu côté backend.
-    var TOGGLE_ID  = 'lws_optimize_cloudflare_apo_check';
-    var STORE_KEY  = 'lws_optimize_current_configuration_changes';
-    var apoToggle  = document.getElementById(TOGGLE_ID);
-    var apoZone    = document.getElementById('lwsop_cf_apo_zone_id');
-    var apoToken   = document.getElementById('lwsop_cf_apo_token');
-    var apoInst    = document.getElementById('lwsop_cf_apo_install_rule');
-    var apoStat    = document.getElementById('lwsop_cf_apo_status');
+    // Cloudflare APO goes through the same "Save changes" batch flow as every
+    // other checkbox: the generic handler in views/tabs.php (selector
+    // input[id^="lws_optimize_"]) queues a bare {type, state} entry for this
+    // checkbox on 'change', and lws_optimize_manage_config_delayed()
+    // installs/removes the Cache Rule when the admin actually clicks "Save
+    // changes". We layer on top of that to (a) attach the Zone ID/API token
+    // as the entry's "extra" payload (the generic handler doesn't know about
+    // those fields) and (b) treat editing either field — even without
+    // touching the checkbox — as a pending change of its own, cleared again
+    // if the fields are brought back to their saved values.
+    //
+    // The status line ("✓ Turned on since …") is rendered once by PHP from
+    // the DB state and intentionally left alone here: it reflects what's
+    // actually live on Cloudflare, not the not-yet-saved UI state.
+    var TOGGLE_ID = 'lws_optimize_cloudflare_apo_check';
+    var STORE_KEY = 'lws_optimize_current_configuration_changes';
+
+    var apoToggle = document.getElementById(TOGGLE_ID);
+    var apoZone   = document.getElementById('lwsop_cf_apo_zone_id');
+    var apoToken  = document.getElementById('lwsop_cf_apo_token');
     if (!apoToggle) return;
 
-    function pushToCounter() {
+    // DB-confirmed baseline. Only advances when tabs.php's save handler
+    // actually clears the pending-changes store (see the localStorage
+    // override below) — not on our own housekeeping writes.
+    var savedToggle = apoToggle.checked;
+    var savedZone   = apoZone  ? apoZone.value  : '';
+    var savedToken  = apoToken ? apoToken.value : '';
+
+    // True while a STORE_KEY write is our own bookkeeping (or the native
+    // handler's, triggered by the same checkbox 'change' event) rather than
+    // tabs.php's save-success handler clearing everything after a real save.
+    var housekeeping = false;
+
+    function isDirty() {
+        return apoToggle.checked !== savedToggle
+            || (apoZone  ? apoZone.value  : '') !== savedZone
+            || (apoToken ? apoToken.value : '') !== savedToken;
+    }
+
+    function refreshCounter(cfg) {
+        var el = document.getElementById('lws_optimize_amount_configuration_elements');
+        if (el) el.innerHTML = cfg.length;
+        var btn = document.getElementById('lws_optimize_validate_changes');
+        if (btn) btn.disabled = cfg.length === 0;
+    }
+
+    // Reconciles STORE_KEY with the current UI: upserts a full entry (state +
+    // extra) while anything differs from the saved baseline, removes it once
+    // everything matches again.
+    function syncEntry() {
+        housekeeping = true;
         try {
             var cfg = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
-            var extra = {
-                zone_id:   apoZone  ? apoZone.value  : '',
-                api_token: apoToken ? apoToken.value : '',
-            };
-            var idx = cfg.findIndex(function(it){ return it.type === TOGGLE_ID; });
-            var entry = { type: TOGGLE_ID, state: apoToggle.checked, extra: extra };
-            if (idx === -1) cfg.push(entry); else cfg[idx] = entry;
+            var idx = cfg.findIndex(function(item){ return item.type === TOGGLE_ID; });
+            if (isDirty()) {
+                var entry = {
+                    type: TOGGLE_ID,
+                    state: apoToggle.checked,
+                    extra: {
+                        zone_id:   apoZone  ? apoZone.value.trim()  : '',
+                        api_token: apoToken ? apoToken.value.trim() : '',
+                    },
+                };
+                if (idx === -1) cfg.push(entry); else cfg[idx] = entry;
+            } else if (idx !== -1) {
+                cfg.splice(idx, 1);
+            }
             localStorage.setItem(STORE_KEY, JSON.stringify(cfg));
-            var counter = document.getElementById('lws_optimize_amount_configuration_elements');
-            if (counter) counter.innerHTML = cfg.length;
-            var btn = document.getElementById('lws_optimize_validate_changes');
-            if (btn) btn.disabled = cfg.length === 0;
+            refreshCounter(cfg);
         } catch (e) {}
+        housekeeping = false;
     }
-    // Quand l'utilisateur édite zone_id ou api_token, on met à jour le compteur natif
-    if (apoZone)  apoZone.addEventListener('input',  pushToCounter);
-    if (apoToken) apoToken.addEventListener('input', pushToCounter);
 
-    // Bouton "Installer la Cache Rule" : action ponctuelle, reste séparé. Sauve
-    // d'abord les credentials via mécanisme natif puis push la rule.
-    if (apoInst) apoInst.addEventListener('click', function(){
-        if (!apoStat) return;
-        apoStat.textContent = '<?php echo $is_fr_apo ? "Installation en cours…" : "Installing…"; ?>';
-        apoStat.style.color = '#64748b';
-        var fd = new FormData();
-        fd.append('action', 'lwsop_cloudflare_install_cache_rule');
-        fd.append('_ajax_nonce', '<?php echo wp_create_nonce('lwsop_cf_install'); ?>');
-        fd.append('zone_id',   apoZone  ? apoZone.value  : '');
-        fd.append('api_token', apoToken ? apoToken.value : '');
-        fetch(ajaxurl, {method:'POST', body:fd, credentials:'same-origin'})
-            .then(function(r){return r.json();})
-            .then(function(j){
-                if (j.success) {
-                    apoStat.textContent='✓ <?php echo $is_fr_apo ? "Cache Rule installée" : "Cache Rule installed"; ?>';
-                    apoStat.style.color='#16a34a';
-                    if (typeof callPopup === 'function') callPopup('success', '<?php echo $is_fr_apo ? "Cache Rule Cloudflare installée" : "Cloudflare Cache Rule installed"; ?>');
-                } else {
-                    var code = (j.data && j.data.code) ? j.data.code : 'error';
-                    apoStat.textContent='✗ '+code;
-                    apoStat.style.color='#dc2626';
-                    if (typeof callPopup === 'function') callPopup('error', '<?php echo $is_fr_apo ? "Échec install Cache Rule : " : "Cache Rule install failed: "; ?>' + code);
+    apoToggle.addEventListener('change', function(event){
+        if (apoToggle.checked) {
+            var zoneVal  = apoZone  ? apoZone.value.trim()  : '';
+            var tokenVal = apoToken ? apoToken.value.trim() : '';
+            if (!zoneVal || !tokenVal) {
+                // Not enough info to even queue the change — block it before the
+                // generic handler (registered after this one, see views/tabs.php)
+                // adds it to the pending-changes store.
+                event.stopImmediatePropagation();
+                apoToggle.checked = false;
+                if (typeof callPopup === 'function') {
+                    callPopup('error', <?php echo wp_json_encode(__('Please fill in your Cloudflare Zone ID and API token first', 'lws-optimize')); ?>);
                 }
-            });
+                return;
+            }
+        }
+        // The native handler (views/tabs.php) reacts to this same 'change'
+        // event right after this listener returns and does its own naive
+        // push/pop of a bare {type, state} entry. Mark that write as
+        // housekeeping too, then reconcile it into our full entry once it's
+        // landed.
+        housekeeping = true;
+        setTimeout(syncEntry, 0);
     });
+
+    if (apoZone)  apoZone.addEventListener('input', syncEntry);
+    if (apoToken) apoToken.addEventListener('input', syncEntry);
+
+    var _lsSetItem = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(key, value) {
+        _lsSetItem(key, value);
+        if (key !== STORE_KEY || housekeeping) return;
+        try {
+            var cfg = JSON.parse(value || '[]');
+            if (!cfg.length) {
+                savedToggle = apoToggle.checked;
+                savedZone   = apoZone  ? apoZone.value  : '';
+                savedToken  = apoToken ? apoToken.value : '';
+            }
+        } catch (e) {}
+    };
+
+    window.lwsop_cf_apo_sync_lock_state = function(baseActive) {
+        var notice = document.getElementById('lwsop_cf_apo_locked_notice');
+        var fields = document.getElementById('lwsop_cf_apo_fields');
+        if (notice) notice.style.display = baseActive ? 'none' : '';
+        if (fields) fields.style.display = baseActive ? '' : 'none';
+        apoToggle.disabled = !baseActive;
+    };
 })();
 </script>
 
@@ -187,8 +253,8 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
             <div id="lwsop_blue_info" class="lwsop_blue_info"><?php esc_html_e('We detected that you are using Cloudflare on this website. Make sure to enable the CDN Integration in the CDN tab.', 'lws-optimize'); ?></div>
             <form method="POST" id="lws_optimize_cloudflare_manage_form"></form>
             <div class="lwsop_modal_buttons" id="lws_optimize_cloudflare_manage_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
-                <button type="button" class="lws_optimize_cloudflare_next" data-dismiss="modal" id="lwsop_goto_cloudflare_integration"><?php echo esc_html_e('Go to the option', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lws_optimize_cloudflare_next" data-dismiss="modal" id="lwsop_goto_cloudflare_integration"><?php esc_html_e('Go to the option', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -215,8 +281,8 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                 <div class="lwsop_blue_info"><?php esc_html_e('LWS Optimize is currently integrated with CloudFlare. Would you like to terminate this connection?', 'lws-optimize'); ?></div>
 
                 <div class="lwsop_modal_buttons">
-                    <button class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
-                    <button class="lws_optimize_cloudflare_next" onclick="lws_optimize_disconnect_cloudflare(this)"><?php echo esc_html_e('Deactivate', 'lws-optimize'); ?></button>
+                    <button class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
+                    <button class="lws_optimize_cloudflare_next" onclick="lws_optimize_disconnect_cloudflare(this)"><?php esc_html_e('Deactivate', 'lws-optimize'); ?></button>
                 </div>
             `;
         } else {
@@ -231,8 +297,8 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                 </label>
 
                 <div class="lwsop_modal_buttons">
-                    <button class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
-                    <button class="lws_optimize_cloudflare_next" onclick="lws_optimize_verify_cloudflare_connexion(this)"><?php echo esc_html_e('Verify', 'lws-optimize'); ?></button>
+                    <button class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
+                    <button class="lws_optimize_cloudflare_next" onclick="lws_optimize_verify_cloudflare_connexion(this)"><?php esc_html_e('Verify', 'lws-optimize'); ?></button>
                 </div>
             `;
         }
@@ -264,21 +330,13 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_complete_cf_deactivation_nonce')); ?>',
                 action: "lws_optimize_cloudflare_deactivation",
             },
-            success: function(data) {
+            success: function(returnData) {
                 button.disabled = false;
                 button.innerHTML = originalText;
 
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    console.log(e);
-                    return 0;
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {
@@ -287,6 +345,11 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                         // Update the checkbox state
                         let checkbox = document.getElementById('lwsop_cloudflare_manage');
                         checkbox.checked = false;
+
+                        // Re-lock the APO section immediately (no refresh needed)
+                        if (typeof window.lwsop_cf_apo_sync_lock_state === 'function') {
+                            window.lwsop_cf_apo_sync_lock_state(false);
+                        }
 
                         // Close the modal
                         jQuery(modal).modal('hide');
@@ -329,26 +392,20 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_check_cloudflare_key_nonce')); ?>',
                 action: "lws_optimize_check_cloudflare_key",
             },
-            success: function(data) {
+            success: function(returnData) {
                 button.disabled = false;
                 button.innerHTML = originalText;
 
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                    console.log(e);
-                    return 0;
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {
                     case 'SUCCESS':
                         let infos = returnData['data'];
+                        // The token is never returned by the server; re-attach the one held here.
+                        infos.api_token = token_api;
                         lws_optimize_cloudflare_verified_infos(infos);
                         callPopup('success', "<?php esc_html_e("Token verified. A zone has been found.", "lws-optimize"); ?>");
                         break;
@@ -375,6 +432,7 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                         break;
                     case 'NO_ZONE':
                         callPopup('error', "<?php esc_html_e('No zone were found for this token. Make sure the domain has been linked to your account', 'lws-optimize'); ?>");
+                        break;
                     default:
                         callPopup('error', "<?php esc_html_e("Unknown data returned.", "lws-optimize"); ?>");
                         break;
@@ -448,8 +506,8 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
             </div>
 
             <div class="lwsop_modal_buttons">
-                <button class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
-                <button class="lws_optimize_cloudflare_next" id="lws_optimize_cloudflare_finish"><?php echo esc_html_e('Finish', 'lws-optimize'); ?></button>
+                <button class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
+                <button class="lws_optimize_cloudflare_next" id="lws_optimize_cloudflare_finish"><?php esc_html_e('Finish', 'lws-optimize'); ?></button>
             </div>
         `;
 
@@ -477,19 +535,13 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                         _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_complete_cf_integration_nonce')); ?>',
                         action: "lws_optimize_complete_cloudflare_integration",
                     },
-                    success: function(data) {
+                    success: function(returnData) {
                         button.disabled = false;
                         button.innerHTML = originalText;
 
-                        if (data === null || typeof data != 'string') {
-                            return 0;
-                        }
-
-                        try {
-                            var returnData = JSON.parse(data);
-                        } catch (e) {
-                            console.log(e);
-                            return 0;
+                        if (!isValidResponse(returnData)) {
+                            console.error('Invalid AJAX response', returnData);
+                            return;
                         }
 
                         switch (returnData['code']) {
@@ -498,6 +550,16 @@ $is_fr_apo   = substr(get_locale(), 0, 2) === 'fr';
                                 // Update the checkbox state
                                 let checkbox = document.getElementById('lwsop_cloudflare_manage');
                                 checkbox.checked = true;
+
+                                // Unlock the APO section immediately (no refresh needed) and
+                                // prefill its Zone ID from the zone we just verified, if empty.
+                                if (typeof window.lwsop_cf_apo_sync_lock_state === 'function') {
+                                    window.lwsop_cf_apo_sync_lock_state(true);
+                                }
+                                let apoZoneField = document.getElementById('lwsop_cf_apo_zone_id');
+                                if (apoZoneField && !apoZoneField.value) {
+                                    apoZoneField.value = zone.id;
+                                }
 
                                 // Close the modal
                                 jQuery(modal).modal('hide');

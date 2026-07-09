@@ -26,12 +26,14 @@ class LwsOptimizeCloudFlare {
 
         // Get the Token Key and the Zone ID to change the CF cache
         $options = get_option('lws_optimize_config_array', []);
-        $token_key = $options['cloudflare']['apiToken'] ?? null;
+        // Bugfix: the token is stored under 'api_token' everywhere else; reading 'apiToken'
+        // here yielded a null token, so on-demand purges silently failed to authenticate.
+        $token_key = $options['cloudflare']['api_token'] ?? null;
         $zone_id = $options['cloudflare']['zone_id'] ?? null;
 
         if (!isset($options['cloudflare']['state']) || $options['cloudflare']['state'] !== "true") {
             return -1;
-            // wp_die(json_encode(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options), JSON_PRETTY_PRINT));
+            // wp_send_json(array('code' => "CLOUDFLARE_NOT_ACTIVE", 'data' => $options));
         }
 
         $result = false;
@@ -43,7 +45,7 @@ class LwsOptimizeCloudFlare {
                 [
                     'method' => 'POST',
                     'timeout' => 45,
-                    'sslverify' => false,
+                    'sslverify' => true,
                     'headers' => [
                         "Authorization" => "Bearer " . $token_key,
                         "Content-Type" => "application/json"
@@ -56,7 +58,7 @@ class LwsOptimizeCloudFlare {
         else {
             if ($url === null) {
                 return -1;
-                // wp_die(json_encode(array('code' => "NO_URL"), JSON_PRETTY_PRINT));
+                // wp_send_json(array('code' => "NO_URL"));
             }
 
             $url = esc_url($url);
@@ -65,13 +67,13 @@ class LwsOptimizeCloudFlare {
                 [
                     'method' => 'POST',
                     'timeout' => 45,
-                    'sslverify' => false,
+                    'sslverify' => true,
                     'headers' => [
                         "Authorization" => "Bearer " . $token_key,
                         "Content-Type" => "application/json"
                     ],
                     'body' => json_encode(['files' => [
-                        'https://' . parse_url($url, PHP_URL_HOST) . parse_url($url, PHP_URL_PATH)
+                        'https://' . wp_parse_url($url, PHP_URL_HOST) . wp_parse_url($url, PHP_URL_PATH)
                     ]])
                 ]
             );
@@ -80,7 +82,7 @@ class LwsOptimizeCloudFlare {
         // Failed to cURL the API
         if (is_wp_error($result)) {
             return -1;
-            // wp_die(json_encode(['code' => "ERROR_CURL", 'data' => $result], JSON_PRETTY_PRINT));
+            // wp_send_json(['code' => "ERROR_CURL", 'data' => $result]);
         }
 
         // Get the response and decode the JSON
@@ -89,7 +91,7 @@ class LwsOptimizeCloudFlare {
         // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
             return -1;
-            // wp_die(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
+            // wp_send_json(['code' => "ERROR_DECODE", 'data' => $body]);
         }
 
         // Check if the request was successful
@@ -98,11 +100,11 @@ class LwsOptimizeCloudFlare {
         // If the request was not successful, we cannot proceed
         if (!$success) {
             return -1;
-            // wp_die(json_encode(array('code' => "REQUEST_FAILED", 'data' => $result), JSON_PRETTY_PRINT));
+            // wp_send_json(array('code' => "REQUEST_FAILED", 'data' => $result));
         }
 
         // Cache cleared, we can continue
-        // wp_die(json_encode(array('code' => "SUCCESS", 'data' => $result), JSON_PRETTY_PRINT));
+        // wp_send_json(array('code' => "SUCCESS", 'data' => $result));
         return 0;
     }
 
@@ -150,7 +152,7 @@ class LwsOptimizeCloudFlare {
             [
             'method' => 'PATCH',
             'timeout' => 45,
-            'sslverify' => false,
+            'sslverify' => true,
             'headers' => [
                 "Authorization" => "Bearer " . $token_key,
                 "Content-Type" => "application/json"
@@ -183,11 +185,11 @@ class LwsOptimizeCloudFlare {
 
     public function lws_optimize_check_cf_key() {
         check_ajax_referer('lwsop_check_cloudflare_key_nonce', '_ajax_nonce');
-        $token_key = $_POST['key'] ?? null;
+        $token_key = isset($_POST['key']) ? wp_unslash($_POST['key']) : null;
 
         // Get the Token Key, necessary to check the Cloudflare API
         if ($token_key === null) {
-            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "NO_PARAM", 'data' => wp_unslash($_POST)));
         }
 
         $token_key = sanitize_text_field($token_key);
@@ -206,7 +208,7 @@ class LwsOptimizeCloudFlare {
 
         // Failed to cURL the API
         if (is_wp_error($response)) {
-            wp_die(json_encode(['code' => "ERROR_CURL", 'data' => $response], JSON_PRETTY_PRINT));
+            wp_send_json(['code' => "ERROR_CURL", 'data' => $response]);
         }
 
         // Get the response and decode the JSON
@@ -215,7 +217,7 @@ class LwsOptimizeCloudFlare {
 
         // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_die(json_encode(['code' => "ERROR_DECODE", 'data' => $body], JSON_PRETTY_PRINT));
+            wp_send_json(['code' => "ERROR_DECODE", 'data' => $body]);
         }
 
         // Get the Token status
@@ -223,16 +225,19 @@ class LwsOptimizeCloudFlare {
 
         // Cannot proceed if the token is not active, we do not have access to the API
         if ($status == "inactive") {
-            wp_die(json_encode(array('code' => "INACTIVE_TOKEN", 'data' => $response), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "INACTIVE_TOKEN", 'data' => $response));
         }
 
-        // Use the token to get every zones managed by the account
-        // Which we filter by the current domain
+        // Use the token to get every zones managed by the account.
+        // Note: we cannot filter by name= here, because Cloudflare zone names are always
+        // the registrable apex domain (e.g. "domain.fr"), never a subdomain. If the site
+        // runs on a subdomain (e.g. "cron.domain.fr"), an exact name= filter would return
+        // nothing, so we fetch all zones and match by suffix below instead.
         $zones_response = wp_remote_get(
-            "https://api.cloudflare.com/client/v4/zones?per_page=50&name=" . preg_replace('/^www\./i', '', $_SERVER['SERVER_NAME']),
+            "https://api.cloudflare.com/client/v4/zones?per_page=50",
             [
                 'timeout' => 45,
-                'sslverify' => false,
+                'sslverify' => true,
                 'headers' => [
                     "Authorization" => "Bearer " . $token_key,
                     "Content-Type" => "application/json"
@@ -240,10 +245,9 @@ class LwsOptimizeCloudFlare {
             ]
         );
 
-
         // Failed to cURL the API
         if (is_wp_error($zones_response)) {
-            wp_die(json_encode(['code' => "ERROR_CURL_ZONES", 'data' => $response], JSON_PRETTY_PRINT));
+            wp_send_json(['code' => "ERROR_CURL_ZONES", 'data' => $response]);
         }
 
         // Get the response and decode the JSON
@@ -252,7 +256,7 @@ class LwsOptimizeCloudFlare {
 
         // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_die(json_encode(['code' => "ERROR_DECODE_ZONES", 'data' => $body], JSON_PRETTY_PRINT));
+            wp_send_json(['code' => "ERROR_DECODE_ZONES", 'data' => $body]);
         }
 
         // Check if the request was successful
@@ -260,15 +264,20 @@ class LwsOptimizeCloudFlare {
 
         // If the request was not successful, we cannot proceed
         if (!$success) {
-            wp_die(json_encode(array('code' => "REQUEST_ZONE_FAILED", 'data' => $zones_response), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "REQUEST_ZONE_FAILED", 'data' => $zones_response));
         }
 
-        // Prepare to get all useful information about the zone
+        // Prepare to get all useful information about the zone.
+        // Match the current host against each zone's apex domain: either an exact match,
+        // or the host is a subdomain of that zone (e.g. "cron.domain.fr" under "domain.fr").
+        $host = preg_replace('/^www\./i', '', isset($_SERVER['SERVER_NAME']) ? sanitize_text_field(wp_unslash($_SERVER['SERVER_NAME'])) : '');
         $zone_infos = [];
         foreach ($zones_response['result'] as $zone) {
-            if ($zone['name'] == preg_replace('/^www\./i', '', $_SERVER['SERVER_NAME'])) {
+            $is_match = $host === $zone['name'] || substr($host, -(strlen($zone['name']) + 1)) === '.' . $zone['name'];
+            if ($is_match) {
+                // SECURITY: never echo the API token back in the response. The browser
+                // already holds it (the admin just typed it) and re-attaches it client-side.
                 $zone_infos = [
-                    'api_token' => $token_key,
                     'name' => $zone['name'],
                     'id' => $zone['id'],
                     'account' => $zone['account']['id'],
@@ -284,19 +293,19 @@ class LwsOptimizeCloudFlare {
 
         // Failed to get a zone, either an error or the zone does not exist
         if (empty($zone_infos)) {
-            wp_die(json_encode(array('code' => "NO_ZONE", 'data' => $zones_response), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "NO_ZONE", 'data' => $zones_response));
         }
 
         // Zone fetched, we can continue
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $zone_infos), JSON_PRETTY_PRINT));
+        wp_send_json(array('code' => "SUCCESS", 'data' => $zone_infos));
     }
 
     public function lws_optimize_complete_cloudflare_integration() {
         check_ajax_referer('lwsop_complete_cf_integration_nonce', '_ajax_nonce');
-        $zone = $_POST['zone'] ?? [];
+        $zone = isset($_POST['zone']) ? wp_unslash($_POST['zone']) : [];
 
         if (!is_array($zone)) {
-            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "NO_PARAM", 'data' => wp_unslash($_POST)));
         }
 
         $token_key = '';
@@ -311,7 +320,7 @@ class LwsOptimizeCloudFlare {
         }
 
         if ($token_key === null || $zone_id === null) {
-            wp_die(json_encode(array('code' => "NO_PARAM", 'data' => $_POST), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "NO_PARAM", 'data' => wp_unslash($_POST)));
         }
 
         $options = get_option('lws_optimize_config_array', []);
@@ -360,7 +369,7 @@ class LwsOptimizeCloudFlare {
             [
                 'method' => 'PATCH',
                 'timeout' => 45,
-                'sslverify' => false,
+                'sslverify' => true,
                 'headers' => [
                     "Authorization" => "Bearer " . $token_key,
                     "Content-Type" => "application/json"
@@ -375,7 +384,7 @@ class LwsOptimizeCloudFlare {
 
         // Failed to cURL the API
         if (is_wp_error($set_ttl_cache)) {
-            wp_die(json_encode(['code' => "ERROR_CURL_TTL", 'data' => $set_ttl_cache], JSON_PRETTY_PRINT));
+            wp_send_json(['code' => "ERROR_CURL_TTL", 'data' => $set_ttl_cache]);
         }
 
         // Get the response and decode the JSON
@@ -384,7 +393,7 @@ class LwsOptimizeCloudFlare {
 
         // Error during decoding, it was (probably) not a JSON
         if (json_last_error() !== JSON_ERROR_NONE) {
-            wp_die(json_encode(['code' => "ERROR_DECODE_TTL", 'data' => $body], JSON_PRETTY_PRINT));
+            wp_send_json(['code' => "ERROR_DECODE_TTL", 'data' => $body]);
         }
 
         // Check if the request was successful
@@ -392,13 +401,13 @@ class LwsOptimizeCloudFlare {
 
         // If the request was not successful, we cannot proceed
         if (!$success) {
-            wp_die(json_encode(array('code' => "REQUEST_CF_FAILED", 'data' => $set_ttl_cache), JSON_PRETTY_PRINT));
+            wp_send_json(array('code' => "REQUEST_CF_FAILED", 'data' => $set_ttl_cache));
         }
 
         update_option('lws_optimize_config_array', $options);
         $GLOBALS['lws_optimize']->optimize_options = $options;
 
-        wp_die(json_encode(array('code' => "SUCCESS", 'data' => $options['cloudflare']), JSON_PRETTY_PRINT));
+        wp_send_json(array('code' => "SUCCESS", 'data' => $options['cloudflare']));
 
     }
 
@@ -421,7 +430,7 @@ class LwsOptimizeCloudFlare {
             [
                 'method' => 'PATCH',
                 'timeout' => 45,
-                'sslverify' => false,
+                'sslverify' => true,
                 'headers' => [
                     "Authorization" => "Bearer " . $token_key,
                     "Content-Type" => "application/json"
@@ -434,6 +443,6 @@ class LwsOptimizeCloudFlare {
             ]
         );
 
-        wp_die(json_encode(array('code' => "SUCCESS"), JSON_PRETTY_PRINT));
+        wp_send_json(array('code' => "SUCCESS"));
     }
 }

@@ -1,9 +1,9 @@
 === LWS Optimize - All-in-One Speed Booster & Cache Tools ===
 Contributors: aurelienlws
-Tags: cache, optimize, performance, avif, lazy
+Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 4.0
+Stable tag: 4.1
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,22 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 4.1 =
+- Improved RUM dashboard
+	- Bugfixes, notably data not correctly saved or with wrong values
+	- Switch to using dedicated table instead of wp_options
+	- Better UI
+	- More QoL options, like filtering and ordering stats, more presets for data deletion, detailed data instead of just the average
+- Fixed "undefined variable" bug in JS, breaking the plugin options
+- Improved CF APO, fixing minor issues + "400 Bad Request" error
+- Fixed incompatibilities with SureForms, where forms would fail to be submitted once their nonce, cached, expired (until cache expiration)
+- CSS/JS files processed by the plugin now gets Cache header and are cached correctly
+- Preload auto-deactivation on finish removed, only deactivated manually
+- New alternative cache serve file now has correct set of headers
+- Clean up after DelayJS, instead of leaving dead code in the HTML
+- Changed cron to stop after preloading exactly the amount of pages set in the preload, preventing rate-limit issues on some hostings  
+- Lots of minor bugfixes and diverses ameliorations, improving general stability
 
 = 4.0 =
 * New RUM stats + Dashboard, measuring performance+speed of visitors

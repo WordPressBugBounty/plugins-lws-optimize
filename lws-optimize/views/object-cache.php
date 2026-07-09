@@ -11,6 +11,8 @@
  * vers `return false` au lieu de faire écran blanc HTTP 500 en wp-admin.
  */
 
+if (!defined('ABSPATH')) exit;
+
 if (!class_exists('Memcached')) {
     error_log('Memcached extension not installed or enabled.');
     return;
@@ -30,7 +32,6 @@ global $memcached_instance;
 try {
 $memcached_instance = new Memcached();
     $memcached_instance->addServer('127.0.0.1', 11211);
-    // 4.5.12 — timeouts agressifs : éviter qu'un Memcached lent ne bloque la page entière.
     $memcached_instance->setOption(Memcached::OPT_CONNECT_TIMEOUT, 200);
     $memcached_instance->setOption(Memcached::OPT_POLL_TIMEOUT,    200);
     $memcached_instance->setOption(Memcached::OPT_SEND_TIMEOUT,    200);

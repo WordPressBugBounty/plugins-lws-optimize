@@ -29,6 +29,16 @@ class LwsOptimize
     public $nginx_purger;
     public $chosen_purger;
 
+    /**
+     * Centralized debug logger, gated behind WP_DEBUG.
+     */
+    public function lwsop_debug_log($message)
+    {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log($message); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- centralized, WP_DEBUG-gated logger
+        }
+    }
+
     public function __construct()
     {
         // Initialize the global LWS Optimize instance
@@ -64,6 +74,13 @@ class LwsOptimize
             update_option('lws_optimize_config_array', $optimize_options);
         }
 
+        // Load translations at the recommended plugins_loaded timing (priority 10)
+        add_action('plugins_loaded', [$this, 'lws_optimize_load_textdomain']);
+
+        // Memcached dropin lifecycle — runs after textdomain is loaded (priority 20)
+        // so that lwsop_validate_memcached_environment() can safely call __()
+        add_action('plugins_loaded', [$this, 'lwsop_boot_memcached_dropin'], 20);
+
         // Start actions that will occur on plugin initialization
         add_action('init', [$this, "lws_optimize_init"]);
 
@@ -80,10 +97,6 @@ class LwsOptimize
             // If the plugin was updated...
             add_action('plugins_loaded', [$this, 'lws_optimize_after_update_actions']);
 
-            // 4.3.0 — AVIF capability probe (one-shot, cached for 1h).
-            // Stores lwsop_avif_supported = 1|0 + timestamp so the admin UI can show
-            // "✓ AVIF supporté localement (Imagick)" ou "ℹ AVIF via API LWS uniquement"
-            // sans déclencher queryFormats() à chaque page admin (relativement cher).
             $avif_probe = get_option('lwsop_avif_probe', null);
             if (!is_array($avif_probe) || ($avif_probe['ts'] ?? 0) < (time() - 3600)) {
                 $supported = 0;
@@ -98,48 +111,10 @@ class LwsOptimize
                 update_option('lwsop_avif_probe', ['supported' => $supported, 'ts' => time()], false);
             }
 
-            // Object cache drop-in lifecycle.
-            // CRITICAL: never delete or overwrite the drop-in if it belongs to a third party
-            // (Redis Object Cache, W3TC, wp-redis, etc.) — always go through the safe helpers.
-            if ($this->lwsop_check_option('memcached')['state'] === "true") {
-                // 4.5.12 — Validation environnement complète (extension + serveur + sessions + drop-in tiers).
-                // Bloque l'installation du drop-in dans tous les cas connus pour casser wp-admin,
-                // notamment le conflit PHP sessions + Memcached sur même instance sans PREFIX
-                $env = $this->lwsop_validate_memcached_environment();
-                if (!$env['ok'] && $env['severity'] === 'fatal') {
-                    // Auto-disable pour éviter l'écran blanc à la prochaine requête authentifiée.
-                    $optimize_options['memcached']['state'] = "false";
-                    update_option('lws_optimize_config_array', $optimize_options);
-                    $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
-                    if (!empty($this->log_file)) {
-                        @file_put_contents(
-                            $this->log_file,
-                            sprintf('[%s] Auto-disabled Memcached at boot — %s : %s' . PHP_EOL,
-                                gmdate('Y-m-d H:i:s'), $env['reason'], substr($env['message'], 0, 200)),
-                            FILE_APPEND
-                        );
-                    }
-                } else {
-                    // Install OUR drop-in only if not already present
-                    if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
-                        $this->lwsop_safe_write_dropin(
-                            LWSOP_OBJECTCACHE_PATH,
-                            LWS_OP_DIR . '/views/object-cache.php'
-                        );
-                    }
-                }
-            } else {
-                // Memcached disabled → remove OUR drop-in, but never touch a third-party one.
-                $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
-            }
-
             if ($this->lwsop_check_option('image_add_sizes')['state'] === "true") {
                 LwsOptimizeImageFrontManager::startImageWidth();
             }
 
-            // PHASE 2.4 — Rewrite srcset / src to point to WebP/AVIF siblings when present.
-            // Always on when image conversion is enabled — purely additive, falls back to
-            // the original URL when no optimised sibling exists. Filterable to disable.
             if (apply_filters('lwsop_rewrite_srcset', true)) {
                 LwsOptimizeImageSrcset::startActions();
             }
@@ -156,32 +131,19 @@ class LwsOptimize
             // when the toggle is temporarily disabled between scheduling and execution.
             add_action('lwsop_generate_critical_css', [LwsOptimizeCriticalCSSManager::class, 'generate_critical_css_cron'], 10, 1);
 
-            // PHASE 2.2 — Cloudflare APO integration (edge HTML cache + purge sync).
-            // Activated when zone_id + api_token are configured and state=true.
-            // The class registers its own hooks (send_headers for Cache-Tag, save_post
-            // for purge, AJAX handler for Cache Rule install).
             if (($this->lwsop_check_option('cloudflare_apo')['state'] ?? '') === 'true') {
                 LwsOptimizeCloudflareAPO::startActions();
             }
 
-            // PHASE 2.6 — RUM (Real User Monitoring) collector. Anonymous, beacon-based.
-            // Zero PII, rate-limited, aggregates Core Web Vitals per URL/device every 6h.
+            // RUM (Real User Monitoring) collector. Anonymous, beacon-based.
             if (($this->lwsop_check_option('rum')['state'] ?? '') === 'true') {
                 LwsOptimizeRUM::startActions();
             }
 
-            // 4.4.3 — Google Fonts preconnect (auto-détection). Injecte les <link
-            // rel=preconnect> vers fonts.googleapis.com + fonts.gstatic.com en haut
-            // du <head> SI au moins un style enqueued pointe vers Google Fonts.
-            // Gain LCP typique : -100 à -300ms sur pages text-heavy. Aucun effet
-            // de bord si pas de Google Fonts (auto-détection conditionnelle).
             if (($this->lwsop_check_option('font_preload')['state'] ?? '') === 'true') {
                 LwsOptimizeFontPreload::startActions();
             }
 
-            // 4.5.0 — Widget Dashboard WordPress (sur /wp-admin/index.php).
-            // Affiche état global, modules actifs, stats utilisation 24h, coverage,
-            // Memcached, sparkline 30j. Toujours actif pour tout admin.
             if (is_admin()) {
                 LwsOptimizeDashboardWidget::startActions();
             }
@@ -199,20 +161,6 @@ class LwsOptimize
                     LwsOptimizeLazyLoading::startActionsImage();
                 }
             }
-
-            // PHASE 2.5 SUPERSEDED: LWS Optimize already has a native Delay JS
-            // implementation in Classes/Front/LwsOptimizeJSManager.php (lws-delay-script
-            // marker + data-lwsdelay-src / data-lwsdelay-code). Activating our module
-            // on top of it would mark scripts in lwsop/delay-script type, which prevents
-            // the native loader from re-awakening them (especially base64-encoded inline
-            // scripts). The native one is sufficient and battle-tested.
-            //
-            // The LwsOptimizeDelayJS class is kept in the codebase as a reference / for
-            // sites that do not have the native Delay JS yet, but it is NOT wired here.
-            // To use it, comment out delay_js native handling in JSManager and uncomment
-            // the block below.
-            //
-            // if ($this->lwsop_check_option('delay_js')['state'] === "true") { ... LwsOptimizeDelayJS::startActions(); ... }
 
             // If the lazyloading of iframes/videos has been activated on the website
             if ($this->lwsop_check_option('iframe_video_lazyload')['state'] === "true") {
@@ -247,9 +195,7 @@ class LwsOptimize
                 wp_schedule_event(time(), 'weekly', 'lws_optimize_maintenance_db_weekly');
             }
 
-            // 4.5.12 — Health-check quotidien de l'environnement Memcached.
-            // Auto-désactive le drop-in + notifie l'admin si la conf serveur change
-            // après coup (ex: hébergeur modifie php.ini pour activer session.save_handler=memcached).
+            // Check daily if Memcached is working fine ; deactivate if not
             add_action('lwsop_daily_health_check', [$this, 'lwsop_periodic_memcached_validation']);
             if (!wp_next_scheduled('lwsop_daily_health_check')) {
                 wp_schedule_event(time() + 600, 'daily', 'lwsop_daily_health_check');
@@ -278,6 +224,8 @@ class LwsOptimize
         add_action('lws_optimize_clear_all_cache', [$this, 'clear_all_cache_external']);
         add_action('lws_optimize_clear_url_cache', [$this, 'clear_url_cache_external'], 10, 1);
     }
+
+    // phpcs:disable WordPress.WP.AlternativeFunctions.file_system_operations_fopen,WordPress.WP.AlternativeFunctions.file_system_operations_fwrite,WordPress.WP.AlternativeFunctions.file_system_operations_fclose,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPress.WP.AlternativeFunctions.file_system_operations_rmdir,WordPress.WP.AlternativeFunctions.file_system_operations_chmod,WordPress.WP.AlternativeFunctions.file_system_operations_touch,WordPress.WP.AlternativeFunctions.file_system_operations_is_writable,WordPress.WP.AlternativeFunctions.rename_rename,PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected,PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite -- from here to the end of the class: direct filesystem calls are used deliberately for the cache/.htaccess/log/drop-in engine (activation-time, cron, and per-request hot-path writes); all writes target LWS_OP_UPLOADS (WP_CONTENT_DIR . '/cache/lwsoptimize/'), never the plugin's own directory, so update-time data loss does not apply. WP_Filesystem would add credential-prompt UX and overhead that this caching plugin can't tolerate.
 
     /**
      * Clear all cache via external do_action hook
@@ -310,9 +258,6 @@ class LwsOptimize
     /**
      * Clear cache for a specific URL via external do_action hook
      * Usage: do_action('lws_optimize_clear_url_cache', 'https://example.com/page/');
-     *
-     * @param string $url The URL to clear cache for
-     * @return bool True on success, false on failure
      */
     public function clear_url_cache_external($url) {
         if (empty($url)) {
@@ -324,7 +269,7 @@ class LwsOptimize
         fclose($logger);
 
         // Parse the URL to get the path
-        $parsed_url = parse_url($url);
+        $parsed_url = wp_parse_url($url);
         $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
 
         if (empty($path_uri)) {
@@ -365,14 +310,58 @@ class LwsOptimize
         return $removed;
     }
 
+    public function lws_optimize_load_textdomain()
+    {
+        load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
+    }
+
+    public function lwsop_boot_memcached_dropin()
+    {
+        if (get_option('lws_optimize_deactivate_temporarily')) {
+            return;
+        }
+
+        $optimize_options = get_option('lws_optimize_config_array', []);
+
+        // Object cache drop-in lifecycle.
+        // CRITICAL: never delete or overwrite the drop-in if it belongs to a third party
+        // (Redis Object Cache, W3TC, wp-redis, etc.) — always go through the safe helpers.
+        if ($this->lwsop_check_option('memcached')['state'] === "true") {
+            $env = $this->lwsop_validate_memcached_environment();
+            if (!$env['ok'] && $env['severity'] === 'fatal') {
+                // Auto-disable pour éviter l'écran blanc à la prochaine requête authentifiée.
+                $optimize_options['memcached']['state'] = "false";
+                update_option('lws_optimize_config_array', $optimize_options);
+                $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+                if (!empty($this->log_file)) {
+                    @file_put_contents(
+                        $this->log_file,
+                        sprintf('[%s] Auto-disabled Memcached at boot — %s : %s' . PHP_EOL,
+                            gmdate('Y-m-d H:i:s'), $env['reason'], substr($env['message'], 0, 200)),
+                        FILE_APPEND
+                    );
+                }
+            } else {
+                // Install OUR drop-in only if not already present
+                if (!file_exists(LWSOP_OBJECTCACHE_PATH)) {
+                    $this->lwsop_safe_write_dropin(
+                        LWSOP_OBJECTCACHE_PATH,
+                        LWS_OP_DIR . '/views/object-cache.php'
+                    );
+                }
+            }
+        } else {
+            // Memcached disabled → remove OUR drop-in, but never touch a third-party one.
+            $this->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
+        }
+    }
+
     /**
      * Initial setup of the plugin ; execute all basic actions
      */
     public function lws_optimize_init()
     {
         $optimize_options = get_option('lws_optimize_config_array', []);
-
-        load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
 
         $GLOBALS['lws_optimize_cache_timestamps'] = [
             'lws_daily' => [86400, __('Once a day', 'lws-optimize')],
@@ -532,8 +521,9 @@ class LwsOptimize
             && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
             // Verify whether this is Varnish using IPxChange or not
             if (isset($_SERVER['HTTP_X_CDN_INFO']) && $_SERVER['HTTP_X_CDN_INFO'] == "ipxchange") {
-                $ipXchange_IP = dns_get_record($_SERVER['HTTP_HOST'])[0]['ip'] ?? false;
-                $host = $_SERVER['SERVER_NAME'] ?? false;
+                $ipxchange_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
+                $ipXchange_IP = $ipxchange_host !== '' ? (dns_get_record($ipxchange_host)[0]['ip'] ?? false) : false;
+                $host = isset($_SERVER['SERVER_NAME']) ? sanitize_text_field(wp_unslash($_SERVER['SERVER_NAME'])) : false;
 
                 // If we find the IP and the host, we can purge the cache
                 // Otherwise, we will purge the cache without the host
@@ -552,7 +542,7 @@ class LwsOptimize
             wp_remote_request(get_site_url() . "/.*", array('method' => 'PURGE'));
             wp_remote_request(get_site_url() . "/*", array('method' => 'FULLPURGE'));
             $chosen_purger = "LiteSpeed";
-        } elseif (isset($_ENV['lwscache']) && strtolower($_ENV['lwscache']) == "on") {
+        } elseif (isset($_ENV['lwscache']) && strtolower(sanitize_text_field(wp_unslash($_ENV['lwscache']))) == "on") {
             // If LWSCache, simply purge the cache
             wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'PURGE'));
             wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'PURGE'));
@@ -584,10 +574,6 @@ class LwsOptimize
 
     /**
      * Recursively fetches URLs from sitemaps
-     *
-     * @param string $url The sitemap URL to fetch
-     * @param array $data Accumulated URLs
-     * @return array Array of URLs found in the sitemap
      */
     public function fetch_url_sitemap($url, $data = [])
     {
@@ -656,7 +642,6 @@ class LwsOptimize
 
     /**
      * Helper method to get sitemap URLs
-     * @return array Array of URLs from sitemap
      */
     public function get_sitemap_urls()
     {
@@ -726,13 +711,6 @@ class LwsOptimize
     /**
      * Fallback URL source: query WordPress directly for all published, publicly
      * accessible content when no usable sitemap is available.
-     *
-     * Collects:
-     *  - The home / front page
-     *  - All published posts and pages
-     *  - All published items of every other public custom post type
-     *
-     * @return array Flat array of permalink strings
      */
     public function get_urls_from_wp()
     {
@@ -799,11 +777,6 @@ class LwsOptimize
      */
     public function lws_optimize_start_filebased_preload()
     {
-        // 4.5.9 — Early return si preload explicitement désactivé (preload=false).
-        // Sans ça, la fonction tournait dès lors que filebased_cache.state=true,
-        // même quand preload=false. Si en plus preload_done ne s'incrémente jamais
-        // (bug observé sur top10hebergeursweb.com 2026-06-03), on a une boucle
-        // infinie qui sature PHP-FPM et fait des requêtes /?nocache=… non-stop.
         $_lwsop_cfg = get_option('lws_optimize_config_array', []);
         if (($_lwsop_cfg['filebased_cache']['preload'] ?? 'false') !== 'true') {
             delete_option('lws_optimize_preload_is_ongoing');
@@ -894,13 +867,26 @@ class LwsOptimize
 
         $preload_secret = get_option('lwsop_preload_secret', '');
 
+        // Cross-run rate limit: some hosts (e.g. LWS) blacklist the IP past a certain
+        // rate of requests/minute. The admin already controls throughput via
+        // "preload_amount" ("pages per minute cached"), so that's the budget we enforce
+        // here — one entry per page, not per HTTP request (desktop+mobile count as one
+        // page). The budget is shared across cron ticks — a batch starting right after
+        // the previous one finished must know what was already sent this minute, or the
+        // two runs together blow past whatever the host tolerates.
+        $request_log = get_option('lwsop_preload_request_log', []);
+        $request_log = array_values(array_filter($request_log, function ($ts) {
+            return $ts > time() - 60;
+        }));
+        $rate_limited = false;
+
         // Process URLs from the sitemap
         foreach ($urls as $key => $url) {
             if ($current_try >= $max_try || $current_error_try >= $max_error_try) {
                 break;
             }
 
-            $path_uri    = parse_url($url, PHP_URL_PATH) ?: '/';
+            $path_uri    = wp_parse_url($url, PHP_URL_PATH) ?: '/';
             $path        = $lws_filebased->lwsop_set_cachedir($path_uri);
             $path_mobile = $lws_filebased->lwsop_set_cachedir($path_uri, true);
 
@@ -917,15 +903,30 @@ class LwsOptimize
                 continue;
             }
 
+            // Budget exhausted for this rolling minute — stop entirely and let the
+            // next cron tick (once older timestamps age out) pick up here. This URL
+            // is left untouched in the queue, it was never actually attempted.
+            if (count($request_log) >= $max_try) {
+                $rate_limited = true;
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Preload rate limit reached ($max_try pages/min) - pausing until next cycle" . PHP_EOL);
+                fclose($logger);
+                break;
+            }
+
+            $request_log[] = time();
+            update_option('lwsop_preload_request_log', $request_log, false);
+
             // Fetch only what is still missing
-            $sep = parse_url($url, PHP_URL_QUERY) ? '&' : '?';
+            $sep = wp_parse_url($url, PHP_URL_QUERY) ? '&' : '?';
+            $fetch_diagnostics = [];
             foreach ($userAgents as $type => $agent) {
                 if ($type === 'desktop' && !$need_desktop) continue;
                 if ($type === 'mobile'  && !$need_mobile)  continue;
 
-                $request_url = $url . $sep . 'nocache=' . time() . mt_rand(1000, 9999);
+                $request_url = $url . $sep . 'nocache=' . time() . wp_rand(1000, 9999);
 
-                wp_remote_get($request_url, [
+                $response = wp_remote_get($request_url, [
                     'timeout'            => 120,
                     'user-agent'         => $agent,
                     'headers'            => [
@@ -935,12 +936,21 @@ class LwsOptimize
                         'X-LWS-Preload' => $preload_secret,
                         'X-No-Cache'    => '1',
                     ],
-                    'sslverify'          => false,
+                    'sslverify'          => true,
                     'blocking'           => true,
                     'cookies'            => [],
                     'reject_unsafe_urls' => false,
                     'redirection'        => 3,
                 ]);
+
+                // Record what actually happened on the wire so a cache-miss can be diagnosed
+                // (timeout, WAF/firewall block, SSL failure, non-200 status, ...) instead of
+                // only ever knowing that no file appeared on disk.
+                if (is_wp_error($response)) {
+                    $fetch_diagnostics[] = "$type: " . $response->get_error_message();
+                } else {
+                    $fetch_diagnostics[] = "$type: HTTP " . wp_remote_retrieve_response_code($response);
+                }
             }
 
             // Check if desktop cache was created (primary success indicator)
@@ -954,7 +964,8 @@ class LwsOptimize
             } else {
                 $current_error_try++;
                 $logger = fopen($this->log_file, 'a');
-                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Failed to cache: $url - removed from queue" . PHP_EOL);
+                $diag = !empty($fetch_diagnostics) ? ' (' . implode(', ', $fetch_diagnostics) . ')' : '';
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Failed to cache: $url - removed from queue$diag" . PHP_EOL);
                 fclose($logger);
                 unset($urls[$key]);
             }
@@ -981,8 +992,12 @@ class LwsOptimize
 
         // Completion: nothing was attempted this run (current_try=0, current_error_try=0)
         // means every URL was either already cached (skipped) or the list is now empty.
-        if ($current_try === 0 && $current_error_try === 0) {
-            $array['filebased_cache']['preload']         = "false";
+        // A rate-limited run must NOT be treated as "complete" — there is still work
+        // left, it was just deferred to the next cron tick.
+        if ($current_try === 0 && $current_error_try === 0 && !$rate_limited) {
+            // Only the cycle-status flag is cleared here — 'preload' is the user's
+            // ON/OFF preference and must survive cycle completion so the next purge
+            // (post publish, nightly cron, ...) knows to restart preloading.
             $array['filebased_cache']['preload_ongoing'] = "false";
             update_option('lws_optimize_config_array', $array);
 
@@ -1122,7 +1137,12 @@ class LwsOptimize
 
         // PHP stats intermediary option
         $php_intermediary = $this->lwsop_check_option('htaccess_php_intermediary')['state'] === 'true';
-        $serve_script     = ltrim(str_replace(ABSPATH, '', LWS_OP_DIR . 'Classes/FileCache/lwsop_cache_serve.php'), '/');
+
+        // Deploy the serve script outside /plugins/ so security plugins that block
+        // PHP execution under /plugins/ cannot 403 the cache intermediary.
+        $deployed_script  = $php_intermediary ? $this->lwsop_deploy_serve_script() : null;
+        $serve_script     = $deployed_script
+            ?? ltrim(str_replace(ABSPATH, '', LWS_OP_DIR . 'Classes/FileCache/lwsop_cache_serve.php'), '/');
 
         // Get path to the cache directory
         $path = "cache";
@@ -1150,13 +1170,13 @@ class LwsOptimize
             }
 
             if ($this->lwsop_plugin_active('multiple-domain-mapping-on-single-site/multidomainmapping.php') || $this->lwsop_plugin_active('multiple-domain/multiple-domain.php') || is_multisite()) {
-                $additional = $_SERVER['HTTP_HOST'];
+                $additional = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
             }
 
             if ($this->lwsop_plugin_active('polylang/polylang.php')) {
                 $polylang_settings = get_option("polylang");
                 if (isset($polylang_settings["force_lang"]) && ($polylang_settings["force_lang"] == 2 || $polylang_settings["force_lang"] == 3)) {
-                    $additional = $_SERVER['HTTP_HOST'];
+                    $additional = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
                 }
             }
 
@@ -1186,14 +1206,14 @@ class LwsOptimize
                 $old_umask = umask(0);
                 if (!chmod(ABSPATH, 0755)) {
                     // Could not change directory permissions
-                    error_log("LWSOptimize: Could not change directory permissions for .htaccess");
+                    $this->lwsop_debug_log("LWSOptimize: Could not change directory permissions for .htaccess");
                     $available_htaccess = false;
                 }
 
                 // Try creating again with new permissions
                 if (!touch($htaccess)) {
                     // Still failed, abort
-                    error_log("LWSOptimize: Could not create .htaccess file");
+                    $this->lwsop_debug_log("LWSOptimize: Could not create .htaccess file");
                     umask($old_umask);
                     $available_htaccess = false;
                 }
@@ -1312,12 +1332,12 @@ class LwsOptimize
                 if (($f = fopen($htaccess, 'w+')) !== false) {
                     if (!fwrite($f, $hta)) {
                         fclose($f);
-                        error_log(json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | Caching | .htaccess file is not writtable")));
+                        $this->lwsop_debug_log(wp_json_encode(array('code' => 'CANT_WRITE', 'data' => "LWSOptimize | Caching | .htaccess file is not writtable")));
                     } else {
                         fclose($f);
                     }
                 } else {
-                    error_log(json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | Caching | .htaccess file is not openable")));
+                    $this->lwsop_debug_log(wp_json_encode(array('code' => 'CANT_OPEN', 'data' => "LWSOptimize | Caching | .htaccess file is not openable")));
                 }
             }
         }
@@ -1396,6 +1416,59 @@ class LwsOptimize
         }
 
         fclose($logger);
+    }
+
+    /**
+     * Empirically checks whether Apache is actually applying output compression on
+     * this vhost. The <IfModule mod_brotli.c>/<IfModule mod_deflate.c> guards written
+     * by set_gzip_brotli_htaccess() silently no-op when those modules aren't loaded —
+     * common on shared hosting — so this is the only reliable way to tell. The result
+     * is cached in an option (read by lwsop_cache_serve.php's PHP-level fallback)
+     * instead of being probed on every page load.
+     *
+     * @return bool|null true/false on a conclusive check, null if the probe itself failed.
+     */
+    public function lwsop_check_apache_compression_support()
+    {
+        $response = wp_remote_get(home_url('/'), [
+            'timeout'   => 10,
+            'sslverify' => true,
+            'cookies'   => [],
+            'headers'   => ['Accept-Encoding' => 'br, gzip'],
+        ]);
+
+        if (is_wp_error($response)) {
+            return null;
+        }
+
+        $supported = wp_remote_retrieve_header($response, 'content-encoding') !== '';
+        update_option('lwsop_apache_compression_detected', $supported ? 'true' : 'false');
+
+        return $supported;
+    }
+
+    /**
+     * Copies lwsop_cache_serve.php to wp-content/cache/lwsoptimize/ so it lives
+     * outside /plugins/, avoiding 403s from security plugins that block PHP
+     * execution there. Returns the ABSPATH-relative path on success, or null if
+     * the copy failed (caller then falls back to the /plugins/ path).
+     */
+    private function lwsop_deploy_serve_script() {
+        $source   = LWS_OP_DIR . 'Classes/FileCache/lwsop_cache_serve.php';
+        $dest_dir = WP_CONTENT_DIR . '/cache/lwsoptimize/';
+        $dest     = $dest_dir . 'lwsop_cache_serve.php';
+
+        if (!is_dir($dest_dir)) {
+            @mkdir($dest_dir, 0755, true);
+        }
+
+        if (!file_exists($dest) || filemtime($source) > filemtime($dest)) {
+            if (!@copy($source, $dest)) {
+                return null;
+            }
+        }
+
+        return ltrim(str_replace(ABSPATH, '', $dest), '/');
     }
 
     public function unset_cache_htaccess() {
@@ -1571,11 +1644,78 @@ class LwsOptimize
                 fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Successfully updated Header rules in .htaccess' . PHP_EOL);
             }
 
+            $this->lwsop_write_static_assets_cdn_htaccess($cdn_date);
+
         } catch (\Exception $e) {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . '] Error updating .htaccess: ' . $e->getMessage() . PHP_EOL);
         }
 
         fclose($logger);
+    }
+
+    /**
+     * Combined/minified CSS/JS (wp-content/cache/lwsoptimize/cache-css|js/) only ever
+     * inherited the generic mod_expires rule above, with no "public" Cache-Control and
+     * no CDN-Cache-Control — the exact signal the LWS CDN uses to decide whether to
+     * cache a response, which is why these assets stayed permanent MISSes. A dedicated
+     * per-directory .htaccess is used instead of widening the root <FilesMatch> to
+     * *.css/*.js, which would also catch unrelated theme/plugin assets outside this
+     * plugin's own cache directories.
+     */
+    /**
+     * The CDN-facing max-age (in seconds) matching the current 'filebased_cache.timer'
+     * setting — same mapping used by lws_optimize_reset_header_htaccess() for the HTML
+     * page cache, reused here so the cache-css/cache-js directory .htaccess (see
+     * lwsop_write_static_assets_cdn_htaccess()) can be backfilled as soon as
+     * LwsOptimizeCSSManager/LwsOptimizeJSManager create those directories, without
+     * waiting for a settings change to trigger the main .htaccess rewrite.
+     */
+    public function lwsop_get_cache_cdn_date()
+    {
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        $timer = $optimize_options['filebased_cache']['timer'] ?? "lws_yearly";
+
+        switch ($timer) {
+            case 'lws_daily':
+                return "86400";
+            case 'lws_weekly':
+                return "604800";
+            case 'lws_monthly':
+                return "2592000";
+            case 'lws_thrice_monthly':
+                return "7776000";
+            case 'lws_biyearly':
+                return "15552000";
+            case 'lws_yearly':
+                return "31104000";
+            case 'lws_two_years':
+                return "62208000";
+            case 'lws_never':
+                return "93312000";
+            default:
+                return "7776000";
+        }
+    }
+
+    public function lwsop_write_static_assets_cdn_htaccess($cdn_date)
+    {
+        $hta = "#LWS OPTIMIZE - STATIC ASSETS CACHE\n"
+             . "<IfModule mod_headers.c>\n"
+             . "Header set Cache-Control \"public, max-age=$cdn_date\"\n"
+             . "Header set CDN-Cache-Control \"public, maxage=$cdn_date\"\n"
+             . "</IfModule>\n"
+             . "#END LWS OPTIMIZE - STATIC ASSETS CACHE\n";
+
+        foreach (['cache-css/', 'cache-js/'] as $subdir) {
+            $directory = $this->lwsop_get_content_directory($subdir);
+            if (!is_dir($directory)) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- mirrors LwsOptimizeCSSManager/LwsOptimizeJSManager, which already create these same directories without WP_Filesystem
+                mkdir($directory, 0755, true);
+            }
+            if (is_dir($directory)) {
+                $this->lwsop_atomic_write($directory . '.htaccess', $hta);
+            }
+        }
     }
 
     function unset_header_htaccess() {
@@ -1636,8 +1776,9 @@ class LwsOptimize
         }
 
         $api_key = file_get_contents($directory . '/' . $latestFile);
+        $request_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
         wp_remote_post(
-            "https://127.0.0.1:8443/api/domains/" . $_SERVER['HTTP_HOST'],
+            "https://127.0.0.1:8443/api/domains/" . $request_host,
             array(
                 'method'      => 'PUT',
                 'headers'     => array('Authorization' => 'Bearer ' . $api_key, 'Content-Type' => "application/x-www-form-urlencoded"),
@@ -1646,7 +1787,7 @@ class LwsOptimize
                     'cache-enabled' => $state,
                     'cache-engine' => 'varnish'
                 ),
-                'sslverify' => false
+                'sslverify' => true
             )
         );
     }
@@ -1680,8 +1821,6 @@ class LwsOptimize
 
     /**
      * Get URLs for categories, tags, and pagination for cache clearing
-     *
-     * @return array Array of URLs to be cleared
      */
     public function get_taxonomy_and_pagination_urls() {
         $urls = [];
@@ -1786,7 +1925,7 @@ class LwsOptimize
 
             // Get site URL components for main cache
             $site_url = site_url();
-            $domain_parts = parse_url($site_url);
+            $domain_parts = wp_parse_url($site_url);
             $path = isset($domain_parts['path']) ? trim($domain_parts['path'], '/') : '';
 
             // Define all cache directories to clean
@@ -1826,7 +1965,7 @@ class LwsOptimize
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
 
             foreach ($taxonomy_urls as $url) {
-                $parsed_url = parse_url($url);
+                $parsed_url = wp_parse_url($url);
                 $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
 
                 // Clear desktop cache
@@ -2000,10 +2139,7 @@ class LwsOptimize
 
     /**
      * Check if the given $option is set. If it is active, return the data if it exists.
-     * Example : {filebased_cache} => ["state" => "true", "data" => ["timer" => "lws_daily", ...]]
-     *
-     * @param string $option The option to test
-     * @return array ['state' => "true"/"false", 'data' => array]
+     * Example: {filebased_cache} => ["state" => "true", "data" => ["timer" => "lws_daily", ...]]
      */
     public function lwsop_check_option(string $option)
     {
@@ -2024,7 +2160,7 @@ class LwsOptimize
                 return ['state' => $state, 'data' => $data];
             }
         } catch (\Exception $e) {
-            error_log("LwsOptimize.php::lwsop_check_option | " . $e);
+            $this->lwsop_debug_log("LwsOptimize.php::lwsop_check_option | " . $e);
         }
         return ['state' => "false", 'data' => []];
     }
@@ -2060,11 +2196,9 @@ class LwsOptimize
     /**
      * Return the PATH to the wp-content directory or, if $path is defined correctly,
      * return the PATH to the cached file. Modify the PATH if some plugins are activated.
+     * Adapted from WPFastestCache for the plugin part and the idea of using RegEx.
      *
-     * Adapted from WPFastestCache for the plugin part and the idea of using RegEx
-     *
-     * @param string $path PATH, from wp-content, to the cache file. Trailling slash not necessary
-     * @return string PATH to the given file or to wp-content if $path if empty
+     * @param string $path Path from wp-content to the cache file; trailing slash not necessary.
      */
     public function lwsop_get_content_directory($path = false)
     {
@@ -2092,13 +2226,13 @@ class LwsOptimize
             }
 
             if ($this->lwsop_plugin_active('multiple-domain-mapping-on-single-site/multidomainmapping.php') || $this->lwsop_plugin_active('multiple-domain/multiple-domain.php') || is_multisite()) {
-                $additional = $_SERVER['HTTP_HOST'];
+                $additional = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
             }
 
             if ($this->lwsop_plugin_active('polylang/polylang.php')) {
                 $polylang_settings = get_option("polylang");
                 if (isset($polylang_settings["force_lang"]) && ($polylang_settings["force_lang"] == 2 || $polylang_settings["force_lang"] == 3)) {
-                    $additional = $_SERVER['HTTP_HOST'];
+                    $additional = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
                 }
             }
 
@@ -2256,7 +2390,7 @@ class LwsOptimize
                         );
 
                         foreach ($iterator as $file) {
-                            if ($file->isFile()) {
+                            if ($file->isFile() && !preg_match('/\.(gz|br)$/i', $file->getFilename())) {
                                 $totalSize += $file->getSize();
                                 $fileCount++;
                             }
@@ -2305,8 +2439,6 @@ class LwsOptimize
                 $options['delay_js']['state'] = "false";
                 $options['minify_html']['state'] = "false";
                 $options['autopurge']['state'] = "true";
-                // 4.5.11 — Activation conditionnelle : si Memcached dispo localement
-                // et qu'aucun Redis/drop-in tiers n'est en place. Sinon "false" silencieux.
                 $options['memcached']['state'] = $this->lwsop_can_recommend_memcached()['recommend'] ? "true" : "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
@@ -2325,10 +2457,8 @@ class LwsOptimize
                 $options['image_add_sizes']['state'] = "false";
                 $options['remove_css']['state'] = "false";
                 $options['critical_css']['state'] = "false";
-                // PHASE 2 (4.1.0) — preset essential : zéro feature avancée activée
-                // (sécurité / safe defaults pour 15 000+ sites)
                 $options['cloudflare_apo']['state']     = "false";
-                $options['rum']['state']                = "false";
+                $options['rum']['state']                = "true";
                 $options['font_preload']['state']       = "false";
 
 
@@ -2363,7 +2493,6 @@ class LwsOptimize
                 $options['delay_js']['state'] = "false";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                // 4.5.11 — Activation conditionnelle (cf. preset 'basic')
                 $options['memcached']['state'] = $this->lwsop_can_recommend_memcached()['recommend'] ? "true" : "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
@@ -2382,8 +2511,6 @@ class LwsOptimize
                 $options['image_add_sizes']['state'] = "true";
                 $options['remove_css']['state'] = "false";
                 $options['critical_css']['state'] = "false";
-                // PHASE 2 (4.1.0) — preset optimized : features avancées activées
-                // sans dépendance externe (CF API token, manual_css textarea, etc.)
                 $options['cloudflare_apo']['state']     = "false"; // nécessite zone_id + api_token
                 $options['rum']['state']                = "true";  // collecte CWV anonyme
                 $options['font_preload']['state']       = "true";  // preload Google Fonts
@@ -2415,7 +2542,6 @@ class LwsOptimize
                 $options['delay_js']['state'] = "true";
                 $options['minify_html']['state'] = "true";
                 $options['autopurge']['state'] = "true";
-                // 4.5.11 — Activation conditionnelle (cf. preset 'basic')
                 $options['memcached']['state'] = $this->lwsop_can_recommend_memcached()['recommend'] ? "true" : "false";
                 $options['gzip_compression']['state'] = "true";
                 $options['image_lazyload']['state'] = "true";
@@ -2434,11 +2560,9 @@ class LwsOptimize
                 $options['image_add_sizes']['state'] = "true";
                 $options['remove_css']['state'] = "true";
                 $options['critical_css']['state'] = "true";
-                // PHASE 2 (4.1.0) — preset full / maximum : toutes features sauf
-                // celles qui requièrent config externe (CF zone_id+token, manual_css).
-                $options['cloudflare_apo']['state']     = "false";  // nécessite zone_id + api_token
-                $options['rum']['state']                = "true";   // collecte CWV anonyme
-                $options['font_preload']['state']       = "true";   // preload Google Fonts
+                $options['cloudflare_apo']['state']     = "false";
+                $options['rum']['state']                = "true";
+                $options['font_preload']['state']       = "true";
 
                 update_option('lws_optimize_config_array', $options);
 
@@ -2476,29 +2600,22 @@ class LwsOptimize
     }
 
     /**
-     * Convert a certain amount (between 1 and 15) of images to the desired format.
-     * The function does not check much else, whether or not anything got converted is not checked
-     *
-     * Deprecated
+     * Deprecated: kept only as a stub so old scheduled crons don't error.
      */
     public function lws_optimize_convert_media_cron()
     {
         wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
-        header('Content-Type: application/json');
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => [], 'domain' => site_url())), JSON_PRETTY_PRINT);
+        wp_send_json(array('code' => "SUCCESS", "data" => [], 'domain' => site_url()));
     }
 
     /**
-     * Remove the cron for the restoration of all converted medias, stopping the process
-     *
-     * Deprecated
+     * Remove the cron for the restoration of all converted medias, stopping the process. Deprecated.
      */
     public function lws_optimize_stop_deconvertion()
     {
         check_ajax_referer('lwsop_stop_deconvertion_nonce', '_ajax_nonce');
         wp_unschedule_event(wp_next_scheduled('lwsop_revertOptimization'), 'lwsop_revertOptimization');
-        header('Content-Type: application/json');
-        wp_die(json_encode(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url())), JSON_PRETTY_PRINT);
+        wp_send_json(array('code' => "SUCCESS", "data" => "Done", 'domain' => site_url()));
     }
 
     /**
@@ -2586,9 +2703,6 @@ class LwsOptimize
     /**
      * Returns true if the file at $path is OUR drop-in (contains our signature).
      * Returns false if the file does not exist OR is owned by a third party.
-     *
-     * @param string $path Path to a candidate object-cache.php
-     * @return bool
      */
     public function lwsop_is_owned_dropin($path)
     {
@@ -2602,12 +2716,6 @@ class LwsOptimize
         return strpos($content, self::LWSOP_DROPIN_SIGNATURE) !== false;
     }
 
-    /**
-     * Returns the third-party marker detected in $path, or null if none / file absent.
-     *
-     * @param string $path
-     * @return string|null
-     */
     /**
      * 4.5.11 — Détermine si on peut/doit recommander Memcached à l'utilisateur dans
      * les presets auto-setup (essential / optimized / max). Wrapper léger autour
@@ -2628,22 +2736,16 @@ class LwsOptimize
 
     /**
      * 4.5.12 — Valide complètement l'environnement avant activation du drop-in
-     * Memcached. Bloque les configurations connues pour casser wp-admin :
+     * Memcached ; bloque les configurations connues pour casser wp-admin
+     * (extension PHP absente, serveur injoignable, drop-in tiers, saturation).
+     * Voir les commentaires "Check A".."Check F" dans le corps de la fonction.
      *
-     *  - Check A : extension PHP `Memcached` disponible (fatal si absent)
-     *  - Check B : connexion + read/write probe sur le serveur (fatal si KO)
-     *  - Check C : conflit avec PHP sessions sur la MÊME instance Memcached
-     *              sans PREFIX (fatal — c'est le bug qui a planté wp-admin sur
-     *              top10hebergeursweb.com en 4.5.9 : session_start() + drop-in
-     *              concurrent sur même backend sans locking ni isolation =
-     *              race condition → fatal PHP non rattrapé)
-     *  - Check D : drop-in object-cache.php tiers (Redis/W3TC/etc.) déjà en place
-     *  - Check E : Memcached proche saturation (>90% used) — warning, pas fatal
-     *  - Check F : tout est OK
+     * Check C (conflit sessions PHP) est le root cause du crash wp-admin sur
+     * top10hebergeursweb.com en 4.5.9 : session_start() + drop-in concurrent sur
+     * le même backend Memcached sans PREFIX ni locking = race condition fatale.
      *
-     * Hooks pour environnements custom :
-     *  - lwsop_memcached_host : surcharger 127.0.0.1
-     *  - lwsop_memcached_port : surcharger 11211
+     * Hooks pour environnements custom : lwsop_memcached_host (def. 127.0.0.1),
+     * lwsop_memcached_port (def. 11211).
      *
      * @return array{ok:bool, severity:'fatal'|'warning'|'info', reason:string, message:string, fix_url?:string, details?:array}
      */
@@ -2655,7 +2757,7 @@ class LwsOptimize
                 'ok'       => false,
                 'severity' => 'fatal',
                 'reason'   => 'php_memcached_extension_missing',
-                'message'  => __("L'extension PHP « memcached » n'est pas installée sur ce serveur. Contactez votre hébergeur pour l'activer.", 'lws-optimize'),
+                'message'  => "L'extension PHP « memcached » n'est pas installée sur ce serveur. Contactez votre hébergeur pour l'activer.",
                 'details'  => [],
             ];
         }
@@ -2671,10 +2773,7 @@ class LwsOptimize
         $mc->setOption(\Memcached::OPT_SEND_TIMEOUT,    200);
         $mc->setOption(\Memcached::OPT_RECV_TIMEOUT,    200);
 
-        // 4.5.12 — uniqid + mt_rand au lieu de wp_generate_password : pluggable.php
-        // n'est pas toujours chargé quand le constructeur de LwsOptimize tourne
-        // (boot gate au load des plugins, AVANT plugins_loaded).
-        $probe_key   = 'lwsop_probe_' . uniqid('', true) . mt_rand(1000, 9999);
+        $probe_key   = 'lwsop_probe_' . uniqid('', true) . wp_rand(1000, 9999);
         $probe_value = (string) microtime(true);
         @$mc->set($probe_key, $probe_value, 30);
         $retrieved = @$mc->get($probe_key);
@@ -2687,7 +2786,8 @@ class LwsOptimize
                 'severity' => 'fatal',
                 'reason'   => 'memcached_unreachable_or_broken',
                 'message'  => sprintf(
-                    __("Impossible de lire/écrire sur le serveur Memcached (%s:%d). Code Memcached : %s (%d). Service inactif ou réseau bloqué ?", 'lws-optimize'),
+                    /* translators: 1: host, 2: port, 3: Memcached result message, 4: Memcached result code */
+                    __('Could not read/write to the Memcached server (%1$s:%2$d). Memcached code: %3$s (%4$d). Service down or network blocked?', 'lws-optimize'),
                     $host, $port, $mc->getResultMessage(), $rc
                 ),
                 'details'  => ['host' => $host, 'port' => $port, 'result_code' => $rc],
@@ -2713,17 +2813,8 @@ class LwsOptimize
                         'ok'       => false,
                         'severity' => 'fatal',
                         'reason'   => 'memcached_shared_with_php_sessions',
-                        'message'  => __(
-                            "Conflit serveur détecté : PHP utilise Memcached comme backend de sessions sur la même instance que LWS Optimize " .
-                            "(session.save_handler = memcached, session.save_path partage la même adresse). " .
-                            "Activer le cache d'objets créerait une race condition entre les sessions PHP et le cache WP, " .
-                            "ce qui peut provoquer des erreurs HTTP 500 en wp-admin pour les utilisateurs authentifiés.\n\n" .
-                            "Solutions (à demander à votre hébergeur) :\n" .
-                            "  1. Basculer les sessions PHP sur fichiers : session.save_handler = files\n" .
-                            "  2. Préfixer le namespace sessions : session.save_path = \"PREFIX=php_sess.,127.0.0.1:11211\"\n" .
-                            "  3. Activer le locking : memcached.sess_locking = On (atténuation, pas idéal)",
-                            'lws-optimize'
-                        ),
+                        'message'  =>
+                            __("Server conflict detected: PHP uses Memcached as the session backend on the same instance as LWS Optimize (session.save_handler = memcached, session.save_path shares the same address). Enabling the object cache would create a race condition between PHP sessions and the WP cache, which can cause HTTP 500 errors in wp-admin for logged-in users.\n\nSolutions (ask your host):\n  1. Switch PHP sessions to files: session.save_handler = files\n  2. Prefix the sessions namespace: session.save_path = \"PREFIX=php_sess.,127.0.0.1:11211\"\n  3. Enable locking: memcached.sess_locking = On (mitigation, not ideal)", 'lws-optimize'),
                         'fix_url'  => 'https://aide.lws.fr/base/Creation-de-site--Wordpress/Plugins-WordPress-LWS-Optimize',
                         'details'  => [
                             'session_handler' => $session_handler,
@@ -2744,7 +2835,8 @@ class LwsOptimize
                 'severity' => 'fatal',
                 'reason'   => 'third_party_dropin_exists',
                 'message'  => sprintf(
-                    __("Un drop-in object-cache.php d'un autre plugin (%s) est déjà installé. Désinstallez-le ou désactivez Memcached dans LWS Optimize avant d'en installer un nouveau pour éviter d'écraser sa configuration.", 'lws-optimize'),
+                    /* translators: %s: name of the other plugin that installed the object-cache.php drop-in */
+                    __("An object-cache.php drop-in from another plugin (%s) is already installed. Uninstall it or deactivate Memcached in LWS Optimize before installing a new one, to avoid overwriting its configuration.", 'lws-optimize'),
                     $third_party
                 ),
                 'details'  => ['detected' => $third_party, 'path' => LWSOP_OBJECTCACHE_PATH],
@@ -2766,7 +2858,8 @@ class LwsOptimize
                     'severity' => 'warning',
                     'reason'   => 'memcached_near_capacity',
                     'message'  => sprintf(
-                        __("Memcached utilise %.1f%% de sa mémoire (%s sur %s). %d évictions ont déjà eu lieu. Le cache va être fréquemment invalidé, le bénéfice perf sera limité. Demandez à votre hébergeur d'augmenter limit_maxbytes (typique : 256-512 MB).", 'lws-optimize'),
+                        /* translators: 1: percentage used, 2: memory used, 3: memory limit, 4: number of evictions */
+                        __("Memcached is using %1\$.1f%% of its memory (%2\$s of %3\$s). %4\$d evictions have already occurred. The cache will be frequently invalidated, limiting the performance benefit. Ask your host to increase limit_maxbytes (typically 256-512 MB).", 'lws-optimize'),
                         $pct_used, size_format($used), size_format($limit), $evicted
                     ),
                     'details'  => ['pct_used' => $pct_used, 'used' => $used, 'limit' => $limit, 'evictions' => $evicted],
@@ -2779,7 +2872,7 @@ class LwsOptimize
             'ok'       => true,
             'severity' => 'info',
             'reason'   => 'all_checks_passed',
-            'message'  => __('Environnement Memcached validé.', 'lws-optimize'),
+            'message'  => __('Memcached environment validated.', 'lws-optimize'),
             'details'  => ['host' => $host, 'port' => $port],
         ];
     }
@@ -2816,14 +2909,16 @@ class LwsOptimize
                 FILE_APPEND
             );
         }
-        error_log('LWS Optimize daily health-check: auto-disabled Memcached — ' . $check['reason']);
+        $this->lwsop_debug_log('LWS Optimize daily health-check: auto-disabled Memcached — ' . $check['reason']);
 
         // Notification admin
         $admin_email = get_option('admin_email');
         if (!empty($admin_email) && is_email($admin_email)) {
+            // translators: %s: Site name.
             $subject = sprintf(__('[%s] LWS Optimize a désactivé Memcached automatiquement', 'lws-optimize'), get_bloginfo('name'));
+            // translators: 1: Health-check error message, 2: Technical failure reason, 3: Site URL.
             $body = sprintf(
-                __("L'environnement Memcached est devenu invalide :\n\n%s\n\nLWS Optimize a désactivé Memcached et retiré le drop-in object-cache.php pour éviter un crash de wp-admin pour vos utilisateurs authentifiés. Vous pouvez le réactiver manuellement depuis l'interface du plugin une fois l'environnement corrigé.\n\nRaison technique : %s\nSite : %s", 'lws-optimize'),
+                __("L'environnement Memcached est devenu invalide :\n\n%1\$s\n\nLWS Optimize a désactivé Memcached et retiré le drop-in object-cache.php pour éviter un crash de wp-admin pour vos utilisateurs authentifiés. Vous pouvez le réactiver manuellement depuis l'interface du plugin une fois l'environnement corrigé.\n\nRaison technique : %2\$s\nSite : %3\$s", 'lws-optimize'),
                 $check['message'],
                 $check['reason'],
                 home_url()
@@ -2845,12 +2940,7 @@ class LwsOptimize
         if (strpos($content, self::LWSOP_DROPIN_SIGNATURE) !== false) {
             return null;
         }
-        // 4.5.11 — Legacy LWS drop-in (pre-signature) : reconnaissance par la
-        // combinaison unique du header de commentaire + du global $memcached_instance
-        // utilisé uniquement par notre implémentation historique. Cette combo n'est
-        // pas portée par les autres drop-ins (W3TC, wp-redis, etc.) — pas de faux
-        // positifs côté tiers. Une fois reconnu, on le traite comme nôtre →
-        // lwsop_safe_write_dropin pourra le remplacer par la version signée.
+        // Legacy LWS drop-in
         if (strpos($content, 'Memcached Object Cache Drop-In') !== false
             && strpos($content, 'Place in wp-content/object-cache.php') !== false
             && strpos($content, 'global $memcached_instance') !== false) {
@@ -2868,9 +2958,6 @@ class LwsOptimize
     /**
      * Safely delete the object-cache.php drop-in ONLY if we own it.
      * Returns true on success (deleted or already absent), false if refused (third-party detected).
-     *
-     * @param string $path
-     * @return bool
      */
     public function lwsop_safe_delete_dropin($path)
     {
@@ -2888,24 +2975,17 @@ class LwsOptimize
             if (!empty($this->log_file)) {
                 @file_put_contents($this->log_file, $msg . PHP_EOL, FILE_APPEND);
             }
-            error_log($msg);
+            $this->lwsop_debug_log($msg);
             return false;
         }
         return @wp_delete_file($path) !== false;
     }
 
     /**
-     * Targeted Varnish / LiteSpeed / LWSCache purge for a single URL.
-     * Used by integrations (Cloudflare APO, autopurge hooks) to keep the
-     * edge / server caches in sync after a content change. Falls through
-     * silently if no compatible edge cache is detected on this hosting.
-     *
-     * Detection mirrors lwsop_dump_all_dynamic_caches() — HTTP_X_CACHE_ENABLED
-     * + HTTP_EDGE_CACHE_ENGINE for LWS, lwscache env for LWSCache.
-     *
-     * @param string $url Absolute URL to purge.
-     * @return string|null Name of the purger that handled it ("Varnish",
-     *                    "LiteSpeed", "LWSCache") or null if none matched.
+     * Targeted Varnish / LiteSpeed / LWSCache purge for a single URL. Used by
+     * integrations (Cloudflare APO, autopurge hooks) to keep edge caches in
+     * sync after a content change; falls through silently if no compatible
+     * edge cache is detected. Detection mirrors lwsop_dump_all_dynamic_caches().
      */
     public function lwsop_purge_varnish_url($url)
     {
@@ -2933,7 +3013,7 @@ class LwsOptimize
             return 'LiteSpeed';
         }
         // LWSCache (mutualised hosting)
-        if (isset($_ENV['lwscache']) && strtolower($_ENV['lwscache']) === 'on') {
+        if (isset($_ENV['lwscache']) && strtolower(sanitize_text_field(wp_unslash($_ENV['lwscache']))) === 'on') {
             wp_remote_request($url, ['method' => 'PURGE', 'timeout' => 5]);
             return 'LWSCache';
         }
@@ -2941,18 +3021,12 @@ class LwsOptimize
     }
 
     /**
-     * Atomically write content to a critical file (.htaccess, drop-in, config) via
-     * write-to-tmp + rename. Avoids leaving a truncated file on I/O error, which
-     * would otherwise cause a 500 (notably for .htaccess).
-     *
-     * @param string $path Target file path
-     * @param string $content Content to write
-     * @return bool true on success
+     * Atomically writes content to a critical file (.htaccess, drop-in, config)
+     * via write-to-tmp + rename. Avoids leaving a truncated file on I/O error,
+     * which would otherwise cause a 500 (notably for .htaccess).
      */
     public function lwsop_atomic_write($path, $content)
     {
-        // 4.5.12 — uniqid au lieu de wp_generate_password (peut être appelé depuis
-        // le constructeur du plugin, avant que pluggable.php ne soit chargé).
         $tmp = $path . '.tmp.' . uniqid('', true);
         $written = @file_put_contents($tmp, $content);
         if ($written === false || $written !== strlen($content)) {
@@ -2976,10 +3050,6 @@ class LwsOptimize
     /**
      * Safely write the LWS Optimize drop-in ONLY if no third-party drop-in is in place.
      * Uses atomic rename to avoid leaving a truncated file on I/O error.
-     *
-     * @param string $path Target path
-     * @param string $source_path Source path (views/object-cache.php)
-     * @return bool true on success, false if refused or write failed
      */
     public function lwsop_safe_write_dropin($path, $source_path)
     {
@@ -2994,15 +3064,14 @@ class LwsOptimize
             if (!empty($this->log_file)) {
                 @file_put_contents($this->log_file, $msg . PHP_EOL, FILE_APPEND);
             }
-            error_log($msg);
+            $this->lwsop_debug_log($msg);
             return false;
         }
         $content = @file_get_contents($source_path);
         if ($content === false) {
             return false;
         }
-        // 4.5.12 — uniqid au lieu de wp_generate_password (peut être appelé depuis
-        // le constructeur du plugin, avant que pluggable.php ne soit chargé).
+
         $tmp = $path . '.tmp.' . uniqid('', true);
         if (@file_put_contents($tmp, $content) === false) {
             return false;
@@ -3013,5 +3082,6 @@ class LwsOptimize
         }
         return true;
     }
+    // phpcs:enable WordPress.WP.AlternativeFunctions.file_system_operations_fopen,WordPress.WP.AlternativeFunctions.file_system_operations_fwrite,WordPress.WP.AlternativeFunctions.file_system_operations_fclose,WordPress.WP.AlternativeFunctions.file_system_operations_mkdir,WordPress.WP.AlternativeFunctions.file_system_operations_rmdir,WordPress.WP.AlternativeFunctions.file_system_operations_chmod,WordPress.WP.AlternativeFunctions.file_system_operations_touch,WordPress.WP.AlternativeFunctions.file_system_operations_is_writable,WordPress.WP.AlternativeFunctions.rename_rename,PluginCheck.CodeAnalysis.WriteFile.ABSPATHDetected,PluginCheck.CodeAnalysis.WriteFile.PluginDirectoryWrite
 }
 

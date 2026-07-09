@@ -41,9 +41,6 @@ class LwsOptimizeCloudflareAPO
         add_action('save_post', [__CLASS__, 'purge_on_post_change'], 20, 1);
         add_action('comment_post', [__CLASS__, 'purge_on_post_change'], 20, 1);
         add_action('lws_optimize_clear_filebased_cache', [__CLASS__, 'purge_url_from_filter'], 20, 1);
-
-        // Admin AJAX to install Cache Rule
-        add_action('wp_ajax_lwsop_cloudflare_install_cache_rule', [__CLASS__, 'ajax_install_cache_rule']);
     }
 
     /**
@@ -60,7 +57,7 @@ class LwsOptimizeCloudflareAPO
         if (is_admin() || headers_sent()) {
             return;
         }
-        $host = parse_url(home_url(), PHP_URL_HOST);
+        $host = wp_parse_url(home_url(), PHP_URL_HOST);
         $tags = ['lwsop-host:' . $host];
         if (function_exists('is_singular') && is_singular() && function_exists('get_the_ID')) {
             $id = get_the_ID();
@@ -145,33 +142,81 @@ class LwsOptimizeCloudflareAPO
     }
 
     /**
-     * AJAX handler to install the recommended Cache Rule on the CF zone.
-     * Caps protected by the global capability gate in LwsOptimizeManageAdmin.
-     *
-     * Rule expression (CF Cache Rules language):
-     *   (http.host eq "example.com" and not (http.request.uri.path matches "^/(wp-admin|wp-login)") and
-     *    not (any(http.cookie[*] in {"wp-" "wordpress_logged_in_" "woocommerce_" "edd_" "comment_author_"})))
-     *
-     * Action: cache + edge_ttl 8h + bypass on no-cache request.
+     * Purges the entire CF zone cache (mirrors `wp lwsoptimize cloudflare purge-all`).
+     * Used when a full cache wipe is needed (e.g. after a code change that alters
+     * what gets baked into the cached HTML), as opposed to purge_urls() which only
+     * invalidates specific pages.
      */
-    public static function ajax_install_cache_rule()
+    public static function purge_all()
     {
-        check_ajax_referer('lwsop_cf_install', '_ajax_nonce');
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['code' => 'FORBIDDEN'], 403);
-        }
         $cfg = self::get_config();
         if (!$cfg) {
-            wp_send_json_error(['code' => 'NO_CONFIG', 'message' => 'Missing zone_id or api_token']);
+            return false;
         }
-        $host = parse_url(home_url(), PHP_URL_HOST);
+        $resp = wp_remote_post(
+            self::CF_API_BASE . '/zones/' . rawurlencode($cfg['zone_id']) . '/purge_cache',
+            [
+                'timeout' => 15,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $cfg['api_token'],
+                    'Content-Type'  => 'application/json',
+                ],
+                'body' => wp_json_encode(['purge_everything' => true]),
+            ]
+        );
+        if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
+            if (isset($GLOBALS['lws_optimize']) && !empty($GLOBALS['lws_optimize']->log_file)) {
+                $msg = is_wp_error($resp) ? $resp->get_error_message() : wp_remote_retrieve_body($resp);
+                @file_put_contents(
+                    $GLOBALS['lws_optimize']->log_file,
+                    '[' . gmdate('Y-m-d H:i:s') . "] CF purge-all failed: $msg\n",
+                    FILE_APPEND
+                );
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Installs (or replaces) the recommended Cache Rule on the given Cloudflare
+     * zone and, on success, persists cloudflare_apo state/credentials. Called
+     * from the batched "Save changes" flow
+     * (LwsOptimizeManageAdmin::lws_optimize_manage_config_delayed()) when the
+     * admin turns the APO toggle on, so the rule and the DB state are always
+     * written together — never toggle "true" without a rule behind it.
+     *
+     * Rule expression (CF Cache Rules language):
+     *   (http.host eq "example.com" and
+     *    not (starts_with(http.request.uri.path, "/wp-admin") or starts_with(http.request.uri.path, "/wp-login")) and
+     *    not (http.cookie contains "wp-" or http.cookie contains "wordpress_logged_in_" or
+     *         http.cookie contains "woocommerce_" or http.cookie contains "edd_" or
+     *         http.cookie contains "comment_author_"))
+     *
+     * Action: cache + edge_ttl 8h + bypass on no-cache request.
+     *
+     * @return array{success:bool, code:string, http?:int, body?:string, message?:string}
+     */
+    public static function install_cache_rule($zone_id, $api_token)
+    {
+        $host = wp_parse_url(home_url(), PHP_URL_HOST);
         $bypass_cookies = apply_filters('lwsop_cf_bypass_cookies', [
             'wp-', 'wordpress_logged_in_', 'woocommerce_', 'edd_', 'comment_author_',
         ]);
-        $cookies_expr = implode('" "', $bypass_cookies);
+        // http.cookie is the raw Cookie header (a plain string), not a map, so it
+        // can't be indexed with [*]/any(). Match cookie name prefixes as substrings
+        // of that header instead.
+        $cookie_conditions = array_map(function ($c) {
+            return sprintf('http.cookie contains "%s"', str_replace('"', '\\"', $c));
+        }, $bypass_cookies);
+        $cookies_expr = implode(' or ', $cookie_conditions);
+        // "matches" (regex) requires a Business/WAF Advanced plan; use starts_with()
+        // instead so this works on free Cloudflare plans too.
+        $path_expr = 'starts_with(http.request.uri.path, "/wp-admin") or starts_with(http.request.uri.path, "/wp-login")';
         $expression = sprintf(
-            '(http.host eq "%s" and not (http.request.uri.path matches "^/(wp-admin|wp-login)") and not (any(http.cookie[*] in {"%s"})))',
+            '(http.host eq "%s" and not (%s) and not (%s))',
             $host,
+            $path_expr,
             $cookies_expr
         );
         $body = [
@@ -188,29 +233,119 @@ class LwsOptimizeCloudflareAPO
             ]],
         ];
         $resp = wp_remote_request(
-            self::CF_API_BASE . '/zones/' . rawurlencode($cfg['zone_id']) . '/rulesets/phases/http_request_cache_settings/entrypoint',
+            self::CF_API_BASE . '/zones/' . rawurlencode($zone_id) . '/rulesets/phases/http_request_cache_settings/entrypoint',
             [
                 'method'  => 'PUT',
                 'timeout' => 15,
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $cfg['api_token'],
+                    'Authorization' => 'Bearer ' . $api_token,
                     'Content-Type'  => 'application/json',
                 ],
                 'body' => wp_json_encode($body),
             ]
         );
         if (is_wp_error($resp)) {
-            wp_send_json_error(['code' => 'WP_ERROR', 'message' => $resp->get_error_message()]);
+            return ['success' => false, 'code' => 'WP_ERROR', 'message' => $resp->get_error_message()];
         }
         $code = wp_remote_retrieve_response_code($resp);
         if ($code !== 200) {
-            wp_send_json_error([
-                'code' => 'CF_API_FAIL',
-                'http' => $code,
-                'body' => wp_remote_retrieve_body($resp),
-            ]);
+            return [
+                'success' => false,
+                'code'    => 'CF_API_FAIL',
+                'http'    => $code,
+                'body'    => wp_remote_retrieve_body($resp),
+            ];
         }
-        wp_send_json_success(['code' => 'INSTALLED']);
+        // The rule now lives on the CF zone and is already caching HTML — persist
+        // state/credentials immediately so cloudflare_apo.state can never be "true"
+        // without a rule behind it, nor a rule live without state being "true"
+        // (the latter would mean edge caching runs while purge_urls() stays gated
+        // off, serving stale content indefinitely after edits).
+        $opts = get_option('lws_optimize_config_array', []);
+        $opts['cloudflare_apo']['state']             = 'true';
+        $opts['cloudflare_apo']['zone_id']           = $zone_id;
+        $opts['cloudflare_apo']['api_token']         = $api_token;
+        $opts['cloudflare_apo']['rule_installed_at'] = time();
+        update_option('lws_optimize_config_array', $opts);
+        return ['success' => true, 'code' => 'INSTALLED'];
+    }
+
+    /**
+     * Reverse of install_cache_rule(): removes the Cache Rule from the CF zone
+     * and purges the edge cache, then clears cloudflare_apo.state/rule_installed_at.
+     * Called from the batched "Save changes" flow when the admin turns the APO
+     * toggle off. Reads zone_id/api_token from the saved option, since by the
+     * time this runs state is already "true" and credentials are persisted.
+     *
+     * @return array{success:bool, code:string}
+     */
+    public static function uninstall_cache_rule($zone_id, $api_token)
+    {
+        // No credentials on file means there's nothing live on the CF side to
+        // remove (e.g. state was already inconsistent) — just clear locally.
+        if ($zone_id !== '' && $api_token !== '' && !self::remove_cache_rule($zone_id, $api_token)) {
+            return ['success' => false, 'code' => 'CF_API_FAIL'];
+        }
+        $opts = get_option('lws_optimize_config_array', []);
+        $opts['cloudflare_apo']['state'] = 'false';
+        unset($opts['cloudflare_apo']['rule_installed_at']);
+        update_option('lws_optimize_config_array', $opts);
+        return ['success' => true, 'code' => 'UNINSTALLED'];
+    }
+
+    /**
+     * Removes the Cache Rule pushed by install_cache_rule() and purges any
+     * HTML already cached at the edge under it. Called when the admin turns APO
+     * off — without this, the rule persists on the CF zone indefinitely (a PUT
+     * to rulesets/entrypoint only ever gets overwritten by another PUT), so
+     * Cloudflare would keep serving cached HTML at the edge while purge_urls()
+     * is gated off by get_config() (state != "true"), leaving stale content
+     * live after edits with no way to invalidate it through the plugin.
+     *
+     * PUTting an empty rules array clears the whole entrypoint ruleset for the
+     * http_request_cache_settings phase — safe here since this plugin only
+     * ever manages that one rule in that phase.
+     */
+    public static function remove_cache_rule($zone_id, $api_token)
+    {
+        $resp = wp_remote_request(
+            self::CF_API_BASE . '/zones/' . rawurlencode($zone_id) . '/rulesets/phases/http_request_cache_settings/entrypoint',
+            [
+                'method'  => 'PUT',
+                'timeout' => 15,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $api_token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'body' => wp_json_encode(['rules' => []]),
+            ]
+        );
+        if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
+            if (isset($GLOBALS['lws_optimize']) && !empty($GLOBALS['lws_optimize']->log_file)) {
+                $msg = is_wp_error($resp) ? $resp->get_error_message() : wp_remote_retrieve_body($resp);
+                @file_put_contents(
+                    $GLOBALS['lws_optimize']->log_file,
+                    '[' . gmdate('Y-m-d H:i:s') . "] CF APO cache rule removal failed: $msg\n",
+                    FILE_APPEND
+                );
+            }
+            return false;
+        }
+        // Purge whatever's already cached at the edge under the old rule so
+        // visitors don't keep getting stale HTML for up to its edge_ttl (8h)
+        // after the rule is gone.
+        wp_remote_post(
+            self::CF_API_BASE . '/zones/' . rawurlencode($zone_id) . '/purge_cache',
+            [
+                'timeout' => 15,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $api_token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'body' => wp_json_encode(['purge_everything' => true]),
+            ]
+        );
+        return true;
     }
 
     private static function get_config()

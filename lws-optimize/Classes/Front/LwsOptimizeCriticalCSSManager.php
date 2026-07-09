@@ -82,6 +82,7 @@ class LwsOptimizeCriticalCSSManager
         // Strip whitespace and inline. Hash for cache-busting browser-side debug.
         $hash     = substr(md5($css), 0, 8);
         $css_safe = str_ireplace('</style', '<\/style', $css);
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $css_safe is raw CSS rendered inside a <style> tag; HTML-escaping it would corrupt the CSS syntax
         echo "\n<style id=\"lwsop-critical-css\" data-hash=\"$hash\">" . $css_safe . "</style>\n";
     }
 
@@ -160,7 +161,7 @@ class LwsOptimizeCriticalCSSManager
 
         if ($mode === 'external' && $endpoint !== '') {
             // Fetch the page HTML and extract concatenated CSS to send to the LWS service.
-            $html_resp = wp_remote_get($url, ['timeout' => 15, 'sslverify' => false, 'redirection' => 3]);
+            $html_resp = wp_remote_get($url, ['timeout' => 15, 'sslverify' => true, 'redirection' => 3]);
             if (!is_wp_error($html_resp) && wp_remote_retrieve_response_code($html_resp) === 200) {
                 $html       = wp_remote_retrieve_body($html_resp);
                 $site_host  = wp_parse_url(site_url(), PHP_URL_HOST);
@@ -173,7 +174,7 @@ class LwsOptimizeCriticalCSSManager
                     } elseif (preg_match('/href=[\'"]([^\'"]+)[\'"]/i', $el, $m)) {
                         $css_host = wp_parse_url($m[1], PHP_URL_HOST);
                         if ($css_host === $site_host) {
-                            $cr = wp_remote_get($m[1], ['timeout' => 10, 'sslverify' => false]);
+                            $cr = wp_remote_get($m[1], ['timeout' => 10, 'sslverify' => true]);
                             if (!is_wp_error($cr) && wp_remote_retrieve_response_code($cr) === 200) {
                                 $all_css .= wp_remote_retrieve_body($cr) . "\n";
                             }
@@ -192,7 +193,7 @@ class LwsOptimizeCriticalCSSManager
                     if (is_string($result) && $result !== '') {
                         // Response may be a URL (fetch it) or inline CSS directly.
                         if (filter_var($result, FILTER_VALIDATE_URL)) {
-                            $cr2 = wp_remote_get($result, ['timeout' => 15, 'sslverify' => false]);
+                            $cr2 = wp_remote_get($result, ['timeout' => 15, 'sslverify' => true]);
                             $css = (!is_wp_error($cr2) && wp_remote_retrieve_response_code($cr2) === 200)
                                 ? wp_remote_retrieve_body($cr2)
                                 : '';
@@ -209,7 +210,7 @@ class LwsOptimizeCriticalCSSManager
             // External service failed or returned empty → fall through to local generator
         }
 
-        // 4.3.0 — Self-hosted Critical CSS generator (no external dep)
+        // Self-hosted Critical CSS generator
         $css = self::generate_critical_css_local($url);
         if (is_string($css) && $css !== '') {
             set_transient(self::TRANSIENT_PREFIX . md5($url), $css, self::TRANSIENT_TTL);
@@ -237,7 +238,7 @@ class LwsOptimizeCriticalCSSManager
     public static function generate_critical_css_local($url)
     {
         // 1. Fetch HTML
-        $resp = wp_remote_get($url, ['timeout' => 15, 'sslverify' => false, 'redirection' => 3]);
+        $resp = wp_remote_get($url, ['timeout' => 15, 'sslverify' => true, 'redirection' => 3]);
         if (is_wp_error($resp) || wp_remote_retrieve_response_code($resp) !== 200) {
             return null;
         }
@@ -265,7 +266,7 @@ class LwsOptimizeCriticalCSSManager
             if (strpos($css_url, '//') === 0) {
                 $css_url = 'https:' . $css_url;
             }
-            $css_resp = wp_remote_get($css_url, ['timeout' => 10, 'sslverify' => false]);
+            $css_resp = wp_remote_get($css_url, ['timeout' => 10, 'sslverify' => true]);
             if (is_wp_error($css_resp) || wp_remote_retrieve_response_code($css_resp) !== 200) {
                 continue;
             }
@@ -355,9 +356,10 @@ class LwsOptimizeCriticalCSSManager
 
     private static function current_url()
     {
-        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host  = $_SERVER['HTTP_HOST'] ?? parse_url(home_url(), PHP_URL_HOST);
-        $uri   = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+        $https_value = isset($_SERVER['HTTPS']) ? sanitize_text_field(wp_unslash($_SERVER['HTTPS'])) : '';
+        $proto = ($https_value !== '' && $https_value !== 'off') ? 'https' : 'http';
+        $host  = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : wp_parse_url(home_url(), PHP_URL_HOST);
+        $uri   = strtok(isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '/', '?');
         return $proto . '://' . $host . $uri;
     }
 }

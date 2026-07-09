@@ -1,3 +1,4 @@
+<?php if (!defined('ABSPATH')) exit; ?>
 <div class="lwsop_bluebanner_alt">
     <h2 class="lwsop_bluebanner_title">
         <?php esc_html_e('Analyze Performances of Your Website with Google PageSpeed', 'lws-optimize'); ?>
@@ -85,7 +86,7 @@
                 </div>
                 <div class="lwsop_pagespeed_history_text">
                     <div class="lwsop_pagespeed_history_text_top">
-                        <?php echo esc_html__('PageSpeed Test from ', 'lws-optimize') . $history['date']; ?>
+                        <?php echo esc_html(__('PageSpeed Test from ', 'lws-optimize') . $history['date']); ?>
                     </div>
                     <div class="lwsop_pagespeed_history_text_bottom">
                         <?php if ($history['type'] == "desktop") : ?>
@@ -174,18 +175,13 @@
                 url: url
             },
 
-            success: function(data) {
+            success: function(returnData) {
                 button.innerHTML = text;
                 button.style.pointerEvents = 'all';
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
 
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 switch (returnData['code']) {

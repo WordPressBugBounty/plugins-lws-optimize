@@ -61,7 +61,7 @@ class LwsOptimizeCriticalCSS
     {
 
         $url = isset($_SERVER['HTTP_HOST']) && isset($_SERVER['REQUEST_URI']) ?
-        (is_ssl() ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'] : site_url();
+        (is_ssl() ? 'https://' : 'http://') . sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) . sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : site_url();
 
 
         $body = json_encode([
@@ -141,6 +141,7 @@ class LwsOptimizeCriticalCSS
         $critical_css_url = str_replace($upload_dir['basedir'], $upload_dir['baseurl'], $critical_css_path);
 
         // Prepare critical CSS link
+        // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- injected directly into the already-rendered HTML output buffer alongside the deferred non-critical stylesheets below, not registered via the enqueue system
         $critical_css_link = "<link rel='stylesheet' id='lws-critical-css' href='{$critical_css_url}' media='all'>";
 
         // Extract all CSS links and inline styles

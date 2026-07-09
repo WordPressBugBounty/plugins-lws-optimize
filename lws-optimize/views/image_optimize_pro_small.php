@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 $conversion_options = [
     // 'conversion_type' => [
     //     'title' => __('How would you like to convert your images?', 'lws-optimize'),
@@ -235,20 +236,15 @@ $format_support = [
                 _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_for_lws_optimize_image_conversion_data_fetch")); ?>",
                 action: "lws_optimize_image_conversion_data_fetch",
             },
-            success: function(data) {
+            success: function(response) {
                 if (button) {
                     button.innerHTML = originalText;
                 }
 
-                try {
-                    JSON.parse(data);
-                } catch (e) {
-                    console.error('Error parsing JSON:', e);
-                    callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                    return -1;
+                if (!isValidResponse(response)) {
+                    console.error('Invalid AJAX response', response);
+                    return;
                 }
-
-                let response = JSON.parse(data);
 
                 switch (response['code']) {
                     case 'SUCCESS':
@@ -581,7 +577,7 @@ $format_support = [
                                 </label>
                             </div>
                         </h3>
-                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
+                        <span class="lws_optimize_image_conversion_modal_element_description"><?php esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
                     </span>
                 <?php foreach ($conversion_options as $option_id => $option) : ?>
                     <span class="lws_optimize_image_conversion_modal_element">
@@ -590,8 +586,8 @@ $format_support = [
                         <div class="lwsop_custom_select image_optimization" onclick="selectManager(this)">
                             <span class="lwsop_custom_option image_optimization">
                                 <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($option_id); ?>">
-                                    <span class="custom_option_content_text image_optimization" value="<?php echo array_key_first($option['select']); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
-                                    <input type="hidden" value="<?php echo array_key_first($option['select']); ?>">
+                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($option['select'])); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
+                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($option['select'])); ?>">
                                 </div>
                                 <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                             </span>
@@ -608,7 +604,7 @@ $format_support = [
                 `;
 
                 modal_type = 'convert';
-                modal_button = '<?php echo esc_html_e('Convert', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Convert', 'lws-optimize'); ?>';
                 break;
             case 'convertapi':
                 modal_title = '<?php esc_html_e('Convert images', 'lws-optimize'); ?>';
@@ -663,7 +659,7 @@ $format_support = [
                                 </label>
                             </div>
                         </h3>
-                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
+                        <span class="lws_optimize_image_conversion_modal_element_description"><?php esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
                     </span>
                     <div class="lwsop_modal_infobubble" style="margin: 30px;">
                         <?php esc_html_e('You currently have ', 'lws-optimize'); ?>${credits.innerHTML} <?php esc_html_e('credits left and ', 'lws-optimize'); ?> ${remaining_images.innerHTML} <?php esc_html_e(' images are to be converted. It will only convert as much images as you have credits: if you run out during the conversion, it will be stopped.', 'lws-optimize'); ?>
@@ -671,7 +667,7 @@ $format_support = [
                 `;
 
                 modal_type = 'convertapi';
-                modal_button = '<?php echo esc_html_e('Convert', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Convert', 'lws-optimize'); ?>';
                 break;
             case 'unconvert':
                 modal_title = '<?php esc_html_e('Stop conversion', 'lws-optimize'); ?>';
@@ -681,7 +677,7 @@ $format_support = [
                 </div>
                 `;
                 modal_type = 'unconvert';
-                modal_button = '<?php echo esc_html_e('Stop', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Stop', 'lws-optimize'); ?>';
                 break;
             case 'reverse':
                 modal_title = '<?php esc_html_e('Restore images', 'lws-optimize'); ?>';
@@ -691,7 +687,7 @@ $format_support = [
                 </div>
                 `;
                 modal_type = 'reverse';
-                modal_button = '<?php echo esc_html_e('Restore', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Restore', 'lws-optimize'); ?>';
                 break;
             case 'unreverse':
                 modal_title = '<?php esc_html_e('Stop restoring images', 'lws-optimize'); ?>';
@@ -701,7 +697,7 @@ $format_support = [
                 </div>
                 `;
                 modal_type = 'unreverse';
-                modal_button = '<?php echo esc_html_e('Stop', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Stop', 'lws-optimize'); ?>';
                 break;
             case 'autoupload':
                 checkbox = document.getElementById('lwsoppro_image_autoconversion_check');
@@ -728,7 +724,7 @@ $format_support = [
                                 </label>
                             </div>
                         </h3>
-                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
+                        <span class="lws_optimize_image_conversion_modal_element_description"><?php esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
                     </span>
                 <?php foreach ($conversion_options as $option_id => $option) : ?>
                     <span class="lws_optimize_image_conversion_modal_element">
@@ -737,8 +733,8 @@ $format_support = [
                         <div class="lwsop_custom_select image_optimization" onclick="selectManager(this)">
                             <span class="lwsop_custom_option image_optimization">
                                 <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($option_id); ?>">
-                                    <span class="custom_option_content_text image_optimization" value="<?php echo array_key_first($option['select']); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
-                                    <input type="hidden" value="<?php echo array_key_first($option['select']); ?>">
+                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($option['select'])); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
+                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($option['select'])); ?>">
                                 </div>
                                 <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                             </span>
@@ -755,7 +751,7 @@ $format_support = [
                 `;
 
                 modal_type = 'autoupload';
-                modal_button = '<?php echo esc_html_e('Convert', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Convert', 'lws-optimize'); ?>';
 
                 // Open the modal dialog
                 jQuery('#lwsoppro_modal').modal('show');
@@ -822,7 +818,7 @@ $format_support = [
                                 </label>
                             </div>
                         </h3>
-                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
+                        <span class="lws_optimize_image_conversion_modal_element_description"><?php esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
                     </span>
                     <div class="lwsop_modal_infobubble" style="margin: 30px;">
                         <?php esc_html_e('You currently have ', 'lws-optimize'); ?>${credits.innerHTML} <?php esc_html_e('credits left. A credit will be used each time a PNG/JPEG image is uploaded on the website and converted. The file will be uploaded normally if there is not enough credits left.', 'lws-optimize'); ?>
@@ -830,7 +826,7 @@ $format_support = [
                 `;
 
                 modal_type = 'autouploadapi';
-                modal_button = '<?php echo esc_html_e('Convert', 'lws-optimize'); ?>';
+                modal_button = '<?php esc_html_e('Convert', 'lws-optimize'); ?>';
 
                 // Open the modal dialog
                 jQuery('#lwsoppro_modal').modal('show');
@@ -843,7 +839,7 @@ $format_support = [
             <h2 class="lwsop_exclude_title">${modal_title}</h2>
             ${modal_text}
             <div class="lwsop_modal_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
                 <button type="button" class="lwsop_validatebutton" value="${modal_type}" onclick="actionModal(this)">
                     ${modal_button}
                 </button>
@@ -923,21 +919,16 @@ $format_support = [
                         _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_for_lws_optimize_stop_all_conversions")); ?>",
                         action: "lws_optimize_stop_all_conversions",
                     },
-                    success: function(data) {
+                    success: function(response) {
                         if (button) {
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
 
-                        try {
-                            JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error parsing JSON:', e);
-                            callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                            return -1;
+                        if (!isValidResponse(response)) {
+                            console.error('Invalid AJAX response', response);
+                            return;
                         }
-
-                        let response = JSON.parse(data);
 
                         switch (response['code']) {
                             case 'SUCCESS':
@@ -979,21 +970,16 @@ $format_support = [
                         _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_for_lws_optimize_start_conversion_api")); ?>",
                         action: "lws_optimize_start_conversion_api",
                     },
-                    success: function(data) {
+                    success: function(response) {
                         if (button) {
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
 
-                        try {
-                            JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error parsing JSON:', e);
-                            callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                            return -1;
+                        if (!isValidResponse(response)) {
+                            console.error('Invalid AJAX response', response);
+                            return;
                         }
-
-                        let response = JSON.parse(data);
 
                         switch (response['code']) {
                             case 'SUCCESS':
@@ -1036,21 +1022,16 @@ $format_support = [
                         action: "lws_optimize_start_autoconversion_standard",
                         state: state
                     },
-                    success: function(data) {
+                    success: function(response) {
                         if (button) {
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
 
-                        try {
-                            JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error parsing JSON:', e);
-                            callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                            return -1;
+                        if (!isValidResponse(response)) {
+                            console.error('Invalid AJAX response', response);
+                            return;
                         }
-
-                        let response = JSON.parse(data);
 
                         switch (response['code']) {
                             case 'SUCCESS':
@@ -1093,21 +1074,16 @@ $format_support = [
                         action: "lws_optimize_start_autoconversion_api",
                         state: state,
                     },
-                    success: function(data) {
+                    success: function(response) {
                         if (button) {
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
 
-                        try {
-                            JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error parsing JSON:', e);
-                            callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                            return -1;
+                        if (!isValidResponse(response)) {
+                            console.error('Invalid AJAX response', response);
+                            return;
                         }
-
-                        let response = JSON.parse(data);
 
                         switch (response['code']) {
                             case 'SUCCESS':
@@ -1157,21 +1133,16 @@ $format_support = [
                         quality: quality,
                         size: size,
                     },
-                    success: function(data) {
+                    success: function(response) {
                         if (button) {
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
 
-                        try {
-                            JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error parsing JSON:', e);
-                            callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                            return -1;
+                        if (!isValidResponse(response)) {
+                            console.error('Invalid AJAX response', response);
+                            return;
                         }
-
-                        let response = JSON.parse(data);
 
                         switch (response['code']) {
                             case 'SUCCESS':
@@ -1213,21 +1184,16 @@ $format_support = [
                         _ajax_nonce: "<?php echo esc_html(wp_create_nonce("nonce_for_lws_optimize_start_deconversion")); ?>",
                         action: "lws_optimize_start_deconversion",
                     },
-                    success: function(data) {
+                    success: function(response) {
                         if (button) {
                             button.innerHTML = originalText;
                             button.disabled = false;
                         }
 
-                        try {
-                            JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error parsing JSON:', e);
-                            callPopup("error", "<?php esc_html_e('Invalid response format received. Please try again.', 'lws-optimize'); ?>");
-                            return -1;
+                        if (!isValidResponse(response)) {
+                            console.error('Invalid AJAX response', response);
+                            return;
                         }
-
-                        let response = JSON.parse(data);
 
                         switch (response['code']) {
                             case 'SUCCESS':

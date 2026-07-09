@@ -1,4 +1,5 @@
 <?php
+if (!defined('ABSPATH')) exit;
 wp_cache_flush();
 
 function lwsOpSizeConvert($size)
@@ -12,6 +13,12 @@ function lwsOpSizeConvert($size)
 
 // Fetch the configuration for each elements of LWSOptimize
 $config_array = get_option('lws_optimize_config_array', []);
+
+// Defaults so these stay defined for the shared footer <script> block (below,
+// rendered on every $_GET['page'] branch) even when the dashboard/coverage
+// block that normally computes them (page === 'lws-op-config') doesn't run.
+$preload_on   = ($config_array['filebased_cache']['preload'] ?? 'false') === 'true';
+$cov_complete = false;
 
 $personnalized = $config_array['personnalized'] ?? "false";
 $autosetup  = $config_array['autosetup_type'] ?? "essential";
@@ -339,7 +346,7 @@ foreach ($plugins as $slug => $plugin) {
                             <button class="lwsop_dropdown_button">
                                 <span class="lwsop_dropdown_text">
                                     <?php if ($is_deactivated) : ?>
-                                        <?php echo esc_html__('Deactivated for: ', 'lws-optimize') . $is_deactivated; ?>
+                                        <?php echo esc_html(__('Deactivated for: ', 'lws-optimize') . $is_deactivated); ?>
                                     <?php else : ?>
                                         <?php esc_html_e('Deactivate temporarily: ', 'lws-optimize'); ?>
                                     <?php endif; ?>
@@ -363,12 +370,12 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
 
                         <div class="lwsop_top_description">
-                            <?php echo esc_html_e('Your WordPress website, faster, lighter, smoother. LWS Optimize improves loading speed through caching, media optimization, minification, file concatenation...', 'lws-optimize'); ?>
+                            <?php esc_html_e('Your WordPress website, faster, lighter, smoother. LWS Optimize improves loading speed through caching, media optimization, minification, file concatenation...', 'lws-optimize'); ?>
                         </div>
                     </div>
                     <div class="lwsop_rate_block">
                         <div class="lwsop_top_rateus">
-                            <?php echo esc_html_e('You like this plugin ? ', 'lws-optimize'); ?>
+                            <?php esc_html_e('You like this plugin ? ', 'lws-optimize'); ?>
                             <?php echo wp_kses(__('A <a href="https://wordpress.org/support/plugin/lws-optimize/reviews/#new-post" target="_blank" class="link_to_rating_with_stars"><div class="lwsop_stars">★★★★★</div> rating</a> will motivate us a lot.', 'lws-optimize'), ['a' => ['class' => [], 'href' => [], 'target' => []], 'div' => ['class' => []]]); ?>
                         </div>
                         <div class="lwsop_bottom_rateus">
@@ -385,7 +392,7 @@ foreach ($plugins as $slug => $plugin) {
         </div>
     </div>
 
-    <?php if (sanitize_text_field($_GET['page']) === 'lws-op-config') : ?>
+    <?php if ((isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '') === 'lws-op-config') : ?>
     <div class="lwsop_oneclickconfig_main">
         <div class="lwsop_dashboard_block" style="flex: 70%;">
             <div class="lwsop_oneclickconfig_block">
@@ -529,8 +536,6 @@ foreach ($plugins as $slug => $plugin) {
             </div>
             <div class="lwsop_oneclickconfig_block">
                 <?php
-                // 4.5.0 — Bloc Utilisation du cache : montre les vraies stats (hits/misses/bytes)
-                // collectées depuis stats.json. Si pas encore de données → message explicatif.
                 $htaccess_on       = ($config_array['htaccess_rules']['state']          ?? 'false') === 'true';
                 $intermediary_on   = ($config_array['htaccess_php_intermediary']['state'] ?? 'false') === 'true';
                 if ($htaccess_on && !$intermediary_on) :
@@ -606,7 +611,12 @@ foreach ($plugins as $slug => $plugin) {
                         <!-- Sparkline 30j -->
                         <div class="lwsop_usage_card">
                             <h5><?php echo esc_html(__('Hits trend over 30 days', 'lws-optimize')); ?></h5>
-                            <div id="lwsop_ustat_sparkline"><?php echo $sparkline_svg; // SVG inline, contenu trusted ?></div>
+                            <div id="lwsop_ustat_sparkline"><?php echo wp_kses($sparkline_svg, [
+                                'svg' => ['viewbox' => [], 'xmlns' => [], 'preserveaspectratio' => []],
+                                'polygon' => ['points' => [], 'fill' => []],
+                                'polyline' => ['points' => [], 'fill' => [], 'stroke' => [], 'stroke-width' => [], 'stroke-linejoin' => [], 'stroke-linecap' => []],
+                                'div' => ['style' => []],
+                            ]); // SVG generated internally by LwsOptimizeDashboardWidget::sparkline_svg(), not user input ?></div>
                         </div>
                     </div>
                 </div>
@@ -630,19 +640,8 @@ foreach ($plugins as $slug => $plugin) {
                         <div class="lwsop_loading_spinner"></div>
                     </div>
                     <?php
-                    // 4.4.1 — Vraie couverture cache basée sur les URLs sitemap réellement
-                    // sur disque (au lieu du ratio cached/target confus quand cached > target).
-                    //
-                    // Méthode : on lit lws_optimize_sitemap_urls (les URLs publiques que le
-                    // preload doit chauffer) et on vérifie pour chacune si le fichier
-                    // cache/<path>/index_0.html existe (desktop) et cache-mobile/<path>/index_0.html
-                    // existe (mobile). Cache transient 60s pour ne pas faire 128 file_exists()
-                    // à chaque chargement de la page admin.
                     $preload_on = ($config_array['filebased_cache']['preload'] ?? 'false') === 'true';
 
-                    // 4.4.2 — Fix bug 0/64 : LWS_OP_UPLOADS = ".../cache/lwsoptimize/"
-                    // (SANS le sous-dossier /cache). Donc on ne peut PAS l'utiliser comme root —
-                    // on hardcode WP_CONTENT_DIR + /cache/lwsoptimize/cache (et /cache-mobile).
                     $coverage = get_transient('lwsop_coverage_cache_v2');
                     if ($coverage === false) {
                         $sitemap = get_option('lws_optimize_sitemap_urls', ['urls' => []]);
@@ -652,7 +651,7 @@ foreach ($plugins as $slug => $plugin) {
                         $total = count($urls);
                         $hit_d = 0; $hit_m = 0;
                         foreach ($urls as $u) {
-                            $path = trim(parse_url($u, PHP_URL_PATH) ?: '/', '/');
+                            $path = trim(wp_parse_url($u, PHP_URL_PATH) ?: '/', '/');
                             $dir_d = $path === '' ? $cache_root_d : $cache_root_d . '/' . $path;
                             $dir_m = $path === '' ? $cache_root_m : $cache_root_m . '/' . $path;
                             if (!empty(glob($dir_d . '/index_*.html'))) $hit_d++;
@@ -669,21 +668,10 @@ foreach ($plugins as $slug => $plugin) {
                     $cov_m_pct   = $cov_total > 0 ? round(($cov_mobile  / $cov_total) * 100) : 0;
                     $cov_complete= $cov_total > 0 && $cov_desktop >= $cov_total && $cov_mobile >= $cov_total;
 
-                    // 4.4.7 — Calcul ETA du préchauffe (basé sur preload_amount=cron rate).
-                    // Chaque tick du cron (1/min) traite preload_amount URLs, et chaque URL
-                    // génère desktop+mobile (2 fichiers). Donc fichiers/min = preload_amount * 2.
                     $preload_rate    = max(1, (int) ($config_array['filebased_cache']['preload_amount'] ?? 3));
                     $missing_files   = max(0, ($cov_total - $cov_desktop)) + max(0, ($cov_total - $cov_mobile));
                     $eta_seconds     = ($missing_files > 0) ? (int) ceil(($missing_files / ($preload_rate * 2)) * 60) : 0;
-
                     ?>
-                    <?php
-                    // 4.4.2 — Unification : un SEUL indicateur de couverture par variante,
-                    // intégré directement dans chaque ligne (Ordinateur / Mobile). Plus de
-                    // section "Couverture" séparée qui dit la même chose autrement.
-                    // Header explicatif unique en haut du bloc.
-                    ?>
-                    <!-- Header explicatif unique -->
                     <div class="lwsop_cache_stats_header_row">
                         <span class="lwsop_cache_stats_header_label">
                             <?php if ($preload_on) : ?>
@@ -692,7 +680,7 @@ foreach ($plugins as $slug => $plugin) {
                                 <span class="lwsop_pulse_dot off"></span>
                             <?php endif; ?>
                             <span id="lwsop_cache_stats_total"><?php echo esc_html($cov_total ?? '0'); ?></span>
-                            <?php echo esc_html_e(' public URLs (Desktop + Mobile) covered', 'lws-optimize'); ?>
+                            <?php esc_html_e(' public URLs (Desktop + Mobile) covered', 'lws-optimize'); ?>
                         </span>
                     </div>
 
@@ -779,9 +767,6 @@ foreach ($plugins as $slug => $plugin) {
                             <?php endif; ?>
                         </div>
                         <script>
-                            // 4.4.7 — Countdown ETA live qui tick toutes les secondes.
-                            // Source de vérité : data-lwsop-eta-seconds (réinjectée par
-                            // l'AJAX refresh toutes les 30s pour recalibrer le rythme réel).
                             (function(){
                                 var etaSeconds = <?php echo (int) $eta_seconds; ?>;
                                 var endTs = etaSeconds > 0 ? (Date.now() + etaSeconds * 1000) : 0;
@@ -850,9 +835,12 @@ foreach ($plugins as $slug => $plugin) {
                                 amount: <?php echo (int) $preload_rate; ?>,
                                 _ajax_nonce: '<?php echo esc_js(wp_create_nonce('update_fb_preload')); ?>'
                             },
-                            success: function(data) {
-                                var r;
-                                try { r = JSON.parse(data); } catch(e) { r = {code: 'NOT_JSON'}; }
+                            success: function(r) {
+                                if (!isValidResponse(r)) {
+                                    console.error('Invalid AJAX response', r);
+                                    return;
+                                }
+
                                 if (r && r.code === 'SUCCESS') {
                                     callPopup('success', type === 'activate'
                                         ? '<?php echo esc_js(__('Preloading activated successfully.', 'lws-optimize')); ?>'
@@ -890,7 +878,7 @@ foreach ($plugins as $slug => $plugin) {
                         <?php endif; ?>
                         <span class="lwsop_oneclickconfig_cachestate_text"><?php esc_html_e('Filecache', 'lws-optimize'); ?></span>
                         <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
-                        data-original-title="<?php echo esc_html_e('File caching helps improve website performance by storing static files locally, reducing server load and decreasing page load times for subsequent visits. It stores copies of static files like images, CSS, and JavaScript in a temporary storage.', 'lws-optimize'); ?>">
+                        data-original-title="<?php esc_html_e('File caching helps improve website performance by storing static files locally, reducing server load and decreasing page load times for subsequent visits. It stores copies of static files like images, CSS, and JavaScript in a temporary storage.', 'lws-optimize'); ?>">
                     </span>
 
                     <span class="lwosp_oneclickconfig_cachestate_line">
@@ -901,7 +889,7 @@ foreach ($plugins as $slug => $plugin) {
                         <?php endif; ?>
                         <span class="lwsop_oneclickconfig_cachestate_text"><?php esc_html_e('Memcached', 'lws-optimize'); ?></span>
                         <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
-                        data-original-title="<?php echo esc_html_e('Memcached is a high-performance caching system that speeds up websites by storing frequently used database queries and API calls in memory', 'lws-optimize'); ?>">
+                        data-original-title="<?php esc_html_e('Memcached is a high-performance caching system that speeds up websites by storing frequently used database queries and API calls in memory', 'lws-optimize'); ?>">
                     </span>
 
                     <span class="lwosp_oneclickconfig_cachestate_line">
@@ -920,7 +908,7 @@ foreach ($plugins as $slug => $plugin) {
                                 <?php endif; ?>
                         </span>
                         <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
-                        data-original-title="<?php echo esc_html_e('A server cache stores static copies of web pages to reduce server load and improve performance by serving those copies instead of fetching the page each request', 'lws-optimize'); ?>">
+                        data-original-title="<?php esc_html_e('A server cache stores static copies of web pages to reduce server load and improve performance by serving those copies instead of fetching the page each request', 'lws-optimize'); ?>">
                     </span>
                 </div>
 
@@ -939,11 +927,6 @@ foreach ($plugins as $slug => $plugin) {
         </div>
     </div>
     <?php
-    // 4.5.1 — Bloc dédié Memcached : mémoire, items, hit rate.
-    // Affiché uniquement si Memcached est actif (sinon ça pollue l'UI).
-    // Note : on évite le if/elseif PHP-tag style ici car la page entière est dans
-    // une chaîne if/elseif globale (page=config vs page=config-advanced) qui se
-    // ferait kidnapper par notre elseif. On utilise donc 2 if séparés.
     $memcached_stats = \Lws\Classes\Admin\LwsOptimizeDashboardWidget::memcached_stats();
     $memcached_inactive = !$memcached_stats['active'] && (($config_array['memcached']['state'] ?? 'false') !== 'true');
     if ($memcached_stats['active']) :
@@ -1026,10 +1009,13 @@ foreach ($plugins as $slug => $plugin) {
                             tab: "caching"
                         }
                     },
-                    success: function(data) {
+                    success: function(returnData) {
                         btn.disabled = false;
-                        var returnData;
-                        try { returnData = JSON.parse(data); } catch(e) { returnData = { code: 'NOT_JSON' }; }
+
+                        if (!isValidResponse(returnData)) {
+                            console.error('Invalid AJAX response', returnData);
+                            return;
+                        }
 
                         if (returnData.code === 'SUCCESS' && returnData.data === 'true') {
                             callPopup('success', "<?php echo esc_js(__('Memcached activated successfully.', 'lws-optimize')); ?>");
@@ -1064,13 +1050,13 @@ foreach ($plugins as $slug => $plugin) {
         <?php require_once 'image_optimize_pro_small.php'; ?>
     </div>
 
-    <?php elseif (sanitize_text_field($_GET['page']) === 'lws-op-config-advanced') : ?>
+    <?php elseif ((isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '') === 'lws-op-config-advanced') : ?>
         <?php require_once 'tabs.php'; ?>
     <?php endif; ?>
 
 </div>
 
-<?php if (sanitize_text_field($_GET['page']) === 'lws-op-config-advanced') : ?>
+<?php if ((isset($_GET['page']) ? sanitize_text_field(wp_unslash($_GET['page'])) : '') === 'lws-op-config-advanced') : ?>
     <div class="lwsoptimize_validate_changes">
         <div class="lwsoptimize_validate_changes_inner">
             <button class="lws_op_return_to_dashboard" onclick="window.location.href='?page=lws-op-config'">
@@ -1091,7 +1077,7 @@ foreach ($plugins as $slug => $plugin) {
 <div class="modal fade" id="lwsop_preconfigurate_plugin" tabindex='-1' role='dialog' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content configurate_plugin">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Choose which configuration to apply', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Choose which configuration to apply', 'lws-optimize'); ?></h2>
             <form method="POST" name="lwsop_form_choose_configuration" id="lwsop_form_choose_configuration">
                 <div class="lwsop_configuration_block">
                     <label class="lwsop_configuration_block_sub selected" name="lwsop_configuration_selector_div">
@@ -1125,10 +1111,10 @@ foreach ($plugins as $slug => $plugin) {
                     </label>
                 </div>
                 <div class="lwsop_modal_buttons">
-                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                     <button type="submit" id="lwsop_submit_new_config_button" class="lwsop_validatebutton">
                         <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                        <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                        <?php esc_html_e('Save', 'lws-optimize'); ?>
                     </button>
                 </div>
             </form>
@@ -1139,6 +1125,16 @@ foreach ($plugins as $slug => $plugin) {
 <div id="lwsop_popup_alerting"></div>
 
 <script>
+    // Check if given data is a valid JSON with 'code' and 'data'
+    function isValidResponse(data) {
+        return (
+            data &&
+            typeof data === 'object' &&
+            !Array.isArray(data) &&
+            'code' in data
+        );
+    }
+
     // Execute the function callback after ms milliseconds unless delay() is called again
     function delay(callback, ms) {
         var timer = 0;
@@ -1329,22 +1325,14 @@ foreach ($plugins as $slug => $plugin) {
                         action: "lwsop_deactivate_temporarily",
                         duration: config,
                     },
-                    success: function(data) {
+                    success: function(returnData) {
                         document.body.style.pointerEvents = "all";
                         dropdownButton.classList.remove('loading');
 
-                        if (data === null || typeof data != 'string') {
-                            return 0;
-                        }
 
-                        try {
-                            var returnData = JSON.parse(data);
-                        } catch (e) {
-                            console.log(e);
-                            returnData = {
-                                'code': "NOT_JSON",
-                                'data': "FAIL"
-                            };
+                        if (!isValidResponse(returnData)) {
+                            console.error('Invalid AJAX response', returnData);
+                            return;
                         }
 
                         dropdownText.textContent = '<?php esc_html_e("Deactivate for: ", "lws-optimize"); ?>';
@@ -1411,8 +1399,6 @@ foreach ($plugins as $slug => $plugin) {
     });
 
     <?php if (!$is_deactivated) : ?>
-        // 4.4.3 — Helpers refresh ciblé : met à jour les data-attrs des rows
-        // sans toucher au innerHTML global (préserve les progress bars de coverage).
         function lwsopUpdateStatRow(type, stats) {
             if (!stats || !stats[type]) return;
             var row = document.querySelector('[data-lwsop-row="' + type + '"]');
@@ -1430,9 +1416,13 @@ foreach ($plugins as $slug => $plugin) {
                     action: 'lwsop_get_coverage',
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_coverage_nonce')); ?>'
                 },
-                success: function(data){
+                success: function(r){
                     try {
-                        var r = (typeof data === 'string') ? JSON.parse(data) : data;
+                        if (!isValidResponse(r)) {
+                            console.error('Invalid AJAX response', r);
+                            return;
+                        }
+
                         if (r && r.code === 'SUCCESS' && r.data) {
                             var anyIncomplete = false;
                             ['desktop','mobile'].forEach(function(t){
@@ -1449,7 +1439,6 @@ foreach ($plugins as $slug => $plugin) {
                                 if (pctEl) pctEl.textContent = pct;
                                 if (bar) {
                                     bar.style.width = pct + '%';
-                                    // 4.4.4 — Toggle classe .preheating sur le parent .lwsop_cache_bar
                                     var parent = bar.parentNode;
                                     if (parent) parent.classList.toggle('preheating', pct < 100 && <?php echo $preload_on ? 'true' : 'false'; ?>);
                                 }
@@ -1460,13 +1449,10 @@ foreach ($plugins as $slug => $plugin) {
                                 stats_total.innerHTML = r.data.total ?? '0';
                             }
 
-                            // 4.4.4 — Met à jour le dot pulse + message d'état du header
                             var dot = document.querySelector('.lwsop_pulse_dot');
                             if (dot) {
                                 dot.classList.toggle('done', !anyIncomplete);
                             }
-                            // 4.4.7 — Recalibre le countdown ETA avec la valeur fraîche
-                            // calculée serveur-side (basée sur le rythme réel observé).
                             if (typeof window.lwsopSetEta === 'function' && typeof r.data.eta_seconds !== 'undefined') {
                                 window.lwsopSetEta(r.data.eta_seconds);
                             }
@@ -1485,8 +1471,6 @@ foreach ($plugins as $slug => $plugin) {
                 }
             });
         }
-        // 4.4.4 — Auto-refresh toutes les 30s tant que le préchauffe est en cours.
-        // S'arrête tout seul quand coverage atteint 100%. Démarre à load si préchauffe ON et coverage < 100%.
         var lwsopAutoRefreshTimer = null;
         function lwsopStartAutoRefresh() {
             <?php if ($preload_on && !$cov_complete) : ?>
@@ -1507,9 +1491,13 @@ foreach ($plugins as $slug => $plugin) {
                     action: 'lwsop_regenerate_cache_general',
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_cache_fb')); ?>'
                 },
-                success: function(data){
+                success: function(r){
                     try {
-                        var r = (typeof data === 'string') ? JSON.parse(data) : data;
+                        if (!isValidResponse(r)) {
+                            console.error('Invalid AJAX response', r);
+                            return;
+                        }
+
                         if (r && r.code === 'SUCCESS' && r.data) {
                             ['desktop','mobile','css','js'].forEach(function(t){ lwsopUpdateStatRow(t, r.data); });
                         }
@@ -1546,7 +1534,7 @@ foreach ($plugins as $slug => $plugin) {
                     action: "lwsop_regenerate_cache_general",
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_cache_fb')); ?>'
                 },
-                success: function(data) {
+                success: function(returnData) {
                     if (overlay) {
                         overlay.style.display = 'none';
                     }
@@ -1554,31 +1542,19 @@ foreach ($plugins as $slug => $plugin) {
                     button.disabled = false;
                     button.innerHTML = originalText;
 
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        console.log(e);
-                        return 0;
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {
                         case 'SUCCESS':
                             let stats = returnData['data'];
-                            // 4.4.3 — Refresh ciblé sur les data-attrs au lieu de remplacer
-                            // tout le innerHTML (qui cassait les progress bars de coverage).
                             lwsopUpdateStatRow('desktop', stats);
                             lwsopUpdateStatRow('mobile',  stats);
                             lwsopUpdateStatRow('css',     stats);
                             lwsopUpdateStatRow('js',      stats);
-                            // Refresh aussi la couverture (URLs sitemap réellement en cache)
                             lwsopRefreshCoverage();
-                            // 4.5.0 — Refresh du bloc UsageStats (hits/misses)
                             if (returnData['usage'] && typeof returnData['usage'] === 'object') {
                                 lwsopUpdateUsageStats(returnData['usage']);
                             }
@@ -1664,27 +1640,18 @@ foreach ($plugins as $slug => $plugin) {
                     action: "lws_op_clear_all_caches",
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_op_clear_all_caches_nonce')); ?>'
                 },
-                success: function(data) {
+                success: function(returnData) {
                     button.disabled = false;
                     button.innerHTML = originalText;
 
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        console.log(e);
-                        return 0;
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {
                         case 'SUCCESS':
                             callPopup('success', "<?php esc_html_e("All caches have been deleted", "lws-optimize"); ?>");
-                            // 4.4.3 — refresh auto des stats + coverage après purge
                             lwsopRefreshAllStats();
                             break;
                         default:
@@ -1733,21 +1700,13 @@ foreach ($plugins as $slug => $plugin) {
                     action: "lwsop_change_optimize_configuration",
                 },
 
-                success: function(data) {
+                success: function(returnData) {
                     button.disabled = false;
                     button.innerHTML = originalText;
 
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        console.log(e);
-                        return 0;
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {
@@ -1769,7 +1728,7 @@ foreach ($plugins as $slug => $plugin) {
             });
         }
 
-        let radio_config = document.querySelector("input[value='<?php echo $config_array['autosetup_type'] ?? ''; ?>']");
+        let radio_config = document.querySelector("input[value='<?php echo esc_js($config_array['autosetup_type'] ?? ''); ?>']");
         if (radio_config) {
             radio_config.checked = true;
         }

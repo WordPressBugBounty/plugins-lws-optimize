@@ -1,4 +1,7 @@
 <?php
+$caches = isset($caches) ? $caches : [];
+
+if (!defined('ABSPATH')) exit;
 $fb_preloaddata = [
     'state' => $config_array['filebased_cache']['preload_ongoing'] ?? "false",
     'quantity' => $config_array['filebased_cache']['preload_quantity'] ?? 0,
@@ -96,7 +99,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <select name="lws_op_filebased_cache_timer" id="lws_op_filebased_cache_timer" name="lws_op_filebased_cache_timer" class="lwsop_contentblock_select">
                 <?php foreach ($GLOBALS['lws_optimize_cache_timestamps'] as $key => $list) : ?>
                     <option value="<?php echo esc_attr($key); ?>" <?php echo $filebased_timer == esc_attr($key) ? esc_attr('selected') : ''; ?>>
-                        <?php echo esc_html_e($list[1], "lws-optimize"); ?>
+                        <?php echo esc_html($list[1]); ?>
                     </option>
                 <?php endforeach ?>
             </select>
@@ -226,7 +229,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         </div>
         <?php if (!empty($specified) && $specified != "0") : ?>
             <div class="lwsop_contentblock_specific_purge">
-                <span id="lwsop_specified_count"><?php echo $specified; ?></span> <?php esc_html_e(' URLs specifications currently defined, those pages will get purged with every purge', 'lws-optimize'); ?>
+                <span id="lwsop_specified_count"><?php echo esc_html($specified); ?></span> <?php esc_html_e(' URLs specifications currently defined, those pages will get purged with every purge', 'lws-optimize'); ?>
             </div>
         <?php endif ?>
         <div class="lwsop_contentblock_button_row">
@@ -371,7 +374,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div id="preload_amount_warning" class="lwop_alert lwop_alert_warning" style="display: none; margin-top: 10px; margin-left: 0px; font-size: 13px; max-width: 900px;">
             <i class="dashicons dashicons-warning"></i>
             <div>
-                <span><?php esc_html_e('Setting a high preload value may cause performance issues on your website. For most sites, a value of 1-2 pages per minute is recommended.', 'lws-optimize'); ?></span>
+                <span><?php esc_html_e('Setting this value too high may cause rate-limit issues due to a large amount of requests being sent per minute, which risk breaking the preloading. For most sites, a value of 1-2 pages per minute is recommended.', 'lws-optimize'); ?></span>
             </div>
         </div>
 
@@ -496,10 +499,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="modal fade" id="lwsop_exclude_urls" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Exclude URLs from the cache', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Exclude URLs from the cache', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_exclude_urls"></form>
             <div class="lwsop_modal_buttons" id="lwsop_exclude_modal_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -508,10 +511,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="modal fade" id="lwsop_exclude_cookies" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Exclude Cookies from the cache', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Exclude Cookies from the cache', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_exclude_cookies"></form>
             <div class="lwsop_modal_buttons" id="lwsop_exclude_cookies_modal_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -520,10 +523,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="modal fade" id="lwsop_specify_urls" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog">
         <div class="modal-content">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Specify URLs to purge along with the cache', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Specify URLs to purge along with the cache', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_specify_urls"></form>
             <div class="lwsop_modal_buttons" id="lwsop_specify_modal_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -532,12 +535,12 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="modal fade" id="lws_optimize_lws_memcached" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog" style="width: fit-content; top: 10%; max-width: 800px;">
         <div class="modal-content" style="padding: 30px;">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Momentarily unavailable', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Momentarily unavailable', 'lws-optimize'); ?></h2>
             <div id="lws_optimize_lws_prom_text"><?php esc_html_e('Due to many users experiencing issues with Memcached, this functionnality has been temporarily deactivated', 'lws-optimize'); ?></div>
 
 
             <div class="lwsop_modal_buttons" id="">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
     </div>
@@ -546,39 +549,39 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 <div class="modal fade" id="lws_optimize_lws_prom" tabindex='-1' aria-hidden='true'>
     <div class="modal-dialog" style="width: fit-content; top: 10%; max-width: 800px;">
         <div class="modal-content" style="padding: 30px;">
-            <h2 class="lwsop_exclude_title"><?php echo esc_html_e('Available on LWS hosting', 'lws-optimize'); ?></h2>
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Available on LWS hosting', 'lws-optimize'); ?></h2>
             <div id="lws_optimize_lws_prom_text"><?php esc_html_e('This function is reserved for LWS hosting and is not supported in your current environment. The LWS infrastructure, built for speed, offers exclusive features to optimize your site:', 'lws-optimize'); ?></div>
             <div class="lwsop_prom_block">
                 <ul>
                     <li class="lwsop_prom_bullet_element">
                         <img class="lwsop_prom_bullet_point" src="<?php echo esc_url(plugins_url('images/check.svg', __DIR__)) ?>" alt="Logo Check Vert" width="20px" height="16px">
-                        <span class="lwsop_prom_bullet_point_text"><?php echo esc_html_e('Images optimisation tool', 'lws-optimize'); ?></span>
-                        <span class="lwsop_prom_bullet_point_plugin_specific"><?php echo esc_html_e('LWS Optimize', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_text"><?php esc_html_e('Images optimisation tool', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_plugin_specific"><?php esc_html_e('LWS Optimize', 'lws-optimize'); ?></span>
                     </li>
                     <li class="lwsop_prom_bullet_element">
                         <img class="lwsop_prom_bullet_point" src="<?php echo esc_url(plugins_url('images/check.svg', __DIR__)) ?>" alt="Logo Check Vert" width="20px" height="16px">
-                        <span class="lwsop_prom_bullet_point_text"><?php echo esc_html_e('Memcached and NGINX Dynamic cache', 'lws-optimize'); ?></span>
-                        <span class="lwsop_prom_bullet_point_plugin_specific"><?php echo esc_html_e('LWS Optimize', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_text"><?php esc_html_e('Memcached and NGINX Dynamic cache', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_plugin_specific"><?php esc_html_e('LWS Optimize', 'lws-optimize'); ?></span>
                     </li>
                     <li class="lwsop_prom_bullet_element">
                         <img class="lwsop_prom_bullet_point" src="<?php echo esc_url(plugins_url('images/check.svg', __DIR__)) ?>" alt="Logo Check Vert" width="20px" height="16px">
-                        <span class="lwsop_prom_bullet_point_text"><?php echo esc_html_e('WordPress Manager: One-click connexion, clone, preproduction...', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_text"><?php esc_html_e('WordPress Manager: One-click connexion, clone, preproduction...', 'lws-optimize'); ?></span>
                     </li>
                     <li class="lwsop_prom_bullet_element">
                         <img class="lwsop_prom_bullet_point" src="<?php echo esc_url(plugins_url('images/check.svg', __DIR__)) ?>" alt="Logo Check Vert" width="20px" height="16px">
-                        <span class="lwsop_prom_bullet_point_text"><?php echo esc_html_e('Ultra fast servers in France optimized for WordPress', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_text"><?php esc_html_e('Ultra fast servers in France optimized for WordPress', 'lws-optimize'); ?></span>
                     </li>
                     <li class="lwsop_prom_bullet_element">
                         <img class="lwsop_prom_bullet_point" src="<?php echo esc_url(plugins_url('images/check.svg', __DIR__)) ?>" alt="Logo Check Vert" width="20px" height="16px">
-                        <span class="lwsop_prom_bullet_point_text"><?php echo esc_html_e('Reactive 7d/7 support', 'lws-optimize'); ?></span>
+                        <span class="lwsop_prom_bullet_point_text"><?php esc_html_e('Reactive 7d/7 support', 'lws-optimize'); ?></span>
                     </li>
                 </ul>
                 <img class="lwsop_prom_bullet_point" src="<?php echo esc_url(plugins_url('images/plugin_lws_optimize_logo.svg', __DIR__)) ?>" alt="Logo Check Vert" width="100px" height="100px">
             </div>
             <div id="lws_optimize_lws_prom_text"><?php esc_html_e('Check out our super-fast hosting and feel the difference for yourself. Take advantage of our exclusive offer: -15% additional on all our accommodation with the code WPEXT15 which can be combined with current offers. Site transfer to LWS is free!', 'lws-optimize'); ?></div>
             <div class="lwsop_modal_buttons" id="lwsop_specify_modal_buttons">
-                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Abort', 'lws-optimize'); ?></button>
-                <a class="lwsop_learnmore_offers" href="https://www.lws.fr/hebergement_wordpress.php" rel="noopener" target="_blank"><?php echo esc_html_e('Learn more about LWS Offers', 'lws-optimize'); ?></a>
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Abort', 'lws-optimize'); ?></button>
+                <a class="lwsop_learnmore_offers" href="https://www.lws.fr/hebergement_wordpress.php" rel="noopener" target="_blank"><?php esc_html_e('Learn more about LWS Offers', 'lws-optimize'); ?></a>
             </div>
         </div>
     </div>
@@ -616,25 +619,17 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 state: state,
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('change_filebased_cache_status_nonce')); ?>'
             },
-            success: function(data) {
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
+                }
+
                 checkbox.disabled = false;
                 checkbox.checked = false;
                 let originalLoading = checkbox.previousElementSibling;
                 if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
                     originalLoading.remove();
-                }
-
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e("Bad data returned. Cannot activate cache.", "lws-optimize"); ?>");
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e("Bad data returned. Cannot activate cache.", "lws-optimize"); ?>");
-                    console.log(e);
-                    return 0;
                 }
 
                 switch (returnData['code']) {
@@ -698,24 +693,16 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 timer: timer,
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('change_filebased_cache_timer_nonce')); ?>'
             },
-            success: function(data) {
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
+                }
+
                 checkbox.disabled = false;
                 let originalLoading = checkbox.previousElementSibling;
                 if (originalLoading && originalLoading.classList.contains('loading-spinner')) {
                     originalLoading.remove();
-                }
-
-
-                if (data === null || typeof data != 'string') {
-                    callPopup('error', "<?php esc_html_e("Bad data returned. Cannot change cache timer.", 'lws-optimize'); ?>");
-                    return 0;
-                }
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    callPopup('error', "<?php esc_html_e("Bad data returned. Cannot change cache timer.", "lws-optimize"); ?>");
-                    console.log(e);
-                    return 0;
                 }
 
                 switch (returnData['code']) {
@@ -762,18 +749,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     amount: value,
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('update_fb_preload_amount')); ?>'
                 },
-                success: function(data) {
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "<?php esc_html_e("Bad data returned. Cannot change pages amount.", "lws-optimize"); ?>");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "<?php esc_html_e("Bad data returned. Cannot change pages amount.", "lws-optimize"); ?>");
-                        console.log(e);
-                        return 0;
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {
@@ -920,32 +899,26 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_specified_nonce')); ?>',
                 action: "lwsop_save_specified_url"
             },
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 jQuery(document.getElementById('lwsop_specify_urls')).modal('hide');
                 switch (returnData['code']) {
                     case 'SUCCESS':
                         document.getElementById('lwsop_specified_count').innerHTML = returnData['data'].length;
-                        callPopup('success', "Les URLs ont bien été sauvegardées");
+                        callPopup('success', `<?php esc_html_e('The URLs have been saved', 'lws-optimize'); ?>`);
                         break;
                     case 'FAILED':
-                        callPopup('error', "Les URLs n'ont pas pu être sauvegardées");
+                        callPopup('error', `<?php esc_html_e('The URLs could not be saved', 'lws-optimize'); ?>`);
                         break;
                     case 'NO_DATA':
-                        callPopup('error', "Les URLs n'ont pas pu être sauvegardées car aucune donnée n'a été trouvée");
+                        callPopup('error', `<?php esc_html_e('The URLs could not be saved because no data was found', 'lws-optimize'); ?>`);
                         break;
                     default:
-                        callPopup('error', "Les URLs n'ont pas pu être sauvegardées car une erreur est survenue");
+                        callPopup('error', `<?php esc_html_e('The URLs could not be saved because an error occurred', 'lws-optimize'); ?>`);
                         break;
                 }
             },
@@ -972,16 +945,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_specified_url_nonce')); ?>',
                     action: "lwsop_get_specified_url"
                 },
-                success: function(data) {
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     switch (returnData['code']) {
@@ -989,10 +956,10 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             let urls = returnData['data'];
                             let domain = returnData['domain'];
                             document.getElementById('lwsop_specify_modal_buttons').innerHTML = `
-                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                                 <button type="button" id="lwsop_submit_specified_form" class="lwsop_validatebutton">
                                     <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                                    <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                                    <?php esc_html_e('Save', 'lws-optimize'); ?>
                                 </button>
                             `;
                             form.innerHTML = `
@@ -1055,31 +1022,25 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_excluded_cookies_nonce')); ?>',
                     action: "lwsop_save_excluded_cookies"
                 },
-                success: function(data) {
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     jQuery(document.getElementById('lwsop_exclude_cookies')).modal('hide');
                     switch (returnData['code']) {
                         case 'SUCCESS':
-                            callPopup('success', "Les cookies ont bien été sauvegardés");
+                            callPopup('success', `<?php esc_html_e('The cookies have been saved', 'lws-optimize'); ?>`);
                             break;
                         case 'FAILED':
-                            callPopup('error', "Les cookies n'ont pas pu être sauvegardés");
+                            callPopup('error', `<?php esc_html_e('The cookies could not be saved', 'lws-optimize'); ?>`);
                             break;
                         case 'NO_DATA':
-                            callPopup('error', "Les cookies n'ont pas pu être sauvegardés car aucune donnée n'a été trouvée");
+                            callPopup('error', `<?php esc_html_e('The cookies could not be saved because no data was found', 'lws-optimize'); ?>`);
                             break;
                         default:
-                            callPopup('error', "Les cookies n'ont pas pu être sauvegardés car une erreur est survenue");
+                            callPopup('error', `<?php esc_html_e('The cookies could not be saved because an error occurred', 'lws-optimize'); ?>`);
                             break;
                     }
                 },
@@ -1104,31 +1065,25 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_excluded_nonce')); ?>',
                     action: "lwsop_save_excluded_url"
                 },
-                success: function(data) {
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
                     }
 
                     jQuery(document.getElementById('lwsop_exclude_urls')).modal('hide');
                     switch (returnData['code']) {
                         case 'SUCCESS':
-                            callPopup('success', "Les URLs à exclure ont bien été sauvegardés");
+                            callPopup('success', `<?php esc_html_e('The URLs to exclude have been saved', 'lws-optimize'); ?>`);
                             break;
                         case 'FAILED':
-                            callPopup('error', "Les URLs à exclure n'ont pas pu être sauvegardés");
+                            callPopup('error', `<?php esc_html_e('The URLs to exclude could not be saved', 'lws-optimize'); ?>`);
                             break;
                         case 'NO_DATA':
-                            callPopup('error', "Les URLs à exclure n'ont pas pu être sauvegardés car aucune donnée n'a été trouvée");
+                            callPopup('error', `<?php esc_html_e('The URLs to exclude could not be saved because no data was found', 'lws-optimize'); ?>`);
                             break;
                         default:
-                            callPopup('error', "Les URLs à exclure n'ont pas pu être sauvegardés car une erreur est survenue");
+                            callPopup('error', `<?php esc_html_e('The URLs to exclude could not be saved because an error occurred', 'lws-optimize'); ?>`);
                             break;
                     }
                 },
@@ -1156,23 +1111,17 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_excluded_nonce')); ?>',
                 action: "lwsop_get_excluded_url"
             },
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 document.getElementById('lwsop_exclude_modal_buttons').innerHTML = `
-                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                     <button type="button" id="lwsop_submit_excluded_form" class="lwsop_validatebutton">
                         <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                        <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                        <?php esc_html_e('Save', 'lws-optimize'); ?>
                     </button>
                 `;
 
@@ -1240,23 +1189,17 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_excluded_cookies_nonce')); ?>',
                 action: "lwsop_get_excluded_cookies"
             },
-            success: function(data) {
-                if (data === null || typeof data != 'string') {
-                    return 0;
-                }
-
-                try {
-                    var returnData = JSON.parse(data);
-                } catch (e) {
-                    console.log(e);
-                    return 0;
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
                 }
 
                 document.getElementById('lwsop_exclude_cookies_modal_buttons').innerHTML = `
-                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php echo esc_html_e('Close', 'lws-optimize'); ?></button>
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
                     <button type="button" id="lwsop_submit_excluded_cookies_form" class="lwsop_validatebutton">
                         <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
-                        <?php echo esc_html_e('Save', 'lws-optimize'); ?>
+                        <?php esc_html_e('Save', 'lws-optimize'); ?>
                     </button>
                 `;
 
@@ -1324,22 +1267,14 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     action: "lws_clear_fb_cache",
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('clear_fb_caching')); ?>'
                 },
-                success: function(data) {
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
+                    }
+
                     button.disabled = false;
                     button.innerHTML = old_text;
-
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "Bad data returned. Cannot empty cache.");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "Bad data returned. Cannot empty cache.");
-                        console.log(e);
-                        return 0;
-                    }
 
                     switch (returnData['code']) {
                         case 'SUCCESS':
@@ -1383,22 +1318,14 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     action: "lwsop_regenerate_cache",
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lws_regenerate_nonce_cache_fb')); ?>'
                 },
-                success: function(data) {
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
+                    }
+
                     button.disabled = false;
                     button.innerHTML = old_text;
-
-                    if (data === null || typeof data != 'string') {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        callPopup('error', "<?php esc_html_e('Bad data returned. Please try again', 'lws-optimize'); ?>");
-                        console.log(e);
-                        return 0;
-                    }
 
                     switch (returnData['code']) {
                         case 'SUCCESS':
@@ -1461,28 +1388,22 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_empty_d_cache_nonce')); ?>',
                     action: "lwsop_dump_dynamic_cache"
                 },
-                success: function(data) {
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
+                    }
+
                     button.disabled = false;
                     button.innerHTML = old_text;
-
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
-                    }
 
                     jQuery(document.getElementById('lwsop_exclude_urls')).modal('hide');
                     switch (returnData['code']) {
                         case 'SUCCESS':
-                            callPopup('success', "Le cache dynamique a bien été vidé.");
+                            callPopup('success', `<?php esc_html_e('The dynamic cache has been cleared.', 'lws-optimize'); ?>`);
                             break;
                         default:
-                            callPopup('error', "Une erreur est survenue, le cache dynamique n'a pas été vidé");
+                            callPopup('error', `<?php esc_html_e('An error occurred, the dynamic cache was not cleared', 'lws-optimize'); ?>`);
                             break;
                     }
                 },
@@ -1540,20 +1461,14 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_reloading_stats_nonce')); ?>',
                     action: "lwsop_reload_stats"
                 },
-                success: function(data) {
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
+                    }
+
                     button.disabled = false;
                     button.innerHTML = old_text;
-
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
-                    }
 
                     jQuery(document.getElementById('lwsop_exclude_urls')).modal('hide');
                     switch (returnData['code']) {
@@ -1621,20 +1536,13 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_check_for_update_preload_nonce')); ?>',
                     action: "lwsop_check_preload_update"
                 },
-                success: function(data) {
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
+                    }
                     button.disabled = false;
                     button.innerHTML = old_text;
-
-                    if (data === null || typeof data != 'string') {
-                        return 0;
-                    }
-
-                    try {
-                        var returnData = JSON.parse(data);
-                    } catch (e) {
-                        console.log(e);
-                        return 0;
-                    }
 
                     switch (returnData['code']) {
                         case 'SUCCESS':

@@ -26,7 +26,7 @@ if (!isset($is_deactivated)) {
                         <button class="lwsop_dropdown_button">
                             <span class="lwsop_dropdown_text">
                                 <?php if ($is_deactivated) : ?>
-                                    <?php echo esc_html__('Deactivated for: ', 'lws-optimize') . $is_deactivated; ?>
+                                    <?php echo esc_html(__('Deactivated for: ', 'lws-optimize') . $is_deactivated); ?>
                                 <?php else : ?>
                                     <?php esc_html_e('Deactivate temporarily: ', 'lws-optimize'); ?>
                                 <?php endif; ?>
@@ -50,12 +50,12 @@ if (!isset($is_deactivated)) {
                     </div>
 
                     <div class="lwsop_top_description">
-                        <?php echo esc_html_e('Your WordPress website, faster, lighter, smoother. LWS Optimize improves loading speed through caching, media optimization, minification, file concatenation...', 'lws-optimize'); ?>
+                        <?php esc_html_e('Your WordPress website, faster, lighter, smoother. LWS Optimize improves loading speed through caching, media optimization, minification, file concatenation...', 'lws-optimize'); ?>
                     </div>
                 </div>
                 <div class="lwsop_rate_block">
                     <div class="lwsop_top_rateus">
-                        <?php echo esc_html_e('You like this plugin ? ', 'lws-optimize'); ?>
+                        <?php esc_html_e('You like this plugin ? ', 'lws-optimize'); ?>
                         <?php echo wp_kses(__('A <a href="https://wordpress.org/support/plugin/lws-optimize/reviews/#new-post" target="_blank" class="link_to_rating_with_stars"><div class="lwsop_stars">★★★★★</div> rating</a> will motivate us a lot.', 'lws-optimize'), ['a' => ['class' => [], 'href' => [], 'target' => []], 'div' => ['class' => []]]); ?>
                     </div>
                     <div class="lwsop_bottom_rateus">

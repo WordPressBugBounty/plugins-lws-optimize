@@ -112,7 +112,7 @@ class LwsOptimizeImageSrcset
             return null;
         }
         // Already in webp/avif? Don't touch.
-        $lc = strtolower(parse_url($url, PHP_URL_PATH) ?: '');
+        $lc = strtolower(wp_parse_url($url, PHP_URL_PATH) ?: '');
         if (preg_match('/\.(webp|avif)(\?.*)?$/i', $lc)) {
             return null;
         }

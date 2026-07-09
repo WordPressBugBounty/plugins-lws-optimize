@@ -1,3 +1,4 @@
+<?php if (!defined('ABSPATH')) exit; ?>
 <!-- TEMPLATE FOR OUR PLUGINS -->
 <!-- Here,too, need to change URLs and slugs -->
 
