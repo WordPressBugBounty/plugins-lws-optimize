@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 4.1
+Stable tag: 4.1.1
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
