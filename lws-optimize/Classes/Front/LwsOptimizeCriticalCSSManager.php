@@ -75,6 +75,11 @@ class LwsOptimizeCriticalCSSManager
         if (is_admin() || is_feed()) {
             return;
         }
+        // AMP inlines all CSS into <style amp-custom> itself; duplicating ours
+        // only eats into AMP's 75 KB CSS budget
+        if (\Lws\Classes\LwsOptimizeAmpHelper::is_amp_request()) {
+            return;
+        }
         $css = self::get_critical_css_for_current_url();
         if ($css === '') {
             return;
@@ -96,6 +101,11 @@ class LwsOptimizeCriticalCSSManager
     public static function async_load_non_critical_css($tag, $handle, $href, $media)
     {
         if (is_admin() || is_feed()) {
+            return $tag;
+        }
+        // AMP strips onload attributes, so the media="print" trick would leave
+        // the stylesheet permanently disabled
+        if (\Lws\Classes\LwsOptimizeAmpHelper::is_amp_request()) {
             return $tag;
         }
         // Only act when Critical CSS is actually inlined — otherwise async-loading

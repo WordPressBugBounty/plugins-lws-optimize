@@ -42,6 +42,16 @@
         return parseFloat(v).toFixed(3);
     }
 
+    // Full entity-encoding: safe for both HTML text content and attribute values.
+    function escHtml(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // Zero-pad a non-negative integer to 8 digits so string comparison == numeric order.
     // Negative / null values (sentinel -1 used for "no data") sort as "00000000" (first).
     function padSort(n) {
@@ -135,8 +145,8 @@
                     data: 'path',
                     render: function (d) {
                         var short     = d.length > 55 ? d.substr(0, 52) + '…' : d;
-                        var safeFull  = $('<div>').text(d).html();
-                        var safeShort = $('<div>').text(short).html();
+                        var safeFull  = escHtml(d);
+                        var safeShort = escHtml(short);
                         var icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/><path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/></svg>';
                         return '<div class="rum-url-block">' +
                                    '<span class="rum-url" title="' + safeFull + '">' +
@@ -214,7 +224,7 @@
                     render: function (d, type, row) {
                         if (type !== 'display') return '';
                         return '<button class="rum-detail-btn" data-path="' +
-                            $('<div>').text(row.path).html() +
+                            escHtml(row.path) +
                             '" data-device="' + row.device + '">' +
                             (i18n.details || 'Details') + '</button>';
                     },

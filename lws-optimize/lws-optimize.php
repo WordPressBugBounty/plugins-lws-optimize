@@ -9,7 +9,7 @@ use Lws\Classes\RUM\LwsOptimizeRUM;
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           4.1.1
+ * Version:           4.1.2
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      7.0
@@ -87,6 +87,13 @@ function lws_optimize_activation_callback() {
 
     // Deactivate the preloading on plugin activation to prevent issues
     if (isset($optimize_options['filebased_cache']) && $optimize_options['filebased_cache']['state'] == "true") {
+        // Create the cache directory upfront so a hosting permission issue is caught
+        // (and logged) at activation time instead of surfacing as a silently empty
+        // cache on the first real page view.
+        if (!is_dir(LWS_OP_UPLOADS) && !wp_mkdir_p(LWS_OP_UPLOADS)) {
+            $GLOBALS['lws_optimize']->lwsop_debug_log("LWSOptimize: Could not create cache directory " . LWS_OP_UPLOADS . " on activation");
+        }
+
         if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
             wp_unschedule_event(wp_next_scheduled('lws_optimize_start_filebased_preload'), 'lws_optimize_start_filebased_preload');
         }

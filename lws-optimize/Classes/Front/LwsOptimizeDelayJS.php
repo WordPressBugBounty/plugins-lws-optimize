@@ -53,6 +53,10 @@ class LwsOptimizeDelayJS
         if (is_admin() || is_feed() || is_preview()) {
             return;
         }
+        // AMP forbids the inline loader and rewritten script types entirely
+        if (\Lws\Classes\LwsOptimizeAmpHelper::is_amp_request()) {
+            return;
+        }
         // Skip on page builders / customizers
         $skip_keys = ['elementor-preview', 'et_fb', 'fl_builder', 'vcv-action', 'vc_action', 'vc_editable'];
         foreach ($skip_keys as $k) {

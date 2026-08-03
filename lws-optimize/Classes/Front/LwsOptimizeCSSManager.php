@@ -683,6 +683,12 @@ class LwsOptimizeCSSManager
             return true;
         }
 
+        // Never re-process the plugin's own combined/minified output, regardless of
+        // any language/domain subdirectory lwsop_get_content_directory() may insert
+        if (preg_match('#/cache-css/[^/]+\.min\.css(\?.*)?$#i', $url)) {
+            return true;
+        }
+
         // Automatically exclude URLs from revslider
         if (strpos($url, 'revslider') !== false) {
             return true;

@@ -13,6 +13,12 @@ namespace Lws\Classes\RUM;
  * - Anonymous endpoint (no auth) — rate-limited via transient-based throttling
  *   per IP (60 reqs/min).
  * - Beacon-based POST using `navigator.sendBeacon` so it never blocks page-unload.
+ *   AMP pages can't run this author JavaScript at all, so they're reported via
+ *   an amp-analytics tag instead (see inject_amp_analytics_tag()); that path
+ *   has no INP macro to draw on, so INP samples are simply absent for AMP visits.
+ *   That amp-analytics tag only ever reaches the page via wp_head/wp_footer
+ *   (official AMP plugin) or amp_post_template_head/amp_post_template_footer
+ *   ("AMP for WP" plugin's own template pipeline) — see startActions().
  * - Aggregation done server-side every 12h to a compact summary stored in the
  *   `lwsop_rum_aggregate` option (p50, p75, p95 per URL/device).
  *
@@ -51,8 +57,23 @@ class LwsOptimizeRUM
         add_action('wp_ajax_lwsop_rum_collect',        [__CLASS__, 'collect']);
         add_action('wp_ajax_nopriv_lwsop_rum_collect', [__CLASS__, 'collect']);
 
-        // Inject the web-vitals snippet on every front page
+        // Inject the web-vitals snippet on every front page. On AMP endpoints
+        // the amp-analytics extension script must additionally be declared
+        // in <head> per the AMP spec (see inject_amp_component_script()).
+        add_action('wp_head',   [__CLASS__, 'inject_amp_component_script']);
         add_action('wp_footer', [__CLASS__, 'inject_collector_snippet'], 100);
+
+        // The "AMP for WP / Accelerated Mobile Pages" plugin (unlike the
+        // official AMP plugin) renders AMP pages through its own
+        // AMP_Post_Template pipeline, which exits on template_redirect
+        // before WordPress's normal template loading — wp_head/wp_footer
+        // never fire for those requests, so the two hooks above are
+        // silently skipped on every AMP page. Hook its native head/footer
+        // actions too; inject_amp_component_script()/inject_collector_snippet()
+        // already gate on is_amp() so this is a no-op when it fires outside
+        // an actual AMP request.
+        add_action('amp_post_template_head',   [__CLASS__, 'inject_amp_component_script']);
+        add_action('amp_post_template_footer', [__CLASS__, 'inject_collector_snippet'], 100);
 
         // Twice-daily aggregation cron
         add_action('lwsop_rum_aggregate_cron', [__CLASS__, 'aggregate']);
@@ -138,6 +159,15 @@ class LwsOptimizeRUM
         }
         $endpoint = esc_url_raw(admin_url('admin-ajax.php?action=lwsop_rum_collect'));
         $path     = self::normalize_path(isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '/');
+
+        // AMP forbids custom author JavaScript entirely, so the sendBeacon
+        // snippet below never executes there (the AMP plugin strips it, or
+        // the page is flagged invalid) — amp-analytics is the AMP-native
+        // replacement, see inject_amp_analytics_tag().
+        if (self::is_amp()) {
+            self::inject_amp_analytics_tag($endpoint, $path);
+            return;
+        }
         // CACHE-11: no nonce is emitted here. This snippet is baked into the cached HTML,
         // so a per-request nonce would expire with the page and silently break collection.
         // The collector is public (nopriv), strictly validated and rate-limited per IP.
@@ -194,6 +224,75 @@ class LwsOptimizeRUM
         <?php
     }
 
+    private static function is_amp()
+    {
+        return \Lws\Classes\LwsOptimizeAmpHelper::is_amp_request();
+    }
+
+    /**
+     * amp-analytics is a custom AMP element; its extension script must be
+     * declared in <head> per the AMP spec, so it can't ride along with the
+     * <amp-analytics> tag itself (output in wp_footer).
+     */
+    public static function inject_amp_component_script()
+    {
+        if (!self::is_amp() || is_admin() || is_feed() || is_preview() || is_404()) {
+            return;
+        }
+        echo '<script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>' . "\n";
+    }
+
+    /**
+     * AMP-native equivalent of inject_collector_snippet(): reports Core Web
+     * Vitals via amp-analytics' built-in macros instead of PerformanceObserver,
+     * since no author JavaScript can run on an AMP page. There is no INP macro
+     * (INP postdates the AMP component), so it's left uncollected here rather
+     * than mislabeling First Input Delay as INP — score_class()/format_value()
+     * already treat an absent metric as "not measured", and visit counts are
+     * taken as the max across whichever metrics did report (see
+     * ajax_get_table_data()), so this doesn't undercount visits, only INP.
+     *
+     * Each metric fires as its own trigger/request pair per AMP's own
+     * recommendation, since a trigger otherwise waits on every referenced
+     * macro to resolve before firing and under-reports if one is slow.
+     *
+     * reportWhen: documentExit (AMP's own recommendation for Core Web
+     * Vitals RUM, see amp.dev's RUM guide) delays each trigger until the
+     * visitor is leaving rather than firing the instant the doc becomes
+     * visible — at that point LCP/CLS have barely had a chance to happen,
+     * so an immediate "visible" fire would report near-zero/premature
+     * values instead of the settled ones. This is the AMP-side equivalent
+     * of the non-AMP snippet's visibilitychange/pagehide flush() above.
+     */
+    private static function inject_amp_analytics_tag($endpoint, $path)
+    {
+        // No client-side JS is available to sniff the device on AMP pages;
+        // fall back to the same server-side UA check WP core uses.
+        $device = wp_is_mobile() ? 'mobile' : 'desktop';
+
+        // AMP tries transports in priority order (beacon > xhrpost > image)
+        // and sends via the first one available rather than firing all of
+        // them, so enabling xhrpost/image as fallbacks is safe — it only
+        // matters on the rare visitor without sendBeacon support.
+        $visibility = ['reportWhen' => 'documentExit'];
+        $config = [
+            'requests' => [
+                'endpoint' => $endpoint . '&p=' . rawurlencode($path) . '&d=' . $device,
+            ],
+            'transport' => ['beacon' => true, 'xhrpost' => true, 'image' => true],
+            'triggers'  => [
+                'rum_lcp'  => ['on' => 'visible', 'request' => 'endpoint', 'visibilitySpec' => $visibility, 'extraUrlParams' => ['m' => 'LCP',  'v' => '${largestContentfulPaint}']],
+                'rum_cls'  => ['on' => 'visible', 'request' => 'endpoint', 'visibilitySpec' => $visibility, 'extraUrlParams' => ['m' => 'CLS',  'v' => '${cumulativeLayoutShift}']],
+                'rum_ttfb' => ['on' => 'visible', 'request' => 'endpoint', 'extraUrlParams' => ['m' => 'TTFB', 'v' => '${navTiming(requestStart,responseStart)}']],
+            ],
+        ];
+        ?>
+<amp-analytics>
+<script type="application/json"><?php echo wp_json_encode($config); ?></script>
+</amp-analytics>
+        <?php
+    }
+
     /**
      * Reduces a request URI to the identifier used to group RUM samples.
      *
@@ -203,11 +302,27 @@ class LwsOptimizeRUM
      * tracking params (utm_*, gclid, fbclid, ...) are stripped first so they
      * don't fragment pretty-permalink pages into one row per campaign link,
      * and remaining params are sorted so ?a=1&b=2 and ?b=2&a=1 group together.
+     *
+     * AMP variants of a page (/page/amp/, ?amp=1) serve the same content and
+     * are folded into the canonical URL so each page gets a single row.
      */
     public static function normalize_path($request_uri)
     {
         $parts = explode('?', (string) $request_uri, 2);
         $path  = $parts[0] !== '' ? $parts[0] : '/';
+
+        // Merge AMP path variants into the canonical URL: strip trailing "amp"
+        // segments (/page/amp/ -> /page/, /page/amp -> /page), preserving the
+        // trailing-slash style. (.+?) requires at least one character before
+        // /amp, so a root-level /amp/ page (real page whose slug is "amp") is
+        // left untouched, and only an exact segment matches (/blog/amp-tutorial/
+        // is unaffected). Stripping repeats until stable because this function
+        // is applied again in collect() and aggregate() and must be idempotent.
+        // Not gated on the AMP plugin being active: beacons from cached pages
+        // may arrive after deactivation and must group identically.
+        while (preg_match('#^(.+?)/amp(/?)$#', $path, $m)) {
+            $path = $m[1] . $m[2];
+        }
 
         if (!isset($parts[1]) || $parts[1] === '') {
             return $path;
@@ -225,6 +340,10 @@ class LwsOptimizeRUM
         foreach ($tracking_params as $param) {
             unset($query[$param]);
         }
+
+        // AMP query variants (?amp, ?amp=1) and the AMP plugin's mobile opt-out
+        // (?noamp=mobile) serve the same content as the canonical URL.
+        unset($query['amp'], $query['noamp']);
 
         if (empty($query)) {
             return $path;
@@ -256,17 +375,17 @@ class LwsOptimizeRUM
         // CACHE-11: no nonce check — the snippet lives in cached HTML so a nonce would
         // expire with the page. Abuse is bounded by the per-IP rate limit above and the
         // strict validation below (enum device, capped path, float-cast metrics).
-        if (!is_array($data)) {
-            wp_send_json_error(['code' => 'BAD_PAYLOAD'], 400);
-        }
+        $now   = current_time('mysql');
+        $table = $wpdb->prefix . self::TABLE_NAME;
+        $saved = 0;
 
-        $path   = sanitize_text_field(substr((string) ($data['p'] ?? ''), 0, 200));
-        $device = in_array($data['d'] ?? '', ['mobile', 'desktop'], true) ? $data['d'] : 'desktop';
-        $now    = current_time('mysql');
-        $table  = $wpdb->prefix . self::TABLE_NAME;
-        $saved  = 0;
+        if (is_array($data) && !empty($data['batch']) && isset($data['metrics']) && is_array($data['metrics'])) {
+            // Non-AMP pages: one JSON beacon per visit, all measured metrics batched.
+            // Re-normalize the incoming path: cached HTML carries the path baked in
+            // at render time, possibly before AMP-variant folding existed.
+            $path   = sanitize_text_field(substr(self::normalize_path((string) ($data['p'] ?? '')), 0, 200));
+            $device = in_array($data['d'] ?? '', ['mobile', 'desktop'], true) ? $data['d'] : 'desktop';
 
-        if (!empty($data['batch']) && isset($data['metrics']) && is_array($data['metrics'])) {
             foreach (['LCP', 'CLS', 'INP', 'TTFB'] as $m) {
                 // null/absent means "not measured" (e.g. INP with no interaction yet) and
                 // must be skipped, but a real 0 (e.g. CLS with no layout shift) is a valid
@@ -283,6 +402,27 @@ class LwsOptimizeRUM
                 ], ['%s', '%s', '%s', '%s', '%f']);
                 $saved++;
             }
+        } elseif (isset($_REQUEST['m'], $_REQUEST['v'], $_REQUEST['p'])) {
+            // AMP pages: amp-analytics can't batch a JSON body over sendBeacon (it
+            // sends an empty body — see inject_amp_analytics_tag()), so each metric
+            // arrives as its own request with the value in the query string instead.
+            $path   = sanitize_text_field(substr(self::normalize_path((string) wp_unslash($_REQUEST['p'])), 0, 200));
+            $device = in_array($_REQUEST['d'] ?? '', ['mobile', 'desktop'], true) ? sanitize_key(wp_unslash($_REQUEST['d'])) : 'desktop';
+            $metric = strtoupper(sanitize_key(wp_unslash($_REQUEST['m'])));
+            $val    = (float) wp_unslash($_REQUEST['v']);
+
+            if (in_array($metric, ['LCP', 'CLS', 'INP', 'TTFB'], true) && $val >= 0) {
+                $wpdb->insert($table, [
+                    'collected_at' => $now,
+                    'path'         => $path,
+                    'device'       => $device,
+                    'metric'       => $metric,
+                    'value'        => $val,
+                ], ['%s', '%s', '%s', '%s', '%f']);
+                $saved++;
+            }
+        } else {
+            wp_send_json_error(['code' => 'BAD_PAYLOAD'], 400);
         }
 
         if ($saved === 0) {
@@ -324,16 +464,24 @@ class LwsOptimizeRUM
             return;
         }
 
-        // Group sorted values by device|path|metric
+        // Group values by device|path|metric. The path is re-normalized here so
+        // legacy rows recorded before AMP-variant merging (and rows from
+        // long-lived cached snippets) fold into the canonical row without a
+        // data migration; raw rows age out via the 30-day purge above.
         $groups = [];
+        $norm   = [];
         foreach ($rows as $row) {
-            $k = $row['device'] . '|' . $row['path'] . '|' . $row['metric'];
+            $p = $norm[$row['path']] ??= self::normalize_path($row['path']);
+            $k = $row['device'] . '|' . $p . '|' . $row['metric'];
             $groups[$k][] = (float) $row['value'];
         }
 
         $aggregate = [];
         foreach ($groups as $key => $values) {
-            // values are already sorted ASC from SQL
+            // SQL sorts values ASC within each raw path, but folding AMP-variant
+            // paths into one group can interleave two sorted runs — re-sort so
+            // the percentile indexes below stay correct.
+            sort($values);
             $n = count($values);
             $aggregate[$key] = [
                 'n'   => $n,

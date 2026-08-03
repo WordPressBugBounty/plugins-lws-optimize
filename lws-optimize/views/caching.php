@@ -18,6 +18,7 @@ if ($filebased_cache_options['state'] === "true" && !empty($filebased_cache_opti
 
 $preload_state = $filebased_cache_options['data']['preload'] ?? "false";
 $preload_amount =  intval($filebased_cache_options['data']['preload_amount'] ?? 5);
+$preload_source = $filebased_cache_options['data']['preload_source'] ?? "auto";
 $next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
 $local_timestamp = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
 
@@ -370,6 +371,25 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div class="lwsop_contentblock_fbcache_input_preload_block">
             <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="1" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
             <div class="lwsop_contentblock_input_preload_label"><?php esc_html_e('pages per minutes cached', 'lws-optimize'); ?></div>
+        </div>
+        <div class="lwsop_contentblock_fbcache_select">
+            <span class="lwsop_contentblock_select_label">
+                <?php esc_html_e('Source:', 'lws-optimize'); ?>
+                <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Choose whether the pages are fetched using the sitemap or the database (searching posts/pages tables, etc...). Using the sitemap is faster but some websites may have deactivated it.", "lws-optimize"); ?>">
+            </span>
+            <select name="lws_op_preload_source" id="lws_op_preload_source" class="lwsop_contentblock_select">
+                <?php
+                $preload_source_options = [
+                    'auto'     => __('Automatic', 'lws-optimize'),
+                    'sitemap'  => __('Sitemap', 'lws-optimize'),
+                    'database' => __('Database', 'lws-optimize'),
+                ];
+                foreach ($preload_source_options as $preload_source_key => $preload_source_label) : ?>
+                    <option value="<?php echo esc_attr($preload_source_key); ?>" <?php echo $preload_source === $preload_source_key ? esc_attr('selected') : ''; ?>>
+                        <?php echo esc_html($preload_source_label); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </div>
         <div id="preload_amount_warning" class="lwop_alert lwop_alert_warning" style="display: none; margin-top: 10px; margin-left: 0px; font-size: 13px; max-width: 900px;">
             <i class="dashicons dashicons-warning"></i>
@@ -728,6 +748,44 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 }
 
                 callPopup('error', "<?php esc_html_e("Unknown error. Cannot change cache timer.", "lws-optimize"); ?>");
+                console.log(error);
+            }
+        });
+    });
+
+    document.getElementById('lws_op_preload_source').addEventListener('change', function() {
+        let select = this;
+        select.disabled = true;
+
+        jQuery.ajax({
+            url: ajaxurl,
+            type: "POST",
+            timeout: 120000,
+            context: document.body,
+            data: {
+                action: "lws_optimize_change_preload_source",
+                source: select.value,
+                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('change_preload_source_nonce')); ?>'
+            },
+            success: function(returnData) {
+                select.disabled = false;
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
+                }
+
+                switch (returnData['code']) {
+                    case 'SUCCESS':
+                        callPopup('success', "<?php esc_html_e("Preloading URL source changed.", "lws-optimize"); ?>");
+                        break;
+                    default:
+                        callPopup('error', "<?php esc_html_e("Unknown data returned. Preloading URL source cannot be changed.", "lws-optimize"); ?>");
+                        break;
+                }
+            },
+            error: function(error) {
+                select.disabled = false;
+                callPopup('error', "<?php esc_html_e("Unknown error. Cannot change preloading URL source.", "lws-optimize"); ?>");
                 console.log(error);
             }
         });

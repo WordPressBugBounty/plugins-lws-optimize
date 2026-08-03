@@ -2,6 +2,8 @@
 
 namespace Lws\Classes\LazyLoad;
 
+use Lws\Classes\LwsOptimizeAmpHelper;
+
 class LwsOptimizeLazyLoading
 {
     /**
@@ -44,6 +46,10 @@ class LwsOptimizeLazyLoading
 
     public static function lws_optimize_manage_media_image_lazyload_js()
     {
+        // AMP forbids author JavaScript; the AMP runtime lazy-loads media itself
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
+            return;
+        }
         wp_enqueue_script('lws-optimize-lazyload', LWS_OP_URL . 'js/lws_op_lazyload.js', array(), null, true);
     }
 
@@ -56,6 +62,12 @@ class LwsOptimizeLazyLoading
      */
     public static function lws_optimize_add_lazy_loading_attributes_to_images($content)
     {
+        // data-src swaps and forced loading attributes break AMP pages (the swap
+        // JS never runs there); leave media untouched for the AMP runtime
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
+            return $content;
+        }
+
         $optimize_options = get_option('lws_optimize_config_array', []);
 
         $lazyload_options = $optimize_options['lazyload'] ?? [];
@@ -161,6 +173,9 @@ class LwsOptimizeLazyLoading
      */
     public static function lws_optimize_start_output_buffer_for_ll()
     {
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
+            return;
+        }
         if (is_front_page() || is_home()) {
             ob_start([__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_images']);
         }
@@ -169,6 +184,10 @@ class LwsOptimizeLazyLoading
 
     public static function lws_optimize_manage_media_iframe_video_lazyload_js()
     {
+        // AMP forbids author JavaScript; the AMP runtime lazy-loads media itself
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
+            return;
+        }
         wp_enqueue_script('lws-optimize-lazyload', LWS_OP_URL . 'js/lws_op_lazyload.js', array(), null, true);
     }
 
@@ -181,6 +200,10 @@ class LwsOptimizeLazyLoading
      */
     public static function lws_optimize_add_lazy_loading_attributes_to_iframe_videos($content)
     {
+        // data-src swaps break AMP pages (the swap JS never runs there)
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
+            return $content;
+        }
 
         $optimize_options = get_option('lws_optimize_config_array', []);
 
@@ -283,6 +306,9 @@ class LwsOptimizeLazyLoading
      */
     public static function lws_optimize_start_output_buffer_for_ll_iframe_video()
     {
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
+            return;
+        }
         if (is_front_page() || is_home()) {
             ob_start([__CLASS__, 'lws_optimize_add_lazy_loading_attributes_to_iframe_videos']);
         }

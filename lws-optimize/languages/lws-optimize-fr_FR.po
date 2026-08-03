@@ -3128,3 +3128,15 @@ msgstr "Auto - génération via service LWS"
 
 msgid "Manual — paste CSS below"
 msgstr "Manuel - collez le CSS ci-dessous"
+
+msgid "Source:"
+msgstr "Source :"
+
+msgid "Choose whether the pages are fetched using the sitemap or the database (searching posts/pages tables, etc...). Using the sitemap is faster but some websites may have deactivated it."
+msgstr "Choisissez si les pages sont récupérées via le sitemap ou la base de données (recherche dans les tables posts/pages, etc...). Utiliser le sitemap est plus rapide mais certains sites peuvent l'avoir désactivé."
+
+msgid "Automatic"
+msgstr "Automatique"
+
+msgid "Sitemap"
+msgstr "Sitemap"

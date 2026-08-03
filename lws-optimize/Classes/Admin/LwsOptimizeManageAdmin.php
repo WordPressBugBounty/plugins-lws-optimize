@@ -166,6 +166,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
 
             add_action("wp_ajax_lws_optimize_fb_cache_change_status", [$this, "lws_optimize_set_fb_status"]);
             add_action("wp_ajax_lws_optimize_fb_cache_change_cache_time", [$this, "lws_optimize_set_fb_timer"]);
+            add_action("wp_ajax_lws_optimize_change_preload_source", [$this, "lws_optimize_set_preload_source"]);
 
             add_action("wp_ajax_lwsop_regenerate_logs", [$this, "lwsop_regenerate_logs"]);
 
@@ -1434,6 +1435,27 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             wp_send_json(array('code' => "SUCCESS", 'data' => "DONE", 'amount' => $amount));
         }
         wp_send_json(array('code' => "FAILED_ACTIVATE", 'data' => "FAIL"));
+    }
+
+    // Choose which URL source (sitemap, database, or auto) the preload feature should prioritize
+    public function lws_optimize_set_preload_source()
+    {
+        check_ajax_referer('change_preload_source_nonce', '_ajax_nonce');
+
+        $allowed_sources = ['auto', 'sitemap', 'database'];
+        $source = isset($_POST['source']) ? sanitize_key(wp_unslash($_POST['source'])) : 'auto';
+        if (!in_array($source, $allowed_sources, true)) {
+            $source = 'auto';
+        }
+
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        $optimize_options['filebased_cache']['preload_source'] = $source;
+        update_option('lws_optimize_config_array', $optimize_options);
+
+        // Invalidate the cached URL list so the next preload run picks up the new source immediately
+        delete_option('lws_optimize_sitemap_urls');
+
+        wp_send_json(array('code' => "SUCCESS", 'data' => $source));
     }
 
 

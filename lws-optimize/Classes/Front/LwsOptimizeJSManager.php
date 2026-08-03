@@ -957,6 +957,12 @@ class LwsOptimizeJSManager
             return true;
         }
 
+        // Never re-process the plugin's own combined/minified output, regardless of
+        // any language/domain subdirectory lwsop_get_content_directory() may insert
+        if (preg_match('#/cache-js/[^/]+\.min\.js(\?.*)?$#i', $url)) {
+            return true;
+        }
+
         // Exclude jQuery and Bootstrap scripts with more specific patterns
         if (preg_match('/(jquery|bootstrap)(-[\d\.]+)?(\.min)?\.js/i', $url)) {
             return true;

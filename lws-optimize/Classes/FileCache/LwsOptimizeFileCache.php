@@ -6,6 +6,7 @@ use Lws\Classes\Front\LwsOptimizeCriticalCSS;
 use Lws\Classes\Front\LwsOptimizeCSSManager;
 use Lws\Classes\Front\LwsOptimizeJSManager;
 use Lws\Classes\Front\LwsOptimizeUnusedCSS;
+use Lws\Classes\LwsOptimizeAmpHelper;
 
 class LwsOptimizeFileCache
 {
@@ -14,6 +15,14 @@ class LwsOptimizeFileCache
     private $content_type;
     private $page_type;
     private $need_cache;
+
+    // Guards against the optimization pipeline (combine/minify/defer/delay) running
+    // twice on the same request — e.g. if 'init' fires more than once (multisite
+    // switch_to_blog, some translation/preview plugins) — which would otherwise
+    // register a second ob_start(callback) and cause the second pass to re-process
+    // the HTML already rewritten by the first (recombining our own cache-js/cache-css
+    // output as if it were a fresh source file).
+    private static $cache_launched = false;
 
     public function __construct($parent)
     {
@@ -87,10 +96,17 @@ class LwsOptimizeFileCache
 
     public function lwsop_launch_cache()
     {
+        // Prevent a second registration of the output buffer/hooks within the same request
+        if (self::$cache_launched) {
+            return false;
+        }
+
         // Don't launch cache if checks have revealed that this URL should not be cached
         if (!$this->need_cache || !$this->cache_directory) {
             return false;
         }
+
+        self::$cache_launched = true;
 
         // SECURITY (CACHE-1): never serve a shared cached page to an authenticated user.
         // The previous logic bucketed every logged-in user into a single index_2.html, so
@@ -220,6 +236,12 @@ class LwsOptimizeFileCache
 
         $modified = $buffer;
 
+        // AMP forbids custom author JavaScript and rewrites its own markup, so
+        // every HTML-rewriting optimization below (CSS/JS combine-minify,
+        // defer/delay JS, critical CSS, HTML minification) would invalidate the
+        // page. AMP pages are cached raw, exactly as the AMP plugin rendered them.
+        $is_amp = LwsOptimizeAmpHelper::is_amp_request();
+
         $cached_elements = [
             'css' => ['file' => 0, 'size' => 0],
             'js' => ['file' => 0, 'size' => 0],
@@ -245,90 +267,92 @@ class LwsOptimizeFileCache
 
         // TODO : Unused CSS : removed before minifying/combining CSS
 
-        if ($this->base->lwsop_check_option('preload_css')['state'] == "true") {
-            $preload = $this->base->lwsop_check_option('preload_css')['data']['links'] ?? [];
-            $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, $preload, []);
-            $modified = $lwsOptimizeCssManager->preload_css();
-        }
-
-        if ($this->base->lwsop_check_option('preload_font')['state'] == "true") {
-            $preload = $this->base->lwsop_check_option('preload_font')['data']['links'] ?? [];
-            $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], $preload);
-            $modified = $lwsOptimizeCssManager->preload_fonts();
-        }
-
-        if ($this->base->lwsop_check_option('remove_css')['state'] == "true") {
-            $lwsOptimizeUnusedCssManager = new LwsOptimizeUnusedCSS($modified);
-            $modified = $lwsOptimizeUnusedCssManager->applyCleanedCSS();
-        }
-
-        // We can put the current page to cache. We now apply the chosen options to the file (minify CSS/JS, combine CSS/JS, ...)
-        if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
-            if ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
-                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update, true);
-                $data = $lwsOptimizeCssManager->combine_css_update(true);
-            } else {
-                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
-                $data = $lwsOptimizeCssManager->combine_css_update();
+        if (!$is_amp) {
+            if ($this->base->lwsop_check_option('preload_css')['state'] == "true") {
+                $preload = $this->base->lwsop_check_option('preload_css')['data']['links'] ?? [];
+                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, $preload, []);
+                $modified = $lwsOptimizeCssManager->preload_css();
             }
 
-            $modified = $data['html'];
+            if ($this->base->lwsop_check_option('preload_font')['state'] == "true") {
+                $preload = $this->base->lwsop_check_option('preload_font')['data']['links'] ?? [];
+                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], $preload);
+                $modified = $lwsOptimizeCssManager->preload_fonts();
+            }
 
-            $cached_elements['css']['file'] += $data['files']['file'];
-            $cached_elements['css']['size'] += $data['files']['size'];
-        } elseif ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
-            if ($this->base->lwsop_check_option('cloudflare')['state'] == "false") {
-                $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
-                $data = $lwsOptimizeCssManager->minify_css();
+            if ($this->base->lwsop_check_option('remove_css')['state'] == "true") {
+                $lwsOptimizeUnusedCssManager = new LwsOptimizeUnusedCSS($modified);
+                $modified = $lwsOptimizeUnusedCssManager->applyCleanedCSS();
+            }
+
+            // We can put the current page to cache. We now apply the chosen options to the file (minify CSS/JS, combine CSS/JS, ...)
+            if ($this->base->lwsop_check_option('combine_css')['state'] == "true") {
+                if ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
+                    $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update, true);
+                    $data = $lwsOptimizeCssManager->combine_css_update(true);
+                } else {
+                    $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
+                    $data = $lwsOptimizeCssManager->combine_css_update();
+                }
+
                 $modified = $data['html'];
 
                 $cached_elements['css']['file'] += $data['files']['file'];
                 $cached_elements['css']['size'] += $data['files']['size'];
+            } elseif ($this->base->lwsop_check_option('minify_css')['state'] == "true") {
+                if ($this->base->lwsop_check_option('cloudflare')['state'] == "false") {
+                    $lwsOptimizeCssManager = new LwsOptimizeCSSManager($modified, [], [], $media_to_update);
+                    $data = $lwsOptimizeCssManager->minify_css();
+                    $modified = $data['html'];
+
+                    $cached_elements['css']['file'] += $data['files']['file'];
+                    $cached_elements['css']['size'] += $data['files']['size'];
+                }
             }
-        }
 
-        if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
-            if ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
-                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified, true);
-                $data = $lwsOptimizeJsManager->combine_js_update();
-            } else {
-                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
-                $data = $lwsOptimizeJsManager->combine_js_update();
-            }
-
-            $modified = $data['html'];
-
-            $cached_elements['js']['file'] += $data['files']['file'];
-            $cached_elements['js']['size'] += $data['files']['size'];
-        } elseif ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
-            if ($this->base->lwsop_check_option('cloudflare')['state'] == "false") {
-                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
-                $data = $lwsOptimizeJsManager->minify_js();
+            if ($this->base->lwsop_check_option('combine_js')['state'] == "true") {
+                if ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
+                    $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified, true);
+                    $data = $lwsOptimizeJsManager->combine_js_update();
+                } else {
+                    $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+                    $data = $lwsOptimizeJsManager->combine_js_update();
+                }
 
                 $modified = $data['html'];
 
                 $cached_elements['js']['file'] += $data['files']['file'];
                 $cached_elements['js']['size'] += $data['files']['size'];
+            } elseif ($this->base->lwsop_check_option('minify_js')['state'] == "true") {
+                if ($this->base->lwsop_check_option('cloudflare')['state'] == "false") {
+                    $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+                    $data = $lwsOptimizeJsManager->minify_js();
+
+                    $modified = $data['html'];
+
+                    $cached_elements['js']['file'] += $data['files']['file'];
+                    $cached_elements['js']['size'] += $data['files']['size'];
+                }
             }
-        }
 
-        if ($this->base->lwsop_check_option('critical_css')['state'] == "true") {
-            $lwsOptimizeCriticalCssManager = new LwsOptimizeCriticalCSS($modified);
-            $modified = $lwsOptimizeCriticalCssManager->applyCriticalCSS();
-        }
+            if ($this->base->lwsop_check_option('critical_css')['state'] == "true") {
+                $lwsOptimizeCriticalCssManager = new LwsOptimizeCriticalCSS($modified);
+                $modified = $lwsOptimizeCriticalCssManager->applyCriticalCSS();
+            }
 
-        if ($this->base->lwsop_check_option('defer_js')['state'] == "true") {
-            $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
-            $data = $lwsOptimizeJsManager->defer_js();
+            if ($this->base->lwsop_check_option('defer_js')['state'] == "true") {
+                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+                $data = $lwsOptimizeJsManager->defer_js();
 
-            $modified = $data['html'];
-        }
+                $modified = $data['html'];
+            }
 
-        if ($this->base->lwsop_check_option('delay_js')['state'] == "true") {
-            $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
-            $data = $lwsOptimizeJsManager->delay_js_execution();
+            if ($this->base->lwsop_check_option('delay_js')['state'] == "true") {
+                $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
+                $data = $lwsOptimizeJsManager->delay_js_execution();
 
-            $modified = $data['html'];
+                $modified = $data['html'];
+            }
         }
 
         // Finally add the cache file
@@ -343,7 +367,7 @@ class LwsOptimizeFileCache
                 $modified = $tmp_content;
             }
 
-            if ($this->base->lwsop_check_option('minify_html')['state'] == "true") {
+            if ($this->base->lwsop_check_option('minify_html')['state'] == "true" && !$is_amp) {
 
                 $exclusions = $this->base->lwsop_check_option('minify_html');
                 $exclusions = $exclusions['data']['exclusions'] ?? null;
@@ -432,13 +456,17 @@ class LwsOptimizeFileCache
 
                 if (!is_dir($this->cache_directory)) {
                     // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_mkdir -- per-page-view cache write hot path; WP_Filesystem overhead/credential prompts are unacceptable here
-                    mkdir($this->cache_directory, 0755, true);
+                    if (!mkdir($this->cache_directory, 0755, true) && !is_dir($this->cache_directory)) {
+                        $this->base->lwsop_debug_log("LWSOptimize: Could not create cache directory {$this->cache_directory}");
+                    }
                 }
 
                 if (is_dir($this->cache_directory) && !file_exists($this->cache_directory . $name . $this->content_type)) {
                     // CACHE-3: write atomically (tmp file + rename) so a concurrent request
                     // — or the Apache static-serve path — can never read a half-written file.
-                    $this->base->lwsop_atomic_write($this->cache_directory . $name . $this->content_type, $content);
+                    if (!$this->base->lwsop_atomic_write($this->cache_directory . $name . $this->content_type, $content)) {
+                        $this->base->lwsop_debug_log("LWSOptimize: Failed to write cache file {$this->cache_directory}{$name}{$this->content_type}");
+                    }
 
                     // Pre-generate compressed siblings so lwsop_cache_serve.php (used when
                     // the PHP intermediary option is on) can send Content-Encoding without
@@ -542,6 +570,12 @@ class LwsOptimizeFileCache
     public function lws_optimize_manage_frontend_webfont_optimize($html, $handle, $href)
     {
         if (is_admin()) {
+            return $html;
+        }
+
+        // On AMP the fonts.googleapis.com stylesheet is explicitly allowed and no
+        // JS fallback can reload it; swapping it for a bare preconnect kills fonts
+        if (LwsOptimizeAmpHelper::is_amp_request()) {
             return $html;
         }
 
@@ -770,15 +804,35 @@ class LwsOptimizeFileCache
                 }
             }
 
-            array_push($ignored, "\/cart\/?$", "\/checkout", "\/receipt", "\/confirmation", "\/wc-api\/");
+            array_push($ignored, "\/cart(?:[\/?]|$)", "\/checkout(?:[\/?]|$)", "\/receipt(?:[\/?]|$)", "\/confirmation(?:[\/?]|$)", "\/wc-api\/");
         }
 
         if ($GLOBALS['lws_optimize']->lwsop_plugin_active('wp-easycart/wpeasycart.php')) {
-            array_push($ignored, "\/cart");
+            global $post;
+
+            if (isset($post->ID) && $post->ID) {
+                $easycart_cart_page_id = \get_option('ec_option_cartpage');
+
+                if ($easycart_cart_page_id && $post->ID == $easycart_cart_page_id) {
+                    return true;
+                }
+            }
+
+            array_push($ignored, "\/cart(?:[\/?]|$)");
         }
 
         if ($GLOBALS['lws_optimize']->lwsop_plugin_active('easy-digital-downloads/easy-digital-downloads.php')) {
-            array_push($ignored, "\/cart", "\/checkout");
+            global $post;
+
+            if (isset($post->ID) && $post->ID && function_exists("edd_get_option")) {
+                $edd_ids = array(edd_get_option('purchase_page'), edd_get_option('success_page'));
+
+                if (in_array($post->ID, $edd_ids)) {
+                    return true;
+                }
+            }
+
+            array_push($ignored, "\/checkout(?:[\/?]|$)");
         }
 
         if (preg_match("/" . implode("|", $ignored) . "/i", isset($_SERVER["REQUEST_URI"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"])) : '')) {

@@ -84,6 +84,13 @@ class LwsOptimize
         // Start actions that will occur on plugin initialization
         add_action('init', [$this, "lws_optimize_init"]);
 
+        // Capture whether this request is an AMP one once the main query is set
+        // up, so late consumers (the file-cache shutdown buffer in particular)
+        // get a reliable answer from LwsOptimizeAmpHelper::is_amp_request()
+        if (!is_admin()) {
+            add_action('wp', [LwsOptimizeAmpHelper::class, 'capture'], PHP_INT_MAX);
+        }
+
         // Add new schedules time for crons
         add_filter('cron_schedules', [$this, 'lws_optimize_timestamp_crons']);
 
@@ -577,12 +584,7 @@ class LwsOptimize
      */
     public function fetch_url_sitemap($url, $data = [])
     {
-        // Use stream context to avoid SSL verification issues and set timeout
         $context = stream_context_create([
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-            ],
             'http' => [
                 'timeout' => 30 // Set a reasonable timeout
             ]
@@ -641,19 +643,12 @@ class LwsOptimize
     }
 
     /**
-     * Helper method to get sitemap URLs
+     * Resolves the sitemap URL (WP core, falling back to /sitemap_index.xml),
+     * validates it's reachable/parseable XML, and fetches its URLs.
      */
-    public function get_sitemap_urls()
+    private function fetch_validated_sitemap_urls()
     {
         $sitemap = get_sitemap_url("index");
-
-        // Set SSL context to avoid verification issues
-        stream_context_set_default([
-            'ssl' => [
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            ],
-        ]);
 
         // Check if sitemap exists and is valid XML
         $headers = @get_headers($sitemap);
@@ -677,6 +672,19 @@ class LwsOptimize
             $sitemap = home_url('/sitemap_index.xml');
         }
 
+        // Create log entry
+        $logger = fopen($this->log_file, 'a');
+        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting to fetch sitemap [$sitemap] again" . PHP_EOL);
+        fclose($logger);
+
+        return $this->fetch_url_sitemap($sitemap, []);
+    }
+
+    /**
+     * Helper method to get sitemap URLs
+     */
+    public function get_sitemap_urls()
+    {
         $cached_urls = get_option('lws_optimize_sitemap_urls', ['time' => 0, 'urls' => []]);
         $cache_time = $cached_urls['time'] ?? 0;
 
@@ -685,20 +693,30 @@ class LwsOptimize
             return $cached_urls['urls'] ?? [];
         }
 
-        // Create log entry
-        $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting to fetch sitemap [$sitemap] again" . PHP_EOL);
-        fclose($logger);
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        $preload_source = $optimize_options['filebased_cache']['preload_source'] ?? 'auto';
 
-        // Otherwise fetch fresh URLs from sitemap
-        $urls = $this->fetch_url_sitemap($sitemap, []);
-
-        // If sitemap yielded nothing, fall back to querying WordPress directly
-        if (empty($urls)) {
-            $logger = fopen($this->log_file, 'a');
-            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] No URLs from sitemap, falling back to WordPress query" . PHP_EOL);
-            fclose($logger);
+        if ($preload_source === 'database') {
             $urls = $this->get_urls_from_wp();
+
+            // If the database yielded nothing, fall back to the sitemap
+            if (empty($urls)) {
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] No URLs from WordPress query, falling back to sitemap" . PHP_EOL);
+                fclose($logger);
+                $urls = $this->fetch_validated_sitemap_urls();
+            }
+        } else {
+            // 'auto' and 'sitemap' both prioritize the sitemap today
+            $urls = $this->fetch_validated_sitemap_urls();
+
+            // If sitemap yielded nothing, fall back to querying WordPress directly
+            if (empty($urls)) {
+                $logger = fopen($this->log_file, 'a');
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] No URLs from sitemap, falling back to WordPress query" . PHP_EOL);
+                fclose($logger);
+                $urls = $this->get_urls_from_wp();
+            }
         }
 
         if (!empty($urls)) {
@@ -768,6 +786,47 @@ class LwsOptimize
             $paged++;
             wp_reset_postdata();
         } while ($paged <= $max_pages);
+
+        // Include post-type archive root pages (e.g. /shop/ for a CPT with an archive)
+        foreach ($post_types as $post_type) {
+            $post_type_object = get_post_type_object($post_type);
+            if (empty($post_type_object->has_archive)) {
+                continue;
+            }
+            $archive_link = get_post_type_archive_link($post_type);
+            if ($archive_link && !in_array($archive_link, $urls, true)) {
+                $urls[] = $archive_link;
+            }
+        }
+
+        // Include taxonomy archive pages (categories, tags, custom taxonomy terms, etc.)
+        $taxonomies = get_taxonomies(['public' => true], 'names');
+        foreach ($taxonomies as $taxonomy) {
+            $term_paged = 1;
+
+            do {
+                $terms = get_terms([
+                    'taxonomy'   => $taxonomy,
+                    'hide_empty' => true,
+                    'number'     => $batch_size,
+                    'offset'     => ($term_paged - 1) * $batch_size,
+                    'fields'     => 'ids',
+                ]);
+
+                if (is_wp_error($terms) || empty($terms)) {
+                    break;
+                }
+
+                foreach ($terms as $term_id) {
+                    $term_link = get_term_link($term_id, $taxonomy);
+                    if (!is_wp_error($term_link) && $term_link && !in_array($term_link, $urls, true)) {
+                        $urls[] = $term_link;
+                    }
+                }
+
+                $term_paged++;
+            } while (count($terms) === $batch_size);
+        }
 
         return array_values(array_unique($urls));
     }
@@ -2647,8 +2706,8 @@ class LwsOptimize
         }
         $this->log_file = $log_dir . '/debug.log';
 
-        // Check if the log file exists and is too large (over 5MB)
-        if (file_exists($this->log_file) && filesize($this->log_file) > 5 * 1024 * 1024) {
+        // Check if the log file exists and is too large (over 3MB)
+        if (file_exists($this->log_file) && filesize($this->log_file) > 3 * 1024 * 1024) {
             // Create a timestamp for the archived log
             $timestamp = gmdate('Y-m-d-His');
 
@@ -2656,9 +2715,9 @@ class LwsOptimize
             $archive_name = $log_dir . '/debug-' . $timestamp . '.log';
             rename($this->log_file, $archive_name);
 
-            // Keep only the latest 15 archived logs
+            // Keep only the latest 6 archived logs
             $log_files = glob($log_dir . '/debug-*.log');
-            if ($log_files && count($log_files) > 15) {
+            if ($log_files && count($log_files) > 6) {
                 usort($log_files, function($a, $b) {
                     return filemtime($a) - filemtime($b);
                 });
@@ -3031,6 +3090,7 @@ class LwsOptimize
         $written = @file_put_contents($tmp, $content);
         if ($written === false || $written !== strlen($content)) {
             @wp_delete_file($tmp);
+            $this->lwsop_debug_log("LWSOptimize: Failed to write temporary file for {$path}");
             return false;
         }
         // Preserve permissions of the existing file if any
@@ -3042,6 +3102,7 @@ class LwsOptimize
         }
         if (!@rename($tmp, $path)) {
             @wp_delete_file($tmp);
+            $this->lwsop_debug_log("LWSOptimize: Failed to rename temporary file into place for {$path}");
             return false;
         }
         return true;

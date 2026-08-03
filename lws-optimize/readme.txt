@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 4.1.1
+Stable tag: 4.1.2
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -186,6 +186,17 @@ After activation, we recommend starting with the pre-configured optimization pro
 
 == Changelog ==
 
+= 4.1.2 =
+- Added AMP compatibility for the RUM Dashboard
+- New option to choose where to fetch URLs to preload (either from the sitemap or the database)
+- Fixed a bug where the optimization process (combine/minify/defer/delay) could run twice on the same page load on some setups (multisite, some translation/preview plugins)
+- While using WooCommerce, WP EasyCart and Easy Digital Downloads, pages containing words like 'cart' of 'checkout' no longer get excluded from the cache
+- The plugin's own combined/minified CSS/JS files are no longer at risk of being combined/minified again
+- Sitemap fetching no longer disables SSL certificate verification
+- Reduced the amount and size of debug.log files from 15 files/5Go to 6 files/3Go
+- Cache directory is now created before the first page is cached (instead of at the same time), with added logging, to better detected permissions issues (directory not created, cannot write)
+- Fixed security issue with the RUM dashboard that could allow malicious individuals to inject JS code on the page (discovered by Artus KG)
+
 = 4.1 =
 - Improved RUM dashboard
 	- Bugfixes, notably data not correctly saved or with wrong values
@@ -199,7 +210,7 @@ After activation, we recommend starting with the pre-configured optimization pro
 - Preload auto-deactivation on finish removed, only deactivated manually
 - New alternative cache serve file now has correct set of headers
 - Clean up after DelayJS, instead of leaving dead code in the HTML
-- Changed cron to stop after preloading exactly the amount of pages set in the preload, preventing rate-limit issues on some hostings  
+- Changed cron to stop after preloading exactly the amount of pages set in the preload, preventing rate-limit issues on some hostings
 - Lots of minor bugfixes and diverses ameliorations, improving general stability
 
 = 4.0 =
@@ -237,7 +248,7 @@ After activation, we recommend starting with the pre-configured optimization pro
 * Fix security issue where it was possible to use the generated cache for arbitrary file-read
 
 = 3.3.19 =
-* Fixed issue where DataTable would not be loaded for the "Image" tab and cause JS errors 
+* Fixed issue where DataTable would not be loaded for the "Image" tab and cause JS errors
 * Changed Preload UserAgent to allow HTTP/2 and simplify it
 
 = 3.3.18 =
@@ -248,7 +259,7 @@ After activation, we recommend starting with the pre-configured optimization pro
 * Only options in "Front-End" now clear cache when changed (instead of all options)
 * Cache is emptied less often now (removed on update, on preload start and on temporary deactivation cleaning)
 * Updated sitemap fetching to prevent issues when WordPress can't find the original sitemap (due to plugins) ; will now check sitemap_index.xml and wp-sitemap.xml more reliably
-Fixed issue with the cache-cleaning cron that would be executed too soon and too often, preventing cache creation 
+Fixed issue with the cache-cleaning cron that would be executed too soon and too often, preventing cache creation
 
 = 3.3.16 =
 * Fixed issues where directories/files could not be created during page caching, resulting in CSS/JS not being loaded and white page appearing
