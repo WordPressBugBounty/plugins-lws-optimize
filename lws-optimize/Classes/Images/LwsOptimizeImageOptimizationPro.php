@@ -38,6 +38,15 @@ class LwsOptimizeImageOptimizationPro
         return self::$local_avif_supported;
     }
 
+    /**
+     * Turns an on-disk uploads path into its public URL, so the listing table can link to the file.
+     */
+    private function path_to_url($path)
+    {
+        $upload_dir = wp_upload_dir();
+        return str_replace($upload_dir['basedir'], $upload_dir['baseurl'], $path);
+    }
+
     public function __construct()
     {
         // Initialize WP_Filesystem
@@ -182,6 +191,19 @@ class LwsOptimizeImageOptimizationPro
      */
     public function lws_optimize_refresh_conversion_data() {
         check_ajax_referer('nonce_for_lws_optimize_image_conversion_data_fetch', '_ajax_nonce');
+
+        $conversion_options = $this->lws_optimize_refresh_conversion_data_core();
+
+        wp_send_json(array('code' => 'SUCCESS', 'data' => $conversion_options));
+    }
+
+    /**
+     * Actual refresh logic, extracted so it can be called internally (from
+     * lws_optimize_start_conversion_api/standard/deconversion) without re-checking
+     * the AJAX referer against the wrong nonce/action and without wp_die()-ing
+     * before those callers get to run their own logic.
+     */
+    private function lws_optimize_refresh_conversion_data_core() {
         // Format allowed to be converted
         $format = $this->format;
 
@@ -212,35 +234,43 @@ class LwsOptimizeImageOptimizationPro
 
         $images_listing = $conversion_options['images_listing'] ?? [];
 
-        // Get all images from the media library with pagination to reduce memory usage
+        // Get all images from the media library with pagination to reduce memory usage.
+        // Each page is processed and discarded immediately below instead of being
+        // accumulated into one big array, so peak memory stays bounded to one page
+        // regardless of media library size. IDs are tracked as they're seen so
+        // listing entries for attachments that no longer exist can be pruned after.
         $args = array(
             'post_type'      => 'attachment',
             'post_mime_type' => 'image',
             'post_status'    => 'inherit',
             'posts_per_page' => 200, // Process in chunks to avoid memory issues
             'paged'          => 1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
         );
 
-        $images = [];
+        $seen_ids = [];
         $has_more = true;
 
         while ($has_more) {
             // Use global namespace for WordPress core classes
             $query = new \WP_Query($args);
 
-            if (!empty($query->posts)) {
-                $images = array_merge($images, $query->posts);
-                $args['paged']++;
-            } else {
+            if (empty($query->posts)) {
                 $has_more = false;
+
+                // Free memory
+                wp_reset_postdata();
+
+                continue;
             }
 
-            // Free memory
-            wp_reset_postdata();
-        }
+            $args['paged']++;
 
-        foreach ($images as $image) {
-            $id = $image->ID;
+            foreach ($query->posts as $id) {
+            $seen_ids[$id] = true;
             $file_path = get_attached_file($id);
 
             // Fix potential duplicate path segments in file path
@@ -296,15 +326,18 @@ class LwsOptimizeImageOptimizationPro
                 }
 
                 if (!$this->wp_filesystem->exists($file_path)) {
-                    // If the file does not exist, we skip it
+                    // If the file does not exist, drop any stale entry left over from a
+                    // previous scan (the attachment post still exists, but its file is gone).
+                    unset($images_listing[$id]);
                     continue;
                 }
 
 
                 // Add the image to the listing
                 $images_listing[$id] = [
-                    'name' => $image->post_title,
+                    'name' => get_the_title($id),
                     'path' => $file_path,
+                    'url' => $this->path_to_url($file_path),
                     'format' => $extension,
                     'size' => $this->wp_filesystem->size($file_path),
                     'converted' => false,
@@ -321,8 +354,10 @@ class LwsOptimizeImageOptimizationPro
                             $images_listing[$id]['path'] = str_replace('_lwsoptimized', '', $images_listing[$id]['path']);
                             if ($this->wp_filesystem->exists($images_listing[$id]['path'])) {
                                 $images_listing[$id] = array_merge($images_listing[$id], [
+                                    'url' => $this->path_to_url($images_listing[$id]['path']),
                                     'converted' => false,
                                     'converted_path' => null,
+                                    'converted_url' => null,
                                     'converted_format' => null,
                                     'converted_size' => null,
                                     'compression' => 0,
@@ -342,6 +377,7 @@ class LwsOptimizeImageOptimizationPro
                         $images_listing[$id] = array_merge($images_listing[$id], [
                             'converted' => true,
                             'converted_path' => $file_path,
+                            'converted_url' => $this->path_to_url($file_path),
                             'converted_format' => $extension,
                             'converted_size' => $converted_size,
                             'compression' => $converted_size > 0 ? round($converted_size / $original_size, 2) : 0,
@@ -372,12 +408,14 @@ class LwsOptimizeImageOptimizationPro
 
                             // Add a new entry for this converted image
                             $images_listing[$id] = [
-                                'name' => $image->post_title,
+                                'name' => get_the_title($id),
                                 'path' => $original_path,
+                                'url' => $this->path_to_url($original_path),
                                 'format' => $original_extension,
                                 'size' => $original_size,
                                 'converted' => true,
                                 'converted_path' => $file_path,
+                                'converted_url' => $this->path_to_url($file_path),
                                 'converted_format' => $extension,
                                 'converted_size' => $converted_size,
                                 'compression' => $original_size > 0 ? round($converted_size / $original_size, 2) : 0,
@@ -389,8 +427,9 @@ class LwsOptimizeImageOptimizationPro
                     if ($extension == 'webp') {
                         // Add the image to the listing
                         $images_listing[$id] = [
-                            'name' => $image->post_title,
+                            'name' => get_the_title($id),
                             'path' => $file_path,
+                            'url' => $this->path_to_url($file_path),
                             'format' => $extension,
                             'size' => $this->wp_filesystem->size($file_path),
                             'converted' => false,
@@ -398,8 +437,25 @@ class LwsOptimizeImageOptimizationPro
                     }
                 }
             }
+            }
+
+            // Free memory
+            wp_reset_postdata();
         }
 
+        // Reconciliation: drop any listing entry whose attachment ID was not seen in
+        // this scan (the attachment was deleted from the Media Library entirely).
+        // Without this, deleted attachments stayed in images_listing forever.
+        $pruned_count = 0;
+        foreach (array_keys($images_listing) as $existing_id) {
+            if (!isset($seen_ids[$existing_id])) {
+                unset($images_listing[$existing_id]);
+                $pruned_count++;
+            }
+        }
+        if ($pruned_count > 0) {
+            $this->write_log("Refresh: pruned {$pruned_count} stale image listing entr" . ($pruned_count === 1 ? 'y' : 'ies') . " no longer found in the Media Library.");
+        }
 
         // Count images with 'converted' set to true and calculate size reduction
         $converted_count = 0;
@@ -536,7 +592,7 @@ class LwsOptimizeImageOptimizationPro
 
         // ...and then schedule the cron for the pro version
         $scheduled = wp_schedule_event(time() + 10, 'lws_minute', 'lws_optimize_pro_image_conversion_cron');
-        $conversion_options = $this->lws_optimize_refresh_conversion_data();
+        $conversion_options = $this->lws_optimize_refresh_conversion_data_core();
 
         if ($scheduled) {
             $this->write_log('Pro conversion activated. Next run: ' . $scheduled);
@@ -586,7 +642,7 @@ class LwsOptimizeImageOptimizationPro
 
         // ...and then schedule the cron
         $scheduled = wp_schedule_event(time() + 10, 'lws_minute', 'lws_optimize_image_conversion_cron');
-        $conversion_options = $this->lws_optimize_refresh_conversion_data();
+        $conversion_options = $this->lws_optimize_refresh_conversion_data_core();
 
         if ($scheduled) {
             $this->write_log('Standard conversion activated. Next run: ' . $scheduled);
@@ -625,7 +681,7 @@ class LwsOptimizeImageOptimizationPro
 
         // ...and then schedule the cron for the deconversion
         $scheduled = wp_schedule_event(time() + 10, 'lws_minute', 'lws_optimize_image_deconversion_cron');
-        $conversion_options = $this->lws_optimize_refresh_conversion_data();
+        $conversion_options = $this->lws_optimize_refresh_conversion_data_core();
 
         if ($scheduled) {
             $this->write_log('Image deconversion activated. Next run: ' . $scheduled);
@@ -768,6 +824,7 @@ class LwsOptimizeImageOptimizationPro
                 // Check if the converted file exists, if not mark it as unconverted
                 if (!$this->wp_filesystem->exists($image['converted_path'])) {
                     $image['converted'] = false;
+                    $images_to_process[$key] = $image;
 
                     $this->write_log("Converted image [{$image['converted_path']}] not found, marking as unconverted");
                 }
@@ -874,6 +931,7 @@ class LwsOptimizeImageOptimizationPro
 
             $image['converted'] = true;
             $image['converted_path'] = $converted_path;
+            $image['converted_url'] = $this->path_to_url($converted_path);
             $image['converted_format'] = $converted_format;
             $image['converted_size'] = $converted_size;
             $image['compression'] = $compression;
@@ -1143,6 +1201,7 @@ class LwsOptimizeImageOptimizationPro
 
             $image['converted'] = true;
             $image['converted_path'] = $converted_path;
+            $image['converted_url'] = $this->path_to_url($converted_path);
             $image['converted_format'] = $converted_format;
             $image['converted_size'] = $converted_size;
             $image['compression'] = $compression;
@@ -1350,6 +1409,7 @@ class LwsOptimizeImageOptimizationPro
 
             $image['converted'] = false;
             $image['converted_path'] = '';
+            $image['converted_url'] = '';
             $image['converted_format'] = '';
             $image['converted_size'] = 0;
             $image['compression'] = 0;
@@ -1721,8 +1781,7 @@ class LwsOptimizeImageOptimizationPro
         }
 
         if (empty($origin)) {
-            $wpdb = $GLOBALS['wpdb'];
-            $origin = $wpdb->get_var("SELECT option_value FROM {$wpdb->options} WHERE option_name = 'siteurl'");
+            $origin = get_option('siteurl');
         }
 
         // Create the file to be sent via cURL
@@ -1799,12 +1858,17 @@ class LwsOptimizeImageOptimizationPro
         $outputPath = !empty($endpath) ? $endpath : $pathInfo['dirname'] . '/' . $pathInfo['filename'] . '_lwsoptimized.' . $format;
 
         // SECURITY: force the on-disk extension to the validated image format regardless
-        // of what $endpath carries, and confirm the resolved target stays inside the
-        // WordPress content directory (no traversal outside wp-content).
+        // of what $endpath carries, and confirm the resolved target either stays inside
+        // the WordPress content directory, or overwrites a file in the same directory as
+        // the already-verified source $path (e.g. the PHP upload tmp dir during the
+        // wp_handle_upload_prefilter autoupload hook, which lives outside wp-content).
         $outputPath = preg_replace('/\.[^.\/]+$/', '.' . $format, $outputPath);
         $target_real = realpath(dirname($outputPath));
         $content_real = realpath(WP_CONTENT_DIR);
-        if ($target_real === false || $content_real === false || strpos($target_real, $content_real) !== 0) {
+        $source_real = realpath(dirname($path));
+        $is_inside_content = ($target_real !== false && $content_real !== false && strpos($target_real, $content_real) === 0);
+        $is_same_as_source_dir = ($target_real !== false && $source_real !== false && $target_real === $source_real);
+        if (!$is_inside_content && !$is_same_as_source_dir) {
             return json_encode(['code' => 'BAD_PATH', 'message' => 'Refusing to write outside the content directory', 'data' => $outputPath]);
         }
 

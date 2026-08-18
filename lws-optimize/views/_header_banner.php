@@ -5,11 +5,11 @@
  * autres pages admin du plugin (RUM dashboard, etc.) afin de garder l'identité
  * visuelle du plugin sur toutes ses pages.
  *
- * Variable requise : $is_deactivated (option lws_optimize_deactivate_temporarily)
+ * Variable requise : $lwsoptimize_is_deactivated (option lws_optimize_deactivate_temporarily)
  */
 if (!defined('ABSPATH')) exit;
-if (!isset($is_deactivated)) {
-    $is_deactivated = get_option('lws_optimize_deactivate_temporarily', false);
+if (!isset($lwsoptimize_is_deactivated)) {
+    $lwsoptimize_is_deactivated = get_option('lws_optimize_deactivate_temporarily', false);
 }
 ?>
 <div class="lwsop_title_banner">
@@ -25,8 +25,8 @@ if (!isset($is_deactivated)) {
 
                         <button class="lwsop_dropdown_button">
                             <span class="lwsop_dropdown_text">
-                                <?php if ($is_deactivated) : ?>
-                                    <?php echo esc_html(__('Deactivated for: ', 'lws-optimize') . $is_deactivated); ?>
+                                <?php if ($lwsoptimize_is_deactivated) : ?>
+                                    <?php echo esc_html(__('Deactivated for: ', 'lws-optimize') . $lwsoptimize_is_deactivated); ?>
                                 <?php else : ?>
                                     <?php esc_html_e('Deactivate temporarily: ', 'lws-optimize'); ?>
                                 <?php endif; ?>
@@ -37,7 +37,7 @@ if (!isset($is_deactivated)) {
                                 </svg>
                             </span>
                             <div class="lwsop_dropdown_content">
-                                <?php if ($is_deactivated) : ?>
+                                <?php if ($lwsoptimize_is_deactivated) : ?>
                                     <a href="#" data-config="0"><?php esc_html_e('Activate', 'lws-optimize'); ?></a>
                                 <?php else : ?>
                                     <a href="#" data-config="300"><?php esc_html_e('5 minutes', 'lws-optimize'); ?></a>

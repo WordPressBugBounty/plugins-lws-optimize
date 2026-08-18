@@ -1,6 +1,6 @@
 <?php
 if (!defined('ABSPATH')) exit;
-$conversion_options = [
+$lwsoptimize_conversion_options = [
     // 'conversion_type' => [
     //     'title' => __('How would you like to convert your images?', 'lws-optimize'),
     //     'description' => __('Select your preferred conversion method', 'lws-optimize'),
@@ -33,28 +33,28 @@ $conversion_options = [
 ];
 
 // Check for Imagick extension support
-$imagick_available = extension_loaded('imagick');
-$avif_support = false;
-$webp_support = false;
+$lwsoptimize_imagick_available = extension_loaded('imagick');
+$lwsoptimize_avif_support = false;
+$lwsoptimize_webp_support = false;
 
-if ($imagick_available) {
-    $imagick = new Imagick();
-    $formats = $imagick->queryFormats();
-    $avif_support = in_array('AVIF', $formats);
-    $webp_support = in_array('WEBP', $formats);
+if ($lwsoptimize_imagick_available) {
+    $lwsoptimize_imagick = new Imagick();
+    $lwsoptimize_formats = $lwsoptimize_imagick->queryFormats();
+    $lwsoptimize_avif_support = in_array('AVIF', $lwsoptimize_formats);
+    $lwsoptimize_webp_support = in_array('WEBP', $lwsoptimize_formats);
 }
 
 // Format support info
-$format_support = [
+$lwsoptimize_format_support = [
     'gd' => [
         'available' => function_exists('gd_info'),
         'webp' => isset(gd_info()['WebP Support']) ? gd_info()['WebP Support'] : false,
         'avif' => isset(gd_info()['AVIF Support']) ? gd_info()['AVIF Support'] : false
     ],
     'imagick' => [
-        'available' => $imagick_available,
-        'webp' => $webp_support,
-        'avif' => $avif_support
+        'available' => $lwsoptimize_imagick_available,
+        'webp' => $lwsoptimize_webp_support,
+        'avif' => $lwsoptimize_avif_support
     ]
 ];
 ?>
@@ -71,13 +71,13 @@ $format_support = [
 </div>
 
 <div class="lwop_compatibility_alerts">
-    <?php if ($format_support['imagick']['available'] == false) : ?>
+    <?php if ($lwsoptimize_format_support['imagick']['available'] == false) : ?>
         <div class="lwop_alert lwop_alert_error">
             <i class="dashicons dashicons-dismiss"></i>
             <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
             <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("The Imagick PHP extension is not installed on your server. This extension is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
         </div>
-    <?php elseif ($format_support['imagick']['webp'] == false) : ?>
+    <?php elseif ($lwsoptimize_format_support['imagick']['webp'] == false) : ?>
         <div class="lwop_alert lwop_alert_error">
             <i class="dashicons dashicons-dismiss"></i>
             <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
@@ -579,22 +579,22 @@ $format_support = [
                         </h3>
                         <span class="lws_optimize_image_conversion_modal_element_description"><?php esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
                     </span>
-                <?php foreach ($conversion_options as $option_id => $option) : ?>
+                <?php foreach ($lwsoptimize_conversion_options as $lwsoptimize_option_id => $lwsoptimize_option) : ?>
                     <span class="lws_optimize_image_conversion_modal_element">
-                        <h3 class="lws_optimize_image_conversion_modal_element_title"><?php echo esc_html($option['title']); ?></h3>
-                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html($option['description']); ?></span>
+                        <h3 class="lws_optimize_image_conversion_modal_element_title"><?php echo esc_html($lwsoptimize_option['title']); ?></h3>
+                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html($lwsoptimize_option['description']); ?></span>
                         <div class="lwsop_custom_select image_optimization" onclick="selectManager(this)">
                             <span class="lwsop_custom_option image_optimization">
-                                <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($option_id); ?>">
-                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($option['select'])); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
-                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($option['select'])); ?>">
+                                <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($lwsoptimize_option_id); ?>">
+                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($lwsoptimize_option['select'])); ?>"><?php echo wp_kses($lwsoptimize_option['select'][array_key_first($lwsoptimize_option['select'])], ['b' => [], 'span' => []]); ?></span>
+                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($lwsoptimize_option['select'])); ?>">
                                 </div>
                                 <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                             </span>
                             <ul class="lws_op_dropdown image_optimization">
-                                <?php foreach ($option['select'] as $select_id => $select) : ?>
+                                <?php foreach ($lwsoptimize_option['select'] as $lwsoptimize_select_id => $lwsoptimize_select) : ?>
                                     <li class="lws_op_dropdown_list image_optimization">
-                                        <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($select_id); ?>" class=""><?php echo wp_kses($select, ['b' => [], 'span' => []]); ?></span>
+                                        <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($lwsoptimize_select_id); ?>" class=""><?php echo wp_kses($lwsoptimize_select, ['b' => [], 'span' => []]); ?></span>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>
@@ -611,32 +611,32 @@ $format_support = [
 
                 modal_text = `
                     <div class="lwop_compatibility_alerts">
-                        <?php if ($format_support['gd']['avif'] == false && $format_support['gd']['webp'] == false) : ?>
+                        <?php if ($lwsoptimize_format_support['gd']['avif'] == false && $lwsoptimize_format_support['gd']['webp'] == false) : ?>
                             <div class="lwop_alert lwop_alert_warning">
                                 <i class="dashicons dashicons-warning"></i>
                                 <?php esc_html_e('Your server cannot create WebP or AVIF image thumbnails. JPEG will be used instead.', 'lws-optimize'); ?>
                                 <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF or WebP formats. WordPress uses this library to generate thumbnails of your images, so they will be created in JPEG format instead.", "lws-optimize"); ?>">
                             </div>
                         <?php else : ?>
-                            <?php if ($format_support['gd']['avif'] == false) : ?>
+                            <?php if ($lwsoptimize_format_support['gd']['avif'] == false) : ?>
                                 <div class="lwop_alert lwop_alert_warning">
                                     <i class="dashicons dashicons-warning"></i>
                                     <?php esc_html_e("AVIF conversion is not available on your server. While images can still be converted to AVIF, their thumbnails, generated by WordPress automatically, won't. JPEG will be used for thoses.", 'lws-optimize'); ?>
                                 </div>
-                            <?php elseif ($format_support['gd']['webp'] == false) : ?>
+                            <?php elseif ($lwsoptimize_format_support['gd']['webp'] == false) : ?>
                                 <div class="lwop_alert lwop_alert_warning">
                                     <i class="dashicons dashicons-info-outline"></i>
                                     <?php esc_html_e("WebP conversion is not available on your server. While images can still be converted to WebP, their thumbnails, generated by WordPress automatically, won't. JPEG will be used for thoses.", 'lws-optimize'); ?>
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <?php if ($format_support['imagick']['available'] == false) : ?>
+                        <?php if ($lwsoptimize_format_support['imagick']['available'] == false) : ?>
                             <div class="lwop_alert lwop_alert_error">
                                 <i class="dashicons dashicons-dismiss"></i>
                                 <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
                                 <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("The Imagick PHP extension is not installed on your server. This extension is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
                             </div>
-                        <?php elseif ($format_support['imagick']['webp'] == false) : ?>
+                        <?php elseif ($lwsoptimize_format_support['imagick']['webp'] == false) : ?>
                             <div class="lwop_alert lwop_alert_error">
                                 <i class="dashicons dashicons-dismiss"></i>
                                 <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
@@ -726,22 +726,22 @@ $format_support = [
                         </h3>
                         <span class="lws_optimize_image_conversion_modal_element_description"><?php esc_html_e("The API creates better AVIF or WebP images using credits. Local conversion creates WebP images only using your server at no cost.", 'lws-optimize'); ?></span>
                     </span>
-                <?php foreach ($conversion_options as $option_id => $option) : ?>
+                <?php foreach ($lwsoptimize_conversion_options as $lwsoptimize_option_id => $lwsoptimize_option) : ?>
                     <span class="lws_optimize_image_conversion_modal_element">
-                        <h3 class="lws_optimize_image_conversion_modal_element_title"><?php echo esc_html($option['title']); ?></h3>
-                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html($option['description']); ?></span>
+                        <h3 class="lws_optimize_image_conversion_modal_element_title"><?php echo esc_html($lwsoptimize_option['title']); ?></h3>
+                        <span class="lws_optimize_image_conversion_modal_element_description"><?php echo esc_html($lwsoptimize_option['description']); ?></span>
                         <div class="lwsop_custom_select image_optimization" onclick="selectManager(this)">
                             <span class="lwsop_custom_option image_optimization">
-                                <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($option_id); ?>">
-                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($option['select'])); ?>"><?php echo wp_kses($option['select'][array_key_first($option['select'])], ['b' => [], 'span' => []]); ?></span>
-                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($option['select'])); ?>">
+                                <div class="custom_option_content image_optimization" id="lws_optimize_select_<?php echo esc_attr($lwsoptimize_option_id); ?>">
+                                    <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr(array_key_first($lwsoptimize_option['select'])); ?>"><?php echo wp_kses($lwsoptimize_option['select'][array_key_first($lwsoptimize_option['select'])], ['b' => [], 'span' => []]); ?></span>
+                                    <input type="hidden" value="<?php echo esc_attr(array_key_first($lwsoptimize_option['select'])); ?>">
                                 </div>
                                 <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                             </span>
                             <ul class="lws_op_dropdown image_optimization">
-                                <?php foreach ($option['select'] as $select_id => $select) : ?>
+                                <?php foreach ($lwsoptimize_option['select'] as $lwsoptimize_select_id => $lwsoptimize_select) : ?>
                                     <li class="lws_op_dropdown_list image_optimization">
-                                        <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($select_id); ?>" class=""><?php echo wp_kses($select, ['b' => [], 'span' => []]); ?></span>
+                                        <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($lwsoptimize_select_id); ?>" class=""><?php echo wp_kses($lwsoptimize_select, ['b' => [], 'span' => []]); ?></span>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>
@@ -768,20 +768,20 @@ $format_support = [
 
                 modal_text = `
                     <div class="lwop_compatibility_alerts">
-                        <?php if ($format_support['gd']['avif'] == false && $format_support['gd']['webp'] == false) : ?>
+                        <?php if ($lwsoptimize_format_support['gd']['avif'] == false && $lwsoptimize_format_support['gd']['webp'] == false) : ?>
                             <div class="lwop_alert lwop_alert_warning">
                                 <i class="dashicons dashicons-warning"></i>
                                 <?php esc_html_e('Your server cannot create WebP or AVIF image thumbnails. JPEG will be used instead.', 'lws-optimize'); ?>
                                 <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF or WebP formats. WordPress uses this library to generate thumbnails of your images, so they will be created in JPEG format instead.", "lws-optimize"); ?>">
                             </div>
                         <?php else : ?>
-                            <?php if ($format_support['gd']['avif'] == false) : ?>
+                            <?php if ($lwsoptimize_format_support['gd']['avif'] == false) : ?>
                                 <div class="lwop_alert lwop_alert_warning">
                                     <i class="dashicons dashicons-warning"></i>
                                     <?php esc_html_e('Your server cannot create AVIF thumbnails. JPEG will be used instead for thumbnails.', 'lws-optimize'); ?>
                                     <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Your server's GDImage library doesn't support AVIF format. Since WordPress uses this library to generate thumbnail versions of your images, AVIF thumbnails will be created as JPEG instead.", "lws-optimize"); ?>">
                                 </div>
-                            <?php elseif ($format_support['gd']['webp'] == false) : ?>
+                            <?php elseif ($lwsoptimize_format_support['gd']['webp'] == false) : ?>
                                 <div class="lwop_alert lwop_alert_warning">
                                     <i class="dashicons dashicons-info-outline"></i>
                                     <?php esc_html_e('Your server cannot create WebP thumbnails. JPEG will be used instead for thumbnails.', 'lws-optimize'); ?>
@@ -789,13 +789,13 @@ $format_support = [
                                 </div>
                             <?php endif; ?>
                         <?php endif; ?>
-                        <?php if ($format_support['imagick']['available'] == false) : ?>
+                        <?php if ($lwsoptimize_format_support['imagick']['available'] == false) : ?>
                             <div class="lwop_alert lwop_alert_error">
                                 <i class="dashicons dashicons-dismiss"></i>
                                 <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>
                                 <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("The Imagick PHP extension is not installed on your server. This extension is required for local image conversion, which will be unavailable.", "lws-optimize"); ?>">
                             </div>
-                        <?php elseif ($format_support['imagick']['webp'] == false) : ?>
+                        <?php elseif ($lwsoptimize_format_support['imagick']['webp'] == false) : ?>
                             <div class="lwop_alert lwop_alert_error">
                                 <i class="dashicons dashicons-dismiss"></i>
                                 <?php esc_html_e('Standard image conversion is not available on your server.', 'lws-optimize'); ?>

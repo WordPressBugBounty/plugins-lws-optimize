@@ -16,10 +16,10 @@
  * esc_*(), wp_parse_url(), or WP_Filesystem are available here. The
  * superglobal reads below are instead validated the way this bootstrap-free
  * context actually can: every path built from $_SERVER is resolved with
- * realpath() and checked to still be inside $cache_root before the file is
+ * realpath() and checked to still be inside $lwsoptimize_cache_root before the file is
  * read (see the containment check a few lines down), which is a stronger
  * guarantee against path traversal than string sanitization would be. The
- * one raw `echo $body;` serves the full pre-rendered cached HTML page (optionally
+ * one raw `echo $lwsoptimize_body;` serves the full pre-rendered cached HTML page (optionally
  * Brotli/gzip-compressed, see below) — that IS the response body, so escaping it
  * would corrupt every cached page.
  */
@@ -31,36 +31,36 @@
 // is deployed (inside /plugins/, inside /cache/, etc.), so security plugins
 // that block PHP execution under /plugins/ can't cause a 403 when the script
 // is deployed to /cache/lwsoptimize/ instead.
-$wp_content_dir = null;
-$_dir = __DIR__;
-for ($i = 0; $i < 10; $i++) {
-    if (is_dir($_dir . '/plugins') && is_dir($_dir . '/themes')) {
-        $wp_content_dir = $_dir;
+$lwsoptimize_wp_content_dir = null;
+$lwsoptimize__dir = __DIR__;
+for ($lwsoptimize_i = 0; $lwsoptimize_i < 10; $lwsoptimize_i++) {
+    if (is_dir($lwsoptimize__dir . '/plugins') && is_dir($lwsoptimize__dir . '/themes')) {
+        $lwsoptimize_wp_content_dir = $lwsoptimize__dir;
         break;
     }
-    $_parent = dirname($_dir);
-    if ($_parent === $_dir) {
+    $lwsoptimize__parent = dirname($lwsoptimize__dir);
+    if ($lwsoptimize__parent === $lwsoptimize__dir) {
         break;
     }
-    $_dir = $_parent;
+    $lwsoptimize__dir = $lwsoptimize__parent;
 }
-unset($_dir, $_parent, $i);
+unset($lwsoptimize__dir, $lwsoptimize__parent, $lwsoptimize_i);
 
-if ($wp_content_dir === null) {
+if ($lwsoptimize_wp_content_dir === null) {
     http_response_code(500);
     exit;
 }
 
-$wp_install_dir  = dirname($wp_content_dir);
-$cache_root      = $wp_content_dir . '/cache/lwsoptimize/';
+$lwsoptimize_wp_install_dir  = dirname($lwsoptimize_wp_content_dir);
+$lwsoptimize_cache_root      = $lwsoptimize_wp_content_dir . '/cache/lwsoptimize/';
 
 // ── User type ─────────────────────────────────────────────────────────────
 // CACHE-1: only anonymous responses are ever cached, so this intermediary only
 // serves index_0. Logged-in visitors are handled dynamically by WordPress (the
 // .htaccess logged-in rules only fire when a file exists, which never happens now).
-$uid = 0;
-foreach (array_keys($_COOKIE) as $cookie_name) {
-    if (strpos($cookie_name, 'wordpress_logged_in_') === 0) {
+$lwsoptimize_uid = 0;
+foreach (array_keys($_COOKIE) as $lwsoptimize_cookie_name) {
+    if (strpos($lwsoptimize_cookie_name, 'wordpress_logged_in_') === 0) {
         // Authenticated request — never serve a shared cache file.
         http_response_code(404);
         exit;
@@ -71,50 +71,50 @@ foreach (array_keys($_COOKIE) as $cookie_name) {
 // CACHE-5: match the exact token set used by LwsOptimizeFileCache::_lwsop_is_mobile()
 // (a copy of wp_is_mobile) so this intermediary looks in the same cache/ vs
 // cache-mobile/ directory the writer used. A mismatch here caused cache misses.
-$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+$lwsoptimize_ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 if (isset($_SERVER['HTTP_SEC_CH_UA_MOBILE'])) {
-    $is_mobile = ('?1' === $_SERVER['HTTP_SEC_CH_UA_MOBILE']);
+    $lwsoptimize_is_mobile = ('?1' === $_SERVER['HTTP_SEC_CH_UA_MOBILE']);
 } else {
-    $is_mobile = (bool) preg_match('/Mobile|Android|Silk\/|Kindle|BlackBerry|Opera Mini|Opera Mobi/', $ua);
+    $lwsoptimize_is_mobile = (bool) preg_match('/Mobile|Android|Silk\/|Kindle|BlackBerry|Opera Mini|Opera Mobi/', $lwsoptimize_ua);
 }
-$cache_type = $is_mobile ? 'cache-mobile' : 'cache';
+$lwsoptimize_cache_type = $lwsoptimize_is_mobile ? 'cache-mobile' : 'cache';
 
 // ── Build the URI path ─────────────────────────────────────────────────────
 // CACHE-4: the writer and the .htaccess -f check both store/look up the cache file
 // under the FULL request path (including any subdirectory install prefix, e.g.
 // /blog/my-page/). Do NOT strip the prefix here — doing so made every cached page
 // 404 through this intermediary on subdirectory installs.
-$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-$uri = rtrim($uri ?: '/', '/') . '/';
+$lwsoptimize_uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+$lwsoptimize_uri = rtrim($lwsoptimize_uri ?: '/', '/') . '/';
 
 // ── Try candidate cache file locations ────────────────────────────────────
 // Attempt 1: standard install  → cache/{uri}/index_{uid}.html
 // Attempt 2: multisite/Polylang → {host}/cache/{uri}/index_{uid}.html
-$host       = $_SERVER['HTTP_HOST'] ?? '';
-$candidates = [
-    $cache_root . $cache_type . $uri . "index_{$uid}.html",
-    $cache_root . $host . '/' . $cache_type . $uri . "index_{$uid}.html",
+$lwsoptimize_host       = $_SERVER['HTTP_HOST'] ?? '';
+$lwsoptimize_candidates = [
+    $lwsoptimize_cache_root . $lwsoptimize_cache_type . $lwsoptimize_uri . "index_{$lwsoptimize_uid}.html",
+    $lwsoptimize_cache_root . $lwsoptimize_host . '/' . $lwsoptimize_cache_type . $lwsoptimize_uri . "index_{$lwsoptimize_uid}.html",
 ];
 
-$real_file       = null;
-$real_cache_root = realpath($cache_root);
+$lwsoptimize_real_file       = null;
+$lwsoptimize_real_cache_root = realpath($lwsoptimize_cache_root);
 
-foreach ($candidates as $candidate) {
-    $resolved = realpath($candidate);
-    if ($resolved && $real_cache_root && strpos($resolved, $real_cache_root) === 0) {
-        $real_file = $resolved;
+foreach ($lwsoptimize_candidates as $lwsoptimize_candidate) {
+    $lwsoptimize_resolved = realpath($lwsoptimize_candidate);
+    if ($lwsoptimize_resolved && $lwsoptimize_real_cache_root && strpos($lwsoptimize_resolved, $lwsoptimize_real_cache_root) === 0) {
+        $lwsoptimize_real_file = $lwsoptimize_resolved;
         break;
     }
 }
 
-if (!$real_file) {
+if (!$lwsoptimize_real_file) {
     http_response_code(404);
     exit;
 }
 
 // ── Read and serve ─────────────────────────────────────────────────────────
-$content = @file_get_contents($real_file);
-if ($content === false) {
+$lwsoptimize_content = @file_get_contents($lwsoptimize_real_file);
+if ($lwsoptimize_content === false) {
     http_response_code(404);
     exit;
 }
@@ -125,41 +125,41 @@ if ($content === false) {
 // a fallback for cache files written before this existed. This does not rely
 // on mod_deflate/mod_brotli being loaded — those aren't guaranteed on every
 // shared-hosting vhost.
-$accept_encoding  = $_SERVER['HTTP_ACCEPT_ENCODING'] ?? '';
-$body             = $content;
-$content_encoding = null;
+$lwsoptimize_accept_encoding  = $_SERVER['HTTP_ACCEPT_ENCODING'] ?? '';
+$lwsoptimize_body             = $lwsoptimize_content;
+$lwsoptimize_content_encoding = null;
 
-if (function_exists('brotli_compress') && strpos($accept_encoding, 'br') !== false) {
-    $compressed = lwsop_serve_get_compressed($real_file, $content, '.br', 'brotli_compress');
-    if ($compressed !== null) {
-        $body             = $compressed;
-        $content_encoding = 'br';
+if (function_exists('brotli_compress') && strpos($lwsoptimize_accept_encoding, 'br') !== false) {
+    $lwsoptimize_compressed = lwsop_serve_get_compressed($lwsoptimize_real_file, $lwsoptimize_content, '.br', 'brotli_compress');
+    if ($lwsoptimize_compressed !== null) {
+        $lwsoptimize_body             = $lwsoptimize_compressed;
+        $lwsoptimize_content_encoding = 'br';
     }
 }
 
-if ($content_encoding === null && function_exists('gzencode') && strpos($accept_encoding, 'gzip') !== false) {
-    $compressed = lwsop_serve_get_compressed($real_file, $content, '.gz', static function ($data) {
+if ($lwsoptimize_content_encoding === null && function_exists('gzencode') && strpos($lwsoptimize_accept_encoding, 'gzip') !== false) {
+    $lwsoptimize_compressed = lwsop_serve_get_compressed($lwsoptimize_real_file, $lwsoptimize_content, '.gz', static function ($data) {
         return gzencode($data, 9);
     });
-    if ($compressed !== null) {
-        $body             = $compressed;
-        $content_encoding = 'gzip';
+    if ($lwsoptimize_compressed !== null) {
+        $lwsoptimize_body             = $lwsoptimize_compressed;
+        $lwsoptimize_content_encoding = 'gzip';
     }
 }
 
 header('Content-Type: text/html; charset=UTF-8');
-header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($real_file)) . ' GMT');
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($lwsoptimize_real_file)) . ' GMT');
 header('X-LWSOP-Cache: HIT');
 header('Edge-Cache-Platform: lwsoptimize');
 header('Vary: Accept-Encoding');
-if ($content_encoding !== null) {
-    header('Content-Encoding: ' . $content_encoding);
+if ($lwsoptimize_content_encoding !== null) {
+    header('Content-Encoding: ' . $lwsoptimize_content_encoding);
 }
 
 // ── Track hit in stats.json ────────────────────────────────────────────────
-lwsop_serve_track_hit($cache_root . 'stats.json', strlen($content));
+lwsop_serve_track_hit($lwsoptimize_cache_root . 'stats.json', strlen($lwsoptimize_content));
 
-echo $body;
+echo $lwsoptimize_body;
 exit;
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -180,19 +180,19 @@ function lwsop_serve_get_compressed($source_file, $raw_content, $suffix, $compre
         }
     }
 
-    $compressed = @call_user_func($compress, $raw_content);
-    if ($compressed === false || $compressed === null) {
+    $lwsoptimize_compressed = @call_user_func($compress, $raw_content);
+    if ($lwsoptimize_compressed === false || $lwsoptimize_compressed === null) {
         return null;
     }
 
     $tmp = $compressed_file . '.' . getmypid() . '.tmp';
-    if (@file_put_contents($tmp, $compressed) !== false) {
+    if (@file_put_contents($tmp, $lwsoptimize_compressed) !== false) {
         @rename($tmp, $compressed_file);
     } else {
         @unlink($tmp);
     }
 
-    return $compressed;
+    return $lwsoptimize_compressed;
 }
 
 function lwsop_serve_track_hit($stats_file, $bytes)

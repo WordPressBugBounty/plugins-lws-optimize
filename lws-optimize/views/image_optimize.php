@@ -1,33 +1,35 @@
 <?php
 
-// Check the exection_time and memory_limit. If values are < 120 or < 128M, then we do not activate the convertion
-$max_exec = ini_get('max_execution_time');
-$memory_limit = ini_get('memory_limit');
+if ( ! defined( 'ABSPATH' ) ) exit;
 
-if (str_contains($memory_limit, "M")) {
-    $memory_limit = str_replace('M', '', $memory_limit);
-    if ($memory_limit < 128) {
-        $memory_limit = false;
+// Check the exection_time and memory_limit. If values are < 120 or < 128M, then we do not activate the convertion
+$lwsoptimize_max_exec = ini_get('max_execution_time');
+$lwsoptimize_memory_limit = ini_get('memory_limit');
+
+if (str_contains($lwsoptimize_memory_limit, "M")) {
+    $lwsoptimize_memory_limit = str_replace('M', '', $lwsoptimize_memory_limit);
+    if ($lwsoptimize_memory_limit < 128) {
+        $lwsoptimize_memory_limit = false;
     }
 }
 
-if ($max_exec < 120) {
-    $max_exec = false;
+if ($lwsoptimize_max_exec < 120) {
+    $lwsoptimize_max_exec = false;
 }
 
 
 // Look up which Cache system is on this hosting. If FastestCache or LWSCache are found, we are on a LWS Hosting
-$fastest_cache_status = $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ?? null;
-$lwscache_status = $_SERVER['lwscache'] ?? null;
+$lwsoptimize_fastest_cache_status = isset( $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_EDGE_CACHE_ENGINE_ENABLE'] ) ) : null;
+$lwsoptimize_lwscache_status = isset( $_SERVER['lwscache'] ) ? sanitize_text_field( wp_unslash( $_SERVER['lwscache'] ) ) : null;
 
 // If not on a LWS Hosting
-$lwscache_locked = false;
-if ($lwscache_status === null && $fastest_cache_status === null) {
-    $lwscache_locked = true;
+$lwsoptimize_lwscache_locked = false;
+if ($lwsoptimize_lwscache_status === null && $lwsoptimize_fastest_cache_status === null) {
+    $lwsoptimize_lwscache_locked = true;
 }
 
 // All options for the convertion modal
-$convertion_options = [
+$lwsoptimize_convertion_options = [
     'image_format' => [
         'title' => __('1 - Which image do you wish to convert?', 'lws-optimize'),
         'description' => '',
@@ -63,12 +65,12 @@ $convertion_options = [
         'description' => __('Keeping originals allows you to revert them to the initial type but increase used storage space.', 'lws-optimize'),
         'select' => [
             'keep' => __('Yes <b>(recommended)</b>', 'lws-optimize'),
-            'not_keep' => __('No'),
+            'not_keep' => __('No', 'lws-optimize'),
         ]
     ],
 ];
 
-$autoconvertion_options = [
+$lwsoptimize_autoconvertion_options = [
     'auto_image_format' => [
         'title' => __('1 - Which image do you wish to convert?', 'lws-optimize'),
         'description' => '',
@@ -101,53 +103,53 @@ $autoconvertion_options = [
 ];
 
 
-$is_imagick = false;
+$lwsoptimize_is_imagick = false;
 if (class_exists('Imagick')) {
-    $is_imagick = true;
+    $lwsoptimize_is_imagick = true;
 }
 
-$autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
+$lwsoptimize_autoconvert_state = $GLOBALS['lws_optimize']->lwsop_check_option('auto_update')['state'];
 
-$next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
-if ($next_scheduled_all_convert) {
-    $next_scheduled_all_convert = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_scheduled_all_convert), 'Y-m-d H:i:s');
+$lwsoptimize_next_scheduled_all_convert = wp_next_scheduled('lws_optimize_convert_media_cron');
+if ($lwsoptimize_next_scheduled_all_convert) {
+    $lwsoptimize_next_scheduled_all_convert = get_date_from_gmt(gmdate('Y-m-d H:i:s', $lwsoptimize_next_scheduled_all_convert), 'Y-m-d H:i:s');
 } else {
-    $next_scheduled_all_convert = false;
+    $lwsoptimize_next_scheduled_all_convert = false;
 }
 
-$next_scheduled_deconvert = wp_next_scheduled('lwsop_revertOptimization');
-if ($next_scheduled_deconvert) {
-    $next_scheduled_deconvert = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_scheduled_deconvert), 'Y-m-d H:i:s');
+$lwsoptimize_next_scheduled_deconvert = wp_next_scheduled('lwsop_revertOptimization');
+if ($lwsoptimize_next_scheduled_deconvert) {
+    $lwsoptimize_next_scheduled_deconvert = get_date_from_gmt(gmdate('Y-m-d H:i:s', $lwsoptimize_next_scheduled_deconvert), 'Y-m-d H:i:s');
 } else {
-    $next_scheduled_deconvert = false;
+    $lwsoptimize_next_scheduled_deconvert = false;
 }
 
-$current_convertion = get_option('lws_optimize_current_convertion_stats', ['type' => "-", 'original' => "0", 'converted' => "0"]);
+$lwsoptimize_current_convertion = get_option('lws_optimize_current_convertion_stats', ['type' => "-", 'original' => "0", 'converted' => "0"]);
 
-$revert_data_left = $GLOBALS['lws_optimize']->lws_optimize_get_revertion_stats();
-$revert_data_count = 0;
-if (is_array($revert_data_left)) {
-    $revert_data_count = count($revert_data_left);
+$lwsoptimize_revert_data_left = $GLOBALS['lws_optimize']->lws_optimize_get_revertion_stats();
+$lwsoptimize_revert_data_count = 0;
+if (is_array($lwsoptimize_revert_data_left)) {
+    $lwsoptimize_revert_data_count = count($lwsoptimize_revert_data_left);
 }
 
-$execution_time_text_resolution = '';
-if ($lwscache_locked) {
-    $execution_time_text_resolution = esc_html__('Please contact your hosting provider to find out how to change this value.', 'lws-optimize');
-} elseif ($lwscache_status !== null) {
-    $execution_time_text_resolution = esc_html__('Please follow the instructions in the following ', 'lws-optimize') . '<a href="https://aide.lws.fr/base/Hebergement-web-mutualise/Utilisation-de-PHP/Configurer-PHP#content-5" rel="noopener" target="_blank">' . esc_html__('documentation', 'lws-optimize') . "</a>" . esc_html__(' to change this value.', 'lws-optimize');
-} elseif ($fastest_cache_status !== null) {
-    $execution_time_text_resolution = esc_html__('Please follow the instructions in the following ', 'lws-optimize') . '<a href="https://aide.lws.fr/a/1004" rel="noopener" target="_blank">' . esc_html__('documentation', 'lws-optimize') . "</a>" . esc_html__(' to change this value.', 'lws-optimize');
+$lwsoptimize_execution_time_text_resolution = '';
+if ($lwsoptimize_lwscache_locked) {
+    $lwsoptimize_execution_time_text_resolution = esc_html__('Please contact your hosting provider to find out how to change this value.', 'lws-optimize');
+} elseif ($lwsoptimize_lwscache_status !== null) {
+    $lwsoptimize_execution_time_text_resolution = esc_html__('Please follow the instructions in the following ', 'lws-optimize') . '<a href="https://aide.lws.fr/base/Hebergement-web-mutualise/Utilisation-de-PHP/Configurer-PHP#content-5" rel="noopener" target="_blank">' . esc_html__('documentation', 'lws-optimize') . "</a>" . esc_html__(' to change this value.', 'lws-optimize');
+} elseif ($lwsoptimize_fastest_cache_status !== null) {
+    $lwsoptimize_execution_time_text_resolution = esc_html__('Please follow the instructions in the following ', 'lws-optimize') . '<a href="https://aide.lws.fr/a/1004" rel="noopener" target="_blank">' . esc_html__('documentation', 'lws-optimize') . "</a>" . esc_html__(' to change this value.', 'lws-optimize');
 }
 
-if (!$max_exec) {
-    $execution_time_text = esc_html__('A max_execution_time of at least 120s is necessary to use this functionnality. Your currently have a value of ', 'lws-optimize') . ini_get('max_execution_time') . "s. <br>";
+if (!$lwsoptimize_max_exec) {
+    $lwsoptimize_execution_time_text = esc_html__('A max_execution_time of at least 120s is necessary to use this functionnality. Your currently have a value of ', 'lws-optimize') . ini_get('max_execution_time') . "s. <br>";
 }
 
-if (!$memory_limit) {
-    $memory_limit_text = esc_html__('A memory_limit of at least 128M is necessary to use this functionnality. Your currently have a value of ', 'lws-optimize') . ini_get('memory_limit') . ". <br>";
+if (!$lwsoptimize_memory_limit) {
+    $lwsoptimize_memory_limit_text = esc_html__('A memory_limit of at least 128M is necessary to use this functionnality. Your currently have a value of ', 'lws-optimize') . ini_get('memory_limit') . ". <br>";
 }
 ?>
-<?php if (!$is_imagick) : ?>
+<?php if (!$lwsoptimize_is_imagick) : ?>
     <div class="lwsop_noimagick_block">
         <?php esc_html_e('Imagick has not been found on this server. Please contact your hosting provider to learn more about the issue.', 'lws-optimize'); ?>
     </div>
@@ -160,11 +162,11 @@ if (!$memory_limit) {
 <div class="lwop_beta_cutout">
     <span><?php esc_html_e('Warning: This convertion functionnality is in beta and may not work properly on all websites. Make sure to have a backup at the ready before using it.', 'lws-optimize'); ?></span>
     <ul>
-        <?php if (!$max_exec) : ?>
-            <li style="font-weight: 500;"><?php echo $execution_time_text . $execution_time_text_resolution; ?></li>
+        <?php if (!$lwsoptimize_max_exec) : ?>
+            <li style="font-weight: 500;"><?php echo wp_kses( $lwsoptimize_execution_time_text . $lwsoptimize_execution_time_text_resolution, [ 'a' => [ 'href' => [], 'rel' => [], 'target' => [] ], 'br' => [] ] ); ?></li>
         <?php endif ?>
-        <?php if (!$memory_limit) : ?>
-            <li style="font-weight: 500;"><?php echo $memory_limit_text . $execution_time_text_resolution; ?></li>
+        <?php if (!$lwsoptimize_memory_limit) : ?>
+            <li style="font-weight: 500;"><?php echo wp_kses( $lwsoptimize_memory_limit_text . $lwsoptimize_execution_time_text_resolution, [ 'a' => [ 'href' => [], 'rel' => [], 'target' => [] ], 'br' => [] ] ); ?></li>
         <?php endif ?>
 
         <?php if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
@@ -173,13 +175,13 @@ if (!$memory_limit) {
                     <span><?php esc_html_e('Image convertion is a recurring task which may consume a lot of resources for a prolonged time. You are currently using WP-Cron, which means this task will only be executed when there is activity on your website and will use your website resources, slowing it down.', 'lws-optimize'); ?></span> <br>
                     <span><?php esc_html_e('We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website.', 'lws-optimize'); ?></span>
                     <span>
-                        <?php if ($lwscache_locked) {
+                        <?php if ($lwsoptimize_lwscache_locked) {
                             esc_html_e('For more informations on how to setup server crons, contact your hosting provider.', 'lws-optimize');
-                        } elseif ($lwscache_status !== null) {
+                        } elseif ($lwsoptimize_lwscache_status !== null) {
                             esc_html_e('For more informations on how to setup server crons by using the WPManager, follow this ', 'lws-optimize');
                             ?><a href="https://tutoriels.lws.fr/wordpress/wp-manager-de-lws-gerer-son-site-wordpress#Gerer_la_securite_et_les_parametres_generaux_de_votre_site_WordPress_avec_WP_Manager_LWS" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a>
                             <?php
-                        } elseif ($fastest_cache_status !== null) {
+                        } elseif ($lwsoptimize_fastest_cache_status !== null) {
                             esc_html_e('For more informations on how to setup server crons, follow this ', 'lws-optimize');
                             ?><a href="https://support.cpanel.net/hc/en-us/articles/10687844130199-How-to-replace-wp-cron-with-cron-job-without-WP-Toolkit" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
                         } ?>
@@ -190,7 +192,7 @@ if (!$memory_limit) {
     </ul>
 </div>
 
-<?php if ($memory_limit && $max_exec) : ?>
+<?php if ($lwsoptimize_memory_limit && $lwsoptimize_max_exec) : ?>
     <div class="lws_optimize_image_convertion_main first">
         <div class="lws_optimize_image_convertion_main_left">
             <h2 class="lws_optimize_image_convertion_title">
@@ -203,24 +205,24 @@ if (!$memory_limit) {
             <div class="lws_optimize_convertion_bar">
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
-                        <img id="lws_optimize_convertion_status_icon" src="<?php echo $next_scheduled_all_convert ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
+                        <img id="lws_optimize_convertion_status_icon" src="<?php echo $lwsoptimize_next_scheduled_all_convert ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
                         <?php echo esc_html__('Status: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_convertion_status"><?php echo $next_scheduled_all_convert ? esc_html__('Ongoing', 'lws-optimize') : esc_html__('Inactive', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_convertion_status"><?php echo $lwsoptimize_next_scheduled_all_convert ? esc_html__('Ongoing', 'lws-optimize') : esc_html__('Inactive', 'lws-optimize'); ?></span>
                 </div>
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/horloge.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
                         <?php echo esc_html__('Next convertion: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_convertion_next"><?php echo $next_scheduled_all_convert ? $next_scheduled_all_convert : ' - '; ?></span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_convertion_next"><?php echo $lwsoptimize_next_scheduled_all_convert ? esc_html( $lwsoptimize_next_scheduled_all_convert ) : ' - '; ?></span>
                 </div>
             </div>
         </div>
         <div class="lws_optimize_image_convertion_main_right">
-            <span id="lws_optimize_image_convertion_status_text"><?php echo $next_scheduled_all_convert ? esc_html__('Ongoing convertion...', 'lws-optimize'): esc_html(''); ?></span>
-            <button type="button" class="lws_optimize_action_button" id="lws_optimize_image_convertion_actionbutton" data-target="#<?php echo $next_scheduled_all_convert ? "lws_optimize_image_stop_convertion_modal" : "lws_optimize_image_convertion_modal"; ?>" data-toggle="modal">
-                <?php if ($next_scheduled_all_convert) : ?>
+            <span id="lws_optimize_image_convertion_status_text"><?php echo $lwsoptimize_next_scheduled_all_convert ? esc_html__('Ongoing convertion...', 'lws-optimize'): esc_html(''); ?></span>
+            <button type="button" class="lws_optimize_action_button" id="lws_optimize_image_convertion_actionbutton" data-target="#<?php echo $lwsoptimize_next_scheduled_all_convert ? "lws_optimize_image_stop_convertion_modal" : "lws_optimize_image_convertion_modal"; ?>" data-toggle="modal">
+                <?php if ($lwsoptimize_next_scheduled_all_convert) : ?>
                     <img id="lws_optimize_image_convertion_image" src="<?php echo esc_url(plugins_url('images/arreter.svg', __DIR__)) ?>" alt="Logo Stop" width="15px" height="15px">
                     <span id="lws_optimize_image_convertion_text"><?php esc_html_e('Stop', 'lws-optimize'); ?></span>
                 <?php else : ?>
@@ -234,27 +236,27 @@ if (!$memory_limit) {
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/type-mime.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Convertion format', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_type" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['type'] ?? '-'); ?></span>
+            <span id="lws_optimize_convertion_type" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($lwsoptimize_current_convertion['type'] ?? '-'); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/images.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Image total', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_max" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['original'] ?? 0); ?></span>
+            <span id="lws_optimize_convertion_max" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($lwsoptimize_current_convertion['original'] ?? 0); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/images_optimisees.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Converted images', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_done" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['converted'] ?? 0); ?></span>
+            <span id="lws_optimize_convertion_done" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($lwsoptimize_current_convertion['converted'] ?? 0); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/temps.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Remaining convertions', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_left" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html(($current_convertion['original'] ?? 0) - ($current_convertion['converted'] ?? 0)); ?></span>
+            <span id="lws_optimize_convertion_left" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html(($lwsoptimize_current_convertion['original'] ?? 0) - ($lwsoptimize_current_convertion['converted'] ?? 0)); ?></span>
         </div>
         <div class="lws_optimize_convertion_details_element">
             <img src="<?php echo esc_url(plugins_url('images/reduction_pourcentage.svg', __DIR__)); ?>" alt="Logo Mime-Type" width="60px" height="60px">
             <span><?php esc_html_e('Total size reduction', 'lws-optimize'); ?></span>
-            <span id="lws_optimize_convertion_gains" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($current_convertion['gains'] ?? "0%"); ?></span>
+            <span id="lws_optimize_convertion_gains" class="lws_optimize_convertion_details_dynamic_element"><?php echo esc_html($lwsoptimize_current_convertion['gains'] ?? "0%"); ?></span>
         </div>
     </div>
 
@@ -276,17 +278,17 @@ if (!$memory_limit) {
                 </thead>
 
                 <tbody id="show_images_converted_tbody">
-                    <?php $attachments = get_option('lws_optimize_images_convertion', []); ?>
-                    <?php foreach ($attachments as $attachment) : ?>
+                    <?php $lwsoptimize_attachments = get_option('lws_optimize_images_convertion', []); ?>
+                    <?php foreach ($lwsoptimize_attachments as $lwsoptimize_attachment) : ?>
                         <tr>
-                            <td><?php echo esc_html($attachment['name'] . "." . $attachment['original_extension']); ?></td>
-                            <?php if ($attachment['converted']) : ?>
-                                <td><?php echo esc_html($attachment['original_mime'] . " => " . $attachment['mime']); ?></td>
+                            <td><?php echo esc_html($lwsoptimize_attachment['name'] . "." . $lwsoptimize_attachment['original_extension']); ?></td>
+                            <?php if ($lwsoptimize_attachment['converted']) : ?>
+                                <td><?php echo esc_html($lwsoptimize_attachment['original_mime'] . " => " . $lwsoptimize_attachment['mime']); ?></td>
                                 <td><?php echo esc_html__('Done', 'lws-optimize'); ?></td>
-                                <td><?php echo get_date_from_gmt(gmdate('Y-m-d H:i:s', $attachment['date_convertion']), 'Y-m-d H:i:s'); ?></td>
-                                <td><?php echo esc_html(($attachment['compression'] ?? 0)) ?></td>
+                                <td><?php echo esc_html(get_date_from_gmt(gmdate('Y-m-d H:i:s', $lwsoptimize_attachment['date_convertion']), 'Y-m-d H:i:s')); ?></td>
+                                <td><?php echo esc_html(($lwsoptimize_attachment['compression'] ?? 0)) ?></td>
                             <?php else: ?>
-                                <td><?php echo esc_html($attachment['original_mime']); ?></td>
+                                <td><?php echo esc_html($lwsoptimize_attachment['original_mime']); ?></td>
                                 <td><?php echo esc_html__('Pending', 'lws-optimize'); ?></td>
                                 <td>/</td>
                                 <td>/</td>
@@ -314,31 +316,31 @@ if (!$memory_limit) {
             <div class="lws_optimize_convertion_bar">
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
-                        <img id="lws_optimize_deconvertion_status_icon" src="<?php echo $next_scheduled_deconvert ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
+                        <img id="lws_optimize_deconvertion_status_icon" src="<?php echo $lwsoptimize_next_scheduled_deconvert ? esc_url(plugins_url('images/actif.svg', __DIR__)) : esc_url(plugins_url('images/erreur-inactif.svg', __DIR__)); ?>" alt="Logo Status" width="15px" height="15px">
                         <?php echo esc_html__('Status: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_deconvertion_status"><?php echo $next_scheduled_deconvert ? esc_html__('Ongoing', 'lws-optimize') : esc_html__('Inactive', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_deconvertion_status"><?php echo $lwsoptimize_next_scheduled_deconvert ? esc_html__('Ongoing', 'lws-optimize') : esc_html__('Inactive', 'lws-optimize'); ?></span>
                 </div>
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/horloge.svg', __DIR__)); ?>" alt="Logo Horloge" width="15px" height="15px">
                         <?php echo esc_html__('Next deconvertion: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_deconvertion_next"><?php echo $next_scheduled_deconvert ? $next_scheduled_deconvert : ' - '; ?></span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_deconvertion_next"><?php echo $lwsoptimize_next_scheduled_deconvert ? esc_html( $lwsoptimize_next_scheduled_deconvert ) : ' - '; ?></span>
                 </div>
                 <div class="lws_optimize_convertion_bar_element">
                     <span class="lws_optimize_convertion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/page.svg', __DIR__)); ?>" alt="Logo Page" width="15px" height="15px">
                         <?php echo esc_html__('Images left: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_deconvertion_left"><?php echo esc_html($revert_data_count ?? 0); ?></span>
+                    <span class="lws_optimize_convertion_bar_dynamic_element" id="lws_optimize_deconvertion_left"><?php echo esc_html($lwsoptimize_revert_data_count ?? 0); ?></span>
                 </div>
             </div>
         </div>
         <div class="lws_optimize_image_convertion_main_right">
-            <span id="lws_optimize_image_deconvertion_status_text"><?php echo $next_scheduled_deconvert ? esc_html__('Ongoing deconvertion...', 'lws-optimize'): esc_html(''); ?></span>
-            <button type="button" class="lws_optimize_action_button" id="lws_optimize_image_deconvertion_actionbutton" data-target="#<?php echo $next_scheduled_deconvert ? "lws_optimize_image_stop_deconvertion_modal" : "lws_optimize_image_deconvertion_modal"; ?>" data-toggle="modal">
-                <?php if ($next_scheduled_deconvert) : ?>
+            <span id="lws_optimize_image_deconvertion_status_text"><?php echo $lwsoptimize_next_scheduled_deconvert ? esc_html__('Ongoing deconvertion...', 'lws-optimize'): esc_html(''); ?></span>
+            <button type="button" class="lws_optimize_action_button" id="lws_optimize_image_deconvertion_actionbutton" data-target="#<?php echo $lwsoptimize_next_scheduled_deconvert ? "lws_optimize_image_stop_deconvertion_modal" : "lws_optimize_image_deconvertion_modal"; ?>" data-toggle="modal">
+                <?php if ($lwsoptimize_next_scheduled_deconvert) : ?>
                     <img id="lws_optimize_image_deconvertion_image" src="<?php echo esc_url(plugins_url('images/arreter.svg', __DIR__)) ?>" alt="Logo Stop" width="15px" height="15px">
                     <span id="lws_optimize_image_deconvertion_text"><?php esc_html_e('Stop', 'lws-optimize'); ?></span>
                 <?php else : ?>
@@ -362,47 +364,47 @@ if (!$memory_limit) {
                 <span id="lws_optimize_image_autoconvertion_text"><?php esc_html_e('Configurate', 'lws-optimize'); ?></span>
             </button>
             <label class="lwsop_checkbox">
-                <input type="checkbox" id="lwsop_image_autoconvertion_check" <?php echo $autoconvert_state == "true" ? esc_attr('checked') : ''; ?>>
+                <input type="checkbox" id="lwsop_image_autoconvertion_check" <?php echo $lwsoptimize_autoconvert_state == "true" ? esc_attr('checked') : ''; ?>>
                 <span class="slider round"></span>
             </label>
         </div>
     </div>
 
-    <?php $media_convertion_values = get_option('lws_optimize_all_media_convertion', []); $media_convertion_values = array_merge(['convertion_keeporiginal' => "keep", 'convertion_quality' => 'balanced', 'image_format' => ['jpg', 'jpeg'], 'image_maxsize' => 2560], $media_convertion_values);?>
+    <?php $lwsoptimize_media_convertion_values = get_option('lws_optimize_all_media_convertion', []); $lwsoptimize_media_convertion_values = array_merge(['convertion_keeporiginal' => "keep", 'convertion_quality' => 'balanced', 'image_format' => ['jpg', 'jpeg'], 'image_maxsize' => 2560], $lwsoptimize_media_convertion_values);?>
     <div class="modal fade" id="lws_optimize_image_convertion_modal" tabindex='-1'>
         <div class="modal-dialog lws_optimize_image_convertion_modal_dialog">
             <div class="modal-content lws_optimize_image_convertion_modal_content">
                 <form id="lws_optimize_image_convertion_form" class="lws_optimize_image_convertion_modal_form">
                     <h2 class="lws_optimize_image_convertion_modal_title"><?php esc_html_e('WebP convertion options', 'lws-optimize'); ?></h2>
-                    <?php foreach ($convertion_options as $option_id => $option) : ?>
+                    <?php foreach ($lwsoptimize_convertion_options as $lwsoptimize_option_id => $lwsoptimize_option) : ?>
                         <span class="lws_optimize_image_convertion_modal_element">
-                            <h3 class="lws_optimize_image_convertion_modal_element_title"><?php echo esc_html($option['title']); ?></h3>
-                            <span class="lws_optimize_image_convertion_modal_element_description"><?php echo esc_html($option['description']); ?></span>
-                            <?php if (isset($option['checkboxes'])) : ?>
+                            <h3 class="lws_optimize_image_convertion_modal_element_title"><?php echo esc_html($lwsoptimize_option['title']); ?></h3>
+                            <span class="lws_optimize_image_convertion_modal_element_description"><?php echo esc_html($lwsoptimize_option['description']); ?></span>
+                            <?php if (isset($lwsoptimize_option['checkboxes'])) : ?>
                                 <span class="lws_optimize_image_convertion_checkbox_block">
-                                <?php foreach ($option['checkboxes'] as $checkbox_id => $checkbox) : ?>
-                                    <label for="lwsop_image_convertion_checkbox_<?php echo esc_attr($checkbox_id); ?>">
-                                        <input type="checkbox" class="lws_optimize_custom_checkboxes" id="lwsop_image_convertion_checkbox_<?php echo esc_attr($checkbox_id); ?>" name="lws_optimize_image_convertion_checkbox_<?php echo esc_html($checkbox_id); ?>" <?php echo in_array($checkbox_id, $media_convertion_values[$option_id]) ? esc_attr("checked") : ""; ?>>
-                                        <span><?php echo wp_kses($checkbox, ['b' => [], 'span' => []]); ?></span>
-                                        <?php if ($checkbox_id == "png") : ?>
+                                <?php foreach ($lwsoptimize_option['checkboxes'] as $lwsoptimize_checkbox_id => $lwsoptimize_checkbox) : ?>
+                                    <label for="lwsop_image_convertion_checkbox_<?php echo esc_attr($lwsoptimize_checkbox_id); ?>">
+                                        <input type="checkbox" class="lws_optimize_custom_checkboxes" id="lwsop_image_convertion_checkbox_<?php echo esc_attr($lwsoptimize_checkbox_id); ?>" name="lws_optimize_image_convertion_checkbox_<?php echo esc_html($lwsoptimize_checkbox_id); ?>" <?php echo in_array($lwsoptimize_checkbox_id, $lwsoptimize_media_convertion_values[$lwsoptimize_option_id]) ? esc_attr("checked") : ""; ?>>
+                                        <span><?php echo wp_kses($lwsoptimize_checkbox, ['b' => [], 'span' => []]); ?></span>
+                                        <?php if ($lwsoptimize_checkbox_id == "png") : ?>
                                             <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency.", "lws-optimize"); ?>">
                                         <?php endif; ?>
                                     </label>
                                 <?php endforeach; ?>
                                 </span>
                             <?php else : ?>
-                                    <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>">
-                                        <span id="lws_optimize_image_convertion_select_<?php echo esc_html($option_id); ?>" class="lwsop_custom_option image_optimization">
+                                    <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>">
+                                        <span id="lws_optimize_image_convertion_select_<?php echo esc_html($lwsoptimize_option_id); ?>" class="lwsop_custom_option image_optimization">
                                             <div class="custom_option_content image_optimization">
-                                                <span class="custom_option_content_text image_optimization" value="<?php echo $media_convertion_values[$option_id]; ?>"><?php echo wp_kses($option['select'][$media_convertion_values[$option_id]], ['b' => [], 'span' => []]); ?></span>
-                                                <input type="hidden" id="lws_optimize_image_convertion_select_options_<?php echo esc_html($option_id); ?>" value="<?php echo $media_convertion_values[$option_id]; ?>">
+                                                <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr($lwsoptimize_media_convertion_values[$lwsoptimize_option_id]); ?>"><?php echo wp_kses($lwsoptimize_option['select'][$lwsoptimize_media_convertion_values[$lwsoptimize_option_id]], ['b' => [], 'span' => []]); ?></span>
+                                                <input type="hidden" id="lws_optimize_image_convertion_select_options_<?php echo esc_html($lwsoptimize_option_id); ?>" value="<?php echo esc_attr($lwsoptimize_media_convertion_values[$lwsoptimize_option_id]); ?>">
                                             </div>
                                             <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                                         </span>
-                                        <ul class="lws_op_dropdown image_optimization" id="lws_optimize_image_convertion_select_options_<?php echo esc_attr($option_id); ?>">
-                                            <?php foreach ($option['select'] as $select_id => $select) : ?>
+                                        <ul class="lws_op_dropdown image_optimization" id="lws_optimize_image_convertion_select_options_<?php echo esc_attr($lwsoptimize_option_id); ?>">
+                                            <?php foreach ($lwsoptimize_option['select'] as $lwsoptimize_select_id => $lwsoptimize_select) : ?>
                                                 <li class="lws_op_dropdown_list image_optimization">
-                                                    <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($select_id); ?>" class=""><?php echo wp_kses($select, ['b' => [], 'span' => []]); ?></span>
+                                                    <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($lwsoptimize_select_id); ?>" class=""><?php echo wp_kses($lwsoptimize_select, ['b' => [], 'span' => []]); ?></span>
                                                 </li>
                                             <?php endforeach; ?>
                                         </ul>
@@ -410,7 +412,7 @@ if (!$memory_limit) {
 
                                     <!-- Scripts for the select -->
                                     <script>
-                                        document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>').addEventListener('click', function() {
+                                        document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>').addEventListener('click', function() {
                                             let dropdown = this;
                                             if (dropdown.classList.contains('active')) {
                                                 dropdown.classList.remove('active')
@@ -420,9 +422,9 @@ if (!$memory_limit) {
                                         });
 
                                         document.addEventListener('click', function(event) {
-                                            let dropdown = document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>');
+                                            let dropdown = document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>');
                                             let target = event.target;
-                                            let closest = target.closest('#lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>');
+                                            let closest = target.closest('#lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>');
                                             let select_options = ['desktop_option', 'mobile_option'];
 
                                             // Hide the dropdown menu when clicking somewhere else on the page
@@ -431,8 +433,8 @@ if (!$memory_limit) {
                                             }
 
                                             // If clicking on one of the options, select it, as a normal select would
-                                            if (target.parentNode !== null && target.parentNode.id == "lws_optimize_image_convertion_select_options_<?php echo esc_attr($option_id); ?>") {
-                                                document.getElementById("lws_optimize_image_convertion_select_<?php echo esc_html($option_id); ?>").children[0].innerHTML = target.innerHTML + `<input type="hidden" id="lws_optimize_image_convertion_select_options_<?php echo esc_html($option_id); ?>" value="` + target.children[0].getAttribute('value') + `">`;
+                                            if (target.parentNode !== null && target.parentNode.id == "lws_optimize_image_convertion_select_options_<?php echo esc_attr($lwsoptimize_option_id); ?>") {
+                                                document.getElementById("lws_optimize_image_convertion_select_<?php echo esc_html($lwsoptimize_option_id); ?>").children[0].innerHTML = target.innerHTML + `<input type="hidden" id="lws_optimize_image_convertion_select_options_<?php echo esc_html($lwsoptimize_option_id); ?>" value="` + target.children[0].getAttribute('value') + `">`;
                                                 dropdown.classList.remove('active');
                                             }
                                         });
@@ -450,48 +452,48 @@ if (!$memory_limit) {
         </div>
     </div>
 
-    <?php $media_convertion_values = get_option('lws_optimize_config_array', [])['auto_update'] ?? []; $media_convertion_values = array_merge(['auto_convertion_quality' => 'balanced', 'auto_image_format' => ['jpg', 'jpeg'], 'auto_image_maxsize' => 2560], $media_convertion_values);?>
+    <?php $lwsoptimize_media_convertion_values = get_option('lws_optimize_config_array', [])['auto_update'] ?? []; $lwsoptimize_media_convertion_values = array_merge(['auto_convertion_quality' => 'balanced', 'auto_image_format' => ['jpg', 'jpeg'], 'auto_image_maxsize' => 2560], $lwsoptimize_media_convertion_values);?>
     <div class="modal fade" id="lws_optimize_image_autoconvertion_modal" tabindex='-1'>
         <div class="modal-dialog lws_optimize_image_convertion_modal_dialog">
             <div class="modal-content lws_optimize_image_convertion_modal_content">
                 <form id="lws_optimize_image_autoconvertion_form" class="lws_optimize_image_convertion_modal_form">
                     <h2 class="lws_optimize_image_convertion_modal_title"><?php esc_html_e('WebpP autoconvertion options', 'lws-optimize'); ?></h2>
-                    <?php foreach ($autoconvertion_options as $option_id => $option) : ?>
+                    <?php foreach ($lwsoptimize_autoconvertion_options as $lwsoptimize_option_id => $lwsoptimize_option) : ?>
                         <span class="lws_optimize_image_convertion_modal_element">
-                            <h3 class="lws_optimize_image_convertion_modal_element_title"><?php echo esc_html($option['title']); ?></h3>
-                            <span class="lws_optimize_image_convertion_modal_element_description"><?php echo esc_html($option['description']); ?></span>
-                            <?php if (isset($option['checkboxes'])) : ?>
+                            <h3 class="lws_optimize_image_convertion_modal_element_title"><?php echo esc_html($lwsoptimize_option['title']); ?></h3>
+                            <span class="lws_optimize_image_convertion_modal_element_description"><?php echo esc_html($lwsoptimize_option['description']); ?></span>
+                            <?php if (isset($lwsoptimize_option['checkboxes'])) : ?>
                                 <span class="lws_optimize_image_convertion_checkbox_block">
-                                <?php foreach ($option['checkboxes'] as $checkbox_id => $checkbox) : ?>
-                                    <label for="lwsop_image_autoconvertion_checkbox_<?php echo esc_attr($checkbox_id); ?>">
-                                        <input type="checkbox" class="lws_optimize_custom_checkboxes" id="lwsop_image_autoconvertion_checkbox_<?php echo esc_attr($checkbox_id); ?>" name="lws_optimize_image_autoconvertion_checkbox_<?php echo esc_html($checkbox_id); ?>" <?php echo in_array($checkbox_id, $media_convertion_values[$option_id]) ? esc_attr("checked") : ""; ?>>
-                                        <span><?php echo wp_kses($checkbox, ['b' => [], 'span' => []]); ?></span>
-                                        <?php if ($checkbox_id == "png") : ?>
+                                <?php foreach ($lwsoptimize_option['checkboxes'] as $lwsoptimize_checkbox_id => $lwsoptimize_checkbox) : ?>
+                                    <label for="lwsop_image_autoconvertion_checkbox_<?php echo esc_attr($lwsoptimize_checkbox_id); ?>">
+                                        <input type="checkbox" class="lws_optimize_custom_checkboxes" id="lwsop_image_autoconvertion_checkbox_<?php echo esc_attr($lwsoptimize_checkbox_id); ?>" name="lws_optimize_image_autoconvertion_checkbox_<?php echo esc_html($lwsoptimize_checkbox_id); ?>" <?php echo in_array($lwsoptimize_checkbox_id, $lwsoptimize_media_convertion_values[$lwsoptimize_option_id]) ? esc_attr("checked") : ""; ?>>
+                                        <span><?php echo wp_kses($lwsoptimize_checkbox, ['b' => [], 'span' => []]); ?></span>
+                                        <?php if ($lwsoptimize_checkbox_id == "png") : ?>
                                             <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("PNG with transparency may, in rare cases, lose their transparency after convertion. Use this option knowing the risks or if you do not need transparency.", "lws-optimize"); ?>">
                                         <?php endif; ?>
                                     </label>
                                 <?php endforeach; ?>
                                 </span>
                             <?php else : ?>
-                                    <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>">
-                                        <span id="lws_optimize_image_autoconvertion_select_<?php echo esc_html($option_id); ?>" class="lwsop_custom_option image_optimization">
+                                    <div class="lwsop_custom_select image_optimization" id="lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>">
+                                        <span id="lws_optimize_image_autoconvertion_select_<?php echo esc_html($lwsoptimize_option_id); ?>" class="lwsop_custom_option image_optimization">
                                             <div class="custom_option_content image_optimization">
-                                                <span class="custom_option_content_text image_optimization" value="<?php echo $media_convertion_values[$option_id]; ?>"><?php echo wp_kses($option['select'][$media_convertion_values[$option_id]], ['b' => [], 'span' => []]); ?></span>
-                                                <input type="hidden" id="lws_optimize_image_autoconvertion_select_options_<?php echo esc_html($option_id); ?>" value="<?php echo $media_convertion_values[$option_id]; ?>">
+                                                <span class="custom_option_content_text image_optimization" value="<?php echo esc_attr($lwsoptimize_media_convertion_values[$lwsoptimize_option_id]); ?>"><?php echo wp_kses($lwsoptimize_option['select'][$lwsoptimize_media_convertion_values[$lwsoptimize_option_id]], ['b' => [], 'span' => []]); ?></span>
+                                                <input type="hidden" id="lws_optimize_image_autoconvertion_select_options_<?php echo esc_html($lwsoptimize_option_id); ?>" value="<?php echo esc_attr($lwsoptimize_media_convertion_values[$lwsoptimize_option_id]); ?>">
                                             </div>
                                             <img src="<?php echo esc_url(plugins_url('images/chevron_wp_manager.svg', __DIR__)) ?>" alt="chevron" width="12px" height="7px">
                                         </span>
-                                        <ul class="lws_op_dropdown image_optimization" id="lws_optimize_image_autoconvertion_select_options_<?php echo esc_attr($option_id); ?>">
-                                            <?php foreach ($option['select'] as $select_id => $select) : ?>
+                                        <ul class="lws_op_dropdown image_optimization" id="lws_optimize_image_autoconvertion_select_options_<?php echo esc_attr($lwsoptimize_option_id); ?>">
+                                            <?php foreach ($lwsoptimize_option['select'] as $lwsoptimize_select_id => $lwsoptimize_select) : ?>
                                                 <li class="lws_op_dropdown_list image_optimization">
-                                                    <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($select_id); ?>" class=""><?php echo wp_kses($select, ['b' => [], 'span' => []]); ?></span>
+                                                    <span class="lws_op_dropdown_list_content image_optimization" value="<?php echo esc_attr($lwsoptimize_select_id); ?>" class=""><?php echo wp_kses($lwsoptimize_select, ['b' => [], 'span' => []]); ?></span>
                                                 </li>
                                             <?php endforeach; ?>
                                         </ul>
                                     </div>
 
                                     <script>
-                                        document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>').addEventListener('click', function() {
+                                        document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>').addEventListener('click', function() {
                                             let dropdown = this;
                                             if (dropdown.classList.contains('active')) {
                                                 dropdown.classList.remove('active')
@@ -501,9 +503,9 @@ if (!$memory_limit) {
                                         });
 
                                         document.addEventListener('click', function(event) {
-                                            let dropdown = document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>');
+                                            let dropdown = document.getElementById('lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>');
                                             let target = event.target;
-                                            let closest = target.closest('#lws_optimize_custom_select_<?php echo esc_attr($option_id); ?>');
+                                            let closest = target.closest('#lws_optimize_custom_select_<?php echo esc_attr($lwsoptimize_option_id); ?>');
                                             let select_options = ['desktop_option', 'mobile_option'];
 
                                             // Hide the dropdown menu when clicking somewhere else on the page
@@ -512,8 +514,8 @@ if (!$memory_limit) {
                                             }
 
                                             // If clicking on one of the options, select it, as a normal select would
-                                            if (target.parentNode !== null && target.parentNode.id == "lws_optimize_image_autoconvertion_select_options_<?php echo esc_attr($option_id); ?>") {
-                                                document.getElementById("lws_optimize_image_autoconvertion_select_<?php echo esc_html($option_id); ?>").children[0].innerHTML = target.innerHTML + `<input type="hidden" id="lws_optimize_image_autoconvertion_select_options_<?php echo esc_html($option_id); ?>" value="` + target.children[0].getAttribute('value') + `">`;
+                                            if (target.parentNode !== null && target.parentNode.id == "lws_optimize_image_autoconvertion_select_options_<?php echo esc_attr($lwsoptimize_option_id); ?>") {
+                                                document.getElementById("lws_optimize_image_autoconvertion_select_<?php echo esc_html($lwsoptimize_option_id); ?>").children[0].innerHTML = target.innerHTML + `<input type="hidden" id="lws_optimize_image_autoconvertion_select_options_<?php echo esc_html($lwsoptimize_option_id); ?>" value="` + target.children[0].getAttribute('value') + `">`;
                                                 dropdown.classList.remove('active');
                                             }
                                         });

@@ -1,11 +1,11 @@
 <?php if (!defined('ABSPATH')) exit; ?>
 <div class="lwsoptimize_main_content">
-    <?php if ($is_deactivated) : ?>
+    <?php if ($lwsoptimize_is_deactivated) : ?>
         <div class="lwsoptimize_main_content_fogged"></div>
     <?php endif ?>
     <div class="tab_lwsoptimize" id='tab_lwsoptimize_block'>
         <div id="tab_lwsoptimize" role="tablist" aria-label="Onglets_lwsoptimize">
-            <?php foreach ($tabs_list as $tab) : ?>
+            <?php foreach ($lwsoptimize_tabs_list as $tab) : ?>
                 <button id="<?php echo esc_attr('nav-' . $tab[0]); ?>" class="tab_nav_lwsoptimize <?php echo $tab[0] == 'frontend' ? esc_attr('active') : ''; ?>" data-toggle="tab" role="tab" aria-controls="<?php echo esc_attr($tab[0]); ?>" aria-selected="<?php echo $tab[0] == 'frontend' ? esc_attr('true') : esc_attr('false'); ?>" tabindex="<?php echo $tab[0] == 'frontend' ? esc_attr('0') : '-1'; ?>">
                     <?php echo esc_html($tab[1]); ?>
                 </button>
@@ -15,7 +15,7 @@
 
         <div class="tab_lws_op_select hidden">
             <select name="tab_lws_op_select" id="tab_lws_op_select" style="text-align:center">
-                <?php foreach ($tabs_list as $tab) : ?>
+                <?php foreach ($lwsoptimize_tabs_list as $tab) : ?>
                     <option value="<?php echo esc_attr("nav-" . $tab[0]); ?>">
                         <?php echo esc_html($tab[1]); ?>
                     </option>
@@ -24,10 +24,10 @@
         </div>
     </div>
 
-    <?php foreach ($tabs_list as $tab) : ?>
+    <?php foreach ($lwsoptimize_tabs_list as $tab) : ?>
         <div class="tab-pane main-tab-pane" id="<?php echo esc_attr($tab[0]) ?>" role="tabpanel" aria-labelledby="nav-<?php echo esc_attr($tab[0]) ?>" <?php echo $tab[0] == 'frontend' ? esc_attr('tabindex="0"') : esc_attr('tabindex="-1" hidden') ?>>
             <div id="post-body-<?php echo esc_attr($tab[0]); ?>" class="<?php echo $tab[0] == 'plugins' ? esc_attr('lws_op_configpage_plugin') : esc_attr('lws_op_configpage'); ?> ">
-                <?php if ($is_deactivated) : ?>
+                <?php if ($lwsoptimize_is_deactivated) : ?>
                     <?php echo ($tab[0] == 'plugins' || $tab[0] == 'pagespeed') ? '' : '<div class="deactivated_plugin_state"></div>'; ?>
                 <?php endif ?>
                 <?php include_once plugin_dir_path(__FILE__) . $tab[0] . '.php'; ?>
@@ -113,11 +113,11 @@
     }
 
     jQuery(document).ready(function() {
-        <?php foreach ($plugins_activated as $slug => $activated) : ?>
-            <?php if ($activated == "full") : ?>
+        <?php foreach ($lwsoptimize_plugins_activated as $lwsoptimize_slug => $lwsoptimize_activated) : ?>
+            <?php if ($lwsoptimize_activated == "full") : ?>
                 /**/
                 var button = jQuery(
-                    "<?php echo esc_attr("#bis_" . $slug); ?>"
+                    "<?php echo esc_attr("#bis_" . $lwsoptimize_slug); ?>"
                 );
                 if (button){
                     button.children()[3].classList.remove('hidden');
@@ -126,10 +126,10 @@
                     button.addClass('lws_op_button_ad_block_validated');
                 }
 
-            <?php elseif ($activated == "half") : ?>
+            <?php elseif ($lwsoptimize_activated == "half") : ?>
                 /**/
                 var button = jQuery(
-                    "<?php echo esc_attr("#bis_" . $slug); ?>"
+                    "<?php echo esc_attr("#bis_" . $lwsoptimize_slug); ?>"
                 );
                 if (button) {
                     button.children()[2].classList.remove('hidden');
@@ -250,7 +250,7 @@
     }
 </script>
 
-<?php if (!$is_deactivated) : ?>
+<?php if (!$lwsoptimize_is_deactivated) : ?>
     <script>
 
         localStorage.setItem('lws_optimize_current_configuration_changes', JSON.stringify([]));

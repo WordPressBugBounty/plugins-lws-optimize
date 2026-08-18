@@ -1,31 +1,31 @@
 <?php
-$caches = isset($caches) ? $caches : [];
+$lwsoptimize_caches = isset($lwsoptimize_caches) ? $lwsoptimize_caches : [];
 
 if (!defined('ABSPATH')) exit;
-$fb_preloaddata = [
-    'state' => $config_array['filebased_cache']['preload_ongoing'] ?? "false",
-    'quantity' => $config_array['filebased_cache']['preload_quantity'] ?? 0,
-    'done' => $config_array['filebased_cache']['preload_done'] ?? 0,
+$lwsoptimize_fb_preloaddata = [
+    'state' => $lwsoptimize_config_array['filebased_cache']['preload_ongoing'] ?? "false",
+    'quantity' => $lwsoptimize_config_array['filebased_cache']['preload_quantity'] ?? 0,
+    'done' => $lwsoptimize_config_array['filebased_cache']['preload_done'] ?? 0,
 ];
 
-$filebased_cache_options = $GLOBALS['lws_optimize']->lwsop_check_option("filebased_cache");
-$filebased_timer = $filebased_cache_options['data']['timer'] ?? "lws_thrice_monthly";
+$lwsoptimize_filebased_cache_options = $GLOBALS['lws_optimize']->lwsop_check_option("filebased_cache");
+$lwsoptimize_filebased_timer = $lwsoptimize_filebased_cache_options['data']['timer'] ?? "lws_thrice_monthly";
 
-$specified = "0";
-if ($filebased_cache_options['state'] === "true" && !empty($filebased_cache_options['data']['specified'])) {
-    $specified = count($filebased_cache_options['data']['specified']);
+$lwsoptimize_specified = "0";
+if ($lwsoptimize_filebased_cache_options['state'] === "true" && !empty($lwsoptimize_filebased_cache_options['data']['specified'])) {
+    $lwsoptimize_specified = count($lwsoptimize_filebased_cache_options['data']['specified']);
 }
 
-$preload_state = $filebased_cache_options['data']['preload'] ?? "false";
-$preload_amount =  intval($filebased_cache_options['data']['preload_amount'] ?? 5);
-$preload_source = $filebased_cache_options['data']['preload_source'] ?? "auto";
-$next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
-$local_timestamp = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_preload), 'Y-m-d H:i:s');
+$lwsoptimize_preload_state = $lwsoptimize_filebased_cache_options['data']['preload'] ?? "false";
+$lwsoptimize_preload_amount =  intval($lwsoptimize_filebased_cache_options['data']['preload_amount'] ?? 5);
+$lwsoptimize_preload_source = $lwsoptimize_filebased_cache_options['data']['preload_source'] ?? "auto";
+$lwsoptimize_next_preload = wp_next_scheduled("lws_optimize_start_filebased_preload");
+$lwsoptimize_local_timestamp = get_date_from_gmt(gmdate('Y-m-d H:i:s', $lwsoptimize_next_preload), 'Y-m-d H:i:s');
 
-$autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
-$htaccess_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_rules");
-$htaccess_php_intermediary_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_php_intermediary");
-$memcached_force_off = false;
+$lwsoptimize_autopurge_options = $GLOBALS['lws_optimize']->lwsop_check_option("autopurge");
+$lwsoptimize_htaccess_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_rules");
+$lwsoptimize_htaccess_php_intermediary_options = $GLOBALS['lws_optimize']->lwsop_check_option("htaccess_php_intermediary");
+$lwsoptimize_memcached_force_off = false;
 ?>
 
 <div class="lwsop_bluebanner" style="justify-content: space-between;">
@@ -38,13 +38,13 @@ $memcached_force_off = false;
 </div>
 
 <div class="lwsop_contentblock_stats">
-    <?php foreach ($caches as $type => $cache) : ?>
-        <div class="lwsop_stat_block" id="<?php echo esc_attr($cache['id']); ?>">
-            <img src="<?php echo esc_url(plugins_url("images/{$cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($cache['image_alt']); ?>" width="<?php echo esc_attr($cache['width']); ?>" height="<?php echo esc_attr($cache['height']); ?>">
-            <span><?php echo esc_html($cache["title"]); ?></span>
+    <?php foreach ($lwsoptimize_caches as $type => $lwsoptimize_cache) : ?>
+        <div class="lwsop_stat_block" id="<?php echo esc_attr($lwsoptimize_cache['id']); ?>">
+            <img src="<?php echo esc_url(plugins_url("images/{$lwsoptimize_cache['image_file']}", __DIR__)) ?>" alt="<?php echo esc_attr($lwsoptimize_cache['image_alt']); ?>" width="<?php echo esc_attr($lwsoptimize_cache['width']); ?>" height="<?php echo esc_attr($lwsoptimize_cache['height']); ?>">
+            <span><?php echo esc_html($lwsoptimize_cache["title"]); ?></span>
             <div class="lwsop_stats_bold">
                 <span>
-                    <?php echo esc_html("{$cache['size']} / {$cache['amount']}"); ?>
+                    <?php echo esc_html("{$lwsoptimize_cache['size']} / {$lwsoptimize_cache['amount']}"); ?>
                 </span>
                 <span>
                     <?php esc_html_e('elements', 'lws-optimize'); ?>
@@ -64,7 +64,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <span><?php esc_html_e('We recommend using a server cron, which will execute tasks at a specified time and without hogging resources, no matter what is happening on your website.', 'lws-optimize'); ?></span>
         <span>
             <?php
-                switch ($used_cache) {
+                switch ($lwsoptimize_used_cache) {
                     case 'varnish':
                         esc_html_e('For more informations on how to setup server crons, follow this ', 'lws-optimize');
                         ?><a href="https://support.cpanel.net/hc/en-us/articles/10687844130199-How-to-replace-wp-cron-with-cron-job-without-WP-Toolkit" rel="noopener" target="_blank"><?php esc_html_e('documentation.', 'lws-optimize'); ?></a><?php
@@ -98,9 +98,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div class="lwsop_contentblock_fbcache_select">
             <span class="lwsop_contentblock_select_label"><?php esc_html_e('Cleanup interval for the cache: ', 'lws-optimize'); ?></span>
             <select name="lws_op_filebased_cache_timer" id="lws_op_filebased_cache_timer" name="lws_op_filebased_cache_timer" class="lwsop_contentblock_select">
-                <?php foreach ($GLOBALS['lws_optimize_cache_timestamps'] as $key => $list) : ?>
-                    <option value="<?php echo esc_attr($key); ?>" <?php echo $filebased_timer == esc_attr($key) ? esc_attr('selected') : ''; ?>>
-                        <?php echo esc_html($list[1]); ?>
+                <?php foreach ($GLOBALS['lws_optimize_cache_timestamps'] as $lwsoptimize_key => $lwsoptimize_list) : ?>
+                    <option value="<?php echo esc_attr($lwsoptimize_key); ?>" <?php echo $lwsoptimize_filebased_timer == esc_attr($lwsoptimize_key) ? esc_attr('selected') : ''; ?>>
+                        <?php echo esc_html($lwsoptimize_list[1]); ?>
                     </option>
                 <?php endforeach ?>
             </select>
@@ -108,7 +108,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox">
-            <input type="checkbox" name="lws_op_filebased_cache_manage" id="lws_op_filebased_cache_manage" <?php echo $filebased_cache_options['state'] == "true" ? esc_html("checked") : ""; ?>>
+            <input type="checkbox" name="lws_op_filebased_cache_manage" id="lws_op_filebased_cache_manage" <?php echo $lwsoptimize_filebased_cache_options['state'] == "true" ? esc_html("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -124,7 +124,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <?php esc_html_e('Memcached optimize the cache by stocking frequent requests in a database, improving the global performances.', 'lws-optimize'); ?>
         </div>
     </div>
-    <?php if ($memcached_force_off) : ?>
+    <?php if ($lwsoptimize_memcached_force_off) : ?>
         <div class="lwsop_contentblock_rightside custom">
             <label class="lwsop_checkbox" for="lws_open_memcached_lws_checkbox">
                 <input type="checkbox" name="" id="lws_open_memcached_lws_checkbox" data-toggle="modal" data-target="#lws_optimize_lws_memcached">
@@ -153,7 +153,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
-        <?php if ($used_cache == "unsupported" || $cache_state == "unsupported") : ?>
+        <?php if ($lwsoptimize_used_cache == "unsupported" || $lwsoptimize_cache_state == "unsupported") : ?>
             <button type="button" class="lwsop_blue_button" disabled>
                 <span>
                     <img src="<?php echo esc_url(plugins_url('images/supprimer.svg', __DIR__)) ?>" alt="Logo poubelle" width="20px">
@@ -177,7 +177,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 <?php echo esc_html__('Cache type: ', 'lws-optimize'); ?>
             </span>
             <span class="lws_optimize_conversion_bar_dynamic_element">
-                <?php switch ($used_cache) {
+                <?php switch ($lwsoptimize_used_cache) {
                     case 'varnish':
                         echo esc_html('Varnish Cache');
                         break;
@@ -197,7 +197,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                 <?php echo esc_html__('Cache status: ', 'lws-optimize'); ?>
             </span>
             <span class="lws_optimize_conversion_bar_dynamic_element">
-                <?php switch ($cache_state) {
+                <?php switch ($lwsoptimize_cache_state) {
                     case "false":
                         esc_html_e('Deactivated', 'lws-optimize');
                         break;
@@ -228,9 +228,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Cache is emptied smartly and automatically based on events on your WordPress website (page updated, ...)', 'lws-optimize'); ?>
         </div>
-        <?php if (!empty($specified) && $specified != "0") : ?>
+        <?php if (!empty($lwsoptimize_specified) && $lwsoptimize_specified != "0") : ?>
             <div class="lwsop_contentblock_specific_purge">
-                <span id="lwsop_specified_count"><?php echo esc_html($specified); ?></span> <?php esc_html_e(' URLs specifications currently defined, those pages will get purged with every purge', 'lws-optimize'); ?>
+                <span id="lwsop_specified_count"><?php echo esc_html($lwsoptimize_specified); ?></span> <?php esc_html_e(' URLs specifications currently defined, those pages will get purged with every purge', 'lws-optimize'); ?>
             </div>
         <?php endif ?>
         <div class="lwsop_contentblock_button_row">
@@ -253,7 +253,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_autopurge_check">
-            <input type="checkbox" name="lws_optimize_autopurge_check" id="lws_optimize_autopurge_check" <?php echo $autopurge_options['state'] === "true" ? esc_html("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_autopurge_check" id="lws_optimize_autopurge_check" <?php echo $lwsoptimize_autopurge_options['state'] === "true" ? esc_html("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -289,7 +289,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Using .htaccess rules to manage the caching of your website will result in a decreased memory usage by PHP, improving performances, as well as faster loading times than with the default method.', 'lws-optimize'); ?>
         </div>
-        <div id="lwsop_htaccess_no_intermediary_warning" class="lwop_alert lwop_alert_warning" style="margin-top: 10px; margin-left: 0; font-size: 13px; max-width: 900px; <?php echo ($htaccess_options['state'] !== "true" || $htaccess_php_intermediary_options['state'] === "true") ? 'display:none;' : ''; ?>">
+        <div id="lwsop_htaccess_no_intermediary_warning" class="lwop_alert lwop_alert_warning" style="margin-top: 10px; margin-left: 0; font-size: 13px; max-width: 900px; <?php echo ($lwsoptimize_htaccess_options['state'] !== "true" || $lwsoptimize_htaccess_php_intermediary_options['state'] === "true") ? 'display:none;' : ''; ?>">
             <i class="dashicons dashicons-warning"></i>
             <div>
                 <?php esc_html_e('Cache hit statistics will not be recorded while .htaccess caching is active without the PHP stats intermediary option enabled below.', 'lws-optimize'); ?>
@@ -298,13 +298,13 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_htaccess_rules_check">
-            <input type="checkbox" name="lws_optimize_htaccess_rules_check" id="lws_optimize_htaccess_rules_check" <?php echo $htaccess_options['state'] === "true" ? esc_html("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_htaccess_rules_check" id="lws_optimize_htaccess_rules_check" <?php echo $lwsoptimize_htaccess_options['state'] === "true" ? esc_html("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
 </div>
 
-<div class="lwsop_contentblock" id="lwsop_php_intermediary_block" <?php echo $htaccess_options['state'] !== "true" ? 'style="display:none"' : ''; ?>>
+<div class="lwsop_contentblock" id="lwsop_php_intermediary_block" <?php echo $lwsoptimize_htaccess_options['state'] !== "true" ? 'style="display:none"' : ''; ?>>
     <div class="lwsop_contentblock_leftside">
         <h2 class="lwsop_contentblock_title">
             <?php esc_html_e('PHP stats intermediary', 'lws-optimize'); ?>
@@ -322,7 +322,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_htaccess_php_intermediary_check">
-            <input type="checkbox" name="lws_optimize_htaccess_php_intermediary_check" id="lws_optimize_htaccess_php_intermediary_check" <?php echo $htaccess_php_intermediary_options['state'] === "true" ? esc_html("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_htaccess_php_intermediary_check" id="lws_optimize_htaccess_php_intermediary_check" <?php echo $lwsoptimize_htaccess_php_intermediary_options['state'] === "true" ? esc_html("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -369,7 +369,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <?php esc_html_e('Start preloading your website cache automatically and keep it up to date. Pages are guaranteed to be cached before the first user visit. Depending on the amount of pages to cache, it may take a while. Please be aware that the total amount of page may include dynamic pages that will not be cached, such as excluded URLs or WooCommerce checkout page.', 'lws-optimize'); ?>
         </div>
         <div class="lwsop_contentblock_fbcache_input_preload_block">
-            <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="1" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($preload_amount); ?>" onkeydown="return false">
+            <input class="lwsop_contentblock_fbcache_input_preload" type="number" min="1" max="15" name="lws_op_fb_cache_preload_amount" id="lws_op_fb_cache_preload_amount" value="<?php echo esc_attr($lwsoptimize_preload_amount); ?>" onkeydown="return false">
             <div class="lwsop_contentblock_input_preload_label"><?php esc_html_e('pages per minutes cached', 'lws-optimize'); ?></div>
         </div>
         <div class="lwsop_contentblock_fbcache_select">
@@ -379,14 +379,14 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             </span>
             <select name="lws_op_preload_source" id="lws_op_preload_source" class="lwsop_contentblock_select">
                 <?php
-                $preload_source_options = [
+                $lwsoptimize_preload_source_options = [
                     'auto'     => __('Automatic', 'lws-optimize'),
                     'sitemap'  => __('Sitemap', 'lws-optimize'),
                     'database' => __('Database', 'lws-optimize'),
                 ];
-                foreach ($preload_source_options as $preload_source_key => $preload_source_label) : ?>
-                    <option value="<?php echo esc_attr($preload_source_key); ?>" <?php echo $preload_source === $preload_source_key ? esc_attr('selected') : ''; ?>>
-                        <?php echo esc_html($preload_source_label); ?>
+                foreach ($lwsoptimize_preload_source_options as $lwsoptimize_preload_source_key => $lwsoptimize_preload_source_label) : ?>
+                    <option value="<?php echo esc_attr($lwsoptimize_preload_source_key); ?>" <?php echo $lwsoptimize_preload_source === $lwsoptimize_preload_source_key ? esc_attr('selected') : ''; ?>>
+                        <?php echo esc_html($lwsoptimize_preload_source_label); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -419,7 +419,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             });
         </script>
 
-        <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $preload_state == "false" ? esc_attr('hidden') : ''; ?>">
+        <div id="lwsop_preloading_status_block" class="lwsop_contentblock_fbcache_preload <?php echo $lwsoptimize_preload_state == "false" ? esc_attr('hidden') : ''; ?>">
             <span class="lwsop_contentblock_fbcache_preload_label">
                 <?php esc_html_e('Preloading status: ', 'lws-optimize'); ?>
                 <button id="lwsop_update_preloading_value" class="lws_optimize_image_conversion_refresh">
@@ -434,28 +434,28 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     <span class="lws_optimize_conversion_bar_element_title">
                         <?php echo esc_html__('Preloading state: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Done', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_current_preload_info"><?php echo $lwsoptimize_fb_preloaddata['state'] == "true" ? esc_html__('Ongoing', 'lws-optimize')  : esc_html__('Done', 'lws-optimize'); ?></span>
                 </div>
                 <div class="lws_optimize_conversion_bar_element">
                     <span class="lws_optimize_conversion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/horloge.svg', __DIR__)); ?>" alt="Logo Horloge" width="15px" height="15px">
                         <?php echo esc_html__('Next preloading: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_next_preload_info"><?php echo $next_preload ? esc_attr($local_timestamp) : esc_html__('/', 'lws-optimize'); ?></span>
+                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_next_preload_info"><?php echo $lwsoptimize_next_preload ? esc_attr($lwsoptimize_local_timestamp) : esc_html__('/', 'lws-optimize'); ?></span>
                 </div>
                 <div class="lws_optimize_conversion_bar_element">
                     <span class="lws_optimize_conversion_bar_element_title">
                         <img src="<?php echo esc_url(plugins_url('images/page.svg', __DIR__)); ?>" alt="Logo Page" width="15px" height="15px">
                         <?php esc_html_e('Page cached / Total pages: ', 'lws-optimize'); ?>
                     </span>
-                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_current_preload_done"><?php echo esc_html($fb_preloaddata['done'] . "/" . $fb_preloaddata['quantity']); ?></span>
+                    <span class="lws_optimize_conversion_bar_dynamic_element" id="lwsop_current_preload_done"><?php echo esc_html($lwsoptimize_fb_preloaddata['done'] . "/" . $lwsoptimize_fb_preloaddata['quantity']); ?></span>
                 </div>
             </div>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_preload_cache_check">
-            <input type="checkbox" name="lws_optimize_preload_cache_check" id="lws_optimize_preload_cache_check" <?php echo isset($config_array['filebased_cache']['preload']) && $config_array['filebased_cache']['preload'] == "true" ? esc_attr("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_preload_cache_check" id="lws_optimize_preload_cache_check" <?php echo isset($lwsoptimize_config_array['filebased_cache']['preload']) && $lwsoptimize_config_array['filebased_cache']['preload'] == "true" ? esc_attr("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -472,7 +472,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_cache_mobile_user_check">
-            <input type="checkbox" name="lws_optimize_cache_mobile_user_check" id="lws_optimize_cache_mobile_user_check" <?php echo isset($config_array['cache_mobile_user']) && $config_array['cache_mobile_user']['state'] == "true" ? esc_attr("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_cache_mobile_user_check" id="lws_optimize_cache_mobile_user_check" <?php echo isset($lwsoptimize_config_array['cache_mobile_user']) && $lwsoptimize_config_array['cache_mobile_user']['state'] == "true" ? esc_attr("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -491,7 +491,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_cache_logged_user_check">
-            <input type="checkbox" name="lws_optimize_cache_logged_user_check" id="lws_optimize_cache_logged_user_check" <?php echo isset($config_array['cache_logged_user']) && $config_array['cache_logged_user']['state'] == "true" ? esc_attr("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_cache_logged_user_check" id="lws_optimize_cache_logged_user_check" <?php echo isset($lwsoptimize_config_array['cache_logged_user']) && $lwsoptimize_config_array['cache_logged_user']['state'] == "true" ? esc_attr("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -510,7 +510,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_no_parameters_check">
-            <input type="checkbox" name="lws_optimize_no_parameters_check" id="lws_optimize_no_parameters_check" <?php echo isset($config_array['no_parameters']) && $config_array['no_parameters']['state'] == "true" ? esc_attr("checked") : ""; ?>>
+            <input type="checkbox" name="lws_optimize_no_parameters_check" id="lws_optimize_no_parameters_check" <?php echo isset($lwsoptimize_config_array['no_parameters']) && $lwsoptimize_config_array['no_parameters']['state'] == "true" ? esc_attr("checked") : ""; ?>>
             <span class="slider round"></span>
         </label>
     </div>

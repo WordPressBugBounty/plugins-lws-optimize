@@ -17,18 +17,18 @@
 </div>
 
 <?php
-$dir = wp_upload_dir();
-$file = $dir['basedir'] . '/lwsoptimize/debug.log';
-if (!file_exists($file)) {
-    $content = __('No log file found.', 'lws-optimize');
+$lwsoptimize_dir = wp_upload_dir();
+$lwsoptimize_file = $lwsoptimize_dir['basedir'] . '/lwsoptimize/debug.log';
+if (!file_exists($lwsoptimize_file)) {
+    $lwsoptimize_content = __('No log file found.', 'lws-optimize');
 } else {
-    $lines = file($file, FILE_IGNORE_NEW_LINES);
-    $content = $lines === false ? __('No log file found.', 'lws-optimize') : implode("\n", array_reverse($lines));
+    $lwsoptimize_lines = file($lwsoptimize_file, FILE_IGNORE_NEW_LINES);
+    $lwsoptimize_content = $lwsoptimize_lines === false ? __('No log file found.', 'lws-optimize') : implode("\n", array_reverse($lwsoptimize_lines));
 }
 ?>
 
 <div class="lwsop_contentblock">
-    <pre id="log_dir" style="max-height: 450px;"><?php echo esc_html($content); ?></pre>
+    <pre id="log_dir" style="max-height: 450px;"><?php echo esc_html($lwsoptimize_content); ?></pre>
 </div>
 
 <script>

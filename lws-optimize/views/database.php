@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-$first_bloc_array = array(
+$lwsoptimize_first_bloc_array = array(
     'maintenance_db' => array(
         'has_logo' => false,
         'title' => __('Programmed Database Maintenance', 'lws-optimize'),
@@ -31,7 +31,7 @@ $first_bloc_array = array(
     // ),
 );
 
-$maintenance_options = array(
+$lwsoptimize_maintenance_options = array(
     'myisam' => __('Database optimisation for MyISAM tables', 'lws-optimize'),
     'drafts' => __('Automatically remove drafts from posts and pages', 'lws-optimize'),
     'revisions' => __('Remove all revisions from posts and pages', 'lws-optimize'),
@@ -41,64 +41,64 @@ $maintenance_options = array(
     'expired_transients' => __('Remove all expired transients', 'lws-optimize')
 );
 
-foreach ($first_bloc_array as $key => $array) {
-    $first_bloc_array[$key]['state'] = isset($config_array[$key]['state']) && $config_array[$key]['state'] == "true" ? true : false;
+foreach ($lwsoptimize_first_bloc_array as $lwsoptimize_key => $lwsoptimize_array) {
+    $lwsoptimize_first_bloc_array[$lwsoptimize_key]['state'] = isset($lwsoptimize_config_array[$lwsoptimize_key]['state']) && $lwsoptimize_config_array[$lwsoptimize_key]['state'] == "true" ? true : false;
 }
 
 // if (!is_plugin_active("lws-cleaner/lws-cleaner.php")) {
-//     $first_bloc_array['lwscleaner']['state'] = false;
-//     $first_bloc_array['lwscleaner']['has_button'] = false;
+//     $lwsoptimize_first_bloc_array['lwscleaner']['state'] = false;
+//     $lwsoptimize_first_bloc_array['lwscleaner']['has_button'] = false;
 // } else {
-//     $first_bloc_array['lwscleaner']['state'] = true;
-//     $first_bloc_array['lwscleaner']['has_button'] = true;
+//     $lwsoptimize_first_bloc_array['lwscleaner']['state'] = true;
+//     $lwsoptimize_first_bloc_array['lwscleaner']['has_button'] = true;
 // }
 
 
-$next_scheduled_maintenance = wp_next_scheduled('lws_optimize_maintenance_db_weekly');
-if ($next_scheduled_maintenance) {
-    $next_scheduled_maintenance = get_date_from_gmt(gmdate('Y-m-d H:i:s', $next_scheduled_maintenance), 'Y-m-d H:i:s');
+$lwsoptimize_next_scheduled_maintenance = wp_next_scheduled('lws_optimize_maintenance_db_weekly');
+if ($lwsoptimize_next_scheduled_maintenance) {
+    $lwsoptimize_next_scheduled_maintenance = get_date_from_gmt(gmdate('Y-m-d H:i:s', $lwsoptimize_next_scheduled_maintenance), 'Y-m-d H:i:s');
 } else {
-    $next_scheduled_maintenance = "-";
+    $lwsoptimize_next_scheduled_maintenance = "-";
 }
 ?>
 
-<?php foreach ($first_bloc_array as $key => $data) : ?>
+<?php foreach ($lwsoptimize_first_bloc_array as $lwsoptimize_key => $lwsoptimize_data) : ?>
     <div class="lwsop_contentblock">
         <div class="lwsop_contentblock_leftside">
             <h2 class="lwsop_contentblock_title">
-                <?php if ($data['has_logo']) : ?>
-                    <img alt="<?php echo esc_html($data['logo_alt']); ?>" src="<?php echo esc_url(plugins_url('images/' . $data['logo'], __DIR__)); ?> " height="<?php echo esc_html($data['logo_size']['height']); ?>" width="<?php echo esc_html($data['logo_size']['width']); ?>">
+                <?php if ($lwsoptimize_data['has_logo']) : ?>
+                    <img alt="<?php echo esc_html($lwsoptimize_data['logo_alt']); ?>" src="<?php echo esc_url(plugins_url('images/' . $lwsoptimize_data['logo'], __DIR__)); ?> " height="<?php echo esc_html($lwsoptimize_data['logo_size']['height']); ?>" width="<?php echo esc_html($lwsoptimize_data['logo_size']['width']); ?>">
                 <?php endif ?>
-                <?php echo esc_html($data['title']); ?>
-                <?php if ($data['recommended']) : ?>
+                <?php echo esc_html($lwsoptimize_data['title']); ?>
+                <?php if ($lwsoptimize_data['recommended']) : ?>
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
                 <a href="https://aide.lws.fr/a/1891" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
             </h2>
             <div class="lwsop_contentblock_description">
-                <?php echo wp_kses($data['desc'], ['b' => []]); ?>
+                <?php echo wp_kses($lwsoptimize_data['desc'], ['b' => []]); ?>
             </div>
 
-            <?php if ($data['has_special_element_database']) : ?>
+            <?php if ($lwsoptimize_data['has_special_element_database']) : ?>
                 <div class="lwsop_contentblock_conversion_status" id="lwsop_database_cleaning_status">
                     <div>
                         <span><?php echo esc_html__('Next optimization: ', 'lws-optimize'); ?></span>
-                        <span id="lwsop_next_cleaning_db"><?php echo esc_html($next_scheduled_maintenance); ?></span>
+                        <span id="lwsop_next_cleaning_db"><?php echo esc_html($lwsoptimize_next_scheduled_maintenance); ?></span>
                     </div>
                 </div>
             <?php endif ?>
         </div>
-        <div class="lwsop_contentblock_rightside" <?php if ($key == "lwscleaner") : ?> id='lwsop_button_side' <?php endif; ?>>
-            <?php if ($data['has_button']) : ?>
-                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['button_id']); ?>" name="<?php echo esc_html($data['button_id']); ?>" <?php if ($key == "maintenance_db") : ?> data-toggle="modal" data-target="#lws_optimize_manage_maintenance_modal" <?php endif ?>>
+        <div class="lwsop_contentblock_rightside" <?php if ($lwsoptimize_key == "lwscleaner") : ?> id='lwsop_button_side' <?php endif; ?>>
+            <?php if ($lwsoptimize_data['has_button']) : ?>
+                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($lwsoptimize_data['title']); ?>" id="<?php echo esc_html($lwsoptimize_data['button_id']); ?>" name="<?php echo esc_html($lwsoptimize_data['button_id']); ?>" <?php if ($lwsoptimize_key == "maintenance_db") : ?> data-toggle="modal" data-target="#lws_optimize_manage_maintenance_modal" <?php endif ?>>
                     <span>
-                        <?php echo esc_html($data['button_title']); ?>
+                        <?php echo esc_html($lwsoptimize_data['button_title']); ?>
                     </span>
                 </button>
             <?php endif ?>
-            <?php if ($data['has_checkbox']) : ?>
+            <?php if ($lwsoptimize_data['has_checkbox']) : ?>
                 <label class="lwsop_checkbox">
-                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?>>
+                    <input type="checkbox" name="<?php echo esc_html($lwsoptimize_data['checkbox_id']); ?>" id="<?php echo esc_html($lwsoptimize_data['checkbox_id']); ?>" <?php echo $lwsoptimize_data['state'] ? esc_html('checked') : esc_html(''); ?>>
                     <span class="slider round"></span>
                 </label>
             <?php endif ?>
@@ -160,11 +160,11 @@ if ($next_scheduled_maintenance) {
                         </div>
                         <div class="lwsop_maintenance_db_options" id="lwsop_maintenance_db_options"></div>`;
 
-                        <?php foreach ($maintenance_options as $name => $desc) : ?>
+                        <?php foreach ($lwsoptimize_maintenance_options as $lwsoptimize_name => $lwsoptimize_desc) : ?>
                             document.getElementById('lwsop_maintenance_db_options').insertAdjacentHTML('beforeend', `
                                 <label class="lwsop_maintenance_checkbox">
-                                    <input type="checkbox" id="<?php echo esc_html($name); ?>" name="<?php echo esc_html($name); ?>">
-                                    <div><?php echo esc_html($desc); ?></div>
+                                    <input type="checkbox" id="<?php echo esc_html($lwsoptimize_name); ?>" name="<?php echo esc_html($lwsoptimize_name); ?>">
+                                    <div><?php echo esc_html($lwsoptimize_desc); ?></div>
                                 </label>
                             `);
                         <?php endforeach; ?>
@@ -189,12 +189,12 @@ if ($next_scheduled_maintenance) {
                             <?php echo wp_kses(__('Check tasks you wish to <b>automatically execute each week</b> to optimise your database.', 'lws-optimize'), ['b' => []]); ?>
                         </div>`;
 
-                        <?php foreach ($maintenance_options as $name => $desc) : ?>
+                        <?php foreach ($lwsoptimize_maintenance_options as $lwsoptimize_name => $lwsoptimize_desc) : ?>
                             form.insertAdjacentHTML('beforeend', `
                                 <div id="lwsop_maintenance_db_options">
                                     <label class="lwsop_maintenance_check_lab">
-                                        <input class="lwsop_maintenance_check" type="checkbox" id="<?php echo esc_html($name); ?>" name="<?php echo esc_html($name); ?>">
-                                        <div class="lwsop_maintenance_check_text"><?php echo esc_html($desc); ?></div>
+                                        <input class="lwsop_maintenance_check" type="checkbox" id="<?php echo esc_html($lwsoptimize_name); ?>" name="<?php echo esc_html($lwsoptimize_name); ?>">
+                                        <div class="lwsop_maintenance_check_text"><?php echo esc_html($lwsoptimize_desc); ?></div>
                                     </label>
                                 </div>
                             `);

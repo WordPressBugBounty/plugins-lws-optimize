@@ -41,9 +41,9 @@ class LwsOptimizeFileCache
     public function lwsop_clear_current_page_cache()
     {
         if (!function_exists("lws_optimize_delete_directory")) {
-            function lws_optimize_delete_directory($dir, $stats = false)
+            function lws_optimize_delete_directory($dir, $lwsoptimize_stats = false)
             {
-                global $stats;
+                global $lwsoptimize_stats;
                 if (!file_exists($dir)) {
                     return false;
                 }
@@ -58,19 +58,19 @@ class LwsOptimizeFileCache
                         } else {
                             // If the file being deleted is from the LWSOptimize Cache, update the stats
                             // Stats will be updated depending on the file type (html/mobile_html/css/js)
-                            if (preg_match("/\/cache\/lwsoptimize\//i", $dir) && $stats !== false && is_array($stats)) {
+                            if (preg_match("/\/cache\/lwsoptimize\//i", $dir) && $lwsoptimize_stats !== false && is_array($lwsoptimize_stats)) {
                                 if (preg_match("/\.html/i", $file)) {
-                                    $stats['desktop']['amount'] -= 1;
-                                    $stats['desktop']['size'] -= filesize("$dir/$file");
+                                    $lwsoptimize_stats['desktop']['amount'] -= 1;
+                                    $lwsoptimize_stats['desktop']['size'] -= filesize("$dir/$file");
                                 } elseif (preg_match("/\/cache-mobile\//i", $dir)) {
-                                    $stats['mobile']['amount'] -= 1;
-                                    $stats['mobile']['size'] -= filesize("$dir/$file");
+                                    $lwsoptimize_stats['mobile']['amount'] -= 1;
+                                    $lwsoptimize_stats['mobile']['size'] -= filesize("$dir/$file");
                                 } elseif (preg_match("/\.(min\.css|css)/i", $file)) {
-                                    $stats['css']['amount'] -= 1;
-                                    $stats['css']['size'] -= filesize("$dir/$file");
+                                    $lwsoptimize_stats['css']['amount'] -= 1;
+                                    $lwsoptimize_stats['css']['size'] -= filesize("$dir/$file");
                                 } elseif (preg_match("/\.(min\.js|js)/i", $file)) {
-                                    $stats['js']['amount'] -= 1;
-                                    $stats['js']['size'] -= filesize("$dir/$file");
+                                    $lwsoptimize_stats['js']['amount'] -= 1;
+                                    $lwsoptimize_stats['js']['size'] -= filesize("$dir/$file");
                                 }
                             }
                         }
@@ -83,15 +83,15 @@ class LwsOptimizeFileCache
             }
         }
 
-        global $stats;
-        $stats = get_option('lws_optimize_cache_statistics', [
+        global $lwsoptimize_stats;
+        $lwsoptimize_stats = get_option('lws_optimize_cache_statistics', [
             'desktop' => ['amount' => 0, 'size' => 0],
             'mobile' => ['amount' => 0, 'size' => 0],
             'css' => ['amount' => 0, 'size' => 0],
             'js' => ['amount' => 0, 'size' => 0],
         ]);
 
-        lws_optimize_delete_directory($this->cache_directory, $stats);
+        lws_optimize_delete_directory($this->cache_directory, $lwsoptimize_stats);
     }
 
     public function lwsop_launch_cache()

@@ -41,6 +41,109 @@ class LwsOptimizeCSSManager
     }
 
     /**
+     * Byte ranges of every <noscript> block in $snapshot.
+     *
+     * Tags inside <noscript> are a no-JS fallback: rewriting them is pointless (the browser
+     * ignores the block whenever JS is on) and actively harmful, because a duplicated href
+     * would then be seen twice by the combiner. Ranges are always computed from the same
+     * pre-mutation snapshot the element list came from, so the offsets stay valid even though
+     * $this->content is rewritten as we go.
+     */
+    private function get_noscript_ranges($snapshot)
+    {
+        $ranges = [];
+        if (preg_match_all('#<noscript\b[^>]*>.*?</noscript>#is', $snapshot, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $match) {
+                $ranges[] = [$match[1], $match[1] + strlen($match[0])];
+            }
+        }
+        return $ranges;
+    }
+
+    private function is_in_noscript($offset, array $ranges)
+    {
+        foreach ($ranges as $range) {
+            if ($offset >= $range[0] && $offset < $range[1]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a <link> is loaded off the critical path via the media="print" + onload swap
+     * (this plugin's own Critical CSS, SureCookie, and most other async-CSS implementations).
+     *
+     * Such a tag must never be rebuilt from scratch: dropping the onload leaves it stuck on
+     * media="print", so the stylesheet downloads but is never applied to the screen.
+     *
+     * Keyed on onload rather than media="print" so that a genuine print-only stylesheet (no
+     * onload) stays combinable into a normal print batch.
+     */
+    private function is_async_stylesheet($element)
+    {
+        return (bool) preg_match('/\bonload\s*=/i', $element);
+    }
+
+    /**
+     * Swap only the href value of an existing tag, preserving every other attribute
+     * (onload, id, media, crossorigin, integrity, data-*, ...).
+     *
+     * A callback is used instead of a replacement string so that $ or backslashes in the URL
+     * are not interpreted as backreferences.
+     */
+    private function replace_href($element, $new_url)
+    {
+        return preg_replace_callback(
+            '/(\bhref\s*=\s*)([\'"])[^\'"]*\2/i',
+            function ($matches) use ($new_url) {
+                return $matches[1] . $matches[2] . $new_url . $matches[2];
+            },
+            $element,
+            1
+        );
+    }
+
+    /**
+     * Build the <link> for a combined file. Async batches are re-emitted with the same
+     * media="print" + onload + <noscript> shape they had before combining, mirroring
+     * LwsOptimizeCriticalCSSManager::async_load_non_critical_css().
+     */
+    private function build_combined_link($url, $media, $is_async)
+    {
+        if (!$is_async) {
+            return "<link rel='stylesheet' href='$url' media='$media'>";
+        }
+
+        return "<link rel='stylesheet' href='$url' media='print' onload=\"this.media='all';this.onload=null;\">"
+            . "<noscript><link rel='stylesheet' href='$url' media='all'></noscript>";
+    }
+
+    /**
+     * Combine the pending batch and return the markup that should replace it, or null when
+     * there is nothing to emit. Files that could not be combined are re-emitted individually,
+     * keeping the async wrapper when the batch was async.
+     */
+    private function build_batch_markup(array $links, $media, $is_async)
+    {
+        if (empty($links)) {
+            return null;
+        }
+
+        $file_url = $this->combine_current_css($links);
+        if (empty($file_url['final_url']) || $file_url['final_url'] === false) {
+            return null;
+        }
+
+        $markup = '';
+        foreach ($file_url['problematic'] as $problem_file) {
+            $markup .= $this->build_combined_link($problem_file, $media, $is_async) . "\n";
+        }
+
+        return $markup . $this->build_combined_link($file_url['final_url'], $media, $is_async);
+    }
+
+    /**
      * Combine all <link> tags into fewer files to speed up loading times and reducing the weight of the page
      */
     public function combine_css_update()
@@ -49,16 +152,30 @@ class LwsOptimizeCSSManager
             return false;
         }
 
-        // Get all <link> and <style> tags
-        preg_match_all("/(<link\s*[^>]*+>|<style\s*.*?<\/style>)/xs", $this->content, $matches);
+        // Get all <link> and <style> tags. Offsets are captured so that tags sitting inside a
+        // <noscript> fallback can be skipped; both the element list and the <noscript> ranges
+        // are derived from this same snapshot, taken before any rewriting happens.
+        $snapshot = $this->content;
+        $noscript_ranges = $this->get_noscript_ranges($snapshot);
+        preg_match_all("/(<link\s*[^>]*+>|<style\s*.*?<\/style>)/xs", $snapshot, $matches, PREG_OFFSET_CAPTURE);
 
         $current_links = [];
         $current_media = false;
+        $current_async = false;
         $last_removed_href = null; // href of the last link whose placeholder comment was inserted
 
         $elements = $matches[0];
         // Loop through each tag
-        foreach ($elements as $key => $element) {
+        foreach ($elements as $entry) {
+            $element = $entry[0];
+            $offset = $entry[1];
+
+            // Never touch the no-JS fallback; it is invisible whenever JS is enabled and its
+            // href usually duplicates the async tag right before it.
+            if ($this->is_in_noscript($offset, $noscript_ranges)) {
+                continue;
+            }
+
             // If it is a <link>, get the attributes and proceed with the verifications
             // If the <link> is to be combined, add it to the current array
             // Once we reach an incompatible <link> or a <style>, we combine the <link> and empty the array to start again with another batch of <link>
@@ -79,115 +196,78 @@ class LwsOptimizeCSSManager
                 $type = trim($type[1]);
 
 
+                $is_async = $this->is_async_stylesheet($element);
+
                 if ($rel !== "stylesheet" || $this->check_for_exclusion($href, "combine")) {
-                    if (!empty($current_links)) {
-                        $file_url = $this->combine_current_css($current_links);
-                        if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                            $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
-
-                            $old_links = '';
-
-                            foreach ($file_url['problematic'] as $problem_file) {
-                                $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
-                            }
-
-                            $this->content = str_replace($element, "$old_links\n$newLink\n$element", $this->content);
-                        }
+                    // Flush the pending batch in front of this link, which stays untouched.
+                    $markup = $this->build_batch_markup($current_links, $current_media, $current_async);
+                    if ($markup !== null) {
+                        $this->content = str_replace($element, "$markup\n$element", $this->content);
                     }
-
 
                     $current_links = [];
                     $current_media = false;
+                    $current_async = false;
                     continue;
                 }
 
-                // Stylesheets with the same media will get combined together. We store the link's media as the $current_media if it is empty
-                if (!$current_media) {
+                // Stylesheets sharing a batch key get combined together. Async stylesheets are
+                // batched separately from render-blocking ones: they all carry media="print" but
+                // must be re-emitted with the onload swap, which a plain print batch must not get.
+                if ($current_media === false) {
                     $current_media = $media;
+                    $current_async = $is_async;
                 }
 
-                // If the link's media is the same as the $current_media, add it to the array
-                if ($media == $current_media) {
+                // If the link belongs to the current batch, add it to the array
+                if ($media == $current_media && $is_async === $current_async) {
                     $current_links[] = $href;
                     $this->content = str_replace($element, "<!-- Removed $href-->", $this->content);
                     $last_removed_href = $href;
                 } else {
-                    // Combine the links stored
-                    if (!empty($current_links)) {
-                        $file_url = $this->combine_current_css($current_links);
+                    // The batch key changed: flush what we have *before* this link, then start a
+                    // new batch with it. This link is a member of the next batch, so it is
+                    // replaced by a placeholder just like any other batched link - overwriting it
+                    // outright would drop its stylesheet from the page entirely.
+                    $markup = $this->build_batch_markup($current_links, $current_media, $current_async);
 
-                        if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                            // Create a new link with the newly combined URL and add it to the DOM
-                            $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
+                    $this->content = str_replace(
+                        $element,
+                        $markup !== null ? "$markup\n<!-- Removed $href-->" : "<!-- Removed $href-->",
+                        $this->content
+                    );
+                    $last_removed_href = $href;
 
-                            $old_links = '';
-
-                            foreach ($file_url['problematic'] as $problem_file) {
-                                $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
-                            }
-
-                            $this->content = str_replace($element, "<!-- Removed (2) $href -->\n$old_links\n$newLink", $this->content);
-                        }
-                    }
-
-                    // Empty the array and add in the current <link> being observed.
-                    // Note: $element was already consumed above by the (2) replacement;
-                    // $last_removed_href is not updated here since no plain placeholder was inserted.
-                    $current_links = [];
-                    $current_links[] = $href;
+                    // Empty the array and add in the current <link> being observed
+                    $current_links = [$href];
                     $current_media = $media;
+                    $current_async = $is_async;
                 }
             }
             // In case of a <style>, we add it the current <link> to the DOM before the style and empty the array
             elseif (substr($element, 0, 6) == "<style") {
 
-                if (!empty($current_links)) {
-                    $file_url = $this->combine_current_css($current_links);
-                    if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                        $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
-
-                        $old_links = '';
-
-                        foreach ($file_url['problematic'] as $problem_file) {
-                            $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
-                        }
-
-                        $this->content = str_replace($element, "$old_links\n$newLink\n$element", $this->content);
-                    }
+                $markup = $this->build_batch_markup($current_links, $current_media, $current_async);
+                if ($markup !== null) {
+                    $this->content = str_replace($element, "$markup\n$element", $this->content);
                 }
 
                 $current_links = [];
                 $current_media = false;
+                $current_async = false;
             }
+        }
 
-            // If we reached the last link, add what is currently in the array to the DOM
-            if ($key + 1 == count($elements)) {
-                // Combine the links stored
-                if (!empty($current_links)) {
-                    $file_url = $this->combine_current_css($current_links);
-                    if (!empty($file_url['final_url']) && $file_url['final_url'] !== false) {
-                        // Create a new link with the newly combined URL and add it to the DOM
-                        $newLink = "<link rel='stylesheet' href='{$file_url['final_url']}' media='$current_media'>";
-
-                        $old_links = '';
-
-                        foreach ($file_url['problematic'] as $problem_file) {
-                            $old_links .= "<link rel='stylesheet' href='$problem_file' media='$current_media'>\n";
-                        }
-
-                        if ($last_removed_href !== null) {
-                            $this->content = str_replace(
-                                "<!-- Removed $last_removed_href-->",
-                                "<!-- Removed $last_removed_href -->\n$old_links\n$newLink",
-                                $this->content
-                            );
-                        }
-                    }
-                }
-
-                $current_links = [];
-                $current_media = false;
-            }
+        // Flush whatever is left once every tag has been seen. This runs after the loop rather
+        // than on its last iteration, so a trailing skipped tag (e.g. a <noscript> fallback)
+        // cannot swallow the final batch.
+        $markup = $this->build_batch_markup($current_links, $current_media, $current_async);
+        if ($markup !== null && $last_removed_href !== null) {
+            $this->content = str_replace(
+                "<!-- Removed $last_removed_href-->",
+                "<!-- Removed $last_removed_href -->\n$markup",
+                $this->content
+            );
         }
 
         return ['html' => $this->content, 'files' => $this->files];
@@ -410,13 +490,22 @@ class LwsOptimizeCSSManager
             return false;
         }
 
-        // Get all <link> tags
-        preg_match_all("/<link\s*[^>]*+>/xs", $this->content, $matches);
+        // Get all <link> tags. Offsets are captured so that tags inside a <noscript> fallback
+        // can be skipped; both lists come from the same snapshot, taken before any rewriting.
+        $snapshot = $this->content;
+        $noscript_ranges = $this->get_noscript_ranges($snapshot);
+        preg_match_all("/<link\s*[^>]*+>/xs", $snapshot, $matches, PREG_OFFSET_CAPTURE);
 
         $elements = $matches[0];
         // Loop through the <link>, get their attributes and verify if we have to minify them
         // Then we minify it and replace the old URL by the minified one
-        foreach ($elements as $element) {
+        foreach ($elements as $entry) {
+            $element = $entry[0];
+
+            if ($this->is_in_noscript($entry[1], $noscript_ranges)) {
+                continue;
+            }
+
             if (substr($element, 0, 5) == "<link") {
 
                 preg_match("/media\=[\'\"]([^\'\"]+)[\'\"]/", $element, $media);
@@ -529,8 +618,9 @@ class LwsOptimizeCSSManager
                         touch($path);
                     }
                 } else {
-                    // File already exists — skip regeneration but still swap the link to the cached URL
-                    $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
+                    // File already exists — skip regeneration but still swap the link to the cached URL.
+                    // Only the href is rewritten, so onload/id/media and any other attribute survive.
+                    $newLink = $this->replace_href($element, $path_url);
                     $this->content = str_replace($element, $newLink, $this->content);
                     continue;
                 }
@@ -556,8 +646,11 @@ class LwsOptimizeCSSManager
                         $this->files['file'] += 1;
                         $this->files['size'] += filesize($path) ?? 0;
 
-                        // Create a new link with the newly combined URL and add it to the DOM
-                        $newLink = "<link rel='stylesheet' href='$path_url' media='$media'>";
+                        // Point the existing link at the minified file. Only the href is
+                        // rewritten so that every other attribute survives — in particular the
+                        // onload of an async media="print" stylesheet, without which the file
+                        // would stay print-only and never apply to the screen.
+                        $newLink = $this->replace_href($element, $path_url);
                         $this->content = str_replace($element, $newLink, $this->content);
                     }
                 }
@@ -733,6 +826,14 @@ class LwsOptimizeCSSManager
             $comments = $matches[0] ? $matches[0] : [];
             $quoted_url = preg_quote($url, '~');
             foreach ($comments as $comment) {
+                // Skip the placeholders combine_css_update() writes itself: they embed the href of
+                // every link already batched, so a URL appearing twice in the page (typically an
+                // async link and its <noscript> twin) would otherwise self-exclude on the second
+                // occurrence and be emitted in the wrong place.
+                if (preg_match('/^<!--\s*Removed\s/i', $comment)) {
+                    continue;
+                }
+
                 if (preg_match("~$quoted_url~xs", $comment)) {
                     return true;
                 }

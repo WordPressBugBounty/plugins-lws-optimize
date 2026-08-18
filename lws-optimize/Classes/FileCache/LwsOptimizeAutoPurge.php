@@ -16,14 +16,6 @@ class LwsOptimizeAutoPurge
         // Betheme compatibility
         add_action('wp_ajax_updatevbview', [$this, 'lwsop_remove_cache_post_change_betheme'], 10, 0);
 
-        // WooCommerce cart hooks - consolidated
-        if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-            add_action('woocommerce_add_to_cart', [$this, 'lwsop_remove_fb_cache_on_cart_update'], 10, 0);
-            add_action('woocommerce_cart_item_removed', [$this, 'lwsop_remove_fb_cache_on_cart_update'], 10, 0);
-            add_action('woocommerce_cart_item_restored', [$this, 'lwsop_remove_fb_cache_on_cart_update'], 10, 0);
-            add_action('woocommerce_after_cart_item_quantity_update', [$this, 'lwsop_remove_fb_cache_on_cart_update'], 10, 0);
-        }
-
         add_action('deleted_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
         add_action('trashed_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
         add_action('untrashed_post', [$this, 'lwsop_remove_cache_post_change_specific'], 10, 2);
@@ -35,6 +27,15 @@ class LwsOptimizeAutoPurge
     public function lwsop_remove_cache_customize_saved($manager) {
         apply_filters("lws_optimize_clear_all_filebased_cache", "customize_save_after");
     }
+
+    // Note: WooCommerce cart hooks (add_to_cart, cart_item_removed,
+    // cart_item_restored, after_cart_item_quantity_update) intentionally do
+    // NOT purge anything here. Cart/checkout/receipt/confirmation/my-account
+    // pages are already excluded from the file-based cache (see
+    // LwsOptimizeFileCache::lwsop_page_to_ignore()), so there was never
+    // anything to purge for them, while the purge itself was firing a
+    // site-wide edge-cache purge + opcache_reset() + wp_cache_flush() on
+    // every cart action — see readme/changelog for details.
 
     public function purge_specified_url()
     {
@@ -69,10 +70,38 @@ class LwsOptimizeAutoPurge
     }
 
     /**
+     * Post types/states that must never trigger a cache purge on their own
+     * (e.g. attachments are updated several times in a row by the media
+     * uploader, which would otherwise cause repeated full purges).
+     */
+    private function lwsop_should_skip_purge_for_post($post_id, $post)
+    {
+        $excluded_post_types = ['attachment', 'revision', 'nav_menu_item'];
+
+        if (!$post || in_array($post->post_type, $excluded_post_types, true)) {
+            return true;
+        }
+
+        if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+            return true;
+        }
+
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Clear cache whenever a post is modified
      */
     public function lwsop_remove_cache_post_change($post_id, $post)
     {
+        if ($this->lwsop_should_skip_purge_for_post($post_id, $post)) {
+            return;
+        }
+
         $action = current_filter();
 
         // If WooCommerce is active, then remove the shop cache when adding/modifying new products
@@ -96,7 +125,7 @@ class LwsOptimizeAutoPurge
     {
         $post = get_post($post_id);
 
-        if ($post) {
+        if ($post && !$this->lwsop_should_skip_purge_for_post($post_id, $post)) {
             $post_name = site_url() . "/" . $post->post_name;
             // Remove '__trashed' suffix if present
             if (strpos($post_name, '__trashed') !== false) {
@@ -149,24 +178,4 @@ class LwsOptimizeAutoPurge
         apply_filters("lws_optimize_clear_filebased_cache", $uri, $action, true);
     }
 
-    /**
-     * WooCommerce-specific actions ; Remove the cache for the checkout page and the cart page when the later is modified
-     */
-    public function lwsop_remove_fb_cache_on_cart_update()
-    {
-        if (in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) {
-            $cart_id = \wc_get_page_id('cart');
-            $checkout_id = \wc_get_page_id('checkout');
-
-            $uri = get_permalink($cart_id);
-            $uri_checkout = get_permalink($checkout_id);
-
-            $action = current_filter();
-
-            apply_filters("lws_optimize_clear_filebased_cache", $uri, $action . "_woocommerce", true);
-            apply_filters("lws_optimize_clear_filebased_cache", $uri_checkout, $action . "_woocommerce", true);
-
-            $this->purge_specified_url();
-        }
-    }
 }

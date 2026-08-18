@@ -12,12 +12,12 @@
 </div>
 
 <div>
-    <?php foreach ($plugins as $slug => $plugin) : ?>
+    <?php foreach ($plugins as $lwsoptimize_slug => $plugin) : ?>
         <div class="lws_op_block_plugin_in_page">
             <div class="lws_op_text_plugin_left">
                 <h3 class="lws_op_title_plugin">
                     <img style="vertical-align:top; margin-right:5px"
-                        src="<?php echo esc_url(plugins_url('images/plugin_' . $slug . '.svg', __DIR__)) ?>"
+                        src="<?php echo esc_url(plugins_url('images/plugin_' . $lwsoptimize_slug . '.svg', __DIR__)) ?>"
                         alt="" width="30px" height="30px">
                     <?php echo esc_html($plugin[0]); ?>
                     <?php if ($plugin[2]) : ?>
@@ -31,8 +31,8 @@
             </div>
 
             <button class="lws_op_button_ad_block lws_op_plugin_button_right" onclick="install_plugin(this)"
-                id="<?php echo esc_attr('bis_' . $slug); ?>"
-                value="<?php echo esc_attr($slug); ?>">
+                id="<?php echo esc_attr('bis_' . $lwsoptimize_slug); ?>"
+                value="<?php echo esc_attr($lwsoptimize_slug); ?>">
                 <span>
                     <img style="vertical-align:sub; margin-right:5px"
                         src="<?php echo esc_url(plugins_url('images/securise.svg', __DIR__)) ?>"

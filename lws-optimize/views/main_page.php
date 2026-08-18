@@ -12,31 +12,31 @@ function lwsOpSizeConvert($size)
 }
 
 // Fetch the configuration for each elements of LWSOptimize
-$config_array = get_option('lws_optimize_config_array', []);
+$lwsoptimize_config_array = get_option('lws_optimize_config_array', []);
 
 // Defaults so these stay defined for the shared footer <script> block (below,
 // rendered on every $_GET['page'] branch) even when the dashboard/coverage
 // block that normally computes them (page === 'lws-op-config') doesn't run.
-$preload_on   = ($config_array['filebased_cache']['preload'] ?? 'false') === 'true';
-$cov_complete = false;
+$lwsoptimize_preload_on   = ($lwsoptimize_config_array['filebased_cache']['preload'] ?? 'false') === 'true';
+$lwsoptimize_cov_complete = false;
 
-$personnalized = $config_array['personnalized'] ?? "false";
-$autosetup  = $config_array['autosetup_type'] ?? "essential";
-if (!in_array($autosetup, ['essential', 'optimized', 'max'])) {
-    $autosetup = "essential";
+$lwsoptimize_personnalized = $lwsoptimize_config_array['personnalized'] ?? "false";
+$lwsoptimize_autosetup  = $lwsoptimize_config_array['autosetup_type'] ?? "essential";
+if (!in_array($lwsoptimize_autosetup, ['essential', 'optimized', 'max'])) {
+    $lwsoptimize_autosetup = "essential";
 }
 
 // Check whether the plugin is deactivated temporarily or not
-$is_deactivated = get_option('lws_optimize_deactivate_temporarily');
-if ($is_deactivated) {
-    $time = $is_deactivated - time();
-    if ($time > 0) {
-        $is_deactivated = $time . __(' seconds', 'lws-optimize');
+$lwsoptimize_is_deactivated = get_option('lws_optimize_deactivate_temporarily');
+if ($lwsoptimize_is_deactivated) {
+    $lwsoptimize_time = $lwsoptimize_is_deactivated - time();
+    if ($lwsoptimize_time > 0) {
+        $lwsoptimize_is_deactivated = $lwsoptimize_time . __(' seconds', 'lws-optimize');
     }
 }
 
 // Tabs to show
-$tabs_list = array(
+$lwsoptimize_tabs_list = array(
     array('frontend', __('Frontend', 'lws-optimize')),
     array('caching', __('Caching', 'lws-optimize')),
     array('medias', __('Medias', 'lws-optimize')),
@@ -49,7 +49,7 @@ $tabs_list = array(
 );
 
 // Options that will be shown in the 3 tabs of the table
-$essential_options = [
+$lwsoptimize_essential_options = [
     'filecache' => [
         'name' => __('File caching', 'lws-optimize'),
         'description' => __('Reduce loading times and alleviate the load on the server, boosting performances', 'lws-optimize'),
@@ -92,7 +92,7 @@ $essential_options = [
     ],
 ];
 
-$optimized_options = [
+$lwsoptimize_optimized_options = [
     'combine_css' => [
         'name' => __('CSS Combination', 'lws-optimize'),
         'description' => __('Combine CSS files together to reduce the number of requests made to the server', 'lws-optimize'),
@@ -130,7 +130,7 @@ $optimized_options = [
     ],
 ];
 
-$max_options = [
+$lwsoptimize_max_options = [
     'deactivate_emoji' => [
         'name' => __('Emoji Removal', 'lws-optimize'),
         'description' => __('Remove the emoji script from your website to reduce loading times', 'lws-optimize'),
@@ -159,109 +159,111 @@ $max_options = [
 ];
 
 // Check whether Memcached id available on this hosting or not.
-$memcached_locked = false;
-$memcache_state = false;
+$lwsoptimize_memcached_locked = false;
+$lwsoptimize_memcache_state = false;
 
 if (class_exists('Memcached')) {
-    $memcached = new Memcached();
-    if (empty($memcached->getServerList())) {
-        $memcached->addServer('localhost', 11211);
+    $lwsoptimize_memcached = new Memcached();
+    if (empty($lwsoptimize_memcached->getServerList())) {
+        $lwsoptimize_memcached->addServer('localhost', 11211);
     }
 
-    if ($memcached->getVersion() === false) {
-        $memcached_locked = true;
+    if ($lwsoptimize_memcached->getVersion() === false) {
+        $lwsoptimize_memcached_locked = true;
     } else {
-        $memcache_state = true;
+        $lwsoptimize_memcache_state = true;
     }
 }
 
-$filecache_state = $config_array["filebased_cache"]['state'] ? $config_array['filebased_cache']['state'] : "false";
+$lwsoptimize_filecache_state = $lwsoptimize_config_array["filebased_cache"]['state'] ? $lwsoptimize_config_array['filebased_cache']['state'] : "false";
 
 // Save whether Memcached server is actually reachable (before the config-state override below).
 // true  → PHP class exists + server responds → CAN be activated
 // false → either PHP extension missing or server unreachable → CANNOT be activated
-$memcache_available = $memcache_state;
+$lwsoptimize_memcache_available = $lwsoptimize_memcache_state;
 
 // Build a human-readable reason for why Memcached cannot be activated (used in the UI below).
 if (!class_exists('Memcached')) {
-    $memcache_unavailable_reason = __("The PHP « Memcached » extension is not installed on this server. Contact your hosting provider to enable it.", 'lws-optimize');
-} elseif ($memcached_locked) {
-    $memcache_unavailable_reason = __("The Memcached server is not reachable (localhost:11211). The service may be stopped or blocked by the firewall. Contact your hosting provider.", 'lws-optimize');
+    $lwsoptimize_memcache_unavailable_reason = __("The PHP « Memcached » extension is not installed on this server. Contact your hosting provider to enable it.", 'lws-optimize');
+} elseif ($lwsoptimize_memcached_locked) {
+    $lwsoptimize_memcache_unavailable_reason = __("The Memcached server is not reachable (localhost:11211). The service may be stopped or blocked by the firewall. Contact your hosting provider.", 'lws-optimize');
 } else {
-    $memcache_unavailable_reason = '';
+    $lwsoptimize_memcache_unavailable_reason = '';
 }
 
 // Get the state of the Memcached option, checking for the optimize option and the module state
-$memcache_state = ($memcache_state && isset($config_array["memcached"]['state']) && $config_array["memcached"]['state'] == "true") ? true : false;
+$lwsoptimize_memcache_state = ($lwsoptimize_memcache_state && isset($lwsoptimize_config_array["memcached"]['state']) && $lwsoptimize_config_array["memcached"]['state'] == "true") ? true : false;
 
 // Check server cache state using environment variables
-$cache_state = null;
-$used_cache = "unsupported";
-$clean_used_cache = "";
+$lwsoptimize_cache_state = null;
+$lwsoptimize_used_cache = "unsupported";
+$lwsoptimize_clean_used_cache = "";
 
 // Check for LWSCache
 if (!empty($_SERVER['lwscache']) || !empty($_ENV['lwscache'])) {
-    $used_cache = "lws";
-    $clean_used_cache = "LWSCache";
-    $server_value = !empty($_SERVER['lwscache']) ? $_SERVER['lwscache'] : $_ENV['lwscache'];
-    $cache_state = (strtolower($server_value) == "on" || $server_value == "1" || $server_value === true) ? "true" : "false";
+    $lwsoptimize_used_cache = "lws";
+    $lwsoptimize_clean_used_cache = "LWSCache";
+    $lwsoptimize_server_value = !empty($_SERVER['lwscache']) ? sanitize_text_field(wp_unslash($_SERVER['lwscache'])) : sanitize_text_field(wp_unslash($_ENV['lwscache']));
+    $lwsoptimize_cache_state = (strtolower($lwsoptimize_server_value) == "on" || $lwsoptimize_server_value == "1" || $lwsoptimize_server_value === true) ? "true" : "false";
 }
 // Check for Varnish cache
 elseif (!empty($_SERVER['HTTP_X_VARNISH'])) {
-    $used_cache = "varnish";
-    $clean_used_cache = "VarnishCache";
+    $lwsoptimize_used_cache = "varnish";
+    $lwsoptimize_clean_used_cache = "VarnishCache";
     // Check if Varnish is active through any of the possible headers
-    foreach (['HTTP_X_CACHE_ENABLED', 'HTTP_EDGE_CACHE_ENGINE_ENABLED', 'HTTP_EDGE_CACHE_ENGINE_ENABLE'] as $header) {
-        if (!empty($_SERVER[$header])) {
-            $cache_state = ($_SERVER[$header] == "1" || strtolower($_SERVER[$header]) == "on" || $_SERVER[$header] === true) ? "true" : "false";
+    foreach (['HTTP_X_CACHE_ENABLED', 'HTTP_EDGE_CACHE_ENGINE_ENABLED', 'HTTP_EDGE_CACHE_ENGINE_ENABLE'] as $lwsoptimize_header) {
+        if (!empty($_SERVER[$lwsoptimize_header])) {
+            $lwsoptimize_header_value = sanitize_text_field(wp_unslash($_SERVER[$lwsoptimize_header]));
+            $lwsoptimize_cache_state = ($lwsoptimize_header_value == "1" || strtolower($lwsoptimize_header_value) == "on" || $lwsoptimize_header_value === true) ? "true" : "false";
             break;
         }
     }
 }
 // Check for LiteSpeed or other Edge cache engines
 elseif (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])) {
-    $engine = strtolower($_SERVER['HTTP_EDGE_CACHE_ENGINE']);
-    if ($engine == 'litespeed') {
-        $used_cache = "litespeed";
-        $clean_used_cache = "LiteSpeed";
-    } elseif ($engine == 'varnish') {
-        $used_cache = "varnish";
-        $clean_used_cache = "VarnishCache";
+    $lwsoptimize_engine = strtolower(sanitize_text_field(wp_unslash($_SERVER['HTTP_EDGE_CACHE_ENGINE'])));
+    if ($lwsoptimize_engine == 'litespeed') {
+        $lwsoptimize_used_cache = "litespeed";
+        $lwsoptimize_clean_used_cache = "LiteSpeed";
+    } elseif ($lwsoptimize_engine == 'varnish') {
+        $lwsoptimize_used_cache = "varnish";
+        $lwsoptimize_clean_used_cache = "VarnishCache";
     }
 
-    if ($used_cache !== "unsupported") {
-        $cache_state = ($_SERVER['HTTP_X_CACHE_ENABLED'] == "1" || strtolower($_SERVER['HTTP_X_CACHE_ENABLED']) == "on" || $_SERVER['HTTP_X_CACHE_ENABLED'] === true) ? "true" : "false";
+    if ($lwsoptimize_used_cache !== "unsupported") {
+        $lwsoptimize_x_cache_enabled = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_CACHE_ENABLED']));
+        $lwsoptimize_cache_state = ($lwsoptimize_x_cache_enabled == "1" || strtolower($lwsoptimize_x_cache_enabled) == "on" || $lwsoptimize_x_cache_enabled === true) ? "true" : "false";
     }
 }
 
 // Get the cache statistics from base
-$cache_stats = get_option('lws_optimize_cache_statistics', []);
-$cache_stats = array_merge([
+$lwsoptimize_cache_stats = get_option('lws_optimize_cache_statistics', []);
+$lwsoptimize_cache_stats = array_merge([
     'desktop' => ['amount' => 0, 'size' => 0],
     'mobile' => ['amount' => 0, 'size' => 0],
     'css' => ['amount' => 0, 'size' => 0],
     'js' => ['amount' => 0, 'size' => 0],
-], $cache_stats);
+], $lwsoptimize_cache_stats);
 
 // Get the specifics values
-$file_cache = $cache_stats['desktop']['amount'];
-$file_cache_size = lwsOpSizeConvert($cache_stats['desktop']['size']);
+$lwsoptimize_file_cache = $lwsoptimize_cache_stats['desktop']['amount'];
+$lwsoptimize_file_cache_size = lwsOpSizeConvert($lwsoptimize_cache_stats['desktop']['size']);
 
-$mobile_cache = $cache_stats['mobile']['amount'] ?? 0;
-$mobile_cache_size = lwsOpSizeConvert($cache_stats['mobile']['size']);
+$lwsoptimize_mobile_cache = $lwsoptimize_cache_stats['mobile']['amount'] ?? 0;
+$lwsoptimize_mobile_cache_size = lwsOpSizeConvert($lwsoptimize_cache_stats['mobile']['size']);
 
-$css_cache = $cache_stats['css']['amount'] ?? 0;
-$css_cache_size = lwsOpSizeConvert($cache_stats['css']['size']);
+$lwsoptimize_css_cache = $lwsoptimize_cache_stats['css']['amount'] ?? 0;
+$lwsoptimize_css_cache_size = lwsOpSizeConvert($lwsoptimize_cache_stats['css']['size']);
 
-$js_cache = $cache_stats['js']['amount'] ?? 0;
-$js_cache_size = lwsOpSizeConvert($cache_stats['js']['size']);
+$lwsoptimize_js_cache = $lwsoptimize_cache_stats['js']['amount'] ?? 0;
+$lwsoptimize_js_cache_size = lwsOpSizeConvert($lwsoptimize_cache_stats['js']['size']);
 
-$caches = [
+$lwsoptimize_caches = [
     'files' => [
-        'size' => $file_cache_size,
+        'size' => $lwsoptimize_file_cache_size,
         'title' => __('Computer Cache', 'lws-optimize'),
         'alt_title' => __('Computer', 'lws-optimize'),
-        'amount' => $file_cache,
+        'amount' => $lwsoptimize_file_cache,
         'id' => "lws_optimize_file_cache",
         'image_file' => "ordinateur.svg",
         'image_alt' => "computer icon",
@@ -269,10 +271,10 @@ $caches = [
         'height' => "60px",
     ],
     'mobile' => [
-        'size' => $mobile_cache_size,
+        'size' => $lwsoptimize_mobile_cache_size,
         'title' => __('Mobile Cache', 'lws-optimize'),
         'alt_title' => __('Mobile', 'lws-optimize'),
-        'amount' => $mobile_cache,
+        'amount' => $lwsoptimize_mobile_cache,
         'id' => "lws_optimize_mobile_cache",
         'image_file' => "mobile.svg",
         'image_alt' => "mobile icon",
@@ -280,10 +282,10 @@ $caches = [
         'height' => "60px",
     ],
     'css' => [
-        'size' => $css_cache_size,
+        'size' => $lwsoptimize_css_cache_size,
         'title' => __('CSS Cache', 'lws-optimize'),
         'alt_title' => __('CSS', 'lws-optimize'),
-        'amount' => $css_cache,
+        'amount' => $lwsoptimize_css_cache,
         'id' => "lws_optimize_css_cache",
         'image_file' => "css.svg",
         'image_alt' => "css logo in a window icon",
@@ -291,10 +293,10 @@ $caches = [
         'height' => "60px",
     ],
     'js' => [
-        'size' => $js_cache_size,
+        'size' => $lwsoptimize_js_cache_size,
         'title' => __('JS Cache', 'lws-optimize'),
         'alt_title' => __('JS', 'lws-optimize'),
-        'amount' => $js_cache,
+        'amount' => $lwsoptimize_js_cache,
         'id' => "lws_optimize_js_cache",
         'image_file' => "js.svg",
         'image_alt' => "js logo in a window icon",
@@ -304,7 +306,7 @@ $caches = [
     ],
 ];
 
-$arr = array('strong' => array());
+$lwsoptimize_arr = array('strong' => array());
 $plugins = array(
     'lws-hide-login' => array('LWS Hide Login', __('This plugin <strong>hide your administration page</strong> (wp-admin) and lets you <strong>change your login page</strong> (wp-login). It offers better security as hackers will have more trouble finding the page.', 'lws-optimize'), true),
     'lws-cleaner' => array('LWS Cleaner', __('This plugin lets you <strong>clean your WordPress website</strong> in a few clics to gain speed: posts, comments, terms, users, settings, plugins, medias, files.', 'lws-optimize'), true),
@@ -312,14 +314,14 @@ $plugins = array(
     'lws-tools' => array('LWS Tools', __('This plugin provides you with several tools and shortcuts to manage, secure and optimise your WordPress website. Updating plugins and themes, accessing informations about your server, managing your website parameters, etc... Personnalize every aspect of your website!', 'lws-optimize'), false)
 );
 
-$plugins_activated = array();
-$all_plugins = get_plugins();
+$lwsoptimize_plugins_activated = array();
+$lwsoptimize_all_plugins = get_plugins();
 
-foreach ($plugins as $slug => $plugin) {
-    if (is_plugin_active($slug . '/' . $slug . '.php')) {
-        $plugins_activated[$slug] = "full";
-    } elseif (array_key_exists($slug . '/' . $slug . '.php', $all_plugins)) {
-        $plugins_activated[$slug] = "half";
+foreach ($plugins as $lwsoptimize_slug => $plugin) {
+    if (is_plugin_active($lwsoptimize_slug . '/' . $lwsoptimize_slug . '.php')) {
+        $lwsoptimize_plugins_activated[$lwsoptimize_slug] = "full";
+    } elseif (array_key_exists($lwsoptimize_slug . '/' . $lwsoptimize_slug . '.php', $lwsoptimize_all_plugins)) {
+        $lwsoptimize_plugins_activated[$lwsoptimize_slug] = "half";
     }
 }
 ?>
@@ -329,7 +331,7 @@ foreach ($plugins as $slug => $plugin) {
 </script>
 
 <div class="lwsoptimize_container">
-    <?php if ($is_deactivated) : ?>
+    <?php if ($lwsoptimize_is_deactivated) : ?>
         <div class="lwsoptimize_main_content_fogged"></div>
     <?php endif ?>
     <div class="lwsop_title_banner">
@@ -345,8 +347,8 @@ foreach ($plugins as $slug => $plugin) {
 
                             <button class="lwsop_dropdown_button">
                                 <span class="lwsop_dropdown_text">
-                                    <?php if ($is_deactivated) : ?>
-                                        <?php echo esc_html(__('Deactivated for: ', 'lws-optimize') . $is_deactivated); ?>
+                                    <?php if ($lwsoptimize_is_deactivated) : ?>
+                                        <?php echo esc_html(__('Deactivated for: ', 'lws-optimize') . $lwsoptimize_is_deactivated); ?>
                                     <?php else : ?>
                                         <?php esc_html_e('Deactivate temporarily: ', 'lws-optimize'); ?>
                                     <?php endif; ?>
@@ -357,7 +359,7 @@ foreach ($plugins as $slug => $plugin) {
                                     </svg>
                                 </span>
                                 <div class="lwsop_dropdown_content">
-                                    <?php if ($is_deactivated) : ?>
+                                    <?php if ($lwsoptimize_is_deactivated) : ?>
                                         <a href="#" data-config="0"><?php esc_html_e('Activate', 'lws-optimize'); ?></a>
                                     <?php else : ?>
                                         <a href="#" data-config="300"><?php esc_html_e('5 minutes', 'lws-optimize'); ?></a>
@@ -411,7 +413,7 @@ foreach ($plugins as $slug => $plugin) {
 
                 <div class="lwsop_oneclickconfig_table">
                     <div class="lwsop_oneclickconfig_table_column">
-                        <?php if ($personnalized == "true" && $autosetup == "essential") : ?>
+                        <?php if ($lwsoptimize_personnalized == "true" && $lwsoptimize_autosetup == "essential") : ?>
                         <div class="lwsop_oneclickconfig_floating_bubble">
                             <?php esc_html_e('Personnalized in advanced mode', 'lws-optimize'); ?>
                         </div>
@@ -425,18 +427,18 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                         <div class="lwsop_oneclickconfig_table_column_content">
                             <ul class="lwsop_oneclickconfig_table_column_content_list">
-                                <?php foreach ($essential_options as $option => $value) : ?>
+                                <?php foreach ($lwsoptimize_essential_options as $lwsoptimize_option => $lwsoptimize_value) : ?>
                                     <li>
                                         <div class="lwsop_oneclickconfig_option">
                                             <div class="lwsop_oneclickconfig_option_left">
-                                                <?php if ($value['safe']) : ?>
+                                                <?php if ($lwsoptimize_value['safe']) : ?>
                                                     <img src="<?php echo esc_url(plugins_url('images/check_vert.svg', dirname(__FILE__))); ?>" alt="Safe option" width="12px" height="12px">
                                                 <?php else : ?>
                                                     <img src="<?php echo esc_url(plugins_url('images/attention.svg', dirname(__FILE__))); ?>" alt="Warning" width="12px" height="12px">
                                                 <?php endif; ?>
-                                                <span class="lwsop_oneclickconfig_table_column_content_title"><?php echo esc_html($value['name']); ?></span>
+                                                <span class="lwsop_oneclickconfig_table_column_content_title"><?php echo esc_html($lwsoptimize_value['name']); ?></span>
                                             </div>
-                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" data-original-title="<?php echo esc_html($value['description']); ?>">
+                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" data-original-title="<?php echo esc_html($lwsoptimize_value['description']); ?>">
                                         </div>
                                     </li>
                                 <?php endforeach; ?>
@@ -444,7 +446,7 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                     </div>
                     <div class="lwsop_oneclickconfig_table_column">
-                        <?php if ($personnalized == "true" && $autosetup == "optimized") : ?>
+                        <?php if ($lwsoptimize_personnalized == "true" && $lwsoptimize_autosetup == "optimized") : ?>
                         <div class="lwsop_oneclickconfig_floating_bubble">
                             <?php esc_html_e('Personnalized in advanced mode', 'lws-optimize'); ?>
                         </div>
@@ -466,18 +468,18 @@ foreach ($plugins as $slug => $plugin) {
                                         </div>
                                     </div>
                                 </li>
-                                <?php foreach ($optimized_options as $option => $value) : ?>
+                                <?php foreach ($lwsoptimize_optimized_options as $lwsoptimize_option => $lwsoptimize_value) : ?>
                                     <li>
                                         <div class="lwsop_oneclickconfig_option">
                                             <div class="lwsop_oneclickconfig_option_left">
-                                                <?php if ($value['safe']) : ?>
+                                                <?php if ($lwsoptimize_value['safe']) : ?>
                                                     <img src="<?php echo esc_url(plugins_url('images/check_vert.svg', dirname(__FILE__))); ?>" alt="Safe option" width="12px" height="12px">
                                                 <?php else : ?>
                                                     <img src="<?php echo esc_url(plugins_url('images/attention.svg', dirname(__FILE__))); ?>" alt="Warning" width="12px" height="12px">
                                                 <?php endif; ?>
-                                                <span class="lwsop_oneclickconfig_table_column_content_title"><?php echo esc_html($value['name']); ?></span>
+                                                <span class="lwsop_oneclickconfig_table_column_content_title"><?php echo esc_html($lwsoptimize_value['name']); ?></span>
                                             </div>
-                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" data-original-title="<?php echo esc_html($value['description']); ?>">
+                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" data-original-title="<?php echo esc_html($lwsoptimize_value['description']); ?>">
                                         </div>
                                     </li>
                                 <?php endforeach; ?>
@@ -485,7 +487,7 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                     </div>
                     <div class="lwsop_oneclickconfig_table_column">
-                        <?php if ($personnalized == "true" && $autosetup == "max") : ?>
+                        <?php if ($lwsoptimize_personnalized == "true" && $lwsoptimize_autosetup == "max") : ?>
                         <div class="lwsop_oneclickconfig_floating_bubble">
                             <?php esc_html_e('Personnalized in advanced mode', 'lws-optimize'); ?>
                         </div>
@@ -507,18 +509,18 @@ foreach ($plugins as $slug => $plugin) {
                                         </div>
                                     </div>
                                 </li>
-                                <?php foreach ($max_options as $option => $value) : ?>
+                                <?php foreach ($lwsoptimize_max_options as $lwsoptimize_option => $lwsoptimize_value) : ?>
                                     <li>
                                         <div class="lwsop_oneclickconfig_option">
                                             <div class="lwsop_oneclickconfig_option_left">
-                                                <?php if ($value['safe']) : ?>
+                                                <?php if ($lwsoptimize_value['safe']) : ?>
                                                     <img src="<?php echo esc_url(plugins_url('images/check_vert.svg', dirname(__FILE__))); ?>" alt="Safe option" width="12px" height="12px">
                                                 <?php else : ?>
                                                     <img src="<?php echo esc_url(plugins_url('images/attention.svg', dirname(__FILE__))); ?>" alt="Warning" width="12px" height="12px">
                                                 <?php endif; ?>
-                                                <span class="lwsop_oneclickconfig_table_column_content_title"><?php echo esc_html($value['name']); ?></span>
+                                                <span class="lwsop_oneclickconfig_table_column_content_title"><?php echo esc_html($lwsoptimize_value['name']); ?></span>
                                             </div>
-                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" data-original-title="<?php echo esc_html($value['description']); ?>">
+                                            <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" data-original-title="<?php echo esc_html($lwsoptimize_value['description']); ?>">
                                         </div>
                                     </li>
                                 <?php endforeach; ?>
@@ -536,9 +538,9 @@ foreach ($plugins as $slug => $plugin) {
             </div>
             <div class="lwsop_oneclickconfig_block">
                 <?php
-                $htaccess_on       = ($config_array['htaccess_rules']['state']          ?? 'false') === 'true';
-                $intermediary_on   = ($config_array['htaccess_php_intermediary']['state'] ?? 'false') === 'true';
-                if ($htaccess_on && !$intermediary_on) :
+                $lwsoptimize_htaccess_on       = ($lwsoptimize_config_array['htaccess_rules']['state']          ?? 'false') === 'true';
+                $lwsoptimize_intermediary_on   = ($lwsoptimize_config_array['htaccess_php_intermediary']['state'] ?? 'false') === 'true';
+                if ($lwsoptimize_htaccess_on && !$lwsoptimize_intermediary_on) :
                 ?>
                 <div class="lwop_alert lwop_alert_warning" style="margin-bottom: 12px; font-size: 13px;">
                     <i class="dashicons dashicons-warning"></i>
@@ -552,12 +554,12 @@ foreach ($plugins as $slug => $plugin) {
                 <?php endif; ?>
 
                 <?php if (class_exists('\\Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
-                    $usage_stats = \Lws\Classes\FileCache\LwsOptimizeUsageStats::read();
-                    $u24h = $usage_stats['totals_24h'];
-                    $u7d  = $usage_stats['totals_7d'];
-                    $u30d = $usage_stats['totals_30d'];
-                    $has_data = ($u24h['hits'] + $u24h['misses'] + $u7d['hits'] + $u7d['misses']) > 0;
-                    $sparkline_svg = \Lws\Classes\Admin\LwsOptimizeDashboardWidget::sparkline_svg($usage_stats['sparkline'], 600, 60);
+                    $lwsoptimize_usage_stats = \Lws\Classes\FileCache\LwsOptimizeUsageStats::read();
+                    $lwsoptimize_u24h = $lwsoptimize_usage_stats['totals_24h'];
+                    $lwsoptimize_u7d  = $lwsoptimize_usage_stats['totals_7d'];
+                    $lwsoptimize_u30d = $lwsoptimize_usage_stats['totals_30d'];
+                    $lwsoptimize_has_data = ($lwsoptimize_u24h['hits'] + $lwsoptimize_u24h['misses'] + $lwsoptimize_u7d['hits'] + $lwsoptimize_u7d['misses']) > 0;
+                    $lwsoptimize_sparkline_svg = \Lws\Classes\Admin\LwsOptimizeDashboardWidget::sparkline_svg($lwsoptimize_usage_stats['sparkline'], 600, 60);
                 ?>
                 <div class="lwsop_mt_20" id="lwsop_usage_stats_wrap">
                     <span class="lwsop_oneclickconfig_title_left_main"><?php echo esc_html(__('Real cache usage', 'lws-optimize')); ?></span>
@@ -565,53 +567,53 @@ foreach ($plugins as $slug => $plugin) {
                         <span><?php echo esc_html(__('Measures hits/misses served to your visitors', 'lws-optimize')); ?></span>
                     </h3>
 
-                    <div id="lwsop_usage_no_data" <?php if ($has_data) echo 'style="display:none"'; ?>>
+                    <div id="lwsop_usage_no_data" <?php if ($lwsoptimize_has_data) echo 'style="display:none"'; ?>>
                         <div class="lwsop_no_data_notice">
                             <strong><?php echo esc_html(__('No data yet', 'lws-optimize')); ?></strong><br>
                             <?php echo esc_html(__('Statistics are collected on each visit. Wait for a few visitors to browse the site, then come back here (or refresh the page).', 'lws-optimize')); ?>
                         </div>
                     </div>
 
-                    <div id="lwsop_usage_data_section" <?php if (!$has_data) echo 'style="display:none"'; ?>>
+                    <div id="lwsop_usage_data_section" <?php if (!$lwsoptimize_has_data) echo 'style="display:none"'; ?>>
                         <div class="lwsop_usage_grid">
                             <div class="lwsop_usage_card">
                                 <h5><?php echo esc_html(__('Last 24 hours', 'lws-optimize')); ?></h5>
                                 <div class="lwsop_usage_hitrate">
-                                    <div class="big" id="lwsop_ustat_24h_rate" style="color:<?php echo $u24h['hit_rate'] >= 80 ? '#16a34a' : ($u24h['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($u24h['hit_rate']); ?>%</div>
+                                    <div class="big" id="lwsop_ustat_24h_rate" style="color:<?php echo $lwsoptimize_u24h['hit_rate'] >= 80 ? '#16a34a' : ($lwsoptimize_u24h['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($lwsoptimize_u24h['hit_rate']); ?>%</div>
                                     <div class="lbl"><?php echo esc_html(__('Hit rate', 'lws-optimize')); ?></div>
                                 </div>
-                                <div class="lwsop_usage_metric"><span class="ok"><?php echo esc_html(__('Hits', 'lws-optimize')); ?></span><strong id="lwsop_ustat_24h_hits"><?php echo esc_html(number_format_i18n($u24h['hits'])); ?></strong></div>
-                                <div class="lwsop_usage_metric"><span class="ko"><?php echo esc_html(__('Misses', 'lws-optimize')); ?></span><strong id="lwsop_ustat_24h_misses"><?php echo esc_html(number_format_i18n($u24h['misses'])); ?></strong></div>
-                                <div class="lwsop_usage_metric"><span><?php echo esc_html(__('Data', 'lws-optimize')); ?></span><strong id="lwsop_ustat_24h_bytes"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($u24h['bytes_saved'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span class="ok"><?php echo esc_html(__('Hits', 'lws-optimize')); ?></span><strong id="lwsop_ustat_24h_hits"><?php echo esc_html(number_format_i18n($lwsoptimize_u24h['hits'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span class="ko"><?php echo esc_html(__('Misses', 'lws-optimize')); ?></span><strong id="lwsop_ustat_24h_misses"><?php echo esc_html(number_format_i18n($lwsoptimize_u24h['misses'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span><?php echo esc_html(__('Data', 'lws-optimize')); ?></span><strong id="lwsop_ustat_24h_bytes"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($lwsoptimize_u24h['bytes_saved'])); ?></strong></div>
                             </div>
 
                             <div class="lwsop_usage_card">
                                 <h5><?php echo esc_html(__('Last 7 days', 'lws-optimize')); ?></h5>
                                 <div class="lwsop_usage_hitrate">
-                                    <div class="big" id="lwsop_ustat_7d_rate" style="color:<?php echo $u7d['hit_rate'] >= 80 ? '#16a34a' : ($u7d['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($u7d['hit_rate']); ?>%</div>
+                                    <div class="big" id="lwsop_ustat_7d_rate" style="color:<?php echo $lwsoptimize_u7d['hit_rate'] >= 80 ? '#16a34a' : ($lwsoptimize_u7d['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($lwsoptimize_u7d['hit_rate']); ?>%</div>
                                     <div class="lbl"><?php echo esc_html(__('Hit rate', 'lws-optimize')); ?></div>
                                 </div>
-                                <div class="lwsop_usage_metric"><span class="ok"><?php echo esc_html(__('Hits', 'lws-optimize')); ?></span><strong id="lwsop_ustat_7d_hits"><?php echo esc_html(number_format_i18n($u7d['hits'])); ?></strong></div>
-                                <div class="lwsop_usage_metric"><span class="ko"><?php echo esc_html(__('Misses', 'lws-optimize')); ?></span><strong id="lwsop_ustat_7d_misses"><?php echo esc_html(number_format_i18n($u7d['misses'])); ?></strong></div>
-                                <div class="lwsop_usage_metric"><span><?php echo esc_html(__('Data', 'lws-optimize')); ?></span><strong id="lwsop_ustat_7d_bytes"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($u7d['bytes_saved'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span class="ok"><?php echo esc_html(__('Hits', 'lws-optimize')); ?></span><strong id="lwsop_ustat_7d_hits"><?php echo esc_html(number_format_i18n($lwsoptimize_u7d['hits'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span class="ko"><?php echo esc_html(__('Misses', 'lws-optimize')); ?></span><strong id="lwsop_ustat_7d_misses"><?php echo esc_html(number_format_i18n($lwsoptimize_u7d['misses'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span><?php echo esc_html(__('Data', 'lws-optimize')); ?></span><strong id="lwsop_ustat_7d_bytes"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($lwsoptimize_u7d['bytes_saved'])); ?></strong></div>
                             </div>
 
                             <div class="lwsop_usage_card">
                                 <h5><?php echo esc_html(__('Last 30 days', 'lws-optimize')); ?></h5>
                                 <div class="lwsop_usage_hitrate">
-                                    <div class="big" id="lwsop_ustat_30d_rate" style="color:<?php echo $u30d['hit_rate'] >= 80 ? '#16a34a' : ($u30d['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($u30d['hit_rate']); ?>%</div>
+                                    <div class="big" id="lwsop_ustat_30d_rate" style="color:<?php echo $lwsoptimize_u30d['hit_rate'] >= 80 ? '#16a34a' : ($lwsoptimize_u30d['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($lwsoptimize_u30d['hit_rate']); ?>%</div>
                                     <div class="lbl"><?php echo esc_html(__('Hit rate', 'lws-optimize')); ?></div>
                                 </div>
-                                <div class="lwsop_usage_metric"><span class="ok"><?php echo esc_html(__('Hits', 'lws-optimize')); ?></span><strong id="lwsop_ustat_30d_hits"><?php echo esc_html(number_format_i18n($u30d['hits'])); ?></strong></div>
-                                <div class="lwsop_usage_metric"><span class="ko"><?php echo esc_html(__('Misses', 'lws-optimize')); ?></span><strong id="lwsop_ustat_30d_misses"><?php echo esc_html(number_format_i18n($u30d['misses'])); ?></strong></div>
-                                <div class="lwsop_usage_metric"><span><?php echo esc_html(__('Data', 'lws-optimize')); ?></span><strong id="lwsop_ustat_30d_bytes"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($u30d['bytes_saved'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span class="ok"><?php echo esc_html(__('Hits', 'lws-optimize')); ?></span><strong id="lwsop_ustat_30d_hits"><?php echo esc_html(number_format_i18n($lwsoptimize_u30d['hits'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span class="ko"><?php echo esc_html(__('Misses', 'lws-optimize')); ?></span><strong id="lwsop_ustat_30d_misses"><?php echo esc_html(number_format_i18n($lwsoptimize_u30d['misses'])); ?></strong></div>
+                                <div class="lwsop_usage_metric"><span><?php echo esc_html(__('Data', 'lws-optimize')); ?></span><strong id="lwsop_ustat_30d_bytes"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($lwsoptimize_u30d['bytes_saved'])); ?></strong></div>
                             </div>
                         </div>
 
                         <!-- Sparkline 30j -->
                         <div class="lwsop_usage_card">
                             <h5><?php echo esc_html(__('Hits trend over 30 days', 'lws-optimize')); ?></h5>
-                            <div id="lwsop_ustat_sparkline"><?php echo wp_kses($sparkline_svg, [
+                            <div id="lwsop_ustat_sparkline"><?php echo wp_kses($lwsoptimize_sparkline_svg, [
                                 'svg' => ['viewbox' => [], 'xmlns' => [], 'preserveaspectratio' => []],
                                 'polygon' => ['points' => [], 'fill' => []],
                                 'polyline' => ['points' => [], 'fill' => [], 'stroke' => [], 'stroke-width' => [], 'stroke-linejoin' => [], 'stroke-linecap' => []],
@@ -640,46 +642,46 @@ foreach ($plugins as $slug => $plugin) {
                         <div class="lwsop_loading_spinner"></div>
                     </div>
                     <?php
-                    $preload_on = ($config_array['filebased_cache']['preload'] ?? 'false') === 'true';
+                    $lwsoptimize_preload_on = ($lwsoptimize_config_array['filebased_cache']['preload'] ?? 'false') === 'true';
 
-                    $coverage = get_transient('lwsop_coverage_cache_v2');
-                    if ($coverage === false) {
-                        $sitemap = get_option('lws_optimize_sitemap_urls', ['urls' => []]);
-                        $urls    = is_array($sitemap['urls'] ?? null) ? array_values($sitemap['urls']) : [];
-                        $cache_root_d = WP_CONTENT_DIR . '/cache/lwsoptimize/cache';
-                        $cache_root_m = WP_CONTENT_DIR . '/cache/lwsoptimize/cache-mobile';
-                        $total = count($urls);
-                        $hit_d = 0; $hit_m = 0;
-                        foreach ($urls as $u) {
-                            $path = trim(wp_parse_url($u, PHP_URL_PATH) ?: '/', '/');
-                            $dir_d = $path === '' ? $cache_root_d : $cache_root_d . '/' . $path;
-                            $dir_m = $path === '' ? $cache_root_m : $cache_root_m . '/' . $path;
-                            if (!empty(glob($dir_d . '/index_*.html'))) $hit_d++;
-                            if (!empty(glob($dir_m . '/index_*.html'))) $hit_m++;
+                    $lwsoptimize_coverage = get_transient('lwsop_coverage_cache_v2');
+                    if ($lwsoptimize_coverage === false) {
+                        $lwsoptimize_sitemap = get_option('lws_optimize_sitemap_urls', ['urls' => []]);
+                        $urls    = is_array($lwsoptimize_sitemap['urls'] ?? null) ? array_values($lwsoptimize_sitemap['urls']) : [];
+                        $lwsoptimize_cache_root_d = WP_CONTENT_DIR . '/cache/lwsoptimize/cache';
+                        $lwsoptimize_cache_root_m = WP_CONTENT_DIR . '/cache/lwsoptimize/cache-mobile';
+                        $lwsoptimize_total = count($urls);
+                        $lwsoptimize_hit_d = 0; $lwsoptimize_hit_m = 0;
+                        foreach ($urls as $lwsoptimize_u) {
+                            $path = trim(wp_parse_url($lwsoptimize_u, PHP_URL_PATH) ?: '/', '/');
+                            $lwsoptimize_dir_d = $path === '' ? $lwsoptimize_cache_root_d : $lwsoptimize_cache_root_d . '/' . $path;
+                            $lwsoptimize_dir_m = $path === '' ? $lwsoptimize_cache_root_m : $lwsoptimize_cache_root_m . '/' . $path;
+                            if (!empty(glob($lwsoptimize_dir_d . '/index_*.html'))) $lwsoptimize_hit_d++;
+                            if (!empty(glob($lwsoptimize_dir_m . '/index_*.html'))) $lwsoptimize_hit_m++;
                         }
-                        $coverage = ['total' => $total, 'desktop' => $hit_d, 'mobile' => $hit_m];
-                        set_transient('lwsop_coverage_cache_v2', $coverage, 60);
+                        $lwsoptimize_coverage = ['total' => $lwsoptimize_total, 'desktop' => $lwsoptimize_hit_d, 'mobile' => $lwsoptimize_hit_m];
+                        set_transient('lwsop_coverage_cache_v2', $lwsoptimize_coverage, 60);
                     }
 
-                    $cov_total   = (int) $coverage['total'] ?? 0;
-                    $cov_desktop = (int) $coverage['desktop'];
-                    $cov_mobile  = (int) $coverage['mobile'];
-                    $cov_d_pct   = $cov_total > 0 ? round(($cov_desktop / $cov_total) * 100) : 0;
-                    $cov_m_pct   = $cov_total > 0 ? round(($cov_mobile  / $cov_total) * 100) : 0;
-                    $cov_complete= $cov_total > 0 && $cov_desktop >= $cov_total && $cov_mobile >= $cov_total;
+                    $lwsoptimize_cov_total   = (int) $lwsoptimize_coverage['total'] ?? 0;
+                    $lwsoptimize_cov_desktop = (int) $lwsoptimize_coverage['desktop'];
+                    $lwsoptimize_cov_mobile  = (int) $lwsoptimize_coverage['mobile'];
+                    $lwsoptimize_cov_d_pct   = $lwsoptimize_cov_total > 0 ? round(($lwsoptimize_cov_desktop / $lwsoptimize_cov_total) * 100) : 0;
+                    $lwsoptimize_cov_m_pct   = $lwsoptimize_cov_total > 0 ? round(($lwsoptimize_cov_mobile  / $lwsoptimize_cov_total) * 100) : 0;
+                    $lwsoptimize_cov_complete= $lwsoptimize_cov_total > 0 && $lwsoptimize_cov_desktop >= $lwsoptimize_cov_total && $lwsoptimize_cov_mobile >= $lwsoptimize_cov_total;
 
-                    $preload_rate    = max(1, (int) ($config_array['filebased_cache']['preload_amount'] ?? 3));
-                    $missing_files   = max(0, ($cov_total - $cov_desktop)) + max(0, ($cov_total - $cov_mobile));
-                    $eta_seconds     = ($missing_files > 0) ? (int) ceil(($missing_files / ($preload_rate * 2)) * 60) : 0;
+                    $lwsoptimize_preload_rate    = max(1, (int) ($lwsoptimize_config_array['filebased_cache']['preload_amount'] ?? 3));
+                    $lwsoptimize_missing_files   = max(0, ($lwsoptimize_cov_total - $lwsoptimize_cov_desktop)) + max(0, ($lwsoptimize_cov_total - $lwsoptimize_cov_mobile));
+                    $lwsoptimize_eta_seconds     = ($lwsoptimize_missing_files > 0) ? (int) ceil(($lwsoptimize_missing_files / ($lwsoptimize_preload_rate * 2)) * 60) : 0;
                     ?>
                     <div class="lwsop_cache_stats_header_row">
                         <span class="lwsop_cache_stats_header_label">
-                            <?php if ($preload_on) : ?>
-                                <span class="lwsop_pulse_dot<?php echo $cov_complete ? ' done' : ''; ?>"></span>
+                            <?php if ($lwsoptimize_preload_on) : ?>
+                                <span class="lwsop_pulse_dot<?php echo $lwsoptimize_cov_complete ? ' done' : ''; ?>"></span>
                             <?php else : ?>
                                 <span class="lwsop_pulse_dot off"></span>
                             <?php endif; ?>
-                            <span id="lwsop_cache_stats_total"><?php echo esc_html($cov_total ?? '0'); ?></span>
+                            <span id="lwsop_cache_stats_total"><?php echo esc_html($lwsoptimize_cov_total ?? '0'); ?></span>
                             <?php esc_html_e(' public URLs (Desktop + Mobile) covered', 'lws-optimize'); ?>
                         </span>
                     </div>
@@ -695,15 +697,15 @@ foreach ($plugins as $slug => $plugin) {
                         <div class="lwsop_cache_progress">
                             <div class="lwsop_cache_row_stats_text">
                                 <span><strong class="lwsop_cache_count_blue" data-lwsop-cov-count>
-                                    <span data-lwsop-cov-hit><?php echo esc_html($cov_desktop); ?></span> / <span data-lwsop-cov-total><?php echo esc_html($cov_total); ?></span>
-                                </strong> <?php echo esc_html(__('preheated', 'lws-optimize')); ?> (<span data-lwsop-cov-pct><?php echo esc_html($cov_d_pct); ?></span>%)</span>
+                                    <span data-lwsop-cov-hit><?php echo esc_html($lwsoptimize_cov_desktop); ?></span> / <span data-lwsop-cov-total><?php echo esc_html($lwsoptimize_cov_total); ?></span>
+                                </strong> <?php echo esc_html(__('preheated', 'lws-optimize')); ?> (<span data-lwsop-cov-pct><?php echo esc_html($lwsoptimize_cov_d_pct); ?></span>%)</span>
                                 <span class="lwsop_cache_row_file_info">
-                                    <span data-lwsop-stat-amount><?php echo esc_html($cache_stats['desktop']['amount'] ?? 0); ?></span>
+                                    <span data-lwsop-stat-amount><?php echo esc_html($lwsoptimize_cache_stats['desktop']['amount'] ?? 0); ?></span>
                                     <?php echo esc_html(__('total files', 'lws-optimize')); ?> ·
-                                    <span data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($cache_stats['desktop']['size'] ?? 0)); ?></span>
+                                    <span data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($lwsoptimize_cache_stats['desktop']['size'] ?? 0)); ?></span>
                                 </span>
                             </div>
-                            <div class="lwsop_cache_bar<?php echo ($preload_on && !$cov_complete) ? ' preheating' : ''; ?>"><div data-lwsop-cov-bar style="width:<?php echo esc_attr($cov_d_pct); ?>%"></div></div>
+                            <div class="lwsop_cache_bar<?php echo ($lwsoptimize_preload_on && !$lwsoptimize_cov_complete) ? ' preheating' : ''; ?>"><div data-lwsop-cov-bar style="width:<?php echo esc_attr($lwsoptimize_cov_d_pct); ?>%"></div></div>
                         </div>
                     </div>
 
@@ -716,15 +718,15 @@ foreach ($plugins as $slug => $plugin) {
                         <div class="lwsop_cache_progress">
                             <div class="lwsop_cache_row_stats_text">
                                 <span><strong class="lwsop_cache_count_green" data-lwsop-cov-count>
-                                    <span data-lwsop-cov-hit><?php echo esc_html($cov_mobile); ?></span> / <span data-lwsop-cov-total><?php echo esc_html($cov_total); ?></span>
-                                </strong> <?php echo esc_html(__('preheated', 'lws-optimize')); ?> (<span data-lwsop-cov-pct><?php echo esc_html($cov_m_pct); ?></span>%)</span>
+                                    <span data-lwsop-cov-hit><?php echo esc_html($lwsoptimize_cov_mobile); ?></span> / <span data-lwsop-cov-total><?php echo esc_html($lwsoptimize_cov_total); ?></span>
+                                </strong> <?php echo esc_html(__('preheated', 'lws-optimize')); ?> (<span data-lwsop-cov-pct><?php echo esc_html($lwsoptimize_cov_m_pct); ?></span>%)</span>
                                 <span class="lwsop_cache_row_file_info">
-                                    <span data-lwsop-stat-amount><?php echo esc_html($cache_stats['mobile']['amount'] ?? 0); ?></span>
+                                    <span data-lwsop-stat-amount><?php echo esc_html($lwsoptimize_cache_stats['mobile']['amount'] ?? 0); ?></span>
                                     <?php echo esc_html(__('total files', 'lws-optimize')); ?> ·
-                                    <span data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($cache_stats['mobile']['size'] ?? 0)); ?></span>
+                                    <span data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($lwsoptimize_cache_stats['mobile']['size'] ?? 0)); ?></span>
                                 </span>
                             </div>
-                            <div class="lwsop_cache_bar<?php echo ($preload_on && !$cov_complete) ? ' preheating' : ''; ?>"><div data-lwsop-cov-bar style="width:<?php echo esc_attr($cov_m_pct); ?>%"></div></div>
+                            <div class="lwsop_cache_bar<?php echo ($lwsoptimize_preload_on && !$lwsoptimize_cov_complete) ? ' preheating' : ''; ?>"><div data-lwsop-cov-bar style="width:<?php echo esc_attr($lwsoptimize_cov_m_pct); ?>%"></div></div>
                         </div>
                     </div>
 
@@ -736,8 +738,8 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                         <div class="lwsop_cache_progress alt">
                             <div class="lwsop_cache_asset_stats">
-                                <strong class="lwsop_cache_count_purple"><span data-lwsop-stat-amount><?php echo esc_html($cache_stats['css']['amount'] ?? 0); ?></span></strong> <?php echo esc_html(__('minified files', 'lws-optimize')); ?>
-                                <span class="lwsop_cache_asset_size" data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($cache_stats['css']['size'] ?? 0)); ?></span>
+                                <strong class="lwsop_cache_count_purple"><span data-lwsop-stat-amount><?php echo esc_html($lwsoptimize_cache_stats['css']['amount'] ?? 0); ?></span></strong> <?php echo esc_html(__('minified files', 'lws-optimize')); ?>
+                                <span class="lwsop_cache_asset_size" data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($lwsoptimize_cache_stats['css']['size'] ?? 0)); ?></span>
                             </div>
                         </div>
                     </div>
@@ -749,17 +751,17 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                         <div class="lwsop_cache_progress alt">
                             <div class="lwsop_cache_asset_stats">
-                                <strong class="lwsop_cache_count_orange"><span data-lwsop-stat-amount><?php echo esc_html($cache_stats['js']['amount'] ?? 0); ?></span></strong> <?php echo esc_html(__('minified files', 'lws-optimize')); ?>
-                                <span class="lwsop_cache_asset_size" data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($cache_stats['js']['size'] ?? 0)); ?></span>
+                                <strong class="lwsop_cache_count_orange"><span data-lwsop-stat-amount><?php echo esc_html($lwsoptimize_cache_stats['js']['amount'] ?? 0); ?></span></strong> <?php echo esc_html(__('minified files', 'lws-optimize')); ?>
+                                <span class="lwsop_cache_asset_size" data-lwsop-stat-size><?php echo esc_html(lwsOpSizeConvert($lwsoptimize_cache_stats['js']['size'] ?? 0)); ?></span>
                             </div>
                         </div>
                     </div>
 
                     <!-- 4.4.7 — Message d'état + countdown ETA live -->
-                    <?php if ($preload_on) : ?>
-                        <div id="lwsop_preheating_status" class="<?php echo $cov_complete ? 'complete' : 'pending'; ?>">
-                            <span data-lwsop-status-text><?php echo esc_html($cov_complete ? __('All public pages (Computer + Mobile) are cached.', 'lws-optimize') : __('Preload runs in the background...', 'lws-optimize')); ?></span>
-                            <?php if (!$cov_complete && $eta_seconds > 0) : ?>
+                    <?php if ($lwsoptimize_preload_on) : ?>
+                        <div id="lwsop_preheating_status" class="<?php echo $lwsoptimize_cov_complete ? 'complete' : 'pending'; ?>">
+                            <span data-lwsop-status-text><?php echo esc_html($lwsoptimize_cov_complete ? __('All public pages (Computer + Mobile) are cached.', 'lws-optimize') : __('Preload runs in the background...', 'lws-optimize')); ?></span>
+                            <?php if (!$lwsoptimize_cov_complete && $lwsoptimize_eta_seconds > 0) : ?>
                                 <div class="lwsop_eta_countdown">
                                     <span class="lwsop_eta_label"><?php echo esc_html(__('Estimated time left', 'lws-optimize')); ?> :</span>
                                     <span data-lwsop-eta-display class="lwsop_eta_value">…</span>
@@ -768,7 +770,7 @@ foreach ($plugins as $slug => $plugin) {
                         </div>
                         <script>
                             (function(){
-                                var etaSeconds = <?php echo (int) $eta_seconds; ?>;
+                                var etaSeconds = <?php echo (int) $lwsoptimize_eta_seconds; ?>;
                                 var endTs = etaSeconds > 0 ? (Date.now() + etaSeconds * 1000) : 0;
                                 window.lwsopSetEta = function(newSeconds){
                                     etaSeconds = parseInt(newSeconds, 10) || 0;
@@ -799,7 +801,7 @@ foreach ($plugins as $slug => $plugin) {
                             })();
                         </script>
                     <?php endif; ?>
-                    <div id="lwsop_hint_fetch_urls" class="lwop_alert lwop_alert_warning lwop_alert_no_margin"<?php echo ($preload_on && $cov_total === 0) ? '' : ' style="display:none"'; ?>>
+                    <div id="lwsop_hint_fetch_urls" class="lwop_alert lwop_alert_warning lwop_alert_no_margin"<?php echo ($lwsoptimize_preload_on && $lwsoptimize_cov_total === 0) ? '' : ' style="display:none"'; ?>>
                         <i class="dashicons dashicons-warning"></i>
                         <div>
                             <p class="lwsop_preload_hint_text"><?php esc_html_e('No URLs were indexed from the sitemap. Click below to fetch them and start caching.', 'lws-optimize'); ?></p>
@@ -808,7 +810,7 @@ foreach ($plugins as $slug => $plugin) {
                             </button>
                         </div>
                     </div>
-                    <div id="lwsop_hint_preload_disabled" class="lwop_alert lwop_alert_warning lwop_alert_no_margin"<?php echo !$preload_on ? '' : ' style="display:none"'; ?>>
+                    <div id="lwsop_hint_preload_disabled" class="lwop_alert lwop_alert_warning lwop_alert_no_margin"<?php echo !$lwsoptimize_preload_on ? '' : ' style="display:none"'; ?>>
                         <i class="dashicons dashicons-warning"></i>
                         <div>
                             <p class="lwsop_preload_hint_text"><?php esc_html_e('Cache preloading is disabled. Activate it to warm up your cache automatically before visitor requests.', 'lws-optimize'); ?></p>
@@ -832,7 +834,7 @@ foreach ($plugins as $slug => $plugin) {
                             data: {
                                 action: 'lwsop_start_preload_fb',
                                 state: 'true',
-                                amount: <?php echo (int) $preload_rate; ?>,
+                                amount: <?php echo (int) $lwsoptimize_preload_rate; ?>,
                                 _ajax_nonce: '<?php echo esc_js(wp_create_nonce('update_fb_preload')); ?>'
                             },
                             success: function(r) {
@@ -871,7 +873,7 @@ foreach ($plugins as $slug => $plugin) {
 
                 <div class="lwosp_oneclickconfig_cachestate_group">
                     <span class="lwosp_oneclickconfig_cachestate_line">
-                        <?php if ($filecache_state == "true") : ?>
+                        <?php if ($lwsoptimize_filecache_state == "true") : ?>
                             <img src="<?php echo esc_url(plugins_url('images/actif.svg', __DIR__)) ?>" alt="Active" width="12px" height="12px">
                         <?php else : ?>
                             <img src="<?php echo esc_url(plugins_url('images/inactif.svg', __DIR__)) ?>" alt="Inactive" width="12px" height="12px">
@@ -882,7 +884,7 @@ foreach ($plugins as $slug => $plugin) {
                     </span>
 
                     <span class="lwosp_oneclickconfig_cachestate_line">
-                        <?php if ($memcache_state) : ?>
+                        <?php if ($lwsoptimize_memcache_state) : ?>
                             <img src="<?php echo esc_url(plugins_url('images/actif.svg', __DIR__)) ?>" alt="Active" width="12px" height="12px">
                         <?php else : ?>
                             <img src="<?php echo esc_url(plugins_url('images/inactif.svg', __DIR__)) ?>" alt="Inactive" width="12px" height="12px">
@@ -893,7 +895,7 @@ foreach ($plugins as $slug => $plugin) {
                     </span>
 
                     <span class="lwosp_oneclickconfig_cachestate_line">
-                        <?php if ($cache_state === "true") : ?>
+                        <?php if ($lwsoptimize_cache_state === "true") : ?>
                             <img src="<?php echo esc_url(plugins_url('images/actif.svg', __DIR__)) ?>" alt="Active" width="12px" height="12px">
                         <?php else : ?>
                             <img src="<?php echo esc_url(plugins_url('images/inactif.svg', __DIR__)) ?>" alt="Inactive" width="12px" height="12px">
@@ -901,10 +903,10 @@ foreach ($plugins as $slug => $plugin) {
                         <span class="lwsop_oneclickconfig_cachestate_text">
                             <?php esc_html_e('Server cache', 'lws-optimize'); ?>
                             <span class="lwsop_oneclickconfig_cachestate_text_sub">
-                                <?php if ($cache_state === null) : ?>
+                                <?php if ($lwsoptimize_cache_state === null) : ?>
                                     (<?php esc_html_e('Not detected', 'lws-optimize'); ?>)
                                 <?php else : ?>
-                                    (<?php echo esc_html($clean_used_cache); ?>)
+                                    (<?php echo esc_html($lwsoptimize_clean_used_cache); ?>)
                                 <?php endif; ?>
                         </span>
                         <img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top"
@@ -927,11 +929,11 @@ foreach ($plugins as $slug => $plugin) {
         </div>
     </div>
     <?php
-    $memcached_stats = \Lws\Classes\Admin\LwsOptimizeDashboardWidget::memcached_stats();
-    $memcached_inactive = !$memcached_stats['active'] && (($config_array['memcached']['state'] ?? 'false') !== 'true');
-    if ($memcached_stats['active']) :
-        $mem_pct = $memcached_stats['limit_maxbytes'] > 0
-            ? round(($memcached_stats['bytes'] / $memcached_stats['limit_maxbytes']) * 100, 1)
+    $lwsoptimize_memcached_stats = \Lws\Classes\Admin\LwsOptimizeDashboardWidget::memcached_stats();
+    $lwsoptimize_memcached_inactive = !$lwsoptimize_memcached_stats['active'] && (($lwsoptimize_config_array['memcached']['state'] ?? 'false') !== 'true');
+    if ($lwsoptimize_memcached_stats['active']) :
+        $lwsoptimize_mem_pct = $lwsoptimize_memcached_stats['limit_maxbytes'] > 0
+            ? round(($lwsoptimize_memcached_stats['bytes'] / $lwsoptimize_memcached_stats['limit_maxbytes']) * 100, 1)
             : 0;
     ?>
     <div class="lwsop_oneclickconfig_block lwsop_mt_20">
@@ -944,18 +946,18 @@ foreach ($plugins as $slug => $plugin) {
             <div class="lwsop_usage_card">
                 <h5><?php echo esc_html(__('Memory used', 'lws-optimize')); ?></h5>
                 <div class="lwsop_usage_hitrate">
-                    <div class="big" style="color:<?php echo $mem_pct < 70 ? '#16a34a' : ($mem_pct < 90 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($mem_pct); ?>%</div>
-                    <div class="lbl"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($memcached_stats['bytes'])); ?> / <?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($memcached_stats['limit_maxbytes'])); ?></div>
+                    <div class="big" style="color:<?php echo $lwsoptimize_mem_pct < 70 ? '#16a34a' : ($lwsoptimize_mem_pct < 90 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($lwsoptimize_mem_pct); ?>%</div>
+                    <div class="lbl"><?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($lwsoptimize_memcached_stats['bytes'])); ?> / <?php echo esc_html(\Lws\Classes\Admin\LwsOptimizeDashboardWidget::format_bytes($lwsoptimize_memcached_stats['limit_maxbytes'])); ?></div>
                 </div>
                 <div class="lwsop_cache_bar lwsop_mt_8">
-                    <div class="lwsop_memcached_bar" style="width:<?php echo esc_attr($mem_pct); ?>%"></div>
+                    <div class="lwsop_memcached_bar" style="width:<?php echo esc_attr($lwsoptimize_mem_pct); ?>%"></div>
                 </div>
             </div>
 
             <div class="lwsop_usage_card">
                 <h5><?php echo esc_html(__('Items in memory', 'lws-optimize')); ?></h5>
                 <div class="lwsop_usage_hitrate">
-                    <div class="big lwsop_cache_count_indigo"><?php echo esc_html(number_format_i18n($memcached_stats['curr_items'])); ?></div>
+                    <div class="big lwsop_cache_count_indigo"><?php echo esc_html(number_format_i18n($lwsoptimize_memcached_stats['curr_items'])); ?></div>
                     <div class="lbl"><?php echo esc_html(__('cached objects', 'lws-optimize')); ?></div>
                 </div>
             </div>
@@ -963,7 +965,7 @@ foreach ($plugins as $slug => $plugin) {
             <div class="lwsop_usage_card">
                 <h5><?php echo esc_html(__('Memcached hit rate', 'lws-optimize')); ?></h5>
                 <div class="lwsop_usage_hitrate">
-                    <div class="big" style="color:<?php echo $memcached_stats['hit_rate'] >= 80 ? '#16a34a' : ($memcached_stats['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($memcached_stats['hit_rate']); ?>%</div>
+                    <div class="big" style="color:<?php echo $lwsoptimize_memcached_stats['hit_rate'] >= 80 ? '#16a34a' : ($lwsoptimize_memcached_stats['hit_rate'] >= 50 ? '#f59e0b' : '#dc2626'); ?>"><?php echo esc_html($lwsoptimize_memcached_stats['hit_rate']); ?>%</div>
                     <div class="lbl"><?php echo esc_html(__('queries served from memory', 'lws-optimize')); ?></div>
                 </div>
             </div>
@@ -971,14 +973,14 @@ foreach ($plugins as $slug => $plugin) {
     </div>
     <?php endif; ?>
 
-    <?php if ($memcached_inactive) : ?>
+    <?php if ($lwsoptimize_memcached_inactive) : ?>
     <div class="lwsop_oneclickconfig_block lwsop_mt_20">
         <div class="lwsop_memcached_inactive_header">
             <span class="lwsop_oneclickconfig_title_left_main"><?php echo esc_html(__('Memcached (object cache)', 'lws-optimize')); ?></span>
             <span class="lwsop_memcached_status_badge"><?php esc_html_e('Inactive', 'lws-optimize'); ?></span>
         </div>
 
-        <?php if ($memcache_available) : ?>
+        <?php if ($lwsoptimize_memcache_available) : ?>
             <h3 class="lwsop_oneclickconfig_subtitle">
                 <span><?php echo esc_html(__('Memcached is available on this server — activate it to speed up WordPress', 'lws-optimize')); ?></span>
             </h3>
@@ -1040,7 +1042,7 @@ foreach ($plugins as $slug => $plugin) {
                 <span><?php echo esc_html(__('Memcached is not available on this server', 'lws-optimize')); ?></span>
             </h3>
             <p class="lwsop_memcached_unavailable_reason">
-                <?php echo esc_html($memcache_unavailable_reason); ?>
+                <?php echo esc_html($lwsoptimize_memcache_unavailable_reason); ?>
             </p>
         <?php endif; ?>
     </div>
@@ -1398,7 +1400,7 @@ foreach ($plugins as $slug => $plugin) {
         }
     });
 
-    <?php if (!$is_deactivated) : ?>
+    <?php if (!$lwsoptimize_is_deactivated) : ?>
         function lwsopUpdateStatRow(type, stats) {
             if (!stats || !stats[type]) return;
             var row = document.querySelector('[data-lwsop-row="' + type + '"]');
@@ -1440,7 +1442,7 @@ foreach ($plugins as $slug => $plugin) {
                                 if (bar) {
                                     bar.style.width = pct + '%';
                                     var parent = bar.parentNode;
-                                    if (parent) parent.classList.toggle('preheating', pct < 100 && <?php echo $preload_on ? 'true' : 'false'; ?>);
+                                    if (parent) parent.classList.toggle('preheating', pct < 100 && <?php echo $lwsoptimize_preload_on ? 'true' : 'false'; ?>);
                                 }
                             });
 
@@ -1473,7 +1475,7 @@ foreach ($plugins as $slug => $plugin) {
         }
         var lwsopAutoRefreshTimer = null;
         function lwsopStartAutoRefresh() {
-            <?php if ($preload_on && !$cov_complete) : ?>
+            <?php if ($lwsoptimize_preload_on && !$lwsoptimize_cov_complete) : ?>
             if (lwsopAutoRefreshTimer) clearInterval(lwsopAutoRefreshTimer);
             lwsopAutoRefreshTimer = setInterval(function(){
                 lwsopRefreshAllStats();
@@ -1728,7 +1730,7 @@ foreach ($plugins as $slug => $plugin) {
             });
         }
 
-        let radio_config = document.querySelector("input[value='<?php echo esc_js($config_array['autosetup_type'] ?? ''); ?>']");
+        let radio_config = document.querySelector("input[value='<?php echo esc_js($lwsoptimize_config_array['autosetup_type'] ?? ''); ?>']");
         if (radio_config) {
             radio_config.checked = true;
         }

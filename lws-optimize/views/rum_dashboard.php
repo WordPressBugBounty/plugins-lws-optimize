@@ -10,20 +10,20 @@ if (!current_user_can('manage_options')) wp_die('Forbidden');
 
 global $wpdb;
 
-$aggregate    = get_option('lwsop_rum_aggregate', []);
-$last_agg     = get_option('lwsop_rum_aggregate_ts', 0);
-$config_array = get_option('lws_optimize_config_array', []);
-$rum_state    = ($config_array['rum']['state'] ?? 'false') === 'true';
+$lwsoptimize_aggregate    = get_option('lwsop_rum_aggregate', []);
+$lwsoptimize_last_agg     = get_option('lwsop_rum_aggregate_ts', 0);
+$lwsoptimize_config_array = get_option('lws_optimize_config_array', []);
+$lwsoptimize_rum_state    = ($lwsoptimize_config_array['rum']['state'] ?? 'false') === 'true';
 
 // Real visit count = number of LCP rows in the DB table (one per page view)
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- custom table, admin-only dashboard render gated by manage_options above
-$visit_count = (int) $wpdb->get_var(
+$lwsoptimize_visit_count = (int) $wpdb->get_var(
     "SELECT COUNT(*) FROM `{$wpdb->prefix}lwsop_rum_samples` WHERE metric = 'LCP'"
 );
 
-$thresholds = LwsOptimizeRUM::thresholds();
+$lwsoptimize_thresholds = LwsOptimizeRUM::thresholds();
 
-$metrics_info = [
+$lwsoptimize_metrics_info = [
     'LCP' => [
         'label' => __('Page Load Speed', 'lws-optimize'),
         'full'  => __('Largest Contentful Paint', 'lws-optimize'),
@@ -60,12 +60,12 @@ $metrics_info = [
 ?>
 
 <div class="lwsoptimize_container">
-    <?php $is_deactivated = get_option('lws_optimize_deactivate_temporarily', false); ?>
+    <?php $lwsoptimize_is_deactivated = get_option('lws_optimize_deactivate_temporarily', false); ?>
     <?php include LWS_OP_DIR . '/views/_header_banner.php'; ?>
 
     <div class="lwsop_oneclickconfig_main rum-wrap">
 
-    <?php if (!$rum_state) : ?>
+    <?php if (!$lwsoptimize_rum_state) : ?>
         <div class="lwsop_oneclickconfig_block">
             <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Real Visitor Performance (RUM)', 'lws-optimize'); ?></h2>
             <div class="lwsop_bluebanner_subtitle"><?php esc_html_e('Measure your website\'s real speed as experienced by actual visitors — anonymously, without any cookie.', 'lws-optimize'); ?></div>
@@ -87,15 +87,15 @@ $metrics_info = [
 
                 <div class="rum-stats-row">
                     <div>
-                        <span class="rum-stat-num"><?php echo esc_html(number_format($visit_count)); ?></span>
+                        <span class="rum-stat-num"><?php echo esc_html(number_format($lwsoptimize_visit_count)); ?></span>
                         <span class="rum-stat-lbl"><?php esc_html_e('visits recorded', 'lws-optimize'); ?></span>
                     </div>
                     <div class="rum-stat-sep"></div>
                     <div class="rum-stat-sub">
                         <?php esc_html_e('Last update:', 'lws-optimize'); ?>&nbsp;
                         <strong>
-                        <?php if ($last_agg > 0) :
-                            echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), $last_agg));
+                        <?php if ($lwsoptimize_last_agg > 0) :
+                            echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), $lwsoptimize_last_agg));
                         else :
                             esc_html_e('never', 'lws-optimize');
                         endif; ?>
@@ -131,28 +131,28 @@ $metrics_info = [
             <p><?php esc_html_e('Google uses these 4 metrics (called Core Web Vitals) to measure the quality of your visitors\' experience. They directly influence your Google search ranking.', 'lws-optimize'); ?></p>
         </div>
         <div class="rum-metric-grid">
-        <?php foreach ($metrics_info as $metric_key => $info) :
-            $t = $thresholds[$metric_key];
+        <?php foreach ($lwsoptimize_metrics_info as $lwsoptimize_metric_key => $lwsoptimize_info) :
+            $lwsoptimize_t = $lwsoptimize_thresholds[$lwsoptimize_metric_key];
         ?>
             <div class="rum-metric-card">
-                <div class="rum-metric-card-icon"><?php echo esc_html($info['icon']); ?></div>
-                <div class="rum-metric-card-label"><?php echo esc_html($info['label']); ?></div>
-                <div class="rum-metric-card-acro"><?php echo esc_html($metric_key . ' — ' . $info['full']); ?></div>
-                <div class="rum-metric-card-desc"><?php echo esc_html($info['desc']); ?></div>
+                <div class="rum-metric-card-icon"><?php echo esc_html($lwsoptimize_info['icon']); ?></div>
+                <div class="rum-metric-card-label"><?php echo esc_html($lwsoptimize_info['label']); ?></div>
+                <div class="rum-metric-card-acro"><?php echo esc_html($lwsoptimize_metric_key . ' — ' . $lwsoptimize_info['full']); ?></div>
+                <div class="rum-metric-card-desc"><?php echo esc_html($lwsoptimize_info['desc']); ?></div>
                 <div class="rum-metric-card-thresholds">
                     <div class="rum-threshold-row">
                         <span class="rum-dot good"></span>
                         <span class="rum-threshold-key"><?php esc_html_e('Good:', 'lws-optimize'); ?></span>
                         <span class="rum-threshold-range">
                             <?php /* translators: %s: Metric threshold value, e.g. "2.5 s" */ ?>
-                            <?php echo esc_html(sprintf(__('under %s', 'lws-optimize'), $info['gfmt'])); ?>
+                            <?php echo esc_html(sprintf(__('under %s', 'lws-optimize'), $lwsoptimize_info['gfmt'])); ?>
                         </span>
                     </div>
                     <div class="rum-threshold-row">
                         <span class="rum-dot needs"></span>
                         <span class="rum-threshold-key"><?php esc_html_e('Needs work:', 'lws-optimize'); ?></span>
                         <span class="rum-threshold-range">
-                            <?php echo esc_html(sprintf('%1$s – %2$s', $info['gfmt'], $info['pfmt'])); ?>
+                            <?php echo esc_html(sprintf('%1$s – %2$s', $lwsoptimize_info['gfmt'], $lwsoptimize_info['pfmt'])); ?>
                         </span>
                     </div>
                     <div class="rum-threshold-row">
@@ -160,7 +160,7 @@ $metrics_info = [
                         <span class="rum-threshold-key"><?php esc_html_e('Poor:', 'lws-optimize'); ?></span>
                         <span class="rum-threshold-range">
                             <?php /* translators: %s: Metric threshold value, e.g. "4 s" */ ?>
-                            <?php echo esc_html(sprintf(__('over %s', 'lws-optimize'), $info['pfmt'])); ?>
+                            <?php echo esc_html(sprintf(__('over %s', 'lws-optimize'), $lwsoptimize_info['pfmt'])); ?>
                         </span>
                     </div>
                 </div>
@@ -180,7 +180,7 @@ $metrics_info = [
             <div class="rum-dt-loading"><?php esc_html_e('Loading data…', 'lws-optimize'); ?></div>
         </div>
 
-        <?php if (!empty($aggregate)) : ?>
+        <?php if (!empty($lwsoptimize_aggregate)) : ?>
         <div class="rum-legend">
             <strong><?php esc_html_e('How to read these scores:', 'lws-optimize'); ?></strong>
             <?php esc_html_e('"p75" means 75% of your visitors got this score or better — it\'s a realistic measure, not a best-case scenario.', 'lws-optimize'); ?>

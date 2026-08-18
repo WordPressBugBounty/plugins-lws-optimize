@@ -9,7 +9,7 @@ use Lws\Classes\RUM\LwsOptimizeRUM;
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           4.1.2
+ * Version:           4.1.3
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      7.0
@@ -76,7 +76,7 @@ if (!defined('LWSOP_OBJECTCACHE_PATH')) {
 
 
 // Function declarations for hook callbacks
-function lws_optimize_activation_callback() {
+function lwsoptimize_activation_callback() {
     delete_option('lws_optimize_preload_is_ongoing');
     LwsOptimizeRUM::create_table();
 
@@ -116,7 +116,7 @@ function lws_optimize_activation_callback() {
     }
 }
 
-function lws_optimize_deactivation_callback() {
+function lwsoptimize_deactivation_callback() {
     delete_option('lws_optimize_preload_is_ongoing');
 
     // Deactivate all crons
@@ -156,7 +156,7 @@ function lws_optimize_deactivation_callback() {
     }
 }
 
-function lws_optimize_uninstall_callback() {
+function lwsoptimize_uninstall_callback() {
     // Remove the cache folder
     $cache_dir = WP_CONTENT_DIR . '/cache/lwsoptimize/';
     $upload_dir = WP_CONTENT_DIR . '/uploads/lwsoptimize/';
@@ -212,9 +212,9 @@ function lws_optimize_uninstall_callback() {
 }
 
 // Actions to execute when the plugin is activated / deactivated / deleted / upgraded
-register_activation_hook(__FILE__, 'lws_optimize_activation_callback');
-register_deactivation_hook(__FILE__, 'lws_optimize_deactivation_callback');
-register_uninstall_hook(__FILE__, 'lws_optimize_uninstall_callback');
+register_activation_hook(__FILE__, 'lwsoptimize_activation_callback');
+register_deactivation_hook(__FILE__, 'lwsoptimize_deactivation_callback');
+register_uninstall_hook(__FILE__, 'lwsoptimize_uninstall_callback');
 
 add_action('plugins_loaded', function() {
     $ancienne_version = get_option('lwsop_plugin_version', 0);
@@ -257,9 +257,9 @@ add_action("wp_ajax_lws_op_activatePlugin", function()
     }
 });
 
-$deactivated = get_option('lws_optimize_deactivate_temporarily', false);
-if ($deactivated) {
-    if (time() > $deactivated) {
+$lwsoptimize_deactivated = get_option('lws_optimize_deactivate_temporarily', false);
+if ($lwsoptimize_deactivated) {
+    if (time() > $lwsoptimize_deactivated) {
         delete_option('lws_optimize_deactivate_temporarily');
     }
 }
@@ -272,6 +272,10 @@ if ($deactivated) {
 // what gets written to the HTML cache.
 if (
     function_exists('ob_gzhandler')
+    // Set by lwsop_check_apache_compression_support(): that probe measures whether
+    // Apache itself compresses, so this fallback must stay out of its way or it would
+    // report "supported" on a server whose compression modules aren't even loaded.
+    && !isset($_SERVER['HTTP_X_LWSOP_COMPRESSION_PROBE'])
     && !is_admin()
     && !(defined('DOING_CRON') && DOING_CRON)
     && !(defined('DOING_AJAX') && DOING_AJAX)

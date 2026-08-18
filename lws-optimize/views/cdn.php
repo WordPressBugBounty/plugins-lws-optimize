@@ -3,13 +3,13 @@ if (!defined('ABSPATH')) exit;
 // X-Cdn-Info => cloudflare
 // Cf-Connecting-Ip
 
-$state = isset($config_array['cloudflare']['state']) && $config_array['cloudflare']['state'] == "true" ? true : false;
+$lwsoptimize_state = isset($lwsoptimize_config_array['cloudflare']['state']) && $lwsoptimize_config_array['cloudflare']['state'] == "true" ? true : false;
 
 // If the CDN integration if not active...
-if (!$state) :
-    $headers = getallheaders();
+if (!$lwsoptimize_state) :
+    $lwsoptimize_headers = getallheaders();
     // If we find Cloudflare headers, then we show a popup to incite users to integrate CDN
-    if (isset($headers['X-Cdn-Info']) && isset($header['X-Cdn-Info']) && $header['X-Cdn-Info'] == "cloudflare") : ?>
+    if (isset($lwsoptimize_headers['X-Cdn-Info']) && isset($header['X-Cdn-Info']) && $header['X-Cdn-Info'] == "cloudflare") : ?>
         <script>
             jQuery(document).ready(function() {
                 let warning_modale = document.getElementById('lws_optimize_cloudflare_warning');
@@ -21,7 +21,7 @@ if (!$state) :
     <?php endif;
 endif;
 
-$list_time = array(
+$lwsoptimize_list_time = array(
     '0' => __('Default', 'lws-optimize'),
     '3600' => __('One hour', 'lws-optimize'),
     '14400' => __('4 hours', 'lws-optimize'),
@@ -47,7 +47,7 @@ $list_time = array(
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox">
-            <input type="checkbox" name="lwsop_cloudflare_manage" onchange="lws_optimize_cloudflare_configuration(this)" id="lwsop_cloudflare_manage" <?php echo $state ? esc_html('checked') : esc_html(''); ?>>
+            <input type="checkbox" name="lwsop_cloudflare_manage" onchange="lws_optimize_cloudflare_configuration(this)" id="lwsop_cloudflare_manage" <?php echo $lwsoptimize_state ? esc_html('checked') : esc_html(''); ?>>
             <span class="slider round"></span>
         </label>
     </div>
@@ -59,13 +59,13 @@ $list_time = array(
 // integrations dans frontend.php — évite le doublon visuel).
 // APO ne fait sens que si l'intégration CF de base est active (zone_id + token
 // déjà stockés via lws_optimize_complete_cloudflare_integration).
-$apo_state       = ($config_array['cloudflare_apo']['state'] ?? 'false') === 'true';
-$apo_zone_id     = $config_array['cloudflare_apo']['zone_id'] ?? ($config_array['cloudflare']['zone_id'] ?? '');
-$apo_token       = $config_array['cloudflare_apo']['api_token'] ?? '';
-$apo_installed_at = $config_array['cloudflare_apo']['rule_installed_at'] ?? null;
+$lwsoptimize_apo_state       = ($lwsoptimize_config_array['cloudflare_apo']['state'] ?? 'false') === 'true';
+$lwsoptimize_apo_zone_id     = $lwsoptimize_config_array['cloudflare_apo']['zone_id'] ?? ($lwsoptimize_config_array['cloudflare']['zone_id'] ?? '');
+$lwsoptimize_apo_token       = $lwsoptimize_config_array['cloudflare_apo']['api_token'] ?? '';
+$lwsoptimize_apo_installed_at = $lwsoptimize_config_array['cloudflare_apo']['rule_installed_at'] ?? null;
 // Whether a Cache Rule has actually been pushed to Cloudflare — kept separate from
-// $apo_state so the checkbox can be gated on it (see checkbox markup below).
-$apo_installed   = !empty($apo_installed_at);
+// $lwsoptimize_apo_state so the checkbox can be gated on it (see checkbox markup below).
+$lwsoptimize_apo_installed   = !empty($lwsoptimize_apo_installed_at);
 ?>
 <div class="lwsop_contentblock">
     <div class="lwsop_contentblock_leftside">
@@ -80,24 +80,24 @@ $apo_installed   = !empty($apo_installed_at);
         <div class="lwsop_contentblock_description">
             <?php esc_html_e('Keeps a copy of your pages on Cloudflare\'s network so they load faster for visitors anywhere in the world. This copy updates automatically every time you publish or edit content.', 'lws-optimize'); ?>
         </div>
-        <div id="lwsop_cf_apo_locked_notice" style="margin-top:10px;padding:8px 12px;background:#fef3c7;border-radius:4px;font-size:12px;color:#92400e<?php echo $state ? ';display:none' : ''; ?>">
+        <div id="lwsop_cf_apo_locked_notice" style="margin-top:10px;padding:8px 12px;background:#fef3c7;border-radius:4px;font-size:12px;color:#92400e<?php echo $lwsoptimize_state ? ';display:none' : ''; ?>">
             <?php esc_html_e('⚠ Turn on the Cloudflare integration above first to use this feature.', 'lws-optimize'); ?>
         </div>
-        <div class="lwsop_phase2_inputs" id="lwsop_cf_apo_fields" style="margin-top:12px<?php echo $state ? '' : ';display:none'; ?>">
+        <div class="lwsop_phase2_inputs" id="lwsop_cf_apo_fields" style="margin-top:12px<?php echo $lwsoptimize_state ? '' : ';display:none'; ?>">
             <label style="display:block;margin-bottom:6px">
                 <span style="display:inline-block;width:140px;font-size:13px"><?php esc_html_e('Cloudflare Zone ID:', 'lws-optimize'); ?></span>
-                <input type="text" id="lwsop_cf_apo_zone_id" placeholder="abc123def456..." style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_zone_id); ?>">
+                <input type="text" id="lwsop_cf_apo_zone_id" placeholder="abc123def456..." style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($lwsoptimize_apo_zone_id); ?>">
             </label>
             <label style="display:block;margin-bottom:6px">
                 <span style="display:inline-block;width:140px;font-size:13px"><?php esc_html_e('API Token:', 'lws-optimize'); ?></span>
-                <input type="password" id="lwsop_cf_apo_token" placeholder="••••••••" style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($apo_token); ?>">
+                <input type="password" id="lwsop_cf_apo_token" placeholder="••••••••" style="width:340px;padding:5px;font-family:monospace;font-size:12px" value="<?php echo esc_attr($lwsoptimize_apo_token); ?>">
             </label>
             <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
                 <span id="lwsop_cf_apo_status" style="font-size:12px;color:#16a34a"><?php
-                    if ($apo_installed) {
-                        $installed_label = __('✓ Turned on since', 'lws-optimize') . ' '
-                            . date_i18n(get_option('date_format') . ' ' . get_option('time_format'), (int) $apo_installed_at);
-                        echo esc_html($installed_label);
+                    if ($lwsoptimize_apo_installed) {
+                        $lwsoptimize_installed_label = __('✓ Turned on since', 'lws-optimize') . ' '
+                            . date_i18n(get_option('date_format') . ' ' . get_option('time_format'), (int) $lwsoptimize_apo_installed_at);
+                        echo esc_html($lwsoptimize_installed_label);
                     }
                     // Off: no message.
                 ?></span>
@@ -106,7 +106,7 @@ $apo_installed   = !empty($apo_installed_at);
     </div>
     <div class="lwsop_contentblock_rightside">
         <label class="lwsop_checkbox" for="lws_optimize_cloudflare_apo_check">
-            <input type="checkbox" id="lws_optimize_cloudflare_apo_check" <?php echo $apo_state ? 'checked' : ''; ?> <?php echo (!$state) ? 'disabled' : ''; ?>>
+            <input type="checkbox" id="lws_optimize_cloudflare_apo_check" <?php echo $lwsoptimize_apo_state ? 'checked' : ''; ?> <?php echo (!$lwsoptimize_state) ? 'disabled' : ''; ?>>
             <span class="slider round"></span>
         </label>
     </div>

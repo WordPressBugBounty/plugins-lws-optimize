@@ -14,7 +14,9 @@
 if (!defined('ABSPATH')) exit;
 
 if (!class_exists('Memcached')) {
-    error_log('Memcached extension not installed or enabled.');
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('Memcached extension not installed or enabled.'); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+    }
     return;
 }
 
@@ -27,18 +29,20 @@ if ( ! defined( 'WP_CACHE_KEY_SALT' ) ) {
     }
 }
 
-global $memcached_instance;
+global $lwsoptimize_memcached_instance;
 
 try {
-$memcached_instance = new Memcached();
-    $memcached_instance->addServer('127.0.0.1', 11211);
-    $memcached_instance->setOption(Memcached::OPT_CONNECT_TIMEOUT, 200);
-    $memcached_instance->setOption(Memcached::OPT_POLL_TIMEOUT,    200);
-    $memcached_instance->setOption(Memcached::OPT_SEND_TIMEOUT,    200);
-    $memcached_instance->setOption(Memcached::OPT_RECV_TIMEOUT,    200);
+$lwsoptimize_memcached_instance = new Memcached();
+    $lwsoptimize_memcached_instance->addServer('127.0.0.1', 11211);
+    $lwsoptimize_memcached_instance->setOption(Memcached::OPT_CONNECT_TIMEOUT, 200);
+    $lwsoptimize_memcached_instance->setOption(Memcached::OPT_POLL_TIMEOUT,    200);
+    $lwsoptimize_memcached_instance->setOption(Memcached::OPT_SEND_TIMEOUT,    200);
+    $lwsoptimize_memcached_instance->setOption(Memcached::OPT_RECV_TIMEOUT,    200);
 } catch (\Throwable $e) {
-    error_log('LWS Optimize Memcached init exception: ' . $e->getMessage());
-    $memcached_instance = null;
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('LWS Optimize Memcached init exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+    }
+    $lwsoptimize_memcached_instance = null;
 }
 
 class WP_Object_Cache {
@@ -51,8 +55,8 @@ class WP_Object_Cache {
     private $global_groups = [];
 
     public function __construct() {
-        global $memcached_instance;
-        $this->memcached = $memcached_instance;
+        global $lwsoptimize_memcached_instance;
+        $this->memcached = $lwsoptimize_memcached_instance;
     }
 
     public function add($key, $data, $group = 'default', $expire = 0) {
@@ -71,7 +75,9 @@ class WP_Object_Cache {
         try {
             return (bool) $this->memcached->set($id, $data, (int) $expire);
         } catch (\Throwable $e) {
-            error_log('LWS Optimize Memcached SET exception: ' . $e->getMessage());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('LWS Optimize Memcached SET exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+            }
             return false;
         }
     }
@@ -96,7 +102,9 @@ class WP_Object_Cache {
             $rc = $this->memcached->getResultCode();
             if ($value === false && $rc !== Memcached::RES_SUCCESS) {
                 if ($rc !== Memcached::RES_NOTFOUND) {
-                    error_log(sprintf('LWS Optimize Memcached GET non-success (%d): %s for key %s', $rc, $this->memcached->getResultMessage(), $id));
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log(sprintf('LWS Optimize Memcached GET non-success (%d): %s for key %s', $rc, $this->memcached->getResultMessage(), $id)); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+                    }
                 }
                 $found = false;
                 $this->cache_misses++;
@@ -107,7 +115,9 @@ class WP_Object_Cache {
         $this->cache_hits++;
         return $value;
         } catch (\Throwable $e) {
-            error_log('LWS Optimize Memcached GET exception: ' . $e->getMessage());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('LWS Optimize Memcached GET exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+            }
             $found = false;
             $this->cache_misses++;
             return false;
@@ -160,7 +170,9 @@ class WP_Object_Cache {
         try {
             return (bool) $this->memcached->delete($id);
         } catch (\Throwable $e) {
-            error_log('LWS Optimize Memcached DELETE exception: ' . $e->getMessage());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('LWS Optimize Memcached DELETE exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+            }
             return false;
         }
     }
@@ -173,7 +185,9 @@ class WP_Object_Cache {
         try {
             return (bool) $this->memcached->flush();
         } catch (\Throwable $e) {
-            error_log('LWS Optimize Memcached FLUSH exception: ' . $e->getMessage());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('LWS Optimize Memcached FLUSH exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+            }
             return false;
         }
     }
@@ -204,7 +218,9 @@ class WP_Object_Cache {
         try {
         return $this->memcached->increment($id, $offset);
         } catch (\Throwable $e) {
-            error_log('LWS Optimize Memcached INCR exception: ' . $e->getMessage());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('LWS Optimize Memcached INCR exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+            }
             return false;
         }
     }
@@ -217,7 +233,9 @@ class WP_Object_Cache {
         try {
         return $this->memcached->decrement($id, $offset);
         } catch (\Throwable $e) {
-            error_log('LWS Optimize Memcached DECR exception: ' . $e->getMessage());
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('LWS Optimize Memcached DECR exception: ' . $e->getMessage()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- WP_DEBUG-gated, see Classes/LwsOptimize.php:43 for the same pattern
+            }
             return false;
         }
     }

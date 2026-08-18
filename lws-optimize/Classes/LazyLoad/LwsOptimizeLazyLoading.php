@@ -50,7 +50,7 @@ class LwsOptimizeLazyLoading
         if (LwsOptimizeAmpHelper::is_amp_request()) {
             return;
         }
-        wp_enqueue_script('lws-optimize-lazyload', LWS_OP_URL . 'js/lws_op_lazyload.js', array(), null, true);
+        wp_enqueue_script('lws-optimize-lazyload', LWS_OP_URL . 'js/lws_op_lazyload.js', array(), '3.2.4.3', true);
     }
 
     /**
@@ -188,7 +188,7 @@ class LwsOptimizeLazyLoading
         if (LwsOptimizeAmpHelper::is_amp_request()) {
             return;
         }
-        wp_enqueue_script('lws-optimize-lazyload', LWS_OP_URL . 'js/lws_op_lazyload.js', array(), null, true);
+        wp_enqueue_script('lws-optimize-lazyload', LWS_OP_URL . 'js/lws_op_lazyload.js', array(), '3.2.4.3', true);
     }
 
     /**

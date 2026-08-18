@@ -21,6 +21,11 @@ use Lws\Classes\Images\LwsOptimizeImageFrontManager;
 
 class LwsOptimize
 {
+    // Coalescing window (seconds) for the global side effects of a cache
+    // purge (edge/CDN purge, opcache reset, object cache flush) — see
+    // lwsop_run_global_purge_throttled().
+    const LWSOP_GLOBAL_PURGE_WINDOW = 30;
+
     public $log_file;
     public $lwsOptimizeCache;
     public $lwsImageOptimization;
@@ -485,7 +490,7 @@ class LwsOptimize
     public function lws_optimize_timestamp_crons($schedules)
     {
 
-        $lws_optimize_cache_timestamps = [
+        $lwsoptimize_cache_timestamps = [
             'lws_daily' => [86400, __('Once a day', 'lws-optimize')],
             'lws_weekly' => [604800, __('Once a week', 'lws-optimize')],
             'lws_monthly' => [2629743, __('Once a month', 'lws-optimize')],
@@ -496,7 +501,7 @@ class LwsOptimize
             'lws_never' => [0, __('Never expire', 'lws-optimize')],
         ];
 
-        foreach ($lws_optimize_cache_timestamps as $code => $schedule) {
+        foreach ($lwsoptimize_cache_timestamps as $code => $schedule) {
             $schedules[$code] = array(
                 'interval' => $schedule[0],
                 'display' => $schedule[1]
@@ -523,6 +528,7 @@ class LwsOptimize
     public function lwsop_dump_all_dynamic_caches()
     {
         $chosen_purger = null;
+        $requests = [];
 
         if (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE'])
             && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'varnish') {
@@ -535,27 +541,27 @@ class LwsOptimize
                 // If we find the IP and the host, we can purge the cache
                 // Otherwise, we will purge the cache without the host
                 if ($ipXchange_IP && $host) {
-                    wp_remote_request(str_replace($host, $ipXchange_IP, get_site_url()), array('method' => 'FULLPURGE', 'Host' => $host));
+                    $requests[] = wp_remote_request(str_replace($host, $ipXchange_IP, get_site_url()), array('method' => 'FULLPURGE', 'Host' => $host));
                 } else {
-                    wp_remote_request(get_site_url(), array('method' => 'FULLPURGE'));
+                    $requests[] = wp_remote_request(get_site_url(), array('method' => 'FULLPURGE'));
                 }
             } else {
-                wp_remote_request(get_site_url(), array('method' => 'FULLPURGE'));
+                $requests[] = wp_remote_request(get_site_url(), array('method' => 'FULLPURGE'));
             }
 
             $chosen_purger = "Varnish";
         } elseif (isset($_SERVER['HTTP_X_CACHE_ENABLED']) && isset($_SERVER['HTTP_EDGE_CACHE_ENGINE']) && $_SERVER['HTTP_X_CACHE_ENABLED'] == '1' && $_SERVER['HTTP_EDGE_CACHE_ENGINE'] == 'litespeed') {
             // If LiteSpeed, simply purge the cache
-            wp_remote_request(get_site_url() . "/.*", array('method' => 'PURGE'));
-            wp_remote_request(get_site_url() . "/*", array('method' => 'FULLPURGE'));
+            $requests[] = wp_remote_request(get_site_url() . "/.*", array('method' => 'PURGE'));
+            $requests[] = wp_remote_request(get_site_url() . "/*", array('method' => 'FULLPURGE'));
             $chosen_purger = "LiteSpeed";
         } elseif (isset($_ENV['lwscache']) && strtolower(sanitize_text_field(wp_unslash($_ENV['lwscache']))) == "on") {
             // If LWSCache, simply purge the cache
-            wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'PURGE'));
-            wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'PURGE'));
+            $requests[] = wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'PURGE'));
+            $requests[] = wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'PURGE'));
 
-            wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'FULLPURGE'));
-            wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'FULLPURGE'));
+            $requests[] = wp_remote_request(get_site_url(null, '', 'https') . "/*", array('method' => 'FULLPURGE'));
+            $requests[] = wp_remote_request(get_site_url(null, '', 'http') . "/*", array('method' => 'FULLPURGE'));
             $chosen_purger = "LWS Cache";
         } else {
             // No cache, no purge
@@ -565,8 +571,23 @@ class LwsOptimize
             return (json_encode(array('code' => "FAILURE", 'data' => "No cache method usable"), JSON_PRETTY_PRINT));
         }
 
+        $errors = array_filter($requests, 'is_wp_error');
         $logger = fopen($this->log_file, 'a');
-        fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Compatible cache found : starting server cache purge on {$chosen_purger}" . PHP_EOL);
+
+        if (count($errors) === count($requests)) {
+            $messages = array_map(function ($error) {
+                return $error->get_error_message();
+            }, $errors);
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Server cache purge on {$chosen_purger} FAILED: " . implode('; ', $messages) . PHP_EOL);
+            fclose($logger);
+            return (json_encode(array('code' => "FAILURE", 'data' => "Purge request(s) failed for {$chosen_purger}"), JSON_PRETTY_PRINT));
+        }
+
+        if (!empty($errors)) {
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Compatible cache found : starting server cache purge on {$chosen_purger} (" . count($errors) . "/" . count($requests) . " request(s) failed)" . PHP_EOL);
+        } else {
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Compatible cache found : starting server cache purge on {$chosen_purger}" . PHP_EOL);
+        }
         fclose($logger);
         return (json_encode(array('code' => "SUCCESS", 'data' => ""), JSON_PRETTY_PRINT));
     }
@@ -1203,6 +1224,16 @@ class LwsOptimize
         $serve_script     = $deployed_script
             ?? ltrim(str_replace(ABSPATH, '', LWS_OP_DIR . 'Classes/FileCache/lwsop_cache_serve.php'), '/');
 
+        // Serve the pre-compressed .br/.gz siblings written by LwsOptimizeFileCache on
+        // cache HITs that Apache answers directly, without PHP. Without this, those hits
+        // go out uncompressed on any vhost where mod_brotli/mod_deflate aren't loaded —
+        // the <IfModule> blocks from set_gzip_brotli_htaccess() simply no-op there, and
+        // the ob_gzhandler fallback in lws-optimize.php never runs because PHP is never
+        // reached. Not needed with the PHP intermediary: lwsop_cache_serve.php negotiates
+        // the encoding itself.
+        $serve_precompressed = !$php_intermediary
+            && $this->lwsop_check_option('gzip_compression')['state'] === "true";
+
         // Get path to the cache directory
         $path = "cache";
         if ($path && preg_match("/(cache|cache-mobile|cache-css|cache-js)/", $path)) {
@@ -1347,28 +1378,32 @@ class LwsOptimize
                 // If not connected users on mobile have cache
                 if ($this->lwsop_check_option('cache_mobile_user')['state'] === "false") {
                     $hta .= "## Anonymous mobile ##\n";
-                    $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
-                    $hta .= "RewriteCond %{HTTP_COOKIE} !wordpress_logged_in_ [NC]\n";
-                    $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-                    $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_0.html -f\n";
-                    if ($php_intermediary) {
-                        $hta .= "RewriteRule ^(.*) $serve_script [L,E=LWSOP_CACHE:HIT]\n\n";
-                    } else {
-                        $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path_mobile$http_path/$1index_0.html [L,E=LWSOP_CACHE:HIT]\n\n";
-                    }
+                    $anonymous_mobile_conditions = $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users)
+                        . "RewriteCond %{HTTP_COOKIE} !wordpress_logged_in_ [NC]\n"
+                        . "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+
+                    $hta .= $this->lwsop_htaccess_cache_serve_rules(
+                        $anonymous_mobile_conditions,
+                        "%{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/\$1index_0.html",
+                        "$wp_content_directory$cache_path_mobile$http_path/\$1index_0.html",
+                        $php_intermediary ? $serve_script : null,
+                        $serve_precompressed
+                    );
                 }
 
                 // Non connected and non-mobile users
                 $hta .= "## Anonymous desktop ##\n";
-                $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
-                $hta .= "RewriteCond %{HTTP:Cookie} !wordpress_logged_in [NC]\n";
-                $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-                $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_0.html -f\n";
-                if ($php_intermediary) {
-                    $hta .= "RewriteRule ^(.*) $serve_script [L,E=LWSOP_CACHE:HIT]\n\n";
-                } else {
-                    $hta .= "RewriteRule ^(.*) $wp_content_directory$cache_path$http_path/$1index_0.html [L,E=LWSOP_CACHE:HIT]\n\n";
-                }
+                $anonymous_desktop_conditions = $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users)
+                    . "RewriteCond %{HTTP:Cookie} !wordpress_logged_in [NC]\n"
+                    . "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
+
+                $hta .= $this->lwsop_htaccess_cache_serve_rules(
+                    $anonymous_desktop_conditions,
+                    "%{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/\$1index_0.html",
+                    "$wp_content_directory$cache_path$http_path/\$1index_0.html",
+                    $php_intermediary ? $serve_script : null,
+                    $serve_precompressed
+                );
 
                 $hta .= "</IfModule>\n\n";
 
@@ -1381,6 +1416,34 @@ class LwsOptimize
                     $hta .= "Header set Edge-Cache-Platform \"lwsoptimize\" env=LWSOP_CACHE\n";
                 }
                 $hta .= "</IfModule>\n\n";
+
+                if ($serve_precompressed) {
+                    // Type and encoding for the pre-compressed cache files the rules above
+                    // may serve. Keyed on the filename rather than on an environment
+                    // variable set by RewriteRule, because mod_rewrite renames E= vars with
+                    // a REDIRECT_ prefix when the substitution goes through an internal
+                    // redirect — and a .br/.gz body sent without its Content-Encoding is an
+                    // unreadable page, not a missing-header nuisance.
+                    // no-gzip/no-brotli stop mod_deflate/mod_brotli, when they ARE loaded,
+                    // from compressing an already-compressed body a second time.
+                    foreach (['br' => 'br', 'gz' => 'gzip'] as $suffix => $encoding) {
+                        $hta .= '<FilesMatch "index_[0-9]+\.html\.' . $suffix . '$">' . "\n";
+                        $hta .= "ForceType text/html\n";
+                        $hta .= "<IfModule mod_env.c>\nSetEnv no-gzip 1\nSetEnv no-brotli 1\n</IfModule>\n";
+                        $hta .= "<IfModule mod_headers.c>\n";
+                        $hta .= "Header set Content-Encoding \"$encoding\"\n";
+                        $hta .= "Header merge Vary Accept-Encoding\n";
+                        $hta .= "</IfModule>\n";
+                        $hta .= "</FilesMatch>\n\n";
+                    }
+
+                    // The uncompressed file is one arm of the same negotiation, so it needs
+                    // Vary too: without it a shared cache could store this response and then
+                    // hand it to a client that would have received a compressed variant.
+                    $hta .= '<FilesMatch "index_[0-9]+\.html$">' . "\n";
+                    $hta .= "<IfModule mod_headers.c>\nHeader merge Vary Accept-Encoding\n</IfModule>\n";
+                    $hta .= "</FilesMatch>\n\n";
+                }
 
                 $hta = "#LWS OPTIMIZE - CACHING\n# Règles ajoutées par LWS Optimize\n# Rules added by LWS Optimize\n $hta#END LWS OPTIMIZE - CACHING\n";
 
@@ -1400,6 +1463,52 @@ class LwsOptimize
                 }
             }
         }
+    }
+
+    /**
+     * Emits the RewriteCond/RewriteRule set that serves one cached HTML file.
+     *
+     * With $precompressed, the .br then .gz siblings written by
+     * LwsOptimizeFileCache::lwsop_write_compressed_variants() are tried before the raw
+     * file, so an Apache-served HIT is compressed even where mod_brotli/mod_deflate
+     * aren't loaded. The condition block is repeated for each variant because a
+     * RewriteCond only applies to the RewriteRule immediately after it. A sibling that
+     * doesn't exist — cache written before this existed, or no brotli extension on the
+     * server — just fails its -f test, and the plain rule below still serves the page.
+     *
+     * @param string      $conditions    RewriteCond block selecting this visitor/cache bucket.
+     * @param string      $doc_root_file The cache file as a %{DOCUMENT_ROOT}-based path, for -f tests.
+     * @param string      $cache_file    The same file as a rewrite target.
+     * @param string|null $serve_script  PHP intermediary to serve instead of the file, or null
+     *                                   to serve it directly. That script negotiates the
+     *                                   encoding itself, so it gets no variant rules.
+     * @param bool        $precompressed Whether to try the pre-compressed siblings first.
+     */
+    private function lwsop_htaccess_cache_serve_rules($conditions, $doc_root_file, $cache_file, $serve_script = null, $precompressed = false)
+    {
+        $hta = '';
+
+        if ($precompressed && $serve_script === null) {
+            // Match the encoding as a full Accept-Encoding token, so "gzip" isn't found
+            // inside some other coding name and "br" isn't found inside "brotli".
+            $variants = [
+                '.br' => '(^|,)\s*br\s*(;|,|$)',
+                '.gz' => '(^|,)\s*(x-)?gzip\s*(;|,|$)',
+            ];
+
+            foreach ($variants as $suffix => $accept_encoding) {
+                $hta .= $conditions;
+                $hta .= "RewriteCond %{HTTP:Accept-Encoding} $accept_encoding [NC]\n";
+                $hta .= "RewriteCond $doc_root_file$suffix -f\n";
+                $hta .= "RewriteRule ^(.*) $cache_file$suffix [L,E=LWSOP_CACHE:HIT,E=no-gzip:1,E=no-brotli:1]\n\n";
+            }
+        }
+
+        $hta .= $conditions;
+        $hta .= "RewriteCond $doc_root_file -f\n";
+        $hta .= "RewriteRule ^(.*) " . ($serve_script !== null ? $serve_script : $cache_file) . " [L,E=LWSOP_CACHE:HIT]\n\n";
+
+        return $hta;
     }
 
     public function lws_optimize_basic_htaccess_conditions($http_host, $admin_users) {
@@ -1489,11 +1598,19 @@ class LwsOptimize
      */
     public function lwsop_check_apache_compression_support()
     {
-        $response = wp_remote_get(home_url('/'), [
+        // The probe has to measure Apache alone, so it neutralises both of the plugin's
+        // own compression paths — otherwise it would report "supported" on a server that
+        // compresses nothing: do_not_cache_lwsoptimize keeps the .htaccess rules from
+        // serving a pre-compressed cache file, and the X-LWSOP-Compression-Probe header
+        // keeps the ob_gzhandler fallback in lws-optimize.php from wrapping the response.
+        $response = wp_remote_get(home_url('/?do_not_cache_lwsoptimize=1'), [
             'timeout'   => 10,
             'sslverify' => true,
             'cookies'   => [],
-            'headers'   => ['Accept-Encoding' => 'br, gzip'],
+            'headers'   => [
+                'Accept-Encoding'             => 'br, gzip',
+                'X-LWSOP-Compression-Probe'   => '1',
+            ],
         ]);
 
         if (is_wp_error($response)) {
@@ -1879,49 +1996,38 @@ class LwsOptimize
     }
 
     /**
-     * Get URLs for categories, tags, and pagination for cache clearing
+     * Get the taxonomy term URLs (and, for regular posts, the posts-listing
+     * page URL) that need their cache cleared as a result of a change to a
+     * specific post. Scoped to that post's own taxonomies/terms — not a
+     * sitewide sweep — so a single post update doesn't purge every taxonomy
+     * archive on the site.
      */
-    public function get_taxonomy_and_pagination_urls() {
+    public function get_taxonomy_and_pagination_urls($post_id = 0) {
         $urls = [];
 
-        // Get category URLs
-        $categories = get_categories([
-            'hide_empty' => false,
-            'taxonomy' => 'category'
-        ]);
-
-        foreach ($categories as $category) {
-            $urls[] = get_category_link($category->term_id);
+        $post = $post_id ? get_post($post_id) : null;
+        if (!$post) {
+            return [];
         }
 
-        // Get tag URLs
-        $tags = get_tags([
-            'hide_empty' => false
-        ]);
-
-        foreach ($tags as $tag) {
-            $urls[] = get_tag_link($tag->term_id);
-        }
-
-        // Get main pagination URLs (blog/posts page)
-        $posts_page_id = get_option('page_for_posts');
-        if ($posts_page_id) {
-            $posts_page_url = get_permalink($posts_page_id);
-        } else {
-            $posts_page_url = home_url('/');
-        }
-
-        // Get custom taxonomies if any
-        $taxonomies = get_taxonomies(['public' => true, '_builtin' => false], 'objects');
+        // Get the terms actually assigned to this post, for the taxonomies
+        // registered on its post type.
+        $taxonomies = get_object_taxonomies($post->post_type);
         foreach ($taxonomies as $taxonomy) {
-            $terms = get_terms([
-                'taxonomy' => $taxonomy->name,
-                'hide_empty' => false,
-            ]);
+            $terms = get_the_terms($post_id, $taxonomy);
+            if (empty($terms) || is_wp_error($terms)) {
+                continue;
+            }
 
             foreach ($terms as $term) {
                 $urls[] = get_term_link($term);
             }
+        }
+
+        // Regular posts also show up on the main posts-listing page.
+        if ($post->post_type === 'post') {
+            $posts_page_id = get_option('page_for_posts');
+            $urls[] = $posts_page_id ? get_permalink($posts_page_id) : home_url('/');
         }
 
         // Filter out any invalid URLs and make them unique
@@ -2019,8 +2125,11 @@ class LwsOptimize
                 }
             }
 
-            // Additionally clear cache for categories, tags and pagination
-            $taxonomy_urls = $this->get_taxonomy_and_pagination_urls();
+            // Additionally clear cache for the taxonomies/terms tied to this
+            // specific post (and its listing page, if applicable) — not the
+            // whole site's taxonomies.
+            $post_id = $directory ? url_to_postid($directory) : 0;
+            $taxonomy_urls = $this->get_taxonomy_and_pagination_urls($post_id);
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
 
             foreach ($taxonomy_urls as $url) {
@@ -2075,14 +2184,20 @@ class LwsOptimize
                 update_option('lws_optimize_config_array', $optimize_options);
             }
 
-            // Clear other caches
-            $this->lwsop_dump_all_dynamic_caches();
-            $this->lwsop_remove_opcache();
-
-            if (function_exists('wp_cache_flush')) {
-                wp_cache_flush();
-                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
+            // Targeted purge always runs now (scoped to this post's own URL,
+            // cheap), since lwsop_dump_all_dynamic_caches() only sends a
+            // site-wide wildcard purge that may not be honored by every edge cache.
+            $purged_via = $this->lwsop_purge_varnish_url($directory);
+            if ($purged_via) {
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Targeted edge cache purge sent to $purged_via for $directory" . PHP_EOL);
             }
+
+            // The rest (site-wide edge purge, full opcache reset, full object
+            // cache flush) is global and expensive, so it's coalesced across
+            // a short window instead of running on every single call — on
+            // busy stores this function can otherwise fire thousands of
+            // times a day.
+            $this->lwsop_run_global_purge_throttled($logger);
 
             return json_encode(['code' => 'SUCCESS'], JSON_PRETTY_PRINT);
 
@@ -2091,6 +2206,56 @@ class LwsOptimize
             return json_encode(['code' => 'ERROR', 'message' => $e->getMessage()], JSON_PRETTY_PRINT);
         } finally {
             fclose($logger);
+        }
+    }
+
+    /**
+     * Coalesce the expensive, site-wide side effects of a cache purge
+     * (edge/CDN purge, opcache reset, object cache flush) so a burst of
+     * purge-triggering events collapses into one run per window instead of
+     * one per event.
+     *
+     * This deliberately does NOT just "skip while locked": wp_cache_flush()
+     * clears object-cache entries (stock, price, term counts, etc.), so a
+     * dropped run could let a page regenerate mid-window with stale
+     * object-cache data baked in, with nothing left to invalidate it
+     * afterwards. Instead, a call that arrives while locked marks one more
+     * run as owed, and every call (from this or any other autopurge
+     * trigger) checks for and executes an owed run whose window has
+     * elapsed before deciding what to do with itself — so a run is only
+     * ever delayed, never lost.
+     */
+    private function lwsop_run_global_purge_throttled($logger = null)
+    {
+        if (get_transient('lwsop_global_purge_pending') && !get_transient('lwsop_global_purge_lock')) {
+            delete_transient('lwsop_global_purge_pending');
+            set_transient('lwsop_global_purge_lock', 1, self::LWSOP_GLOBAL_PURGE_WINDOW);
+            $this->lwsop_run_global_purge($logger);
+            return;
+        }
+
+        if (!get_transient('lwsop_global_purge_lock')) {
+            set_transient('lwsop_global_purge_lock', 1, self::LWSOP_GLOBAL_PURGE_WINDOW);
+            $this->lwsop_run_global_purge($logger);
+            return;
+        }
+
+        set_transient('lwsop_global_purge_pending', true, self::LWSOP_GLOBAL_PURGE_WINDOW * 2);
+        if ($logger) {
+            fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Global cache purge throttled (ran <" . self::LWSOP_GLOBAL_PURGE_WINDOW . "s ago); one more run queued" . PHP_EOL);
+        }
+    }
+
+    private function lwsop_run_global_purge($logger = null)
+    {
+        $this->lwsop_dump_all_dynamic_caches();
+        $this->lwsop_remove_opcache();
+
+        if (function_exists('wp_cache_flush')) {
+            wp_cache_flush();
+            if ($logger) {
+                fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] WordPress object cache cleared" . PHP_EOL);
+            }
         }
     }
 

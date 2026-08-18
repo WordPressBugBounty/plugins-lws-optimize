@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-$media_array = array(
+$lwsoptimize_media_array = array(
     // 'media_optimize' => array(
     //     'title' => __('LWS Media Optimize plugin', 'lws-optimize'),
     //     'desc' => __('This plugin lets you optimize and convert images (JPEG, PNG, WEBP, AVIF), reduce their size and maximum dimensions to speed up the website all the while assuring an universal browser compatibility.', 'lws-optimize'),
@@ -83,7 +83,7 @@ $media_array = array(
     ),
 );
 
-$media_type_excluded = array(
+$lwsoptimize_media_type_excluded = array(
     'gravatar' => __('Gravatars', 'lws-optimize'),
     'thumbnails' => __('Thumbnails', 'lws-optimize'),
     'responsive' => __('Responsive', 'lws-optimize'),
@@ -92,10 +92,10 @@ $media_type_excluded = array(
     'video' => __('Videos', 'lws-optimize'),
 );
 
-foreach ($media_array as $key => $array) {
-    $media_array[$key]['has_exclusion'] = isset($config_array[$key]['exclusions']) && count($config_array[$key]['exclusions']) > 0 ? true : false;
-    $media_array[$key]['exclusion'] = isset($config_array[$key]['exclusions']) && count($config_array[$key]['exclusions']) > 0 ? $config_array[$key]['exclusions'] : "X";
-    $media_array[$key]['state'] = isset($config_array[$key]['state']) && $config_array[$key]['state'] == "true" ? true : false;
+foreach ($lwsoptimize_media_array as $lwsoptimize_key => $lwsoptimize_array) {
+    $lwsoptimize_media_array[$lwsoptimize_key]['has_exclusion'] = isset($lwsoptimize_config_array[$lwsoptimize_key]['exclusions']) && count($lwsoptimize_config_array[$lwsoptimize_key]['exclusions']) > 0 ? true : false;
+    $lwsoptimize_media_array[$lwsoptimize_key]['exclusion'] = isset($lwsoptimize_config_array[$lwsoptimize_key]['exclusions']) && count($lwsoptimize_config_array[$lwsoptimize_key]['exclusions']) > 0 ? $lwsoptimize_config_array[$lwsoptimize_key]['exclusions'] : "X";
+    $lwsoptimize_media_array[$lwsoptimize_key]['state'] = isset($lwsoptimize_config_array[$lwsoptimize_key]['state']) && $lwsoptimize_config_array[$lwsoptimize_key]['state'] == "true" ? true : false;
 }
 ?>
 
@@ -103,45 +103,45 @@ foreach ($media_array as $key => $array) {
     <h2 class="lwsop_bluebanner_title"><?php esc_html_e('Media Optimisations', 'lws-optimize'); ?></h2>
 </div>
 
-<?php foreach ($media_array as $data) : ?>
+<?php foreach ($lwsoptimize_media_array as $lwsoptimize_data) : ?>
     <div class="lwsop_contentblock">
         <div class="lwsop_contentblock_leftside">
             <h2 class="lwsop_contentblock_title">
-                <?php echo esc_html($data['title']); ?>
-                <?php if ($data['recommended']) : ?>
+                <?php echo esc_html($lwsoptimize_data['title']); ?>
+                <?php if ($lwsoptimize_data['recommended']) : ?>
                     <span class="lwsop_recommended"><?php esc_html_e('recommended', 'lws-optimize'); ?></span>
                 <?php endif ?>
-                <?php if (isset($data['has_tooltip'])) : ?>
-                    <a href="<?php echo esc_url($data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
+                <?php if (isset($lwsoptimize_data['has_tooltip'])) : ?>
+                    <a href="<?php echo esc_url($lwsoptimize_data['tooltip_link']); ?>" rel="noopener" target="_blank"><img src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/infobulle.svg') ?>" alt="icône infobulle" width="16px" height="16px" data-toggle="tooltip" data-placement="top" title="<?php esc_html_e("Learn more", "lws-optimize"); ?>"></a>
                 <?php endif ?>
             </h2>
             <div class="lwsop_contentblock_description">
-                <?php echo esc_html($data['desc']); ?>
+                <?php echo esc_html($lwsoptimize_data['desc']); ?>
             </div>
         </div>
         <div class="lwsop_contentblock_rightside">
-            <?php if ($data['has_exclusion']) : ?>
-                <div id="<?php echo esc_html($data['exclusion_id']); ?>_exclusions" name="exclusion_bubble" class="lwsop_exclusion_infobubble">
-                    <span><?php echo esc_html(count($data['exclusion'])); ?></span> <span><?php esc_html_e('exclusions', 'lws-optimize'); ?></span>
+            <?php if ($lwsoptimize_data['has_exclusion']) : ?>
+                <div id="<?php echo esc_html($lwsoptimize_data['exclusion_id']); ?>_exclusions" name="exclusion_bubble" class="lwsop_exclusion_infobubble">
+                    <span><?php echo esc_html(count($lwsoptimize_data['exclusion'])); ?></span> <span><?php esc_html_e('exclusions', 'lws-optimize'); ?></span>
                 </div>
             <?php endif ?>
-            <?php if ($data['has_exclusion_button']) : ?>
-                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($data['title']); ?>" id="<?php echo esc_html($data['exclusion_id']); ?>" name="<?php echo esc_html($data['exclusion_id']); ?>">
+            <?php if ($lwsoptimize_data['has_exclusion_button']) : ?>
+                <button type="button" class="lwsop_darkblue_button" value="<?php echo esc_html($lwsoptimize_data['title']); ?>" id="<?php echo esc_html($lwsoptimize_data['exclusion_id']); ?>" name="<?php echo esc_html($lwsoptimize_data['exclusion_id']); ?>">
                     <span>
                         <?php esc_html_e('Exclude files', 'lws-optimize'); ?>
                     </span>
                 </button>
             <?php endif ?>
-            <?php if ($data['has_special_button']) : ?>
-                <button type="button" class="lwsop_darkblue_button" id="<?php echo esc_html($data['s_button_id']); ?>" name="<?php echo esc_html($data['s_button_id']); ?>">
+            <?php if ($lwsoptimize_data['has_special_button']) : ?>
+                <button type="button" class="lwsop_darkblue_button" id="<?php echo esc_html($lwsoptimize_data['s_button_id']); ?>" name="<?php echo esc_html($lwsoptimize_data['s_button_id']); ?>">
                     <span>
-                        <?php echo esc_html($data['s_button_title']); ?>
+                        <?php echo esc_html($lwsoptimize_data['s_button_title']); ?>
                     </span>
                 </button>
             <?php endif ?>
-            <?php if ($data['has_checkbox']) : ?>
-                <label class="lwsop_checkbox" for="<?php echo esc_html($data['checkbox_id']); ?>">
-                    <input type="checkbox" name="<?php echo esc_html($data['checkbox_id']); ?>" id="<?php echo esc_html($data['checkbox_id']); ?>" <?php echo $data['state'] ? esc_html('checked') : esc_html(''); ?>>
+            <?php if ($lwsoptimize_data['has_checkbox']) : ?>
+                <label class="lwsop_checkbox" for="<?php echo esc_html($lwsoptimize_data['checkbox_id']); ?>">
+                    <input type="checkbox" name="<?php echo esc_html($lwsoptimize_data['checkbox_id']); ?>" id="<?php echo esc_html($lwsoptimize_data['checkbox_id']); ?>" <?php echo $lwsoptimize_data['state'] ? esc_html('checked') : esc_html(''); ?>>
                     <span class="slider round"></span>
                 </label>
             <?php endif ?>

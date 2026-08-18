@@ -878,6 +878,14 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 $GLOBALS['lws_optimize']->lwsop_safe_delete_dropin(LWSOP_OBJECTCACHE_PATH);
             }
         } elseif ($element == "gzip_compression") {
+            // The caching rules embed the compression state (they serve the pre-compressed
+            // cache files only while this option is on), so they have to be rewritten here.
+            // Persist first: lws_optimize_set_cache_htaccess() reads the state via get_option().
+            if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
+                update_option('lws_optimize_config_array', $optimize_options);
+                $this->lws_optimize_set_cache_htaccess();
+            }
+
             if ($state == "true") {
                 $this->set_gzip_brotli_htaccess();
                 $apache_compression_ok = $this->lwsop_check_apache_compression_support();
@@ -1122,6 +1130,14 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                 }
 
             } elseif ($id == "gzip_compression") {
+                // The caching rules embed the compression state (they serve the pre-compressed
+                // cache files only while this option is on), so they have to be rewritten here.
+                // Persist first: lws_optimize_set_cache_htaccess() reads the state via get_option().
+                if (isset($optimize_options['htaccess_rules']['state']) && $optimize_options['htaccess_rules']['state'] == "true") {
+                    update_option('lws_optimize_config_array', $optimize_options);
+                    $this->lws_optimize_set_cache_htaccess();
+                }
+
                 if ($state == "true") {
                     $this->set_gzip_brotli_htaccess();
                     if ($this->lwsop_check_apache_compression_support() === false) {
@@ -2343,6 +2359,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
         foreach ($config_options as $options) {
             switch ($options) {
                 case 'myisam':
+                    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- weekly cron-only bulk maintenance, table prefix/dbname only, no user-controlled values
                     $results = $wpdb->get_results("SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE '{$wpdb->prefix}%' AND ENGINE = 'MyISAM' AND TABLE_SCHEMA = '" . $wpdb->dbname . "';");
                     foreach ($results as $result) {
                         $rows_affected = $wpdb->query($wpdb->prepare("OPTIMIZE TABLE %s", $result->table_name));

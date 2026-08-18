@@ -53,56 +53,56 @@
 ?>
 
 <div class="lwsop_pagespeed_history" id="pagespeed_history">
-    <?php $histories = get_option('lws_optimize_pagespeed_history', []);
-    $histories = array_reverse($histories); ?>
-    <?php if (!empty($histories)) : ?>
-        <?php foreach ($histories as $history) : ?>
+    <?php $lwsoptimize_histories = get_option('lws_optimize_pagespeed_history', []);
+    $lwsoptimize_histories = array_reverse($lwsoptimize_histories); ?>
+    <?php if (!empty($lwsoptimize_histories)) : ?>
+        <?php foreach ($lwsoptimize_histories as $lwsoptimize_history) : ?>
             <?php
-            if ($history['scores']['performance'] * 100 >= 0 && $history['scores']['performance'] * 100 <= 49) {
-                $background = "radial-gradient(closest-side, white 78%, transparent 80% 100%),conic-gradient(#DB3D3D " . $history['scores']['performance'] * 100 . "%, #c9cbcc 0)";
-                $color = "red";
-            } else if ($history['scores']['performance'] * 100 >= 50 && $history['scores']['performance'] * 100 <= 89) {
-                $background = "radial-gradient(closest-side, white 78%, transparent 80% 100%),conic-gradient(#FF6600 " . $history['scores']['performance'] * 100 . "%, #c9cbcc 0)";
-                $color = "orange";
-            } else if ($history['scores']['performance'] * 100 >= 90 && $history['scores']['performance'] * 100 <= 100) {
-                $background = "radial-gradient(closest-side, white 78%, transparent 80% 100%),conic-gradient(#008A56 " . $history['scores']['performance'] * 100 . "%, #c9cbcc 0)";
-                $color = "green";
+            if ($lwsoptimize_history['scores']['performance'] * 100 >= 0 && $lwsoptimize_history['scores']['performance'] * 100 <= 49) {
+                $lwsoptimize_background = "radial-gradient(closest-side, white 78%, transparent 80% 100%),conic-gradient(#DB3D3D " . $lwsoptimize_history['scores']['performance'] * 100 . "%, #c9cbcc 0)";
+                $lwsoptimize_color = "red";
+            } else if ($lwsoptimize_history['scores']['performance'] * 100 >= 50 && $lwsoptimize_history['scores']['performance'] * 100 <= 89) {
+                $lwsoptimize_background = "radial-gradient(closest-side, white 78%, transparent 80% 100%),conic-gradient(#FF6600 " . $lwsoptimize_history['scores']['performance'] * 100 . "%, #c9cbcc 0)";
+                $lwsoptimize_color = "orange";
+            } else if ($lwsoptimize_history['scores']['performance'] * 100 >= 90 && $lwsoptimize_history['scores']['performance'] * 100 <= 100) {
+                $lwsoptimize_background = "radial-gradient(closest-side, white 78%, transparent 80% 100%),conic-gradient(#008A56 " . $lwsoptimize_history['scores']['performance'] * 100 . "%, #c9cbcc 0)";
+                $lwsoptimize_color = "green";
             }
 
-            if ($history['scores']['speed_milli'] >= 0 && $history['scores']['speed_milli'] <= 2000) {
-                $bubble_color = "green";
-            } else if ($history['scores']['speed_milli'] >= 2001 && $history['scores']['speed_milli'] <= 4000) {
-                $bubble_color = "orange";
-            } else if ($history['scores']['speed_milli'] >= 4001) {
-                $bubble_color = "red";
+            if ($lwsoptimize_history['scores']['speed_milli'] >= 0 && $lwsoptimize_history['scores']['speed_milli'] <= 2000) {
+                $lwsoptimize_bubble_color = "green";
+            } else if ($lwsoptimize_history['scores']['speed_milli'] >= 2001 && $lwsoptimize_history['scores']['speed_milli'] <= 4000) {
+                $lwsoptimize_bubble_color = "orange";
+            } else if ($lwsoptimize_history['scores']['speed_milli'] >= 4001) {
+                $lwsoptimize_bubble_color = "red";
             }
             ?>
             <div class="lwsop_pagespeed_history_element">
-                <div class="lwsop_pagespeed_result_circle small" style="background:<?php echo esc_html($background); ?>">
-                    <div class="lwsop_pagespeed_result_circle_text small <?php echo esc_html($color); ?>"><?php echo esc_html($history['scores']['performance'] * 100); ?></div>
+                <div class="lwsop_pagespeed_result_circle small" style="background:<?php echo esc_html($lwsoptimize_background); ?>">
+                    <div class="lwsop_pagespeed_result_circle_text small <?php echo esc_html($lwsoptimize_color); ?>"><?php echo esc_html($lwsoptimize_history['scores']['performance'] * 100); ?></div>
                 </div>
-                <div class="lwsop_pagespeed_result_bubble small <?php echo esc_html($bubble_color); ?>">
-                    <div class="lwsop_pagespeed_result_bubble_text small <?php echo esc_html($bubble_color); ?>"><?php echo esc_html($history['scores']['speed']); ?></div>
+                <div class="lwsop_pagespeed_result_bubble small <?php echo esc_html($lwsoptimize_bubble_color); ?>">
+                    <div class="lwsop_pagespeed_result_bubble_text small <?php echo esc_html($lwsoptimize_bubble_color); ?>"><?php echo esc_html($lwsoptimize_history['scores']['speed']); ?></div>
                 </div>
                 <div class="lwsop_pagespeed_history_text">
                     <div class="lwsop_pagespeed_history_text_top">
-                        <?php echo esc_html(__('PageSpeed Test from ', 'lws-optimize') . $history['date']); ?>
+                        <?php echo esc_html(__('PageSpeed Test from ', 'lws-optimize') . $lwsoptimize_history['date']); ?>
                     </div>
                     <div class="lwsop_pagespeed_history_text_bottom">
-                        <?php if ($history['type'] == "desktop") : ?>
+                        <?php if ($lwsoptimize_history['type'] == "desktop") : ?>
                             <div class="lwsop_pagespeed_history_text_bottom_left">
                                 <img src="<?php echo esc_url(plugins_url('images/ordinateur.svg', __DIR__)) ?>" alt="pc icon" width="20px" height="19px">
                                 <span value="desktop" class=""><?php esc_html_e('Desktop', 'lws-optimize'); ?></span>
                             </div>
-                        <?php elseif ($history['type'] == "mobile") : ?>
+                        <?php elseif ($lwsoptimize_history['type'] == "mobile") : ?>
                             <div class="lwsop_pagespeed_history_text_bottom_left">
                                 <img src="<?php echo esc_url(plugins_url('images/mobile.svg', __DIR__)) ?>" alt="mobile icon" width="20px" height="19px">
                                 <span value="mobile" class=""><?php esc_html_e('Mobile', 'lws-optimize'); ?></span>
                             </div>
                         <?php endif ?>
                         <div class="lwsop_pagespeed_history_text_bottom_right">
-                            <span><?php echo esc_url($history['url']); ?></span>
-                            <a target="_blank" rel="noopener" href="<?php echo esc_url($history['url']); ?>"><img src="<?php echo esc_url(plugins_url('images/lien.svg', __DIR__)) ?>" alt="icône de lien web" width="14px" height="13px"></a>
+                            <span><?php echo esc_url($lwsoptimize_history['url']); ?></span>
+                            <a target="_blank" rel="noopener" href="<?php echo esc_url($lwsoptimize_history['url']); ?>"><img src="<?php echo esc_url(plugins_url('images/lien.svg', __DIR__)) ?>" alt="icône de lien web" width="14px" height="13px"></a>
                         </div>
                     </div>
                 </div>
