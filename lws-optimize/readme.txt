@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 4.1.3
+Stable tag: 4.1.4
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -186,6 +186,11 @@ After activation, we recommend starting with the pre-configured optimization pro
 
 == Changelog ==
 
+= 4.1.4 =
+- AutoPurge now purge cache when WooCommerce stock changes
+- Publishing a page now autopurge cache (refresh home, categories, ...)
+- Better WooCommerce cache exclusion, can catch customized permalinks
+
 = 4.1.3 =
 - GZIP/Brotli compression now also applies to cached pages served directly by Apache (without PHP), on servers where mod_deflate/mod_brotli are not loaded
 - Apache compression detection is no longer fooled by the plugin's own compression, so the PHP fallback is not disabled by mistake
@@ -193,8 +198,9 @@ After activation, we recommend starting with the pre-configured optimization pro
 - Taxonomies no longer fully purged each time, now only purge relevant taxonomies to the purged page
 - Improved image optimisation to consume less resources and correctly update image list (missing image, new image added, converted image missing, ...)
 	- Listing array now include PATH + link to see the image instead of just name
-- Removed cache purge on WooCommerce action (WC pages are not cached) that were degrading perfomances on e-commerce websites
-- Fix autoconvert on upload via the API that would always fail when uploading a new image
+- WooCommerce cart/checkout/my-account exclusion from the cache now also works with translated or customized page slugs (was only matching the default English slugs)
+- WooCommerce AJAX requests (cart fragments, add-to-cart, ...) are no longer cached
+- Cache is now also cleared when a product's stock changes (order completion, manual restock, ...), not just when the product itself is edited
 
 = 4.1.2 =
 - Added AMP compatibility for the RUM Dashboard

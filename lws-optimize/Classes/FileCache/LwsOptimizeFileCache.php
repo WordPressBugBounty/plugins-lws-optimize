@@ -797,14 +797,25 @@ class LwsOptimizeFileCache
             if (isset($post->ID) && $post->ID && function_exists("wc_get_page_id")) {
                 $woocommerce_ids = array();
 
-                array_push($woocommerce_ids, \wc_get_page_id('cart'), \wc_get_page_id('checkout'), \wc_get_page_id('receipt'), \wc_get_page_id('confirmation'), \wc_get_page_id('myaccount'), \wc_get_page_id('product'), \wc_get_page_id('product-category'));
+                array_push($woocommerce_ids, \wc_get_page_id('cart'), \wc_get_page_id('checkout'), \wc_get_page_id('myaccount'));
 
                 if (in_array($post->ID, $woocommerce_ids)) {
                     return true;
                 }
             }
 
-            array_push($ignored, "\/cart(?:[\/?]|$)", "\/checkout(?:[\/?]|$)", "\/receipt(?:[\/?]|$)", "\/confirmation(?:[\/?]|$)", "\/wc-api\/");
+            // Slug-independent fallback: covers translated/customized cart, checkout,
+            // and my-account (incl. edit-address/view-order/orders endpoints, which
+            // resolve to the myaccount page's post ID anyway) permalinks. Safe here
+            // because lwsop_page_to_ignore() runs from the ob_start() callback,
+            // which fires after `wp`/`get_footer` have already resolved the query.
+            if ((function_exists('is_cart') && \is_cart())
+                || (function_exists('is_checkout') && \is_checkout())
+                || (function_exists('is_account_page') && \is_account_page())) {
+                return true;
+            }
+
+            array_push($ignored, "\/wc-api\/");
         }
 
         if ($GLOBALS['lws_optimize']->lwsop_plugin_active('wp-easycart/wpeasycart.php')) {
@@ -931,6 +942,14 @@ class LwsOptimizeFileCache
 
         // Do not cache wp-json pages
         if (preg_match("/(wp-json)/i", urldecode($uri))) {
+            return false;
+        }
+
+        // Do not cache WooCommerce AJAX endpoints (cart fragments, add-to-cart,
+        // apply-coupon, etc.) — these are dynamic, session/cart-specific responses
+        // and must never be served from the page cache, regardless of the
+        // "cache URLs with parameters" setting.
+        if (preg_match("/[?&]wc-ajax=/i", urldecode($uri))) {
             return false;
         }
 

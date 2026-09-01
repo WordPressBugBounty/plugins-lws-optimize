@@ -12,6 +12,10 @@ class LwsOptimizeAutoPurge
         add_action('transition_comment_status', [$this, 'lws_optimize_clear_cache_on_comment'], 10, 1);
 
         add_action('post_updated', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
+        add_action('publish_post', [$this, 'lwsop_remove_cache_post_change'], 10, 2);
+
+        add_action('woocommerce_product_set_stock', [$this, 'lwsop_remove_cache_stock_change'], 10, 1);
+        add_action('woocommerce_variation_set_stock', [$this, 'lwsop_remove_cache_stock_change'], 10, 1);
 
         // Betheme compatibility
         add_action('wp_ajax_updatevbview', [$this, 'lwsop_remove_cache_post_change_betheme'], 10, 0);
@@ -116,6 +120,45 @@ class LwsOptimizeAutoPurge
         $this->purge_specified_url();
 
         apply_filters("lws_optimize_clear_filebased_cache", $uri, $action, true);
+    }
+
+    /**
+     * Products whose cache has already been queued for purge during this
+     * request. Stock hooks can fire once per order line item (and again for
+     * a variation's parent), so this collapses repeats onto the same URL
+     * into a single purge call instead of one per firing.
+     */
+    private $purged_stock_urls = [];
+
+    /**
+     * Clear cache when stock is changed programmatically (order completion,
+     * REST API, bulk-edit, subscription renewal, ...) without necessarily
+     * going through post_updated. Reuses the same targeted, throttled purge
+     * path as every other trigger in this class.
+     */
+    public function lwsop_remove_cache_stock_change($product)
+    {
+        if (!$product || !is_a($product, 'WC_Product')) {
+            return;
+        }
+
+        $action = current_filter();
+
+        // get_permalink() on WC_Product already resolves variations to their
+        // parent product's URL, so no separate variation-vs-parent handling
+        // is needed here.
+        $uri = $product->get_permalink();
+        if ($uri && !isset($this->purged_stock_urls[$uri])) {
+            $this->purged_stock_urls[$uri] = true;
+            apply_filters("lws_optimize_clear_filebased_cache", $uri, $action, true);
+        }
+
+        $shop_id = \wc_get_page_id('shop');
+        $shop_uri = $shop_id ? get_permalink($shop_id) : false;
+        if ($shop_uri && !isset($this->purged_stock_urls[$shop_uri])) {
+            $this->purged_stock_urls[$shop_uri] = true;
+            apply_filters("lws_optimize_clear_filebased_cache", $shop_uri, $action, true);
+        }
     }
 
     /**
