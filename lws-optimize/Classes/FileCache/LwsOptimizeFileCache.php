@@ -662,6 +662,30 @@ class LwsOptimizeFileCache
     }
 
     /**
+     * Anchored wildcard match used by every user-supplied exclusion list (cached
+     * URLs, cookies, autopurge exclusions).
+     *
+     * An unescaped '*' stands for "any characters"; everything else is literal.
+     * The match is anchored, so "products" does not match "products/foo" —
+     * "products/*" is needed for that.
+     *
+     * An empty pattern is meaningful and must NOT be rejected: callers trim the
+     * surrounding slashes off the user's input, so the homepage (entered as "/")
+     * arrives here as "" and has to match the equally empty homepage subject.
+     */
+    public static function lwsop_matches_exclusion_pattern($subject, $pattern)
+    {
+        if (!is_string($subject) || !is_string($pattern)) {
+            return false;
+        }
+
+        $pattern = preg_replace('/(?<!\\\)\*/', '.*', $pattern);
+        $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
+
+        return (bool) preg_match($regex_pattern, $subject);
+    }
+
+    /**
      * Exclude from the cache all pages containing user-chosen cookies
      */
     public function lwsop_page_has_excluded_cookies()
@@ -674,13 +698,9 @@ class LwsOptimizeFileCache
         $excluded_cookies = $optimize_options['filebased_cache']['exclusions_cookies'];
         foreach ($excluded_cookies as $cookie) {
             foreach ($_COOKIE as $key => $value) {
-            // Convert wildcard pattern to regex pattern and check if cookie name matches
-            $pattern = preg_replace('/(?<!\\\)\*/', '.*', $cookie);
-            $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
-
-            if (preg_match($regex_pattern, $key)) {
-                return true;
-            }
+                if (self::lwsop_matches_exclusion_pattern($key, $cookie)) {
+                    return true;
+                }
             }
         }
 
@@ -688,20 +708,43 @@ class LwsOptimizeFileCache
     }
 
     /**
-     * Exclude from the cache the pages that the user has chosen to exclude
+     * Reduces a URL (absolute or a bare REQUEST_URI) to the form the user's
+     * exclusion patterns are written against: the path alone, without the
+     * WordPress installation subdirectory and without surrounding slashes.
      */
-    public function lwsop_page_has_been_excluded($buffer = null)
+    public static function lwsop_exclusion_subject($url)
     {
-        $url = isset($_SERVER["REQUEST_URI"]) ? urldecode(sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"]))) : '';
+        $parsed = wp_parse_url((string) $url);
+        if ($parsed === false) {
+            return '';
+        }
+
+        // Path + query, i.e. everything a bare REQUEST_URI already is, so an
+        // absolute URL and the REQUEST_URI of the same page give one subject.
+        $path = isset($parsed['path']) ? $parsed['path'] : '';
+        if (!empty($parsed['query'])) {
+            $path .= '?' . $parsed['query'];
+        }
+        $path = urldecode($path);
 
         // Get WordPress installation directory
         $home_path = wp_parse_url(home_url(), PHP_URL_PATH);
 
         if (!empty($home_path) && $home_path !== '/') {
             // Remove the installation directory from the URL
-            $url = preg_replace('|^' . preg_quote($home_path, '|') . '|i', '', $url);
+            $path = preg_replace('|^' . preg_quote($home_path, '|') . '|i', '', $path);
         }
-        $url = trim($url, "/");
+
+        return trim($path, "/");
+    }
+
+    /**
+     * Exclude from the cache the pages that the user has chosen to exclude
+     */
+    public function lwsop_page_has_been_excluded($buffer = null)
+    {
+        $raw_uri = isset($_SERVER["REQUEST_URI"]) ? sanitize_text_field(wp_unslash($_SERVER["REQUEST_URI"])) : '';
+        $url = self::lwsop_exclusion_subject($raw_uri);
 
         $optimize_options = get_option('lws_optimize_config_array', []);
         $exclusions = $optimize_options['filebased_cache']['exclusions'] ?? [];
@@ -713,13 +756,7 @@ class LwsOptimizeFileCache
                 }
             }
 
-            $pattern = preg_replace('/(?<!\\\)\*/', '.*', $page);
-            $pattern = trim($pattern, '/');
-
-            // Create a regex pattern without escaping the .* sequences
-            $regex_pattern = "#^" . str_replace('\.\*', '.*', preg_quote($pattern, '#')) . "$#";
-
-            if (preg_match($regex_pattern, $url)) {
+            if (self::lwsop_matches_exclusion_pattern($url, trim($page, '/'))) {
                 return true;
             }
         }

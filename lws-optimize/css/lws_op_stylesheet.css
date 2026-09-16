@@ -1785,14 +1785,16 @@ button.lwsoptimize_validatebutton {
 
 div#lwsop_specify_urls .modal-dialog,
 div#lwsop_exclude_urls .modal-dialog,
-div#lwsop_exclude_cookies .modal-dialog {
+div#lwsop_exclude_cookies .modal-dialog,
+div#lwsop_exclude_purge_urls .modal-dialog {
     width: fit-content;
     top: 20%;
 }
 
 div#lwsop_specify_urls .modal-content,
 div#lwsop_exclude_urls .modal-content,
-div#lwsop_exclude_cookies .modal-content {
+div#lwsop_exclude_cookies .modal-content,
+div#lwsop_exclude_purge_urls .modal-content {
     padding: 30px;
 }
 

@@ -3140,3 +3140,21 @@ msgstr "Automatique"
 
 msgid "Sitemap"
 msgstr "Sitemap"
+
+msgid "Exclude from purge"
+msgstr "Exclure de la purge"
+
+msgid "Exclude URLs from the automatic purge"
+msgstr "Exclure des URL de la purge automatique"
+
+msgid "These pages will never be emptied by the automatic purge, even when their content changes. They are still cleared by a manual purge and when the cache expires. Example on the usage of \"*\": \"products/*\" will exclude all sub-pages of \"products\". To exclude the homepage, exclude \"/\"."
+msgstr "Ces pages ne seront jamais vidées par la purge automatique, même lorsque leur contenu change. Elles restent vidées par une purge manuelle et à l'expiration du cache. Exemple d'utilisation de « * » : « produits/* » exclura toutes les sous-pages de « produits ». Pour exclure la page d'accueil, excluez « / »."
+
+msgid "The URLs to exclude from the purge have been saved"
+msgstr "Les URL à exclure de la purge ont été enregistrées"
+
+msgid "The URLs to exclude from the purge could not be saved because no data was found"
+msgstr "Les URL à exclure de la purge n'ont pas pu être enregistrées car aucune donnée n'a été trouvée"
+
+msgid "The URLs to exclude from the purge could not be saved because an error occurred"
+msgstr "Les URL à exclure de la purge n'ont pas pu être enregistrées car une erreur est survenue"

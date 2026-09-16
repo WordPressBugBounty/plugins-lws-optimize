@@ -40,7 +40,14 @@ class LwsOptimizeCloudflareAPO
         // Purge hooks (mirror the file-cache autopurge so CF stays in sync)
         add_action('save_post', [__CLASS__, 'purge_on_post_change'], 20, 1);
         add_action('comment_post', [__CLASS__, 'purge_on_post_change'], 20, 1);
-        add_action('lws_optimize_clear_filebased_cache', [__CLASS__, 'purge_url_from_filter'], 20, 1);
+
+        // Targeted purge, fired from inside lws_optimize_clean_filebased_cache().
+        // NOT hooked on the 'lws_optimize_clear_filebased_cache' filter: a
+        // callback added to a *filter* receives the value returned by the
+        // previous callback, which there is the JSON status string, not the
+        // URL. Hooking it here also means this purge inherits the per-URL
+        // debounce, which a later-priority filter callback could never do.
+        add_action('lwsop_purge_url', [__CLASS__, 'purge_url_from_filter'], 10, 1);
     }
 
     /**
@@ -82,29 +89,48 @@ class LwsOptimizeCloudflareAPO
     public static function purge_url_from_filter($url)
     {
         if (is_string($url) && $url !== '') {
-            self::purge_urls([$url]);
+            // The caller (lws_optimize_clean_filebased_cache) has just sent the
+            // targeted Varnish/LiteSpeed/LWSCache PURGE for this URL, so skip
+            // the edge sync here instead of sending it twice.
+            self::purge_urls([$url], false);
         }
     }
 
     /**
      * Sends a Cloudflare purge_cache request for the given URLs (max 30 per call).
      * Also synchronises the edge cache (Varnish / LiteSpeed / LWSCache) for each
-     * URL so that the LWS hosting stack stays consistent with the CF edge.
+     * URL so that the LWS hosting stack stays consistent with the CF edge; pass
+     * $sync_edge = false when the caller has already done that for these URLs.
      * Returns true on success, false on failure (errors logged).
      */
-    public static function purge_urls(array $urls)
+    public static function purge_urls(array $urls, $sync_edge = true)
     {
         $cfg = self::get_config();
         if (!$cfg) {
             return false;
         }
         $urls = array_values(array_unique(array_filter($urls)));
+
+        // A single post save legitimately reaches this method twice — once via
+        // the save_post hook (which also covers sites running APO with the
+        // autopurge turned off) and once via 'lwsop_purge_url'. Purging the same
+        // URL twice would just burn a second API call, so drop the repeats.
+        static $already_purged = [];
+        $urls = array_values(array_filter($urls, function ($url) use (&$already_purged) {
+            if (isset($already_purged[$url])) {
+                return false;
+            }
+            $already_purged[$url] = true;
+            return true;
+        }));
+
         if (empty($urls)) {
             return false;
         }
         // VARNISH/LITESPEED/LWSCACHE SYNC: purge edge cache per URL so the next
         // CF MISS reaches the origin in a clean state (no stale Varnish hit).
-        if (isset($GLOBALS['lws_optimize'])
+        if ($sync_edge
+            && isset($GLOBALS['lws_optimize'])
             && method_exists($GLOBALS['lws_optimize'], 'lwsop_purge_varnish_url')
         ) {
             foreach ($urls as $u) {

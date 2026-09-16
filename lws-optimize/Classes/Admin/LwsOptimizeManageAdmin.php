@@ -139,6 +139,9 @@ class LwsOptimizeManageAdmin extends LwsOptimize
             // Update the excluded-URLs array
             add_action("wp_ajax_lwsop_save_excluded_url", [$this, "lwsop_save_urls_fb"]);
             add_action("wp_ajax_lwsop_save_excluded_cookies", [$this, "lwsop_save_cookies_fb"]);
+            // Fetch/update the URLs that must never be emptied by the autopurge
+            add_action("wp_ajax_lwsop_get_purge_excluded_url", [$this, "lwsop_purge_exclude_urls_fb"]);
+            add_action("wp_ajax_lwsop_save_purge_excluded_url", [$this, "lwsop_save_purge_urls_fb"]);
 
             // Get or set the URLs that should get preloaded on the website
             add_action("wp_ajax_lws_optimize_add_url_to_preload", [$this, "lwsop_get_url_preload"]);
@@ -1682,6 +1685,48 @@ class LwsOptimizeManageAdmin extends LwsOptimize
     }
 
 
+
+    public function lwsop_purge_exclude_urls_fb()
+    {
+        check_ajax_referer('lwsop_get_purge_excluded_nonce', '_ajax_nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json(array('code' => "FORBIDDEN", 'data' => array(), 'domain' => site_url()));
+        }
+
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        $exclusions = $optimize_options['filebased_cache']['purge_exclusions'] ?? array();
+
+        wp_send_json(array('code' => "SUCCESS", 'data' => $exclusions, 'domain' => site_url()));
+    }
+
+    public function lwsop_save_purge_urls_fb()
+    {
+        // Add all URLs to an array, but ignore empty URLs
+        check_ajax_referer('lwsop_save_purge_excluded_nonce', '_ajax_nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json(array('code' => "FORBIDDEN", 'data' => array(), 'domain' => site_url()));
+        }
+
+        if (isset($_POST['data'])) {
+            $urls = array();
+
+            foreach (wp_unslash($_POST['data']) as $data) {
+                $value = sanitize_text_field($data['value']);
+                if ($value == "" || empty($value)) {
+                    continue;
+                }
+                $urls[] = $value;
+            }
+
+            $optimize_options = get_option('lws_optimize_config_array', []);
+            $optimize_options['filebased_cache']['purge_exclusions'] = $urls;
+
+            update_option('lws_optimize_config_array', $optimize_options);
+
+            wp_send_json(array('code' => "SUCCESS", "data" => $urls));
+        }
+        wp_send_json(array('code' => "NO_DATA", 'data' => wp_unslash($_POST), 'domain' => site_url()));
+    }
 
     public function lwsop_get_url_preload()
     {

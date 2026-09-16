@@ -52,6 +52,14 @@ class LwsOptimizeAutoPurge
                 continue;
             }
 
+            // A URL can legitimately sit in both lists (e.g. a wildcard here and
+            // a specific page there); the exclusion wins, so honour it before
+            // queueing the purge rather than relying on the guard downstream.
+            if (isset($GLOBALS['lws_optimize'])
+                && $GLOBALS['lws_optimize']->lwsop_url_excluded_from_autopurge($url)) {
+                continue;
+            }
+
             apply_filters("lws_optimize_clear_filebased_cache", $url, $action, true);
         }
     }
@@ -127,6 +135,11 @@ class LwsOptimizeAutoPurge
      * request. Stock hooks can fire once per order line item (and again for
      * a variation's parent), so this collapses repeats onto the same URL
      * into a single purge call instead of one per firing.
+     *
+     * Now partly redundant with the per-URL debounce in
+     * LwsOptimize::lwsop_claim_url_purge(), which would catch these repeats
+     * anyway; kept because it short-circuits earlier, before the filter and its
+     * filesystem check are reached at all.
      */
     private $purged_stock_urls = [];
 

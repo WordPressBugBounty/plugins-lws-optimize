@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 4.1.4
+Stable tag: 4.1.5
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,13 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 4.1.5 =
+- AutoPurge no longer purges the same URL over and over: repeated events on one page (bulk edits, WooCommerce orders, comment bursts) are now collapsed into a single purge per 30-second window, per URL. A purge that arrives during that window is never dropped, only replayed once the window has elapsed
+- Fixed the 30-second coalescing of site-wide purge side effects (edge cache purge, opcache reset, object cache flush), which had no effect at all on sites using a persistent object cache (Redis/Memcached): the lock it relied on was being erased by the very cache flush it was meant to throttle
+- New option to exclude URLs from the automatic purge: those pages keep their cache when content changes, and are still cleared by a manual purge or when the cache expires. Supports the same "*" wildcards as the cache exclusions
+- Fixed Cloudflare APO targeted purging, which sent a malformed request to the Cloudflare API on every automatic purge (failing, and leaving the page cached at the edge) instead of purging the URL that changed
+- Cloudflare APO no longer sends two purge requests for the same URL when a post is saved
 
 = 4.1.4 =
 - AutoPurge now purge cache when WooCommerce stock changes

@@ -26,6 +26,14 @@ class LwsOptimize
     // lwsop_run_global_purge_throttled().
     const LWSOP_GLOBAL_PURGE_WINDOW = 30;
 
+    // Debounce window (seconds) for repeated autopurges of the SAME URL — see
+    // lwsop_claim_url_purge(). Filterable via 'lwsop_url_purge_window'.
+    const LWSOP_URL_PURGE_WINDOW = 30;
+
+    // Minimum delay (seconds) between two garbage collections of the debounce
+    // registry.
+    const LWSOP_URL_PURGE_GC = 300;
+
     public $log_file;
     public $lwsOptimizeCache;
     public $lwsImageOptimization;
@@ -33,6 +41,20 @@ class LwsOptimize
     public $cloudflare_manager;
     public $nginx_purger;
     public $chosen_purger;
+
+    /**
+     * URLs already purged during THIS request, as md5(normalized url) => timestamp.
+     * Saves a stat()+write() when several hooks fire for the same page in one
+     * request (a WooCommerce order touches the stock hooks once per line item).
+     */
+    private $lwsop_url_purge_seen = [];
+
+    /**
+     * Guards against infinite recursion: replaying a pending purge calls back
+     * into lws_optimize_clean_filebased_cache(), which would otherwise try to
+     * replay again.
+     */
+    private $lwsop_replaying = false;
 
     /**
      * Centralized debug logger, gated behind WP_DEBUG.
@@ -195,12 +217,17 @@ class LwsOptimize
 
             // Add the filters that can be used to clear all or parts of the cache
             add_filter('lws_optimize_convert_media_cron', [$this, 'lws_optimize_convert_media_cron'], 10, 2);
-            add_filter('lws_optimize_clear_filebased_cache', [$this, 'lws_optimize_clean_filebased_cache'], 10, 2);
+            add_filter('lws_optimize_clear_filebased_cache', [$this, 'lwsop_clear_filebased_cache_filter'], 10, 3);
             add_filter('lws_optimize_clear_filebased_cache_cron', [$this, 'lws_optimize_clean_filebased_cache_cron'], 10, 2);
             add_filter('lws_optimize_clear_all_filebased_cache', [$this, 'lws_optimize_clean_all_filebased_cache'], 10, 1);
 
             // Action to start preloading the file-based cache
             add_action('lws_optimize_start_filebased_preload', [$this, 'lws_optimize_start_filebased_preload']);
+
+            // Replays autopurges that were deferred by the per-URL debounce.
+            // Covers quiet sites, where no later purge would come along to
+            // trigger the opportunistic replay.
+            add_action('lwsop_replay_pending_purges', [$this, 'lwsop_replay_pending_url_purges']);
 
             // If the maintenance is active but has no cron, start one
             if ($this->lwsop_check_option("maintenance_db")['state'] == "true" && !wp_next_scheduled('lws_optimize_maintenance_db_weekly')) {
@@ -2078,14 +2105,82 @@ class LwsOptimize
     }
 
     /**
-     * Clean the given directory.
+     * Filter entry point for 'lws_optimize_clear_filebased_cache'.
+     *
+     * Exists purely to keep the filter transparent: it returns the URL it was
+     * given, not the status of the purge. lws_optimize_clean_filebased_cache()
+     * answers with a JSON status (WP-CLI calls it directly and decodes that),
+     * and a filter callback's return value becomes the input of the next
+     * callback on the hook — so returning that status used to hand any other
+     * listener a JSON blob where a URL was expected, and it would then try to
+     * purge, debounce and queue a replay for it.
      */
-    public function lws_optimize_clean_filebased_cache($directory = false, $action = "???")
+    public function lwsop_clear_filebased_cache_filter($directory = false, $action = "???", $is_autopurge = false)
+    {
+        $this->lws_optimize_clean_filebased_cache($directory, $action, $is_autopurge);
+
+        return $directory;
+    }
+
+    /**
+     * Whether $directory can plausibly name a page to purge. Guards the
+     * debounce registry against anything that is not a URL or a path, so a
+     * caller passing garbage cannot create replay markers that keep firing.
+     */
+    private function lwsop_is_valid_purge_target($directory)
+    {
+        if (!is_string($directory) || trim($directory) === '') {
+            return false;
+        }
+
+        // No legitimate permalink carries whitespace, braces or quotes; a
+        // serialized payload reaching this parameter always does.
+        return !preg_match('/[\s{}"\'<>]/', $directory);
+    }
+
+    /**
+     * Clean the given directory.
+     *
+     * $is_autopurge tells an event-driven purge apart from one the user asked
+     * for. Only the former is subject to the per-URL debounce and to the
+     * user's autopurge exclusion list; a manual purge (admin button, WP-CLI)
+     * must always go through. Every autopurge trigger already passes true here,
+     * and every manual caller passes two arguments or fewer, so the default
+     * keeps them unthrottled without any change on their side.
+     */
+    public function lws_optimize_clean_filebased_cache($directory = false, $action = "???", $is_autopurge = false)
     {
         $logger = fopen($this->log_file, 'a');
 
 
         try {
+            // Run any purge that was deferred earlier and whose window has now
+            // elapsed, before deciding what to do with this one.
+            $this->lwsop_replay_pending_url_purges($logger);
+
+            if ($directory !== false && !$this->lwsop_is_valid_purge_target($directory)) {
+                $this->lwsop_debug_log('LWSOptimize: ignoring non-URL purge target from action [' . $action . ']');
+                return json_encode(['code' => 'ERROR', 'message' => 'INVALID_TARGET'], JSON_PRETTY_PRINT);
+            }
+
+            if ($is_autopurge && $directory) {
+                // Deliberately not logged: an excluded page is expected to be
+                // skipped on every single trigger, so logging it would flood the
+                // debug log with lines that carry no information.
+                if ($this->lwsop_url_excluded_from_autopurge($directory)) {
+                    return json_encode(['code' => 'SUCCESS', 'data' => 'EXCLUDED'], JSON_PRETTY_PRINT);
+                }
+
+                if (!$this->lwsop_claim_url_purge($directory, $logger)) {
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] URL purge debounced for [$directory] (action [$action]); replay queued" . PHP_EOL);
+                    // The global throttle keeps its own "never lost" bookkeeping,
+                    // so it must still get a chance to run its owed pass here —
+                    // silently, since the line above already reports the skip.
+                    $this->lwsop_run_global_purge_throttled();
+                    return json_encode(['code' => 'SUCCESS', 'data' => 'THROTTLED'], JSON_PRETTY_PRINT);
+                }
+            }
+
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Starting AutoPurge cache clearing for action [$action]... [$directory]" . PHP_EOL);
 
             // Get site URL components for main cache
@@ -2133,6 +2228,12 @@ class LwsOptimize
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Clearing cache for " . count($taxonomy_urls) . " taxonomy and pagination URLs" . PHP_EOL);
 
             foreach ($taxonomy_urls as $url) {
+                // A term archive the user excluded from autopurge must not be
+                // purged as a side effect of one of its posts changing either.
+                if ($is_autopurge && $this->lwsop_url_excluded_from_autopurge($url)) {
+                    continue;
+                }
+
                 $parsed_url = wp_parse_url($url);
                 $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
 
@@ -2192,6 +2293,17 @@ class LwsOptimize
                 fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Targeted edge cache purge sent to $purged_via for $directory" . PHP_EOL);
             }
 
+            /**
+             * Targeted purge for third-party integrations (Cloudflare APO, ...).
+             *
+             * Fired here rather than from the 'lws_optimize_clear_filebased_cache'
+             * filter: a callback added to that filter at a later priority receives
+             * the value returned by this method (the JSON status string), not the
+             * URL, and could not be skipped by the debounce guard above either,
+             * since apply_filters() cannot be cancelled by an earlier callback.
+             */
+            do_action('lwsop_purge_url', $directory, $action);
+
             // The rest (site-wide edge purge, full opcache reset, full object
             // cache flush) is global and expensive, so it's coalesced across
             // a short window instead of running on every single call — on
@@ -2210,37 +2322,334 @@ class LwsOptimize
     }
 
     /**
+     * Whether the user asked for this URL to never be emptied by the automatic
+     * purge. Patterns are written exactly like the cache exclusions ("products/*",
+     * "/" for the homepage), and matched with the same anchored wildcard rules.
+     *
+     * Only event-driven purges honour this list: a manual purge (admin button,
+     * WP-CLI, scheduled full purge) still clears the page, which is what makes
+     * the excluded cache recoverable.
+     */
+    public function lwsop_url_excluded_from_autopurge($url)
+    {
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        $exclusions = $optimize_options['filebased_cache']['purge_exclusions'] ?? [];
+
+        if (empty($exclusions) || !is_array($exclusions)) {
+            return false;
+        }
+
+        $subject = LwsOptimizeFileCache::lwsop_exclusion_subject($url);
+
+        foreach ($exclusions as $pattern) {
+            if (!is_string($pattern) || $pattern === '') {
+                continue;
+            }
+            if (LwsOptimizeFileCache::lwsop_matches_exclusion_pattern($subject, trim($pattern, '/'))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Directory backing the purge throttling registry.
+     *
+     * Deliberately file-based rather than transient-based: lwsop_run_global_purge()
+     * calls wp_cache_flush(), which on a site with a persistent object cache
+     * (Redis/Memcached — this plugin ships that option itself) wipes every
+     * transient, including the lock that was just set. A marker file cannot be
+     * flushed away. It also makes each entry independent, so concurrent requests
+     * never read-modify-write a shared array and never lose a queued purge.
+     *
+     * Living under LWS_OP_UPLOADS also means a full manual purge (which deletes
+     * that directory) re-arms every URL, which is exactly the wanted semantics.
+     */
+    private function lwsop_debounce_dir()
+    {
+        $dir = LWS_OP_UPLOADS . 'purge-debounce/';
+        // Re-checked on every call rather than cached: a full purge may have
+        // removed the directory earlier in this very request.
+        if (!is_dir($dir)) {
+            wp_mkdir_p($dir);
+            @file_put_contents($dir . 'index.html', '');
+        }
+        return $dir;
+    }
+
+    /**
+     * Reduces a purge target to a stable key, so that the several shapes the
+     * same page is passed as (get_permalink(), site_url()."/".$post_name, a
+     * bare REQUEST_URI) all collapse onto one registry entry.
+     *
+     * Scheme is ignored on purpose (http/https are the same page) and the
+     * trailing slash is dropped: lwsop_set_cachedir() only ever resolves one of
+     * "/foo" and "/foo/" for a given permalink structure, so merging them
+     * cannot mask a purge that would otherwise have hit a different directory.
+     *
+     * Not shared with LwsOptimizeRUM::normalize_path(), which additionally folds
+     * AMP variants onto their canonical URL — those have their own cache
+     * directories, so folding them here would swallow a real purge.
+     */
+    private function lwsop_normalize_purge_url($url)
+    {
+        if (!is_string($url) || trim($url) === '') {
+            return '';
+        }
+
+        $parsed = wp_parse_url(trim($url));
+        if ($parsed === false) {
+            return '';
+        }
+
+        $host = isset($parsed['host'])
+            ? strtolower($parsed['host'])
+            : strtolower((string) wp_parse_url(home_url(), PHP_URL_HOST));
+
+        $path = isset($parsed['path']) ? urldecode($parsed['path']) : '/';
+        $path = preg_replace('#/+#', '/', $path);
+        $path = rtrim($path, '/');
+        if ($path === '') {
+            $path = '/';
+        }
+
+        // Same query handling as lwsop_set_cachedir(): 'nocache' and tracking
+        // parameters never produce a distinct cache entry, so they must not
+        // produce a distinct debounce entry either.
+        $query = '';
+        if (!empty($parsed['query'])) {
+            parse_str($parsed['query'], $args);
+            unset($args['nocache']);
+            foreach (array_keys($args) as $key) {
+                if (preg_match('/^(utm_(source|medium|campaign|content|term)|gclid|fbclid|msclkid|y(ad|s)?clid)$/i', $key)) {
+                    unset($args[$key]);
+                }
+            }
+            ksort($args);
+            if (!empty($args)) {
+                $query = '?' . http_build_query($args);
+            }
+        }
+
+        return $host . $path . $query;
+    }
+
+    /**
+     * Decides whether $url may be purged right now, and arms the window if so.
+     *
+     * Returns true when the purge should go ahead. Returns false when the same
+     * URL was purged less than a window ago; in that case the purge is recorded
+     * as owed (a '.pending' marker) and a replay is scheduled, so a purge is
+     * only ever delayed, never dropped.
+     *
+     * Every race here resolves towards one purge too many, never towards a lost
+     * purge: no entry is ever read-modify-written, so no concurrent write can
+     * erase an unhonoured debt.
+     */
+    private function lwsop_claim_url_purge($url, $logger = null)
+    {
+        $key = $this->lwsop_normalize_purge_url($url);
+        if ($key === '') {
+            return true;
+        }
+
+        $window = (int) apply_filters('lwsop_url_purge_window', self::LWSOP_URL_PURGE_WINDOW, $url);
+        if ($window <= 0) {
+            return true;
+        }
+
+        $now = time();
+        $hash = md5($key);
+
+        // Cheapest check first: same URL, same request.
+        if (isset($this->lwsop_url_purge_seen[$hash]) && $this->lwsop_url_purge_seen[$hash] > $now - $window) {
+            $this->lwsop_mark_purge_pending($hash, $url);
+            $this->lwsop_schedule_purge_replay($this->lwsop_url_purge_seen[$hash] + $window + 5);
+            return false;
+        }
+
+        $lock = $this->lwsop_debounce_dir() . $hash;
+        // PHP caches stat() results per request, and several purges routinely
+        // happen in one request — without this the second read sees a stale mtime.
+        clearstatcache(true, $lock);
+        $last = @filemtime($lock);
+
+        if ($last !== false && $last > $now - $window) {
+            $this->lwsop_mark_purge_pending($hash, $url);
+            $this->lwsop_schedule_purge_replay($last + $window + 5);
+            return false;
+        }
+
+        // Arm the window BEFORE running, so a concurrent request sees the lock.
+        @file_put_contents($lock, $url);
+        @wp_delete_file($lock . '.pending');
+        $this->lwsop_url_purge_seen[$hash] = $now;
+        $this->lwsop_gc_debounce_registry();
+
+        return true;
+    }
+
+    /**
+     * Records that a purge for this URL is owed. Idempotent, and never rewrites
+     * an existing marker, so two concurrent skips cannot clobber each other.
+     * The absolute URL is stored verbatim so the replay can hand it straight
+     * back to lws_optimize_clean_filebased_cache() (keeping url_to_postid(),
+     * hence the taxonomy purge, working).
+     */
+    private function lwsop_mark_purge_pending($hash, $url)
+    {
+        $pending = $this->lwsop_debounce_dir() . $hash . '.pending';
+        if (!file_exists($pending)) {
+            @file_put_contents($pending, $url);
+        }
+    }
+
+    private function lwsop_schedule_purge_replay($when)
+    {
+        if (!wp_next_scheduled('lwsop_replay_pending_purges')) {
+            wp_schedule_single_event(max((int) $when, time() + 1), 'lwsop_replay_pending_purges');
+        }
+    }
+
+    /**
+     * Runs every owed purge whose window has elapsed.
+     *
+     * Called both opportunistically (at the top of every purge, which covers a
+     * busy site for free) and from a cron event (which covers a quiet one). A
+     * site with no traffic at all never replays, which is harmless: there is
+     * nobody being served the stale page, and the first visit spawns wp-cron
+     * before a second visitor could be served.
+     */
+    public function lwsop_replay_pending_url_purges($logger = null)
+    {
+        if ($this->lwsop_replaying) {
+            return 0;
+        }
+
+        $pending_files = glob($this->lwsop_debounce_dir() . '*.pending');
+        if (empty($pending_files)) {
+            return 0;
+        }
+
+        $this->lwsop_replaying = true;
+        $now = time();
+        $still_owed = 0;
+
+        try {
+            foreach ($pending_files as $pending) {
+                $lock = substr($pending, 0, -strlen('.pending'));
+                clearstatcache(true, $lock);
+                $last = @filemtime($lock);
+
+                // Window not elapsed yet: leave the debt for a later pass.
+                if ($last !== false && $last > $now - self::LWSOP_URL_PURGE_WINDOW) {
+                    $still_owed++;
+                    continue;
+                }
+
+                $url = @file_get_contents($pending);
+                // Consume the marker BEFORE running, so a concurrent replay
+                // cannot run the same purge twice.
+                @wp_delete_file($pending);
+
+                if (!$url || !$this->lwsop_is_valid_purge_target($url)) {
+                    continue;
+                }
+
+                if ($logger) {
+                    fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Replaying deferred purge for $url" . PHP_EOL);
+                }
+                $this->lws_optimize_clean_filebased_cache($url, 'lwsop_replay_pending', true);
+            }
+        } finally {
+            $this->lwsop_replaying = false;
+        }
+
+        // wp_schedule_single_event() refuses a duplicate within ~10 min, so a
+        // skip that happened after the previous scheduling would otherwise wait.
+        if ($still_owed) {
+            $this->lwsop_schedule_purge_replay($now + self::LWSOP_URL_PURGE_WINDOW);
+        }
+
+        return $still_owed;
+    }
+
+    /**
+     * Drops expired lock markers. Entries with an owed purge are never removed,
+     * only consumed by a replay, so garbage collection cannot lose a purge.
+     */
+    private function lwsop_gc_debounce_registry()
+    {
+        $dir = $this->lwsop_debounce_dir();
+        $stamp = $dir . '.gcstamp';
+
+        clearstatcache(true, $stamp);
+        $last_gc = @filemtime($stamp);
+        $now = time();
+        if ($last_gc !== false && $last_gc > $now - self::LWSOP_URL_PURGE_GC) {
+            return;
+        }
+        @file_put_contents($stamp, (string) $now);
+
+        $cutoff = $now - (2 * self::LWSOP_URL_PURGE_WINDOW);
+        foreach ((array) glob($dir . '*') as $file) {
+            if (!is_file($file)) {
+                continue;
+            }
+            $name = basename($file);
+            // Keep the bookkeeping files and every owed purge.
+            if ($name === 'index.html' || $name === '.gcstamp'
+                || substr($name, -8) === '.pending'
+                || file_exists($file . '.pending')) {
+                continue;
+            }
+            clearstatcache(true, $file);
+            $mtime = @filemtime($file);
+            if ($mtime !== false && $mtime < $cutoff) {
+                @wp_delete_file($file);
+            }
+        }
+    }
+
+    /**
      * Coalesce the expensive, site-wide side effects of a cache purge
      * (edge/CDN purge, opcache reset, object cache flush) so a burst of
      * purge-triggering events collapses into one run per window instead of
      * one per event.
      *
-     * This deliberately does NOT just "skip while locked": wp_cache_flush()
-     * clears object-cache entries (stock, price, term counts, etc.), so a
-     * dropped run could let a page regenerate mid-window with stale
-     * object-cache data baked in, with nothing left to invalidate it
-     * afterwards. Instead, a call that arrives while locked marks one more
-     * run as owed, and every call (from this or any other autopurge
-     * trigger) checks for and executes an owed run whose window has
-     * elapsed before deciding what to do with itself — so a run is only
-     * ever delayed, never lost.
+     * This deliberately does NOT drop a run for good: wp_cache_flush() clears
+     * object-cache entries (stock, price, term counts, etc.), so a lost run
+     * could let a page regenerate mid-window with stale object-cache data baked
+     * in, with nothing left to invalidate it afterwards. A skipped run is only
+     * ever delayed: the first call past the window executes it, and the per-URL
+     * debounce guarantees such a call happens, since every purge it defers is
+     * replayed once the window elapses.
+     *
+     * The lock lives in a file, not a transient: lwsop_run_global_purge()
+     * calls wp_cache_flush(), which on a site with a persistent object cache
+     * deletes every transient — including the lock set moments earlier, which
+     * used to leave this throttle permanently disarmed on exactly the sites
+     * that need it most.
      */
     private function lwsop_run_global_purge_throttled($logger = null)
     {
-        if (get_transient('lwsop_global_purge_pending') && !get_transient('lwsop_global_purge_lock')) {
-            delete_transient('lwsop_global_purge_pending');
-            set_transient('lwsop_global_purge_lock', 1, self::LWSOP_GLOBAL_PURGE_WINDOW);
+        $lock = $this->lwsop_debounce_dir() . '.global';
+
+        clearstatcache(true, $lock);
+        $last = @filemtime($lock);
+        $now = time();
+
+        if ($last === false || $last <= $now - self::LWSOP_GLOBAL_PURGE_WINDOW) {
+            // Arm before running so a concurrent request sees the lock...
+            @file_put_contents($lock, (string) $now);
             $this->lwsop_run_global_purge($logger);
+            // ...and re-arm after, since the run itself sends HTTP requests and
+            // the window should start once it is actually over.
+            @touch($lock);
             return;
         }
 
-        if (!get_transient('lwsop_global_purge_lock')) {
-            set_transient('lwsop_global_purge_lock', 1, self::LWSOP_GLOBAL_PURGE_WINDOW);
-            $this->lwsop_run_global_purge($logger);
-            return;
-        }
-
-        set_transient('lwsop_global_purge_pending', true, self::LWSOP_GLOBAL_PURGE_WINDOW * 2);
         if ($logger) {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Global cache purge throttled (ran <" . self::LWSOP_GLOBAL_PURGE_WINDOW . "s ago); one more run queued" . PHP_EOL);
         }

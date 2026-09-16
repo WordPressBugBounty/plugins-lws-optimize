@@ -249,6 +249,11 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                     <?php esc_html_e('Specify URLs', 'lws-optimize'); ?>
                 </span>
             </button>
+            <button type="button" class="lwsop_darkblue_button" id="lws_op_fb_cache_purge_exclusion_manage" data-toggle="modal" data-target="#lwsop_exclude_purge_urls">
+                <span>
+                    <?php esc_html_e('Exclude from purge', 'lws-optimize'); ?>
+                </span>
+            </button>
         </div>
     </div>
     <div class="lwsop_contentblock_rightside">
@@ -546,6 +551,18 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             <h2 class="lwsop_exclude_title"><?php esc_html_e('Specify URLs to purge along with the cache', 'lws-optimize'); ?></h2>
             <form method="POST" id="lwsop_form_specify_urls"></form>
             <div class="lwsop_modal_buttons" id="lwsop_specify_modal_buttons">
+                <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="lwsop_exclude_purge_urls" tabindex='-1' aria-hidden='true'>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <h2 class="lwsop_exclude_title"><?php esc_html_e('Exclude URLs from the automatic purge', 'lws-optimize'); ?></h2>
+            <form method="POST" id="lwsop_form_exclude_purge_urls"></form>
+            <div class="lwsop_modal_buttons" id="lwsop_exclude_purge_modal_buttons">
                 <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
             </div>
         </div>
@@ -922,6 +939,27 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             }
         }
 
+        if (element.getAttribute('id') == "lwsop_submit_purge_excluded_form") {
+            originalText = element.innerHTML;
+            element.innerHTML = `
+                <span name="loading" style="padding-left:5px">
+                    <img style="vertical-align:sub; margin-right:5px" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/loading.svg') ?>" alt="" width="18px" height="18px">
+                </span>
+            `;
+            element.disabled = true;
+            setTimeout(function() {
+                if (originalText) {
+                    element.innerHTML = originalText;
+                    element.disabled = false;
+                }
+            }, 10000);
+
+            let form = document.getElementById('lwsop_form_exclude_purge_urls');
+            if (form !== null) {
+                form.dispatchEvent(new Event('submit'));
+            }
+        }
+
         if (element.getAttribute('id') == "lwsop_submit_specified_form") {
             originalText = element.innerHTML;
             element.innerHTML = `
@@ -1152,6 +1190,124 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
         });
     }
 
+
+    if (document.getElementById('lwsop_form_exclude_purge_urls')) {
+        document.getElementById('lwsop_form_exclude_purge_urls').addEventListener("submit", function(event) {
+            event.preventDefault();
+            let formData = jQuery(this).serializeArray();
+            let ajaxRequest = jQuery.ajax({
+                url: ajaxurl,
+                type: "POST",
+                timeout: 120000,
+                context: document.body,
+                data: {
+                    data: formData,
+                    _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_save_purge_excluded_nonce')); ?>',
+                    action: "lwsop_save_purge_excluded_url"
+                },
+                success: function(returnData) {
+                    if (!isValidResponse(returnData)) {
+                        console.error('Invalid AJAX response', returnData);
+                        return;
+                    }
+
+                    jQuery(document.getElementById('lwsop_exclude_purge_urls')).modal('hide');
+                    switch (returnData['code']) {
+                        case 'SUCCESS':
+                            callPopup('success', `<?php esc_html_e('The URLs to exclude from the purge have been saved', 'lws-optimize'); ?>`);
+                            break;
+                        case 'NO_DATA':
+                            callPopup('error', `<?php esc_html_e('The URLs to exclude from the purge could not be saved because no data was found', 'lws-optimize'); ?>`);
+                            break;
+                        default:
+                            callPopup('error', `<?php esc_html_e('The URLs to exclude from the purge could not be saved because an error occurred', 'lws-optimize'); ?>`);
+                            break;
+                    }
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+        });
+    }
+
+    document.getElementById('lws_op_fb_cache_purge_exclusion_manage').addEventListener('click', function() {
+        let form = document.getElementById('lwsop_form_exclude_purge_urls');
+        form.innerHTML = `
+            <div class="loading_animation">
+                <img class="loading_animation_image" alt="Logo Loading" src="<?php echo esc_url(dirname(plugin_dir_url(__FILE__)) . '/images/chargement.svg') ?>" width="120px" height="105px">
+            </div>
+        `;
+        let ajaxRequest = jQuery.ajax({
+            url: ajaxurl,
+            type: "POST",
+            timeout: 120000,
+            context: document.body,
+            data: {
+                _ajax_nonce: '<?php echo esc_attr(wp_create_nonce('lwsop_get_purge_excluded_nonce')); ?>',
+                action: "lwsop_get_purge_excluded_url"
+            },
+            success: function(returnData) {
+                if (!isValidResponse(returnData)) {
+                    console.error('Invalid AJAX response', returnData);
+                    return;
+                }
+
+                document.getElementById('lwsop_exclude_purge_modal_buttons').innerHTML = `
+                    <button type="button" class="lwsop_closebutton" data-dismiss="modal"><?php esc_html_e('Close', 'lws-optimize'); ?></button>
+                    <button type="button" id="lwsop_submit_purge_excluded_form" class="lwsop_validatebutton">
+                        <img src="<?php echo esc_url(plugins_url('images/enregistrer.svg', __DIR__)) ?>" alt="Logo Disquette" width="20px" height="20px">
+                        <?php esc_html_e('Save', 'lws-optimize'); ?>
+                    </button>
+                `;
+
+                switch (returnData['code']) {
+                    case 'SUCCESS':
+                        let urls = returnData['data'];
+                        let domain = returnData['domain'];
+                        form.innerHTML = `
+                        <div class="lwsop_modal_infobubble">
+                            <?php esc_html_e('These pages will never be emptied by the automatic purge, even when their content changes. They are still cleared by a manual purge and when the cache expires. Example on the usage of "*": "products/*" will exclude all sub-pages of "products". To exclude the homepage, exclude "/".', 'lws-optimize'); ?>
+                        </div>`;
+                        if (!urls.length) {
+                            form.insertAdjacentHTML('beforeend', `
+                                    <div class="lwsop_exclude_element">
+                                        <div class="lwsop_exclude_url">
+                                            ` + domain + `/
+                                        </div>
+                                        <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
+                                        <div class="lwsop_exclude_action_buttons">
+                                            <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
+                                            <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
+                                        </div>
+                                    </div>
+                                `);
+                        } else {
+                            for (var i in urls) {
+                                form.insertAdjacentHTML('beforeend', `
+                                        <div class="lwsop_exclude_element">
+                                            <div class="lwsop_exclude_url">
+                                                ` + domain + `/
+                                            </div>
+                                            <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + urls[i] + `">
+                                            <div class="lwsop_exclude_action_buttons">
+                                                <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
+                                                <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
+                                            </div>
+                                        </div>
+                                    `);
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            },
+            error: function(error) {
+                console.log(error);
+            }
+        });
+    });
 
     document.getElementById('lws_op_fb_cache_exclusion_manage').addEventListener('click', function() {
         let form = document.getElementById('lwsop_form_exclude_urls');
