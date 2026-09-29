@@ -16,6 +16,10 @@ class LwsOptimizeFileCache
     private $page_type;
     private $need_cache;
 
+    // Set once lwsop_add_to_cache() has written this response to the cache and sent
+    // X-LWSOP-Cache: MISS, so callback() does not overwrite that header with BYPASS.
+    private $cache_written = false;
+
     // Guards against the optimization pipeline (combine/minify/defer/delay) running
     // twice on the same request — e.g. if 'init' fires more than once (multisite
     // switch_to_blog, some translation/preview plugins) — which would otherwise
@@ -428,7 +432,7 @@ class LwsOptimizeFileCache
             $this->lwsop_add_to_cache($buffer, $cached_elements, false);
         }
 
-        if (!headers_sent() && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
+        if (!$this->cache_written && !headers_sent() && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
             header('X-LWSOP-Cache: BYPASS');
         }
         header ('Edge-Cache-Platform: lwsoptimize');
@@ -487,6 +491,7 @@ class LwsOptimizeFileCache
                         && hash_equals($preload_secret, sanitize_text_field(wp_unslash($_SERVER['HTTP_X_LWS_PRELOAD'])));
                     if (!$is_preload && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats') && !headers_sent()) {
                         header('X-LWSOP-Cache: MISS');
+                        $this->cache_written = true;
                     }
                     if (!$is_preload && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats')) {
                         \Lws\Classes\FileCache\LwsOptimizeUsageStats::track('misses');
@@ -765,13 +770,8 @@ class LwsOptimizeFileCache
     }
 
     /**
-     * Front-end form plugins known to bake a WordPress REST nonce (wp_rest,
-     * ~12-24h lifetime) into the cached HTML for form submission, via
-     * wp.apiFetch. Once a cached page outlives that nonce, every visitor's
-     * submission fails with "rest_cookie_invalid_nonce" until the cache is
-     * regenerated. These forms aren't tied to a fixed URL like a WooCommerce
-     * checkout page (they can be placed on any page), so detection has to be
-     * content-based rather than a URL pattern.
+     * Front-end form plugins whose nonce cannot survive being cached, and whose
+     * pages must therefore never be cached at all.
      *
      * Each entry maps a plugin's main file to a list of needle strings that
      * only appear in the rendered buffer when that plugin actually outputs a
@@ -781,9 +781,13 @@ class LwsOptimizeFileCache
     private function lwsop_form_plugins_with_cache_nonce_issue()
     {
         return array(
-            // SureForms forms are submitted via the REST API using WordPress's
-            // standard wp_rest nonce, localized into this JS object.
-            'sureforms/sureforms.php' => array('srfm_submit'),
+            // SureForms >= 2.6 signs each submission with its own HMAC token, rendered
+            // into the form as data-submit-token and valid 48 h at most (7 days with
+            // its filter, hard-capped). Once the cached page is older than that, every
+            // submission is refused with 403 srfm_token_invalid. Older versions only
+            // used the wp_rest nonce, which lwsop_extend_anonymous_nonce_life() now
+            // covers, so they do not carry this attribute and stay cached.
+            'sureforms/sureforms.php' => array('data-submit-token'),
         );
     }
 

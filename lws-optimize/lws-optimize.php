@@ -9,7 +9,7 @@ use Lws\Classes\RUM\LwsOptimizeRUM;
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           4.1.5
+ * Version:           4.1.6
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      7.0
@@ -164,12 +164,21 @@ function lwsoptimize_uninstall_callback() {
     WP_Filesystem();
     global $wp_filesystem;
 
+    // Both folders are local and written by PHP itself: without FTP/SSH credentials,
+    // WP_Filesystem() leaves an unconnected object whose rmdir() fatals on PHP 8.
+    $lwsoptimize_fs = $wp_filesystem;
+    if (!($lwsoptimize_fs instanceof WP_Filesystem_Direct)) {
+        require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-base.php';
+        require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-direct.php';
+        $lwsoptimize_fs = new WP_Filesystem_Direct(null);
+    }
+
     if (file_exists($cache_dir)) {
-        $wp_filesystem->rmdir($cache_dir, true);
+        $lwsoptimize_fs->rmdir($cache_dir, true);
     }
 
     if (file_exists($upload_dir)) {
-        $wp_filesystem->rmdir($upload_dir, true);
+        $lwsoptimize_fs->rmdir($upload_dir, true);
     }
 
         // Deactivate all crons
@@ -209,6 +218,8 @@ function lwsoptimize_uninstall_callback() {
     delete_option('lws_optimize_cache_statistics');
     delete_option('lws_optimize_image_conversion_options');
     delete_option('lwsop_plugin_version');
+    delete_option('lwsop_anon_nonce_life_migrated');
+    delete_option('lwsop_htaccess_content_path');
 }
 
 // Actions to execute when the plugin is activated / deactivated / deleted / upgraded

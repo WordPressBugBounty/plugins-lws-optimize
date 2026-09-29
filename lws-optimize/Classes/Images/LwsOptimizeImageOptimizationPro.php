@@ -112,17 +112,39 @@ class LwsOptimizeImageOptimizationPro
     }
 
     /**
-     * Initialize WP_Filesystem
+     * Filesystem for this class's own local files (log, converted images): always the
+     * direct method.
+     *
+     * WP_Filesystem() picks FTP/SSH when PHP does not run as the owner of the files
+     * (WP-CLI with --allow-root, some shared hosts) and, without credentials, leaves
+     * an unconnected object behind: any call on it then fatals on PHP 8 (ftp_nlist():
+     * null given) - on every request, since this runs from the plugin constructor.
+     * The global instance is left untouched, as another plugin or the updater may be
+     * using it with real credentials.
      */
     private function init_wp_filesystem() {
         global $wp_filesystem;
 
-        if (empty($wp_filesystem)) {
-            require_once(ABSPATH . '/wp-admin/includes/file.php');
-            WP_Filesystem();
+        // Also provides wp_handle_upload(), used further down.
+        require_once(ABSPATH . '/wp-admin/includes/file.php');
+
+        if ($wp_filesystem instanceof \WP_Filesystem_Direct) {
+            $this->wp_filesystem = $wp_filesystem;
+            return;
         }
 
-        $this->wp_filesystem = $wp_filesystem;
+        require_once(ABSPATH . '/wp-admin/includes/class-wp-filesystem-base.php');
+        require_once(ABSPATH . '/wp-admin/includes/class-wp-filesystem-direct.php');
+
+        // Defined by WP_Filesystem() once connected, with the same values.
+        if (!defined('FS_CHMOD_DIR')) {
+            define('FS_CHMOD_DIR', (fileperms(ABSPATH) & 0777 | 0755));
+        }
+        if (!defined('FS_CHMOD_FILE')) {
+            define('FS_CHMOD_FILE', (fileperms(ABSPATH . 'index.php') & 0777 | 0644));
+        }
+
+        $this->wp_filesystem = new \WP_Filesystem_Direct(null);
     }
 
     /**

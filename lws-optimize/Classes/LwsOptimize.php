@@ -121,8 +121,35 @@ class LwsOptimize
         // Add new schedules time for crons
         add_filter('cron_schedules', [$this, 'lws_optimize_timestamp_crons']);
 
+        // The deployed PHP intermediary lives inside the cache directory, which every
+        // full purge deletes (the one-time nonce migration purge included), and only a
+        // .htaccess rewrite used to put it back. Restore it here, before this request
+        // can write a cache file for the .htaccess rules to route to the script. Also
+        // refreshes the copy once a plugin update ships a newer one.
+        if ($this->lwsop_check_option('htaccess_php_intermediary')['state'] === 'true') {
+            $this->lwsop_deploy_serve_script();
+        }
+
         // Init the FileCache Class
         $this->lwsOptimizeCache = new LwsOptimizeFileCache($this);
+
+        // Keep the nonces baked into cached pages valid for as long as those pages are
+        // served — see lwsop_extend_anonymous_nonce_life().
+        //
+        // This has to be registered on EVERY request type, not just the front-end: the
+        // nonce is created while rendering the page but verified much later, from
+        // admin-ajax.php or the REST API, and both sides must agree on the same tick.
+        // That is why it cannot live in LwsOptimizeFileCache (which returns early on
+        // is_admin()), and why it stays outside the 'lws_optimize_deactivate_temporarily'
+        // block below: a temporary deactivation must not invalidate the nonces already
+        // handed out to visitors.
+        // Nor does it depend on the file cache being on: the tick is shared by every
+        // anonymous nonce, so toggling the cache off would flip it for the whole site
+        // at once, while the pages cached until then (cache files, Cloudflare APO, edge
+        // caches) keep being served with the old tick baked in - and their forms fail.
+        // Priority 99 so it still applies on sites where another plugin shortens
+        // 'nonce_life' at the default priority.
+        add_filter('nonce_life', [$this, 'lwsop_extend_anonymous_nonce_life'], 99, 2);
 
         // Init the ImageOptimization Class
         $this->lwsImageOptimization = new LwsOptimizeImageOptimizationPro();
@@ -412,6 +439,17 @@ class LwsOptimize
             'lws_two_years' => [63113852, __('Once every 2 years', 'lws-optimize')],
             'lws_never' => [0, __('Never expire', 'lws-optimize')],
         ];
+
+        // Extending the lifetime of the anonymous nonces moved the nonce tick, so every
+        // page cached before that change carries a nonce that can no longer be verified.
+        // Purge once, otherwise those pages would keep their broken forms until the next
+        // scheduled purge — which, with the default timer, is a year away.
+        // The flag is written BEFORE the purge so a failure there cannot make every
+        // subsequent request purge the cache again.
+        if (!get_option('lwsop_anon_nonce_life_migrated')) {
+            update_option('lwsop_anon_nonce_life_migrated', 1, false);
+            $this->lws_optimize_clean_all_filebased_cache('anonymous_nonce_life_migration');
+        }
 
         // Add all options referring to the WPAdmin page or the AdminBar
         // This will manage everything that can happen on the lws-optimize page
@@ -1342,6 +1380,9 @@ class LwsOptimize
         $wp_content_directory = explode('/', WP_CONTENT_DIR);
         $wp_content_directory = array_pop($wp_content_directory);
 
+        // Where that directory is, relative to %{DOCUMENT_ROOT}, for the -f tests below
+        $content_path = $this->lwsop_htaccess_content_path($http_path, $wp_content_directory);
+
         if ($available_htaccess) {
             // Remove the htaccess related to caching
             // Read the htaccess file
@@ -1380,7 +1421,7 @@ class LwsOptimize
                     $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
                     $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
                     $hta .= "RewriteCond %{HTTP_USER_AGENT} !^.*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-                    $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/$1index_2.html -f\n";
+                    $hta .= "RewriteCond %{DOCUMENT_ROOT}$content_path$cache_path$http_path/$1index_2.html -f\n";
                     if ($php_intermediary) {
                         $hta .= "RewriteRule ^(.*) $serve_script [L,E=LWSOP_CACHE:HIT]\n\n";
                     } else {
@@ -1393,7 +1434,7 @@ class LwsOptimize
                         $hta .= $this->lws_optimize_basic_htaccess_conditions($http_host, $admin_users);
                         $hta .= "RewriteCond %{HTTP_COOKIE} wordpress_logged_in_ [NC]\n";
                         $hta .= "RewriteCond %{HTTP_USER_AGENT} .*\bCrMo\b|CriOS|Android.*Chrome\/[.0-9]*\s(Mobile)?|\bDolfin\b|Opera.*Mini|Opera.*Mobi|Android.*Opera|Mobile.*OPR\/[0-9.]+|Coast\/[0-9.]+|Skyfire|Mobile\sSafari\/[.0-9]*\sEdge|IEMobile|MSIEMobile|fennec|firefox.*maemo|(Mobile|Tablet).*Firefox|Firefox.*Mobile|FxiOS|bolt|teashark|Blazer|Version.*Mobile.*Safari|Safari.*Mobile|MobileSafari|Tizen|UC.*Browser|UCWEB|baiduboxapp|baidubrowser|DiigoBrowser|Puffin|\bMercury\b|Obigo|NF-Browser|NokiaBrowser|OviBrowser|OneBrowser|TwonkyBeamBrowser|SEMC.*Browser|FlyFlow|Minimo|NetFront|Novarra-Vision|MQQBrowser|MicroMessenger|Android.*PaleMoon|Mobile.*PaleMoon|Android|blackberry|\bBB10\b|rim\stablet\sos|PalmOS|avantgo|blazer|elaine|hiptop|palm|plucker|xiino|Symbian|SymbOS|Series60|Series40|SYB-[0-9]+|\bS60\b|Windows\sCE.*(PPC|Smartphone|Mobile|[0-9]{3}x[0-9]{3})|Window\sMobile|Windows\sPhone\s[0-9.]+|WCE;|Windows\sPhone\s10.0|Windows\sPhone\s8.1|Windows\sPhone\s8.0|Windows\sPhone\sOS|XBLWP7|ZuneWP7|Windows\sNT\s6\.[23]\;\sARM\;|\biPhone.*Mobile|\biPod|\biPad|Apple-iPhone7C2|MeeGo|Maemo|J2ME\/|\bMIDP\b|\bCLDC\b|webOS|hpwOS|\bBada\b|BREW.*$ [NC]\n";
-                        $hta .= "RewriteCond %{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/$1index_2.html -f\n";
+                        $hta .= "RewriteCond %{DOCUMENT_ROOT}$content_path$cache_path_mobile$http_path/$1index_2.html -f\n";
                         if ($php_intermediary) {
                             $hta .= "RewriteRule ^(.*) $serve_script [L,E=LWSOP_CACHE:HIT]\n\n";
                         } else {
@@ -1411,7 +1452,7 @@ class LwsOptimize
 
                     $hta .= $this->lwsop_htaccess_cache_serve_rules(
                         $anonymous_mobile_conditions,
-                        "%{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path_mobile$http_path/\$1index_0.html",
+                        "%{DOCUMENT_ROOT}$content_path$cache_path_mobile$http_path/\$1index_0.html",
                         "$wp_content_directory$cache_path_mobile$http_path/\$1index_0.html",
                         $php_intermediary ? $serve_script : null,
                         $serve_precompressed
@@ -1426,7 +1467,7 @@ class LwsOptimize
 
                 $hta .= $this->lwsop_htaccess_cache_serve_rules(
                     $anonymous_desktop_conditions,
-                    "%{DOCUMENT_ROOT}/$http_path/$wp_content_directory$cache_path$http_path/\$1index_0.html",
+                    "%{DOCUMENT_ROOT}$content_path$cache_path$http_path/\$1index_0.html",
                     "$wp_content_directory$cache_path$http_path/\$1index_0.html",
                     $php_intermediary ? $serve_script : null,
                     $serve_precompressed
@@ -1439,8 +1480,13 @@ class LwsOptimize
                 $hta .= "FileETag None\nHeader unset ETag\n";
                 // When PHP intermediary is active it sets these headers itself; skip to avoid duplicates.
                 if (!$php_intermediary) {
-                    $hta .= "Header set X-LWSOP-Cache \"HIT\" env=LWSOP_CACHE\n";
-                    $hta .= "Header set Edge-Cache-Platform \"lwsoptimize\" env=LWSOP_CACHE\n";
+                    // In .htaccess context the RewriteRule serves the file through an
+                    // internal redirect, which renames E=LWSOP_CACHE to
+                    // REDIRECT_LWSOP_CACHE: test both, or no Apache-served HIT is labelled.
+                    foreach (['LWSOP_CACHE', 'REDIRECT_LWSOP_CACHE'] as $lwsop_env) {
+                        $hta .= "Header set X-LWSOP-Cache \"HIT\" env=$lwsop_env\n";
+                        $hta .= "Header set Edge-Cache-Platform \"lwsoptimize\" env=$lwsop_env\n";
+                    }
                 }
                 $hta .= "</IfModule>\n\n";
 
@@ -1490,6 +1536,54 @@ class LwsOptimize
                 }
             }
         }
+    }
+
+    /**
+     * Path of the content directory relative to %{DOCUMENT_ROOT}, with a leading
+     * slash ("/wp-content" on a standard install), as used by the -f tests of the
+     * cache rules.
+     *
+     * Those tests used to assume WordPress lives at DOCUMENT_ROOT + the home URL
+     * path. That is false wherever the vhost's DOCUMENT_ROOT is a parent folder of
+     * the site - LWS subdomains, for instance, get DOCUMENT_ROOT = .../htdocs with
+     * the site in .../htdocs/sub.example.fr/ - and there the tests never matched:
+     * Apache served no cache file at all, and every HIT went through PHP.
+     *
+     * Computed from the real paths in a web request, and remembered, since WP-CLI
+     * and cron have no DOCUMENT_ROOT to compare with. The historical assumption
+     * stays the fallback, so nothing changes where it was right.
+     */
+    private function lwsop_htaccess_content_path($http_path, $wp_content_directory)
+    {
+        $doc_root = !empty($_SERVER['DOCUMENT_ROOT']) ? sanitize_text_field(wp_unslash($_SERVER['DOCUMENT_ROOT'])) : '';
+
+        if ($doc_root !== '') {
+            // Real paths first (a symlinked document root), then the configured ones:
+            // open_basedir can forbid resolving the parent folder DOCUMENT_ROOT may be.
+            $candidates = [
+                [@realpath($doc_root), @realpath(WP_CONTENT_DIR)],
+                [$doc_root, WP_CONTENT_DIR],
+            ];
+            foreach ($candidates as $candidate) {
+                list($root, $content_dir) = $candidate;
+                if (!$root || !$content_dir) {
+                    continue;
+                }
+                $root = rtrim(wp_normalize_path($root), '/');
+                $content_dir = rtrim(wp_normalize_path($content_dir), '/');
+
+                if (strpos($content_dir . '/', $root . '/') === 0) {
+                    $relative = substr($content_dir, strlen($root));
+                    if (get_option('lwsop_htaccess_content_path') !== $relative) {
+                        update_option('lwsop_htaccess_content_path', $relative, false);
+                    }
+                    return $relative;
+                }
+            }
+        }
+
+        $saved = get_option('lwsop_htaccess_content_path');
+        return is_string($saved) ? $saved : "/$http_path/$wp_content_directory";
     }
 
     /**
@@ -2155,8 +2249,10 @@ class LwsOptimize
 
         try {
             // Run any purge that was deferred earlier and whose window has now
-            // elapsed, before deciding what to do with this one.
-            $this->lwsop_replay_pending_url_purges($logger);
+            // elapsed, before deciding what to do with this one. An owed site-wide
+            // run is left to the throttled call this purge ends with, which settles
+            // it - running it here too would only owe one more.
+            $this->lwsop_replay_pending_url_purges($logger, false);
 
             if ($directory !== false && !$this->lwsop_is_valid_purge_target($directory)) {
                 $this->lwsop_debug_log('LWSOptimize: ignoring non-URL purge target from action [' . $action . ']');
@@ -2188,11 +2284,16 @@ class LwsOptimize
             $domain_parts = wp_parse_url($site_url);
             $path = isset($domain_parts['path']) ? trim($domain_parts['path'], '/') : '';
 
-            // Define all cache directories to clean
-            $cache_dirs = [
-                $this->lwsop_get_content_directory("cache/$path") => 'main desktop',
-                $this->lwsop_get_content_directory("cache-mobile/$path") => 'main mobile'
-            ];
+            // Define all cache directories to clean. The root directories hold the
+            // homepage, which every purge refreshes (it lists the latest content) -
+            // unless the user excluded it ("/") from the automatic purge.
+            $cache_dirs = [];
+            if (!$is_autopurge || !$this->lwsop_url_excluded_from_autopurge(home_url('/'))) {
+                $cache_dirs = [
+                    $this->lwsop_get_content_directory("cache/$path") => 'main desktop',
+                    $this->lwsop_get_content_directory("cache-mobile/$path") => 'main mobile'
+                ];
+            }
 
             // Get cache paths
             $cache_desktop = $this->lwsOptimizeCache->lwsop_set_cachedir($directory);
@@ -2521,14 +2622,18 @@ class LwsOptimize
      * nobody being served the stale page, and the first visit spawns wp-cron
      * before a second visitor could be served.
      */
-    public function lwsop_replay_pending_url_purges($logger = null)
+    public function lwsop_replay_pending_url_purges($logger = null, $settle_global = true)
     {
         if ($this->lwsop_replaying) {
             return 0;
         }
 
-        $pending_files = glob($this->lwsop_debounce_dir() . '*.pending');
-        if (empty($pending_files)) {
+        $dir = $this->lwsop_debounce_dir();
+        $pending_files = glob($dir . '*.pending');
+        // glob() skips dotfiles, so the site-wide run owed by the throttle
+        // (.global.pending, see lwsop_run_global_purge_throttled()) is checked apart.
+        $global_owed = $dir . '.global.pending';
+        if (empty($pending_files) && (!$settle_global || !file_exists($global_owed))) {
             return 0;
         }
 
@@ -2537,7 +2642,7 @@ class LwsOptimize
         $still_owed = 0;
 
         try {
-            foreach ($pending_files as $pending) {
+            foreach ((array) $pending_files as $pending) {
                 $lock = substr($pending, 0, -strlen('.pending'));
                 clearstatcache(true, $lock);
                 $last = @filemtime($lock);
@@ -2561,6 +2666,29 @@ class LwsOptimize
                     fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Replaying deferred purge for $url" . PHP_EOL);
                 }
                 $this->lws_optimize_clean_filebased_cache($url, 'lwsop_replay_pending', true);
+            }
+
+            // Each URL replay above ends with its own throttled global run, which
+            // settles this debt when the window is over; run it here when no URL was
+            // due, and leave it for a later pass while the window is still open.
+            clearstatcache(true, $global_owed);
+            if ($settle_global && file_exists($global_owed)) {
+                clearstatcache(true, $dir . '.global');
+                $last_global = @filemtime($dir . '.global');
+                if ($last_global === false || $last_global <= $now - self::LWSOP_GLOBAL_PURGE_WINDOW) {
+                    // The cron event passes no logger: open one, or this run leaves no trace.
+                    $own_logger = (!is_resource($logger) && !empty($this->log_file)) ? @fopen($this->log_file, 'a') : false;
+                    $run_logger = is_resource($logger) ? $logger : ($own_logger ?: null);
+                    if ($run_logger) {
+                        fwrite($run_logger, '[' . gmdate('Y-m-d H:i:s') . "] Replaying deferred global cache purge" . PHP_EOL);
+                    }
+                    $this->lwsop_run_global_purge_throttled($run_logger);
+                    if ($own_logger) {
+                        fclose($own_logger);
+                    }
+                } else {
+                    $still_owed++;
+                }
             }
         } finally {
             $this->lwsop_replaying = false;
@@ -2622,19 +2750,25 @@ class LwsOptimize
      * object-cache entries (stock, price, term counts, etc.), so a lost run
      * could let a page regenerate mid-window with stale object-cache data baked
      * in, with nothing left to invalidate it afterwards. A skipped run is only
-     * ever delayed: the first call past the window executes it, and the per-URL
-     * debounce guarantees such a call happens, since every purge it defers is
-     * replayed once the window elapses.
+     * ever delayed: it is recorded as owed ('.global.pending') and executed by
+     * the first call past the window - the next purge, or the replay cron event
+     * scheduled here. Nothing else guarantees such a call: a single purge of
+     * another URL inside the window defers nothing the per-URL debounce would
+     * replay, and its site-wide run used to be lost.
      *
      * The lock lives in a file, not a transient: lwsop_run_global_purge()
      * calls wp_cache_flush(), which on a site with a persistent object cache
      * deletes every transient — including the lock set moments earlier, which
      * used to leave this throttle permanently disarmed on exactly the sites
      * that need it most.
+     *
+     * Returns true when the run happened now, false when it was deferred.
      */
     private function lwsop_run_global_purge_throttled($logger = null)
     {
-        $lock = $this->lwsop_debounce_dir() . '.global';
+        $dir = $this->lwsop_debounce_dir();
+        $lock = $dir . '.global';
+        $owed = $dir . '.global.pending';
 
         clearstatcache(true, $lock);
         $last = @filemtime($lock);
@@ -2643,16 +2777,25 @@ class LwsOptimize
         if ($last === false || $last <= $now - self::LWSOP_GLOBAL_PURGE_WINDOW) {
             // Arm before running so a concurrent request sees the lock...
             @file_put_contents($lock, (string) $now);
+            // ...settle any run owed from the previous window, which this one covers...
+            @wp_delete_file($owed);
             $this->lwsop_run_global_purge($logger);
             // ...and re-arm after, since the run itself sends HTTP requests and
             // the window should start once it is actually over.
             @touch($lock);
-            return;
+            return true;
         }
+
+        // Never rewritten once present, so concurrent skips cannot clobber each other.
+        if (!file_exists($owed)) {
+            @file_put_contents($owed, (string) $now);
+        }
+        $this->lwsop_schedule_purge_replay($last + self::LWSOP_GLOBAL_PURGE_WINDOW + 5);
 
         if ($logger) {
             fwrite($logger, '[' . gmdate('Y-m-d H:i:s') . "] Global cache purge throttled (ran <" . self::LWSOP_GLOBAL_PURGE_WINDOW . "s ago); one more run queued" . PHP_EOL);
         }
+        return false;
     }
 
     private function lwsop_run_global_purge($logger = null)
@@ -2796,6 +2939,48 @@ class LwsOptimize
             $this->lwsop_debug_log("LwsOptimize.php::lwsop_check_option | " . $e);
         }
         return ['state' => "false", 'data' => []];
+    }
+
+    /**
+     * Lifetime granted to the nonces created for visitors who are not logged in.
+     *
+     * A nonce rendered into a page is frozen into the cache file with it, but that file
+     * can be served for as long as it lives — up to a year with the default purge timer,
+     * forever with "Never expire" — while a WordPress nonce only lasts one day (valid for
+     * the current tick and the previous one, so 12h guaranteed). Every cached page used to
+     * turn into a broken page after a day: the HTML still looks right, but every action
+     * relying on the baked nonce (Blocksy's login/registration, REST-based forms, ...)
+     * fails with -1 / rest_cookie_invalid_nonce until that page is cached again.
+     *
+     * Only anonymous responses are ever written to, or served from, the cache (CACHE-1),
+     * so every nonce that can get stuck in a cache file is an anonymous one — built from
+     * uid 0 and an empty session token, i.e. already the exact same constant for every
+     * visitor of the site and obtainable by simply fetching the page. Its lifetime is not
+     * what protects it, so extending it gives up no CSRF protection that was really there.
+     * Nonces created for authenticated users keep WordPress's default lifetime.
+     *
+     * NOT covered: a plugin can filter 'nonce_user_logged_out' to bind anonymous nonces to
+     * a per-visitor session (WooCommerce does this for guests). Those nonces differ from
+     * one visitor to the next, so caching a page carrying one is broken regardless of the
+     * lifetime — such pages must be excluded from the cache instead (see
+     * LwsOptimizeFileCache::lwsop_form_plugins_with_cache_nonce_issue()).
+     */
+    const LWSOP_ANONYMOUS_NONCE_LIFE = 315360000; // 10 * YEAR_IN_SECONDS
+
+    /**
+     * Filters 'nonce_life' so the nonces baked into cached pages outlive those pages.
+     * See LWSOP_ANONYMOUS_NONCE_LIFE above for the full rationale.
+     *
+     * Return $life from the 'lwsop_anonymous_nonce_life' filter to restore WordPress's
+     * default behaviour without touching the plugin.
+     */
+    public function lwsop_extend_anonymous_nonce_life($life, $action = '')
+    {
+        if (!function_exists('is_user_logged_in') || is_user_logged_in()) {
+            return $life;
+        }
+
+        return (int) apply_filters('lwsop_anonymous_nonce_life', self::LWSOP_ANONYMOUS_NONCE_LIFE, $action, $life);
     }
 
     // To get the fastest cache possible, the class is loaded outside of a hook,

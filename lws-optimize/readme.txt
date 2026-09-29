@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.0
-Stable tag: 4.1.5
+Stable tag: 4.1.6
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,19 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 4.1.6 =
+- Fixed forms and AJAX actions breaking on cached pages (Blocksy login/registration, REST-based forms, ...): Tokens generated for visitors who are not logged in now stay valid for as long as the cached page carrying them is served
+- Pages containing a SureForms form stay excluded from the cache: SureForms 2.6+ signs submissions with its own token, which expires after 48 hours whatever the cache does
+- Fixed the plugin starting twice on every request: every hook was registered twice, so a single save purged the same page several times and filled the log with "URL purge debounced" lines
+- Excluding the homepage ("/") from the automatic purge now works: the homepage was still emptied by every automatic purge
+- A site-wide purge (edge cache, opcache, object cache) delayed by the 30-second rule is now replayed once the window has elapsed, instead of being lost
+- Cloudflare APO no longer purges on revisions and autosaves (the homepage was purged at the edge on every autosave), respects the URLs excluded from the automatic purge, and purges the commented post when a comment is posted (it purged an unrelated one)
+- Cached pages are now served directly by Apache when the site lives in a sub-folder of the server's document root (LWS subdomains, for instance): every cache hit went through PHP there
+- The PHP intermediary script is restored automatically after a full cache purge
+- Fixed a fatal error when WordPress cannot write files directly (WP-CLI run as root, some shared hostings)
+- Values saved in the exclusion windows are now escaped when displayed
+- The X-LWSOP-Cache header now says MISS, not BYPASS, on the request that creates the cache file, and HIT on pages served directly by Apache (it was missing there)
 
 = 4.1.5 =
 - AutoPurge no longer purges the same URL over and over: repeated events on one page (bulk edits, WooCommerce orders, comment bursts) are now collapsed into a single purge per 30-second window, per URL. A purge that arrives during that window is never dropped, only replayed once the window has elapsed

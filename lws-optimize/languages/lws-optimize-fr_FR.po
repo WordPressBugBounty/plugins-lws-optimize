@@ -1990,6 +1990,9 @@ msgstr "Les statistiques du cache de fichiers ont été synchronisées"
 msgid "Critical CSS"
 msgstr "CSS Critique"
 
+msgid "Critical CSS configuration"
+msgstr "Configuration du CSS Critique"
+
 msgid "Load only the CSS necessary for above-the-fold content in order to render content to the user as fast as possible. All the CSS not needed when rendering the page (CSS for content at the bottom of the page, for example) will be removed and only loaded once the page is ready. <br> Accessing the page for the first time will result in a longer loading time as the CSS is generated. Preloading is recommended."
 msgstr "Charge uniquement le CSS nécessaire au contenu visible à l'écran afin d'afficher le contenu à l'utilisateur le plus rapidement possible. Tous le CSS non nécessaire lors du rendu de la page (CSS pour le contenu en bas de page, par exemple) sera supprimé et chargé uniquement une fois la page prête. <br> L'accès à la page pour la première fois entraînera un temps de chargement plus long car le CSS est généré. Le préchargement est recommandé."
 

@@ -625,6 +625,15 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
 </div>
 
 <script>
+    // The exclusion modals below rebuild their rows as HTML strings from the saved
+    // values: escape those, or a quote in a saved pattern closes value="..." and
+    // whatever follows it becomes markup (attributes, event handlers).
+    function lwsopEscapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function(c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
     document.getElementById('lws_op_filebased_cache_manage').addEventListener('change', function() {
         let checkbox = this;
         checkbox.disabled = true;
@@ -881,7 +890,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
             </div>
             ` : `
             <div class="lwsop_exclude_url">
-                ` + domain + `/
+                ` + lwsopEscapeHtml(domain) + `/
             </div>
             <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
             <div class="lwsop_exclude_action_buttons">
@@ -1066,7 +1075,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                                 form.insertAdjacentHTML('beforeend', `
                                     <div class="lwsop_exclude_element">
                                         <div class="lwsop_exclude_url">
-                                            ` + domain + `/
+                                            ` + lwsopEscapeHtml(domain) + `/
                                         </div>
                                         <input type="text" class="lwsop_exclude_input" name="lwsop_specific_url" value="">
                                         <div class="lwsop_exclude_action_buttons">
@@ -1080,9 +1089,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                                     form.insertAdjacentHTML('beforeend', `
                                         <div class="lwsop_exclude_element">
                                             <div class="lwsop_exclude_url">
-                                                ` + domain + `/
+                                                ` + lwsopEscapeHtml(domain) + `/
                                             </div>
-                                            <input type="text" class="lwsop_exclude_input" name="lwsop_specific_url" value="` + urls[i] + `">
+                                            <input type="text" class="lwsop_exclude_input" name="lwsop_specific_url" value="` + lwsopEscapeHtml(urls[i]) + `">
                                             <div class="lwsop_exclude_action_buttons">
                                                 <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
                                                 <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
@@ -1273,7 +1282,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             form.insertAdjacentHTML('beforeend', `
                                     <div class="lwsop_exclude_element">
                                         <div class="lwsop_exclude_url">
-                                            ` + domain + `/
+                                            ` + lwsopEscapeHtml(domain) + `/
                                         </div>
                                         <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
                                         <div class="lwsop_exclude_action_buttons">
@@ -1287,9 +1296,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                                 form.insertAdjacentHTML('beforeend', `
                                         <div class="lwsop_exclude_element">
                                             <div class="lwsop_exclude_url">
-                                                ` + domain + `/
+                                                ` + lwsopEscapeHtml(domain) + `/
                                             </div>
-                                            <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + urls[i] + `">
+                                            <input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + lwsopEscapeHtml(urls[i]) + `">
                                             <div class="lwsop_exclude_action_buttons">
                                                 <div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
                                                 <div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
@@ -1351,7 +1360,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             form.insertAdjacentHTML('beforeend', `
 								<div class="lwsop_exclude_element">
 									<div class="lwsop_exclude_url">
-										` + domain + `/
+										` + lwsopEscapeHtml(domain) + `/
 									</div>
 									<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="">
 									<div class="lwsop_exclude_action_buttons">
@@ -1365,9 +1374,9 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                                 form.insertAdjacentHTML('beforeend', `
 									<div class="lwsop_exclude_element">
 										<div class="lwsop_exclude_url">
-											` + domain + `/
+											` + lwsopEscapeHtml(domain) + `/
 										</div>
-										<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + urls[i] + `">
+										<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + lwsopEscapeHtml(urls[i]) + `">
 										<div class="lwsop_exclude_action_buttons">
 											<div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
 											<div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>
@@ -1439,7 +1448,7 @@ if (!defined("DISABLE_WP_CRON") || !DISABLE_WP_CRON) : ?>
                             for (var i in cookies) {
                                 form.insertAdjacentHTML('beforeend', `
 									<div class="lwsop_exclude_element">
-										<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + cookies[i] + `">
+										<input type="text" class="lwsop_exclude_input" name="lwsop_exclude_url" value="` + lwsopEscapeHtml(cookies[i]) + `">
 										<div class="lwsop_exclude_action_buttons">
 											<div class="lwsop_exclude_action_button red" name="lwsop_less_urls">-</div>
 											<div class="lwsop_exclude_action_button green" name="lwsop_more_urls">+</div>

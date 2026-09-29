@@ -253,6 +253,15 @@
 <?php if (!$lwsoptimize_is_deactivated) : ?>
     <script>
 
+        // The exclusion modals below rebuild their rows as HTML strings from the saved
+        // values: escape those, or a quote in a saved pattern closes value="..." and
+        // whatever follows it becomes markup (attributes, event handlers).
+        function lwsopEscapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, function(c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            });
+        }
+
         localStorage.setItem('lws_optimize_current_configuration_changes', JSON.stringify([]));
 
         // All checkbox, not the buttons (like preload fonts)
@@ -654,7 +663,7 @@
                                     for (var i in urls) {
                                         form.insertAdjacentHTML('beforeend', `
                                         <div class="lwsoptimize_exclude_element">
-                                            <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + urls[i] + `">
+                                            <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + lwsopEscapeHtml(urls[i]) + `">
                                             <div class="lwsoptimize_exclude_action_buttons">
                                                 <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
                                                 <div class="lwsoptimize_exclude_action_button green" name="lwsoptimize_more_urls">+</div>
@@ -759,7 +768,7 @@
                                     for (var i in urls) {
                                         form.insertAdjacentHTML('beforeend', `
                                         <div class="lwsoptimize_exclude_element">
-                                            <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + urls[i] + `">
+                                            <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + lwsopEscapeHtml(urls[i]) + `">
                                             <div class="lwsoptimize_exclude_action_buttons">
                                                 <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
                                                 <div class="lwsoptimize_exclude_action_button green" name="lwsoptimize_more_urls">+</div>
@@ -1095,7 +1104,7 @@
                                     for (var i in urls) {
                                         form.insertAdjacentHTML('beforeend', `
                                         <div class="lwsoptimize_exclude_element">
-                                            <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + urls[i] + `">
+                                            <input type="text" class="lwsoptimize_exclude_input" name="lwsoptimize_exclude_url" value="` + lwsopEscapeHtml(urls[i]) + `">
                                             <div class="lwsoptimize_exclude_action_buttons">
                                                 <div class="lwsoptimize_exclude_action_button red" name="lwsoptimize_less_urls">-</div>
                                                 <div class="lwsoptimize_exclude_action_button green" name="lwsoptimize_more_urls">+</div>

@@ -38,8 +38,10 @@ class LwsOptimizeCloudflareAPO
         add_action('send_headers', [__CLASS__, 'send_cache_tag_header']);
 
         // Purge hooks (mirror the file-cache autopurge so CF stays in sync)
-        add_action('save_post', [__CLASS__, 'purge_on_post_change'], 20, 1);
-        add_action('comment_post', [__CLASS__, 'purge_on_post_change'], 20, 1);
+        add_action('save_post', [__CLASS__, 'purge_on_post_change'], 20, 2);
+        // comment_post passes the COMMENT id: it used to go straight to
+        // purge_on_post_change(), which purged whatever post had that id.
+        add_action('comment_post', [__CLASS__, 'purge_on_comment'], 20, 1);
 
         // Targeted purge, fired from inside lws_optimize_clean_filebased_cache().
         // NOT hooked on the 'lws_optimize_clear_filebased_cache' filter: a
@@ -78,12 +80,48 @@ class LwsOptimizeCloudflareAPO
         header('X-LWSOP-Cacheable: yes');
     }
 
-    public static function purge_on_post_change($post_id)
+    public static function purge_on_post_change($post_id, $post = null)
     {
-        $url = get_permalink($post_id);
-        if ($url) {
-            self::purge_urls([$url, home_url('/')]);
+        $post = $post instanceof \WP_Post ? $post : get_post($post_id);
+
+        // Same skips as the file-cache autopurge: save_post also fires for the
+        // revision and the autosave of every save (each one purged the homepage at
+        // the edge, once a minute while someone edits), for attachments and menus.
+        if (!$post
+            || in_array($post->post_type, ['attachment', 'revision', 'nav_menu_item'], true)
+            || wp_is_post_revision($post) || wp_is_post_autosave($post)
+            || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
+            return;
         }
+
+        $url = get_permalink($post);
+        // A page excluded from the automatic purge is left alone entirely, homepage
+        // included, as lws_optimize_clean_filebased_cache() does for the file cache.
+        if ($url && !self::is_excluded_from_autopurge($url)) {
+            self::purge_urls(array_values(array_filter([$url, home_url('/')], function ($u) {
+                return !self::is_excluded_from_autopurge($u);
+            })));
+        }
+    }
+
+    public static function purge_on_comment($comment_id)
+    {
+        $comment = get_comment($comment_id);
+        if ($comment && $comment->comment_post_ID) {
+            self::purge_on_post_change((int) $comment->comment_post_ID);
+        }
+    }
+
+    /**
+     * Whether the user excluded $url from the automatic purge, so the edge keeps it
+     * exactly like the file cache does. lwsop_purge_url is never fired for those
+     * URLs; this covers the save_post/comment_post path.
+     */
+    private static function is_excluded_from_autopurge($url)
+    {
+        return isset($GLOBALS['lws_optimize'])
+            && method_exists($GLOBALS['lws_optimize'], 'lwsop_url_excluded_from_autopurge')
+            && $GLOBALS['lws_optimize']->lwsop_url_excluded_from_autopurge($url);
     }
 
     public static function purge_url_from_filter($url)

@@ -3,11 +3,49 @@
 namespace Lws\Classes\Admin;
 
 use Lws\Classes\LwsOptimize;
+use Lws\Classes\FileCache\LwsOptimizeCloudFlare;
+use Lws\Classes\FileCache\LwsOptimizeFileCache;
 use Lws\Classes\Integrations\LwsOptimizeCloudflareAPO;
 
 class LwsOptimizeManageAdmin extends LwsOptimize
 {
     public $version = "3.2.4.3";
+
+    /**
+     * Borrows the state of the bootstrapped plugin instance instead of building one.
+     *
+     * This class only extends LwsOptimize for its helpers. Without a constructor of
+     * its own, PHP ran the parent one - the whole plugin bootstrap - a second time,
+     * from lws_optimize_init() on every request: every hook registered on [$this, ...]
+     * (purge filters, autopurge triggers, cron handlers, image optimisation...) was
+     * registered twice, so a single post save ran the purge eight times, and
+     * $GLOBALS['lws_optimize'] was swapped for this instance halfway through.
+     */
+    public function __construct()
+    {
+        $main = $GLOBALS['lws_optimize'] ?? null;
+
+        if ($main instanceof LwsOptimize) {
+            $this->log_file = $main->log_file;
+            $this->lwsOptimizeCache = $main->lwsOptimizeCache;
+            $this->lwsImageOptimization = $main->lwsImageOptimization;
+            $this->lwsImageOptimizationPro = $main->lwsImageOptimizationPro;
+            $this->cloudflare_manager = $main->cloudflare_manager;
+            $this->nginx_purger = $main->nginx_purger;
+            $this->chosen_purger = $main->chosen_purger;
+        } else {
+            // Not expected (the plugin file creates the instance first), but keep the
+            // handlers usable without registering any hook.
+            $this->setupLogfile();
+            $this->lwsOptimizeCache = new LwsOptimizeFileCache($this);
+        }
+
+        // The bootstrap skips it while the plugin is temporarily deactivated, but the
+        // admin handlers still run then (lws_optimize_set_fb_status() calls it).
+        if (!$this->cloudflare_manager) {
+            $this->cloudflare_manager = new LwsOptimizeCloudFlare();
+        }
+    }
 
     public function manage_options()
     {
