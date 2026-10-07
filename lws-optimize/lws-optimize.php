@@ -9,10 +9,10 @@ use Lws\Classes\RUM\LwsOptimizeRUM;
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           4.1.6
+ * Version:           4.1.6.5
  * Author:            LWS
  * Author URI:        https://www.lws.fr
- * Tested up to:      7.0
+ * Tested up to:      7.1
  * Text Domain:       lws-optimize
  * Domain Path:       /languages
  * License:           GPL-2.0-or-later
@@ -79,6 +79,9 @@ if (!defined('LWSOP_OBJECTCACHE_PATH')) {
 function lwsoptimize_activation_callback() {
     delete_option('lws_optimize_preload_is_ongoing');
     LwsOptimizeRUM::create_table();
+
+    // plugins_loaded already fired during activation: create the default config here
+    $GLOBALS['lws_optimize']->lwsop_maybe_init_config();
 
     $optimize_options = get_option('lws_optimize_config_array', []);
 

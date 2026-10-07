@@ -79,30 +79,12 @@ class LwsOptimize
         // Create the log file if needed, otherwise just get the path
         $this->setupLogfile();
 
-        // Get all the options for LWSOptimize. If array is not found, initialize it
-        $optimize_options = get_option('lws_optimize_config_array', []);
-        if (empty($optimize_options)) {
-            // Generate the options
-            $optimize_options = $this->lwsop_auto_setup_optimize("basic", true);
-
-            // Deactivate the filebased_cache preloading
-            $optimize_options['filebased_cache']['preload'] = "false";
-            delete_option('lws_optimize_preload_is_ongoing');
-            if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
-                wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
-            }
-
-            // If it got installed by the LWS Auto-installer, then proceed to activate the plugin by default
-            if (get_option('lws_from_autoinstall_optimize', false)) {
-                delete_option("lws_from_autoinstall_optimize");
-                delete_option('lws_optimize_offline');
-            }
-
-            update_option('lws_optimize_config_array', $optimize_options);
-        }
-
         // Load translations at the recommended plugins_loaded timing (priority 10)
         add_action('plugins_loaded', [$this, 'lws_optimize_load_textdomain']);
+
+        // Default config on first run — needs pluggable.php and the textdomain (priority 10),
+        // and must exist before the Memcached boot below (priority 20)
+        add_action('plugins_loaded', [$this, 'lwsop_maybe_init_config'], 15);
 
         // Memcached dropin lifecycle — runs after textdomain is loaded (priority 20)
         // so that lwsop_validate_memcached_environment() can safely call __()
@@ -283,9 +265,6 @@ class LwsOptimize
             }
         }
 
-        // Update the configuration options in case they got modified
-        update_option('lws_optimize_config_array', $optimize_options);
-
         // Add custom action hooks for external cache clearing
         add_action('lws_optimize_clear_all_cache', [$this, 'clear_all_cache_external']);
         add_action('lws_optimize_clear_url_cache', [$this, 'clear_url_cache_external'], 10, 1);
@@ -379,6 +358,35 @@ class LwsOptimize
     public function lws_optimize_load_textdomain()
     {
         load_textdomain('lws-optimize', LWS_OP_DIR . '/languages/lws-optimize-' . determine_locale() . '.mo');
+    }
+
+    /**
+     * Generates the default configuration ("basic" preset) if none exists yet.
+     * Runs on plugins_loaded and on activation (which happens after plugins_loaded).
+     */
+    public function lwsop_maybe_init_config()
+    {
+        if (!empty(get_option('lws_optimize_config_array', []))) {
+            return;
+        }
+
+        // Generate the options
+        $optimize_options = $this->lwsop_auto_setup_optimize("basic", true);
+
+        // Deactivate the filebased_cache preloading
+        $optimize_options['filebased_cache']['preload'] = "false";
+        delete_option('lws_optimize_preload_is_ongoing');
+        if (wp_next_scheduled("lws_optimize_start_filebased_preload")) {
+            wp_unschedule_event(wp_next_scheduled("lws_optimize_start_filebased_preload"), "lws_optimize_start_filebased_preload");
+        }
+
+        // If it got installed by the LWS Auto-installer, then proceed to activate the plugin by default
+        if (get_option('lws_from_autoinstall_optimize', false)) {
+            delete_option("lws_from_autoinstall_optimize");
+            delete_option('lws_optimize_offline');
+        }
+
+        update_option('lws_optimize_config_array', $optimize_options);
     }
 
     public function lwsop_boot_memcached_dropin()
@@ -3591,7 +3599,7 @@ class LwsOptimize
         $mc->setOption(\Memcached::OPT_SEND_TIMEOUT,    200);
         $mc->setOption(\Memcached::OPT_RECV_TIMEOUT,    200);
 
-        $probe_key   = 'lwsop_probe_' . uniqid('', true) . wp_rand(1000, 9999);
+        $probe_key   = 'lwsop_probe_' . uniqid('', true) . random_int(1000, 9999);
         $probe_value = (string) microtime(true);
         @$mc->set($probe_key, $probe_value, 30);
         $retrieved = @$mc->get($probe_key);

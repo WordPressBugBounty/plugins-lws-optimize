@@ -2,8 +2,8 @@
 Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
-Tested up to: 7.0
-Stable tag: 4.1.6
+Tested up to: 7.1
+Stable tag: 4.1.6.5
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,9 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 4.1.6.5 =
+- Fixed bug where wp_rand() would be called before pluggable.php, resulting in a Fatal Error
 
 = 4.1.6 =
 - Fixed forms and AJAX actions breaking on cached pages (Blocksy login/registration, REST-based forms, ...): Tokens generated for visitors who are not logged in now stay valid for as long as the cached page carrying them is served
