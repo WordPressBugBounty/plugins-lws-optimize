@@ -3,7 +3,7 @@ Contributors: aurelienlws
 Tags: cache, optimize, performance, avif, lazyload
 Requires at least: 6.0
 Tested up to: 7.1
-Stable tag: 4.1.6.5
+Stable tag: 4.1.7
 Requires PHP: 7.4
 Author: LWS
 Author URI: https://www.lws.fr/
@@ -185,6 +185,17 @@ After activation, we recommend starting with the pre-configured optimization pro
 8. Built-in PageSpeed testing with history tracking
 
 == Changelog ==
+
+= 4.1.7 =
+- Pages no longer wait for the LWS Critical CSS and unused CSS services: both now run in the background, one page at a time, and the cached page is refreshed once its result is ready. An uncached page could keep two PHP workers busy for a minute or more
+- Critical CSS is only generated the way chosen in the settings (it also called the LWS service in local and manual modes), and a page whose generation fails is no longer retried in a loop
+- Unused CSS removal no longer mixes up pages that share a stylesheet (styles could disappear from one of them) and leaves logged-in users' pages alone
+- The LWS CSS services are left alone for 15 minutes after an error or a timeout
+- The local Critical CSS generator now finds the stylesheets of pages minified by the plugin: it never produced anything when HTML minification was on
+- Critical CSS over 50 KB is no longer inlined: the local generator often kept over 100 KB of CSS, added to the HTML of every page. The LWS service is now the recommended and default Critical CSS mode, the "full" preset included
+- The preload skips the pages that are never cached (cart, checkout, account, pages excluded by the user) instead of rendering them and logging a failure
+- Preload URLs (?nocache=...) replayed by bots now redirect to the page itself: each one was a new URL for the server cache (Varnish), so every hit went through PHP. On the preload's own requests the parameter is removed before WordPress reads the request, so links in cached pages can no longer carry it
+- On sites using Memcached or Redis, a cache purge no longer wipes the Critical CSS of every page, nor the CSS jobs' retry delays and service pause
 
 = 4.1.6.5 =
 - Fixed bug where wp_rand() would be called before pluggable.php, resulting in a Fatal Error

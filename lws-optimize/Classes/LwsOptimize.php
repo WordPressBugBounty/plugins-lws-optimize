@@ -13,6 +13,7 @@ use Lws\Classes\FileCache\LwsOptimizeCloudFlare;
 use Lws\Classes\Front\LwsOptimizeJSManager;
 use Lws\Classes\Front\LwsOptimizeDelayJS;
 use Lws\Classes\Front\LwsOptimizeCriticalCSSManager;
+use Lws\Classes\Front\LwsOptimizeCSSJobQueue;
 use Lws\Classes\Front\LwsOptimizeFontPreload;
 use Lws\Classes\Admin\LwsOptimizeDashboardWidget;
 use Lws\Classes\Integrations\LwsOptimizeCloudflareAPO;
@@ -57,6 +58,64 @@ class LwsOptimize
     private $lwsop_replaying = false;
 
     /**
+     * Whether this request comes from the preload, which proves it with the
+     * per-site secret in the X-LWS-Preload header.
+     */
+    public function lwsop_is_preload_request()
+    {
+        $secret = get_option('lwsop_preload_secret', '');
+
+        return $secret !== ''
+            && isset($_SERVER['HTTP_X_LWS_PRELOAD'])
+            && hash_equals($secret, sanitize_text_field(wp_unslash($_SERVER['HTTP_X_LWS_PRELOAD'])));
+    }
+
+    /**
+     * The preload adds ?nocache=<timestamp> to its requests so that the edge
+     * caches (Varnish, ...) let them through to PHP. Each value is a distinct
+     * URL for those caches, so the parameter is honoured for nobody else:
+     * - on a preload request, it is removed before WordPress reads the request,
+     *   so no link built from the current URL can carry it into the cached page;
+     * - on any other request (a leaked URL replayed by bots), the visitor is
+     *   redirected to the clean URL, which the edge caches do serve.
+     * Only the preload's own format (digits) is handled: other plugins may use
+     * a parameter with such a generic name.
+     */
+    private function lwsop_handle_preload_nocache()
+    {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only routing check, no state change
+        $value = isset($_GET['nocache']) ? sanitize_text_field(wp_unslash($_GET['nocache'])) : '';
+        if (!preg_match('/^\d{10,}$/', $value)) {
+            return;
+        }
+
+        // Raw on purpose: it is written back, and sanitize_text_field() would strip
+        // its %xx sequences. Only the nocache=<digits> pair is removed from it.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $uri = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '/';
+        $uri = rtrim(preg_replace('/([?&])nocache=\d+&?/', '$1', $uri), '?&');
+
+        if ($this->lwsop_is_preload_request()) {
+            unset($_GET['nocache'], $_REQUEST['nocache']);
+            $_SERVER['REQUEST_URI'] = $uri;
+            $query = strpos($uri, '?');
+            $_SERVER['QUERY_STRING'] = $query === false ? '' : substr($uri, $query + 1);
+            return;
+        }
+
+        $method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : 'GET';
+        if (($method !== 'GET' && $method !== 'HEAD') || is_admin()) {
+            return;
+        }
+
+        // Scheme and host from the settings, never from the request (open redirect)
+        $home = wp_parse_url(home_url());
+        $port = isset($home['port']) ? ':' . $home['port'] : '';
+        header('Location: ' . $home['scheme'] . '://' . $home['host'] . $port . wp_unslash($uri), true, 301);
+        exit;
+    }
+
+    /**
      * Centralized debug logger, gated behind WP_DEBUG.
      */
     public function lwsop_debug_log($message)
@@ -75,6 +134,9 @@ class LwsOptimize
         if (!get_option('lwsop_preload_secret')) {
             update_option('lwsop_preload_secret', bin2hex(random_bytes(16)), false);
         }
+
+        // Before anything reads the request (the file cache just below, then WordPress)
+        $this->lwsop_handle_preload_nocache();
 
         // Create the log file if needed, otherwise just get the path
         $this->setupLogfile();
@@ -163,16 +225,21 @@ class LwsOptimize
             }
 
             // Critical CSS front-end hooks: inline critical CSS in <head> and async-load
-            // all other stylesheets. Only active when state=true and a mode is selected.
+            // all other stylesheets. Only active when state=true and the mode is not off
+            // (no mode at all means the "full" preset enabled it: the LWS service).
             $ccss_opt    = get_option('lws_optimize_config_array', [])['critical_css'] ?? [];
             $ccss_active = (($ccss_opt['state'] ?? 'false') === 'true')
-                           && (($ccss_opt['mode'] ?? 'off') !== 'off');
+                           && (($ccss_opt['mode'] ?? 'external') !== 'off');
             if ($ccss_active) {
                 LwsOptimizeCriticalCSSManager::startActions();
             }
-            // Always register the cron callback so scheduled events can fire even
-            // when the toggle is temporarily disabled between scheduling and execution.
-            add_action('lwsop_generate_critical_css', [LwsOptimizeCriticalCSSManager::class, 'generate_critical_css_cron'], 10, 1);
+            // Always register the background CSS jobs (Critical CSS, unused CSS), so
+            // queued jobs still run if the toggle changes before they are processed.
+            add_action(LwsOptimizeCSSJobQueue::HOOK, [LwsOptimizeCSSJobQueue::class, 'process']);
+            // Events scheduled per URL by previous versions go through the queue
+            add_action('lwsop_generate_critical_css', function ($url) {
+                LwsOptimizeCSSJobQueue::enqueue('ccss', $url);
+            }, 10, 1);
 
             if (($this->lwsop_check_option('cloudflare_apo')['state'] ?? '') === 'true') {
                 LwsOptimizeCloudflareAPO::startActions();
@@ -813,11 +880,74 @@ class LwsOptimize
             }
         }
 
+        $urls = $this->lwsop_remove_uncached_urls($urls);
+
         if (!empty($urls)) {
             update_option('lws_optimize_sitemap_urls', ['time' => time(), 'urls' => $urls]);
         }
 
         return $urls;
+    }
+
+    /**
+     * Drops from a preload list the pages that are never written to the cache
+     * whatever their content: the user's cache exclusions, and the shop pages
+     * (cart, checkout, account) refused by LwsOptimizeFileCache::lwsop_page_to_ignore().
+     * Preloading them only rendered them for nothing and logged a failure.
+     */
+    private function lwsop_remove_uncached_urls(array $urls)
+    {
+        $optimize_options = get_option('lws_optimize_config_array', []);
+        $patterns = [];
+        foreach ($optimize_options['filebased_cache']['exclusions'] ?? [] as $pattern) {
+            // Page types (homepage, post, ...) are only known once the page is rendered
+            if (is_string($pattern) && !preg_match('/^(homepage|category|tag|tax|author|search|post|page|archive|attachment)$/', $pattern)) {
+                $patterns[] = trim($pattern, '/');
+            }
+        }
+
+        $page_ids = [];
+        if ($this->lwsop_plugin_active('woocommerce/woocommerce.php') && function_exists('wc_get_page_id')) {
+            array_push($page_ids, wc_get_page_id('cart'), wc_get_page_id('checkout'), wc_get_page_id('myaccount'));
+        }
+        if ($this->lwsop_plugin_active('easy-digital-downloads/easy-digital-downloads.php') && function_exists('edd_get_option')) {
+            array_push($page_ids, edd_get_option('purchase_page'), edd_get_option('success_page'));
+        }
+        if ($this->lwsop_plugin_active('wp-easycart/wpeasycart.php')) {
+            $page_ids[] = get_option('ec_option_cartpage');
+        }
+
+        $page_urls = [];
+        foreach ($page_ids as $page_id) {
+            // Never the homepage: lwsop_page_to_ignore() keeps it cached, and its
+            // URL would prefix every other one
+            if ((int) $page_id === (int) get_option('page_on_front')) {
+                continue;
+            }
+            $link = (int) $page_id > 0 ? get_permalink((int) $page_id) : false;
+            if ($link) {
+                $page_urls[] = untrailingslashit($link);
+            }
+        }
+
+        return array_values(array_filter($urls, function ($url) use ($patterns, $page_urls) {
+            $subject = LwsOptimizeFileCache::lwsop_exclusion_subject($url);
+            foreach ($patterns as $pattern) {
+                if (LwsOptimizeFileCache::lwsop_matches_exclusion_pattern($subject, $pattern)) {
+                    return false;
+                }
+            }
+
+            // The shop pages and their endpoints (my-account/orders/, ...)
+            $url = untrailingslashit($url);
+            foreach ($page_urls as $page_url) {
+                if ($url === $page_url || strpos($url, $page_url . '/') === 0) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     /**
@@ -2344,21 +2474,7 @@ class LwsOptimize
                 }
 
                 $parsed_url = wp_parse_url($url);
-                $path_uri = isset($parsed_url['path']) ? $parsed_url['path'] : '';
-
-                // Clear desktop cache
-                $path = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri);
-                $files = glob($path . '/index_*');
-                if (!empty($files)) {
-                    array_map('unlink', array_filter($files, 'is_file'));
-                }
-
-                // Clear mobile cache
-                $path_mobile = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri, true);
-                $files = glob($path_mobile . '/index_*');
-                if (!empty($files)) {
-                    array_map('unlink', array_filter($files, 'is_file'));
-                }
+                $this->lwsop_purge_url_files(isset($parsed_url['path']) ? $parsed_url['path'] : '');
             }
 
 
@@ -2427,6 +2543,21 @@ class LwsOptimize
             return json_encode(['code' => 'ERROR', 'message' => $e->getMessage()], JSON_PRETTY_PRINT);
         } finally {
             fclose($logger);
+        }
+    }
+
+    /**
+     * Deletes the cached files (desktop and mobile) of a single page, leaving
+     * the pages below it untouched.
+     */
+    public function lwsop_purge_url_files($path_uri)
+    {
+        foreach ([false, true] as $mobile) {
+            $path = $this->lwsOptimizeCache->lwsop_set_cachedir($path_uri, $mobile);
+            $files = $path ? glob($path . '/index_*') : [];
+            if (!empty($files)) {
+                array_map('unlink', array_filter($files, 'is_file'));
+            }
         }
     }
 
@@ -3386,6 +3517,10 @@ class LwsOptimize
                 $options['image_add_sizes']['state'] = "true";
                 $options['remove_css']['state'] = "true";
                 $options['critical_css']['state'] = "true";
+                // The LWS service: the local generator keeps far too much CSS on most sites
+                if (empty($options['critical_css']['mode']) || $options['critical_css']['mode'] === 'off') {
+                    $options['critical_css']['mode'] = 'external';
+                }
                 $options['cloudflare_apo']['state']     = "false";
                 $options['rum']['state']                = "true";
                 $options['font_preload']['state']       = "true";

@@ -12,7 +12,7 @@ namespace Lws\Classes\Front;
  *  1. `manual`    — site owner provides Critical CSS via UI textarea, stored in
  *                   $opts['critical_css']['manual_css']. Most reliable.
  *  2. `auto`      — built-in PHP heuristic generator (no external call). Generates
- *                   per-URL Critical CSS locally and caches in a 7-day transient.
+ *                   per-URL Critical CSS locally and keeps it 7 days on disk.
  *  3. `external`  — tries a configured external service (criticalcss.com or custom)
  *                   first, then falls back to the local PHP generator on failure.
  *  4. `off`       — module is bypassed.
@@ -22,8 +22,12 @@ namespace Lws\Classes\Front;
  */
 class LwsOptimizeCriticalCSSManager
 {
-    const TRANSIENT_PREFIX = 'lwsop_ccss_';
-    const TRANSIENT_TTL    = 7 * DAY_IN_SECONDS;
+    // Generated Critical CSS is kept this long, then regenerated
+    const RESULT_TTL = 7 * DAY_IN_SECONDS;
+
+    // Bigger than this, inlining it in every page costs more than it saves: the
+    // local heuristic can keep most of the site's CSS (over 100 KB is common)
+    const MAX_SIZE = 50 * 1024;
 
     public static function startActions()
     {
@@ -37,9 +41,21 @@ class LwsOptimizeCriticalCSSManager
      */
     private static function get_critical_css_for_current_url()
     {
+        // Called once per stylesheet tag: resolve it once per request
+        static $css = null;
+        if ($css === null) {
+            $css = self::resolve_critical_css();
+        }
+
+        return $css;
+    }
+
+    private static function resolve_critical_css()
+    {
         $opts = get_option('lws_optimize_config_array', []);
         $cfg  = $opts['critical_css'] ?? [];
-        $mode = $cfg['mode'] ?? 'off';
+        // No mode: enabled by the "full" preset, which uses the LWS service
+        $mode = $cfg['mode'] ?? 'external';
 
         if ($mode === 'manual') {
             $css = $cfg['manual_css'] ?? '';
@@ -50,15 +66,15 @@ class LwsOptimizeCriticalCSSManager
 
         if ($mode === 'auto' || $mode === 'external') {
             $url = self::current_url();
-            $key = self::TRANSIENT_PREFIX . md5($url);
-            $cached = get_transient($key);
-            if (is_string($cached) && $cached !== '') {
+            $cached = self::read_result($url);
+            if ($cached !== '') {
                 return $cached;
             }
-            // Don't generate synchronously — schedule async generation and serve
-            // an empty Critical CSS until next request. This keeps page-load fast.
-            if (!wp_next_scheduled('lwsop_generate_critical_css', [$url])) {
-                wp_schedule_single_event(time() + 5, 'lwsop_generate_critical_css', [$url]);
+            // Never generate during the render: queue the URL and serve the page
+            // without Critical CSS; the job purges the cached page once done.
+            // 404 and search pages are an unbounded set of URLs, never queued.
+            if (!is_404() && !is_search()) {
+                LwsOptimizeCSSJobQueue::enqueue('ccss', $url);
             }
             return '';
         }
@@ -152,24 +168,27 @@ class LwsOptimizeCriticalCSSManager
     }
 
     /**
-     * Cron callback for `auto` mode. Calls the configured Critical CSS service
-     * and stores the result in a 7-day transient.
+     * Background job (LwsOptimizeCSSJobQueue) for the `auto` and `external`
+     * modes: generates the Critical CSS of $url and stores it for 7 days.
      *
-     * The default service endpoint is `https://criticalcss.com/api/premium/generate`
-     * — replace with your own service (e.g. a self-hosted penthouse-cli wrapper)
-     * via the filter `lwsop_critical_css_service_url`.
+     * `external` calls the LWS service (which loads the page with Penthouse) and
+     * falls back to the local generator when the service fails or is paused.
+     *
+     * @return bool|null true if stored, false on failure, null if the mode needs no job
      */
     public static function generate_critical_css_cron($url)
     {
         $opts = get_option('lws_optimize_config_array', []);
         $cfg  = $opts['critical_css'] ?? [];
-        $mode = $cfg['mode'] ?? 'auto';
+        $mode = $cfg['mode'] ?? 'external';
 
-        // In 'auto' mode always use the local PHP generator.
-        // In 'external' mode call the fixed LWS service endpoint.
-        $endpoint = ($mode === 'external') ? 'https://criticalcss.lwspanel.com/generate-critical-css' : '';
+        if (($cfg['state'] ?? 'false') !== 'true' || ($mode !== 'auto' && $mode !== 'external')) {
+            return null;
+        }
 
-        if ($mode === 'external' && $endpoint !== '') {
+        $endpoint = 'https://criticalcss.lwspanel.com/generate-critical-css';
+
+        if ($mode === 'external' && !LwsOptimizeCSSJobQueue::service_paused()) {
             // Fetch the page HTML and extract concatenated CSS to send to the LWS service.
             $html_resp = wp_remote_get($url, ['timeout' => 15, 'sslverify' => true, 'redirection' => 3]);
             if (!is_wp_error($html_resp) && wp_remote_retrieve_response_code($html_resp) === 200) {
@@ -192,18 +211,19 @@ class LwsOptimizeCriticalCSSManager
                     }
                 }
 
+                // Penthouse has to load the page, which takes more than a few seconds
                 $resp = wp_remote_post($endpoint, [
-                    'timeout' => 60,
+                    'timeout' => 30,
                     'headers' => ['Content-Type' => 'application/json'],
                     'body'    => wp_json_encode(['url' => $url, 'css' => $all_css]),
                 ]);
-                if (!is_wp_error($resp) && wp_remote_retrieve_response_code($resp) === 200) {
+                if (LwsOptimizeCSSJobQueue::service_ok($resp) && wp_remote_retrieve_response_code($resp) === 200) {
                     $body   = json_decode(wp_remote_retrieve_body($resp), true);
                     $result = $body['criticalCss'] ?? '';
                     if (is_string($result) && $result !== '') {
                         // Response may be a URL (fetch it) or inline CSS directly.
                         if (filter_var($result, FILTER_VALIDATE_URL)) {
-                            $cr2 = wp_remote_get($result, ['timeout' => 15, 'sslverify' => true]);
+                            $cr2 = wp_safe_remote_get($result, ['timeout' => 15, 'sslverify' => true]);
                             $css = (!is_wp_error($cr2) && wp_remote_retrieve_response_code($cr2) === 200)
                                 ? wp_remote_retrieve_body($cr2)
                                 : '';
@@ -211,20 +231,21 @@ class LwsOptimizeCriticalCSSManager
                             $css = $result;
                         }
                         if (is_string($css) && $css !== '') {
-                            set_transient(self::TRANSIENT_PREFIX . md5($url), $css, self::TRANSIENT_TTL);
-                            return;
+                            return self::store_result($url, $css);
                         }
                     }
                 }
             }
-            // External service failed or returned empty → fall through to local generator
+            // External service failed, paused or returned empty → fall through to local generator
         }
 
         // Self-hosted Critical CSS generator
         $css = self::generate_critical_css_local($url);
         if (is_string($css) && $css !== '') {
-            set_transient(self::TRANSIENT_PREFIX . md5($url), $css, self::TRANSIENT_TTL);
+            return self::store_result($url, $css);
         }
+
+        return false;
     }
 
     /**
@@ -240,7 +261,7 @@ class LwsOptimizeCriticalCSSManager
      *     and minify whitespace.
      *
      * Result : a ~3-15 KB Critical CSS, ready to inline in <head>, that covers the above-the-fold
-     * elements of THIS specific URL. Cached 7 days, regenerated on save_post via lws_optimize_clear_filebased_cache.
+     * elements of THIS specific URL. Kept 7 days, then regenerated.
      *
      * @param string $url Absolute URL to analyze
      * @return string|null Critical CSS (UTF-8, minified) or null on failure
@@ -260,10 +281,18 @@ class LwsOptimizeCriticalCSSManager
         // 2. Extract stylesheet URLs from <head>
         $head_end = stripos($html, '</head>');
         $head     = $head_end !== false ? substr($html, 0, $head_end) : $html;
-        if (!preg_match_all('#<link\b[^>]*?rel=["\']stylesheet["\'][^>]*?href=["\']([^"\']+)["\']#i', $head, $m)) {
+        // Attributes in any order: the minified cached page puts href before rel
+        preg_match_all('#<link\b[^>]*>#i', $head, $tags);
+        $css_urls = [];
+        foreach ($tags[0] as $tag) {
+            if (preg_match('#\brel=["\']stylesheet["\']#i', $tag) && preg_match('#\bhref=["\']([^"\']+)["\']#i', $tag, $href)) {
+                $css_urls[] = $href[1];
+            }
+        }
+        if (empty($css_urls)) {
             return null;
         }
-        $css_urls = array_unique($m[1]);
+        $css_urls = array_unique($css_urls);
 
         // 3. Fetch each CSS (sequential — wp_remote can't do parallel without Requests lib gymnastics)
         $css_concat = '';
@@ -364,12 +393,50 @@ class LwsOptimizeCriticalCSSManager
         return $kept;
     }
 
-    private static function current_url()
+    /**
+     * Generated Critical CSS of $url, '' if there is none or it is too old.
+     *
+     * Stored as files rather than transients: lwsop_run_global_purge() flushes
+     * the object cache, which on Memcached/Redis sites wipes every transient
+     * and would have every page regenerated after each content change.
+     */
+    private static function read_result($url)
     {
-        $https_value = isset($_SERVER['HTTPS']) ? sanitize_text_field(wp_unslash($_SERVER['HTTPS'])) : '';
-        $proto = ($https_value !== '' && $https_value !== 'off') ? 'https' : 'http';
-        $host  = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : wp_parse_url(home_url(), PHP_URL_HOST);
-        $uri   = strtok(isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '/', '?');
-        return $proto . '://' . $host . $uri;
+        $file = self::result_file($url);
+        $time = @filemtime($file);
+        if ($time === false || $time < time() - self::RESULT_TTL) {
+            return '';
+        }
+
+        return (string) @file_get_contents($file);
+    }
+
+    private static function store_result($url, $css)
+    {
+        if (strlen($css) > self::MAX_SIZE) {
+            LwsOptimizeCSSJobQueue::log(sprintf('Critical CSS for %s is %d KB, over the %d KB limit: not used', $url, strlen($css) / 1024, self::MAX_SIZE / 1024));
+            return false;
+        }
+
+        $file = self::result_file($url);
+        return wp_mkdir_p(dirname($file)) && $GLOBALS['lws_optimize']->lwsop_atomic_write($file, $css);
+    }
+
+    private static function result_file($url)
+    {
+        return wp_upload_dir(null, false)['basedir'] . '/lwsoptimize/critical-css/' . md5($url) . '.css';
+    }
+
+    /**
+     * URL of the current page, without its query string. Scheme and host come
+     * from home_url(), never from the request: the background jobs fetch this
+     * URL, so a forged Host header must not be able to point them elsewhere.
+     */
+    public static function current_url()
+    {
+        $home = wp_parse_url(home_url());
+        $port = isset($home['port']) ? ':' . $home['port'] : '';
+        $uri  = strtok(isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '/', '?');
+        return $home['scheme'] . '://' . $home['host'] . $port . $uri;
     }
 }

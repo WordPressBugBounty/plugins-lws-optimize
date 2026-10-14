@@ -3123,11 +3123,11 @@ msgstr "Memcached utilise %1$.1f%% de sa mémoire (%2$s sur %3$s). %4$d évictio
 msgid "Memcached environment validated."
 msgstr "Environnement Memcached validé."
 
-msgid "Auto — local generation (built-in PHP, recommended)"
-msgstr "Auto - génération locale (PHP)"
+msgid "Auto — generation via LWS service (recommended)"
+msgstr "Auto - génération via service LWS (recommandé)"
 
-msgid "Auto — generation via LWS service"
-msgstr "Auto - génération via service LWS"
+msgid "Auto — local generation (built-in PHP)"
+msgstr "Auto - génération locale (PHP)"
 
 msgid "Manual — paste CSS below"
 msgstr "Manuel - collez le CSS ci-dessous"

@@ -42,7 +42,7 @@ class LwsOptimizeDashboardWidget
         $modules = [
             'filebased_cache' => ['label' => __('Cache fichier', 'lws-optimize'),     'state' => ($cfg['filebased_cache']['state'] ?? 'false') === 'true'],
             'memcached'       => ['label' => 'Memcached',                              'state' => ($cfg['memcached']['state']       ?? 'false') === 'true'],
-            'critical_css'    => ['label' => __('CSS critique', 'lws-optimize'),       'state' => ($cfg['critical_css']['state']    ?? 'false') === 'true', 'extra' => ($cfg['critical_css']['mode'] ?? 'off')],
+            'critical_css'    => ['label' => __('CSS critique', 'lws-optimize'),       'state' => ($cfg['critical_css']['state']    ?? 'false') === 'true', 'extra' => ($cfg['critical_css']['mode'] ?? 'external')],
             'font_preload'    => ['label' => __('Google Fonts preconnect', 'lws-optimize'), 'state' => ($cfg['font_preload']['state'] ?? 'false') === 'true'],
             'rum'             => ['label' => 'RUM',                                    'state' => ($cfg['rum']['state']             ?? 'false') === 'true'],
             'cloudflare_apo'  => ['label' => 'Cloudflare APO',                         'state' => ($cfg['cloudflare_apo']['state']  ?? 'false') === 'true'],

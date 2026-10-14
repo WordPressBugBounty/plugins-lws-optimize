@@ -344,7 +344,7 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
 
     <?php
     if ($lwsoptimize_name === 'critical_css') :
-        $lwsoptimize_ccss_mode   = $lwsoptimize_config_array['critical_css']['mode'] ?? 'off';
+        $lwsoptimize_ccss_mode   = $lwsoptimize_config_array['critical_css']['mode'] ?? 'external';
         $lwsoptimize_ccss_manual = $lwsoptimize_config_array['critical_css']['manual_css'] ?? '';
         $lwsoptimize_ccss_state  = ($lwsoptimize_config_array['critical_css']['state'] ?? 'false') === 'true';
         $lwsoptimize_ccss_badges = [
@@ -431,8 +431,8 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
         <div class="lwsop_ccss_mode_row">
             <label for="lwsop_ccss_mode"><?php esc_html_e('Mode:', 'lws-optimize'); ?></label>
             <select id="lwsop_ccss_mode">
-                <option value="auto"     <?php selected($lwsoptimize_ccss_mode, 'auto'); ?>><?php esc_html_e('Auto — local generation (built-in PHP, recommended)', 'lws-optimize'); ?></option>
-                <option value="external" <?php selected($lwsoptimize_ccss_mode, 'external'); ?>><?php esc_html_e('Auto — generation via LWS service', 'lws-optimize'); ?></option>
+                <option value="external" <?php selected($lwsoptimize_ccss_mode, 'external'); ?>><?php esc_html_e('Auto — generation via LWS service (recommended)', 'lws-optimize'); ?></option>
+                <option value="auto"     <?php selected($lwsoptimize_ccss_mode, 'auto'); ?>><?php esc_html_e('Auto — local generation (built-in PHP)', 'lws-optimize'); ?></option>
                 <option value="manual"   <?php selected($lwsoptimize_ccss_mode, 'manual'); ?>><?php esc_html_e('Manual — paste CSS below', 'lws-optimize'); ?></option>
             </select>
         </div>
@@ -610,14 +610,14 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
 
     // Initialise EXTRA_KEY from PHP-rendered values (current DB state).
     setSaved({
-        mode:       (modeSelect || {}).value || 'auto',
+        mode:       (modeSelect || {}).value || 'external',
         manual_css: (manualArea  || {}).value || '',
     });
 
     // ── Pending-changes helpers ───────────────────────────────────────────────
     function collectExtra() {
         return {
-            mode:       (modeSelect || {}).value || 'auto',
+            mode:       (modeSelect || {}).value || 'external',
             manual_css: (manualArea  || {}).value || '',
         };
     }
@@ -661,9 +661,9 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
     }
     function restoreFromSaved() {
         var s = getSaved() || {};
-        if (modeSelect) modeSelect.value = s.mode || 'auto';
+        if (modeSelect) modeSelect.value = s.mode || 'external';
         if (manualArea) manualArea.value  = s.manual_css || '';
-        updateModeUI(s.mode || 'auto');
+        updateModeUI(s.mode || 'external');
     }
 
     // ── Mode select listener ──────────────────────────────────────────────────
@@ -676,7 +676,7 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
             // Only treat as "no change" if mode, manual AND toggle state all match DB.
             // Without the toggle check, reverting only the mode would wrongly remove
             // an entry that still carries a pending toggle-state change.
-            if (modeSelect.value === (s.mode || 'auto')
+            if (modeSelect.value === (s.mode || 'external')
                     && curManual === (s.manual_css || '')
                     && toggle.checked === savedToggle) {
                 deleteEntry();
@@ -691,7 +691,7 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
         manualArea.addEventListener('input', function(){
             if (!toggle || !toggle.checked) return;
             var s = getSaved() || {};
-            if ((modeSelect || {}).value === (s.mode || 'auto')
+            if ((modeSelect || {}).value === (s.mode || 'external')
                     && manualArea.value === (s.manual_css || '')
                     && toggle.checked === savedToggle) {
                 deleteEntry();
@@ -748,7 +748,7 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
             var cfg = JSON.parse(value || '[]');
             if (cfg.findIndex(function(it){ return it.type === TOGGLE_ID; }) !== -1) return;
             setSaved({
-                mode:       (modeSelect || {}).value || 'auto',
+                mode:       (modeSelect || {}).value || 'external',
                 manual_css: (manualArea  || {}).value || '',
             });
             if (!inToggleHnd && !inDeleteEntry) {
@@ -756,9 +756,9 @@ foreach ($lwsoptimize_third_bloc_array as $lwsoptimize_key => $lwsoptimize_array
                 savedToggle = !!(toggle && toggle.checked);
             }
             var s = getSaved() || {};
-            if (modeSelect) modeSelect.value = s.mode || 'auto';
+            if (modeSelect) modeSelect.value = s.mode || 'external';
             if (manualArea)  manualArea.value  = s.manual_css || '';
-            updateModeUI(toggle && toggle.checked ? (s.mode || 'auto') : 'off');
+            updateModeUI(toggle && toggle.checked ? (s.mode || 'external') : 'off');
         } catch(e) {}
     };
 })();

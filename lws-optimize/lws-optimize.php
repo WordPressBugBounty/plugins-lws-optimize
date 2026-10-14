@@ -9,7 +9,7 @@ use Lws\Classes\RUM\LwsOptimizeRUM;
  * Plugin Name:       LWS Optimize - All-in-One Speed Booster & Cache Tools
  * Plugin URI:        https://www.lws.fr/
  * Description:       Reach better speed and performances with Optimize! Minification, Combination, Media convertion... Everything you need for a better website
- * Version:           4.1.6.5
+ * Version:           4.1.7
  * Author:            LWS
  * Author URI:        https://www.lws.fr
  * Tested up to:      7.1
@@ -127,6 +127,10 @@ function lwsoptimize_deactivation_callback() {
     wp_unschedule_event(wp_next_scheduled('lws_optimize_convert_media_cron'), 'lws_optimize_convert_media_cron');
     wp_unschedule_event(wp_next_scheduled('lws_optimize_maintenance_db_weekly'), 'lws_optimize_maintenance_db_weekly');
     wp_unschedule_event(wp_next_scheduled("lwsop_revertOptimization"), "lwsop_revertOptimization");
+
+    // Background CSS jobs (Critical CSS, unused CSS)
+    wp_clear_scheduled_hook('lwsop_process_css_jobs');
+    delete_option('lwsop_css_job_queue');
 
     // Remove the deployed cache-serve script (placed outside /plugins/ to avoid 403s)
     $deployed_serve = WP_CONTENT_DIR . '/cache/lwsoptimize/lwsop_cache_serve.php';

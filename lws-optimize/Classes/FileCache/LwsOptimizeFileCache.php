@@ -2,7 +2,6 @@
 
 namespace Lws\Classes\FileCache;
 
-use Lws\Classes\Front\LwsOptimizeCriticalCSS;
 use Lws\Classes\Front\LwsOptimizeCSSManager;
 use Lws\Classes\Front\LwsOptimizeJSManager;
 use Lws\Classes\Front\LwsOptimizeUnusedCSS;
@@ -339,11 +338,6 @@ class LwsOptimizeFileCache
                 }
             }
 
-            if ($this->base->lwsop_check_option('critical_css')['state'] == "true") {
-                $lwsOptimizeCriticalCssManager = new LwsOptimizeCriticalCSS($modified);
-                $modified = $lwsOptimizeCriticalCssManager->applyCriticalCSS();
-            }
-
             if ($this->base->lwsop_check_option('defer_js')['state'] == "true") {
                 $lwsOptimizeJsManager = new LwsOptimizeJSManager($modified);
                 $data = $lwsOptimizeJsManager->defer_js();
@@ -484,11 +478,7 @@ class LwsOptimizeFileCache
 
                     $GLOBALS['lws_optimize']->lwsop_recalculate_stats("plus", $cached, $mobile);
 
-                    // Validate against the per-site secret so any client can't spoof the header.
-                    $preload_secret = get_option('lwsop_preload_secret', '');
-                    $is_preload = $preload_secret !== ''
-                        && isset($_SERVER['HTTP_X_LWS_PRELOAD'])
-                        && hash_equals($preload_secret, sanitize_text_field(wp_unslash($_SERVER['HTTP_X_LWS_PRELOAD'])));
+                    $is_preload = $this->base->lwsop_is_preload_request();
                     if (!$is_preload && class_exists('Lws\\Classes\\FileCache\\LwsOptimizeUsageStats') && !headers_sent()) {
                         header('X-LWSOP-Cache: MISS');
                         $this->cache_written = true;

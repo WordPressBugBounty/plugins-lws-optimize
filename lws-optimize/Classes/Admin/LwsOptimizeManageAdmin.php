@@ -1021,7 +1021,7 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                     if (isset($extra['mode']) && in_array($extra['mode'], ['off', 'manual', 'auto', 'external'], true)) {
                         $optimize_options['critical_css']['mode'] = $extra['mode'];
                     } elseif (empty($optimize_options['critical_css']['mode']) || $optimize_options['critical_css']['mode'] === 'off') {
-                        $optimize_options['critical_css']['mode'] = 'auto';
+                        $optimize_options['critical_css']['mode'] = 'external';
                     }
                     if (isset($extra['manual_css'])) {
                         $optimize_options['critical_css']['manual_css'] = wp_strip_all_tags((string) $extra['manual_css']);
@@ -1033,9 +1033,9 @@ class LwsOptimizeManageAdmin extends LwsOptimize
                         $optimize_options['critical_css']['api_key'] = sanitize_text_field((string) $extra['api_key']);
                     }
                 } else {
-                    // Activated without extra: default to auto (local) mode
+                    // Activated without extra: default to the LWS service
                     if (empty($optimize_options['critical_css']['mode']) || $optimize_options['critical_css']['mode'] === 'off') {
-                        $optimize_options['critical_css']['mode'] = 'auto';
+                        $optimize_options['critical_css']['mode'] = 'external';
                     }
                 }
             }
